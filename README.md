@@ -48,7 +48,7 @@ In resize mode, H / L make the window narrower / wider, K / J make it shorter / 
 | Option+, / Option+. | Focus the left / right monitor |
 | Option+Shift+, / Option+Shift+. | Send the window to the left / right monitor |
 
-A pinned workspace always opens on its own monitor, so Option+4 from the Dell moves focus to the laptop.
+A pinned workspace always opens on its own monitor, so Option+4 from the main monitor moves focus to the secondary one.
 
 ### Apps
 
