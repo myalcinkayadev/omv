@@ -9,3 +9,6 @@ macos-titlebar-style = hidden
 confirm-close-surface = false
 resize-overlay = never
 shell-integration-features = no-cursor
+
+# Drop-down terminal. A global key needs Accessibility for Ghostty.
+keybind = global:alt+backquote=toggle_quick_terminal
