@@ -74,9 +74,9 @@ class ConfigContract(unittest.TestCase):
         }
         self.assertEqual(floating, APPROVED_FLOATING)
 
-    def test_should_open_btop_in_ghostty_when_aerospace_starts(self) -> None:
+    def test_should_run_start_btop_when_aerospace_starts(self) -> None:
         self.assertIn(
-            "exec-and-forget open -na Ghostty --args -e /opt/homebrew/bin/btop",
+            "exec-and-forget $HOME/.config/ghostty/start-btop.sh",
             load_aerospace()["after-startup-command"],
         )
 
@@ -85,6 +85,15 @@ class ConfigContract(unittest.TestCase):
             "exec-and-forget $HOME/.config/ghostty/new-window.sh",
             load_aerospace()["mode"]["main"]["binding"]["alt-enter"],
         )
+
+    def test_should_leave_no_open_na_ghostty_in_any_config(self) -> None:
+        stale = [
+            str(path.relative_to(REPO))
+            for package in PACKAGES
+            for path in (REPO / package).rglob("*")
+            if path.is_file() and re.search(r'open -na Ghostty|"-na", "Ghostty"', path.read_text(encoding="utf-8"))
+        ]
+        self.assertEqual(stale, [])
 
     def test_should_leave_no_omniwmctl_or_dmenu_reference_in_any_config(self) -> None:
         stale = [

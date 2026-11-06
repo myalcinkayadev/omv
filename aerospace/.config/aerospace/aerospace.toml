@@ -9,10 +9,9 @@ start-at-login = true
 persistent-workspaces = ['1', '2', '3', '4', '5']
 
 # SketchyBar detects a running copy, so restarting AeroSpace will not start a second bar.
-# btop has no such check, so each AeroSpace restart opens another one.
 after-startup-command = [
   'exec-and-forget /opt/homebrew/bin/sketchybar',
-  'exec-and-forget open -na Ghostty --args -e /opt/homebrew/bin/btop',
+  'exec-and-forget $HOME/.config/ghostty/start-btop.sh',
 ]
 
 exec-on-workspace-change = ['/bin/bash', '-c',

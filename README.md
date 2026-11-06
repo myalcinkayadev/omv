@@ -82,7 +82,7 @@ These tools take the keys system-wide, so apps never receive them:
 
 Finder, System Settings and Calculator float on the current workspace.
 
-`btop` opens on workspace 1 whenever AeroSpace starts, so each AeroSpace restart adds another one.
+`btop` opens on workspace 1 when AeroSpace starts, unless one is already running.
 
 Ghostty windows share one process. The first time you use Option+Enter or Option+Shift+T, macOS asks to let AeroSpace and Hammerspoon control Ghostty, and those keys need that permission.
 
