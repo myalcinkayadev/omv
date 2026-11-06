@@ -22,6 +22,8 @@ APPROVED_ROUTES = {
     "com.apple.MobileSMS": "5",
     "net.whatsapp.WhatsApp": "5",
     "com.hnc.Discord": "5",
+    "com.apple.Music": "6",
+    "com.spotify.client": "6",
 }
 APPROVED_FLOATING = {
     "com.apple.finder",
@@ -121,6 +123,15 @@ class ConfigContract(unittest.TestCase):
 
     def test_should_ship_the_claude_logo_file(self) -> None:
         self.assertTrue((REPO / "sketchybar/.config/sketchybar/icons/claude.png").is_file())
+
+    def test_should_keep_workspace_6_alive_when_empty(self) -> None:
+        self.assertIn("6", load_aerospace()["persistent-workspaces"])
+
+    def test_should_bind_workspace_6_keys(self) -> None:
+        self.assertEqual(
+            [aerospace_keys() >= {"alt-6"}, aerospace_keys() >= {"alt-shift-6"}],
+            [True, True],
+        )
 
     def test_should_leave_no_omniwmctl_or_dmenu_reference_in_any_config(self) -> None:
         stale = [

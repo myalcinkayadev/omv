@@ -43,8 +43,8 @@ In resize mode, H / L make the window narrower / wider, K / J make it shorter / 
 
 | Keys | Action |
 |---|---|
-| Option+1-5 | Go to that workspace |
-| Option+Shift+1-5 | Send the window to that workspace, and stay where you are |
+| Option+1-6 | Go to that workspace |
+| Option+Shift+1-6 | Send the window to that workspace, and stay where you are |
 | Option+, / Option+. | Focus the left / right monitor |
 | Option+Shift+, / Option+Shift+. | Send the window to the left / right monitor |
 
@@ -84,6 +84,7 @@ These tools take the keys system-wide, so apps never receive them:
 | 3 | Helium | Main |
 | 4 | Obsidian, Notion, Linear | Secondary, or main if there is only one |
 | 5 | Notes, Messages, WhatsApp, Discord | Secondary, or main if there is only one |
+| 6 | Apple Music, Spotify | Secondary, or main if there is only one |
 
 Finder, System Settings and Calculator float on the current workspace.
 
@@ -91,7 +92,7 @@ Finder, System Settings and Calculator float on the current workspace.
 
 Ghostty windows share one process. The first time you use Option+Enter or Option+Shift+T, macOS asks to let AeroSpace and Hammerspoon control Ghostty, and those keys need that permission.
 
-There are five workspaces in total, not five per monitor, because AeroSpace workspaces are global. In the bar, the focused workspace is white and the one visible on the other monitor is gray.
+There are six workspaces in total, not six per monitor, because AeroSpace workspaces are global. In the bar, the focused workspace is white and the one visible on the other monitor is gray.
 
 ## Claude usage limit
 

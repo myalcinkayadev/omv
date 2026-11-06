@@ -31,7 +31,7 @@ dims_other_workspaces() {
   stub_aerospace "" "3"
   run_in_sandbox FOCUSED_WORKSPACE=3 "$PLUGIN"
   local number
-  for number in 1 2 4 5; do
+  for number in 1 2 4 5 6; do
     assert_called "--set space\.$number $IDLE_STYLE"
   done
 }
@@ -54,6 +54,12 @@ survives_empty_aerospace_output() {
   assert_exit_zero run_in_sandbox "$PLUGIN"
 }
 
+highlights_workspace_6() {
+  stub_aerospace "" "6"
+  run_in_sandbox FOCUSED_WORKSPACE=6 "$PLUGIN"
+  assert_called "--set space\.6 $FOCUSED_STYLE"
+}
+
 ignores_unknown_workspace() {
   stub_aerospace "" ""
   run_in_sandbox FOCUSED_WORKSPACE=9 "$PLUGIN"
@@ -64,6 +70,7 @@ run_case 'should highlight workspace 3 when the event supplies FOCUSED_WORKSPACE
 run_case 'should dim every other workspace when workspace 3 is focused' dims_other_workspaces
 run_case 'should query aerospace for the focused workspace when the script runs without an event' queries_focused_without_event
 run_case 'should mark a workspace as visible when it is shown on the unfocused monitor' marks_visible_on_unfocused_monitor
+run_case 'should highlight workspace 6 when it is focused' highlights_workspace_6
 run_case 'should exit without error when aerospace returns nothing' survives_empty_aerospace_output
-run_case 'should leave items unchanged when the focused workspace is outside 1-5' ignores_unknown_workspace
+run_case 'should leave items unchanged when the focused workspace is outside 1-6' ignores_unknown_workspace
 finish

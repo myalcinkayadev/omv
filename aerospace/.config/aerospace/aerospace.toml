@@ -5,8 +5,8 @@ config-version = 2
 
 start-at-login = true
 
-# The bar always draws five items, so all five workspaces must stay alive when empty.
-persistent-workspaces = ['1', '2', '3', '4', '5']
+# The bar always draws six items, so all six workspaces must stay alive when empty.
+persistent-workspaces = ['1', '2', '3', '4', '5', '6']
 
 # SketchyBar detects a running copy, so restarting AeroSpace will not start a second bar.
 after-startup-command = [
@@ -49,6 +49,7 @@ outer.top = [{ monitor."built-in" = 14 }, 46]
 3 = 'main'
 4 = ['secondary', 'main']
 5 = ['secondary', 'main']
+6 = ['secondary', 'main']
 
 [mode.main.binding]
 
@@ -70,12 +71,14 @@ alt-2 = 'workspace 2'
 alt-3 = 'workspace 3'
 alt-4 = 'workspace 4'
 alt-5 = 'workspace 5'
+alt-6 = 'workspace 6'
 
 alt-shift-1 = 'move-node-to-workspace 1'
 alt-shift-2 = 'move-node-to-workspace 2'
 alt-shift-3 = 'move-node-to-workspace 3'
 alt-shift-4 = 'move-node-to-workspace 4'
 alt-shift-5 = 'move-node-to-workspace 5'
+alt-shift-6 = 'move-node-to-workspace 6'
 
 # Monitors
 alt-comma = 'focus-monitor left'
@@ -147,6 +150,15 @@ run = 'move-node-to-workspace 5'
 [[on-window-detected]]
 if.app-id = 'com.hnc.Discord'
 run = 'move-node-to-workspace 5'
+
+# Workspace 6: music
+[[on-window-detected]]
+if.app-id = 'com.apple.Music'
+run = 'move-node-to-workspace 6'
+
+[[on-window-detected]]
+if.app-id = 'com.spotify.client'
+run = 'move-node-to-workspace 6'
 
 # Floating, on whichever workspace is current
 [[on-window-detected]]
