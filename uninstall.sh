@@ -8,7 +8,7 @@ set -uo pipefail
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly REPO_DIR
 readonly TAPS=(nikitabobko/tap felixkratz/formulae)
-readonly SETUP_PACKAGES=(aerospace sketchybar)
+readonly SETUP_PACKAGES=(aerospace sketchybar claude)
 readonly OLDER_PACKAGES=(ghostty nvim btop hammerspoon)
 
 packages=("${SETUP_PACKAGES[@]}")
@@ -31,6 +31,12 @@ quit_apps() {
   if pgrep -x sketchybar >/dev/null 2>&1; then
     pkill -x sketchybar
   fi
+}
+
+# Runs before unlinking, so the status line never calls a script that is already gone.
+remove_claude_usage() {
+  "$REPO_DIR/claude-usage.sh" remove
+  rm -f "$HOME/.local/state/omv/claude-usage" "$HOME/.local/state/omv/claude-usage-resets-view"
 }
 
 unlink_configs() {
@@ -78,6 +84,7 @@ EOF
 
 parse_arguments "$@"
 quit_apps
+remove_claude_usage
 unlink_configs
 reset_macos_settings
 remove_tools

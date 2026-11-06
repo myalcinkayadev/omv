@@ -9,7 +9,7 @@ REPO = Path(__file__).resolve().parent.parent
 AEROSPACE = REPO / "aerospace/.config/aerospace/aerospace.toml"
 HAMMERSPOON = REPO / "hammerspoon/.hammerspoon/init.lua"
 GHOSTTY = REPO / "ghostty/.config/ghostty/config"
-PACKAGES = ("aerospace", "sketchybar", "ghostty", "nvim", "btop", "hammerspoon")
+PACKAGES = ("aerospace", "sketchybar", "claude", "ghostty", "nvim", "btop", "hammerspoon")
 
 APPROVED_ROUTES = {
     "com.mitchellh.ghostty": "1",
@@ -92,7 +92,7 @@ class ConfigContract(unittest.TestCase):
             str(path.relative_to(REPO))
             for package in PACKAGES
             for path in (REPO / package).rglob("*")
-            if path.is_file() and re.search(r'open -na Ghostty|"-na", "Ghostty"', path.read_text(encoding="utf-8"))
+            if path.is_file() and re.search(r'open -na Ghostty|"-na", "Ghostty"', path.read_text(encoding="utf-8", errors="ignore"))
         ]
         self.assertEqual(stale, [])
 
@@ -115,12 +115,19 @@ class ConfigContract(unittest.TestCase):
             GHOSTTY.read_text(encoding="utf-8"),
         )
 
+    def test_should_show_the_claude_logo_when_the_usage_item_is_drawn(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn('icon.background.image="$CONFIG_DIR/icons/claude.png"', source)
+
+    def test_should_ship_the_claude_logo_file(self) -> None:
+        self.assertTrue((REPO / "sketchybar/.config/sketchybar/icons/claude.png").is_file())
+
     def test_should_leave_no_omniwmctl_or_dmenu_reference_in_any_config(self) -> None:
         stale = [
             str(path.relative_to(REPO))
             for package in PACKAGES
             for path in (REPO / package).rglob("*")
-            if path.is_file() and re.search(r"omniwmctl|dmenu", path.read_text(encoding="utf-8"))
+            if path.is_file() and re.search(r"omniwmctl|dmenu", path.read_text(encoding="utf-8", errors="ignore"))
         ]
         self.assertEqual(stale, [])
 

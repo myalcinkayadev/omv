@@ -7,7 +7,7 @@ set -euo pipefail
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly REPO_DIR
 readonly TAPS=(nikitabobko/tap felixkratz/formulae)
-readonly PACKAGES=(aerospace sketchybar ghostty nvim btop hammerspoon)
+readonly PACKAGES=(aerospace sketchybar claude ghostty nvim btop hammerspoon)
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 && return 0
@@ -26,6 +26,8 @@ install_tools() {
 }
 
 link_configs() {
+  # Stow would otherwise replace a missing ~/.claude with a link into this repo.
+  mkdir -p "$HOME/.claude"
   stow --dir="$REPO_DIR" --target="$HOME" "${PACKAGES[@]}" && return 0
   echo "install.sh: stow could not link the configs. Move the files it named, then run this again." >&2
   exit 1
@@ -54,5 +56,6 @@ require_command brew
 require_command stow
 install_tools
 link_configs
+"$REPO_DIR/claude-usage.sh" add
 apply_macos_settings
 print_manual_steps

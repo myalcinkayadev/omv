@@ -4,7 +4,7 @@
 source "$(dirname "$0")/lib.sh"
 
 readonly UNINSTALL=$REPO_DIR/uninstall.sh
-readonly ALL_PACKAGES='aerospace sketchybar ghostty nvim btop hammerspoon'
+readonly ALL_PACKAGES='aerospace sketchybar claude ghostty nvim btop hammerspoon'
 
 # Links every package with the real stow, as a finished install would leave them.
 link_everything() {
@@ -24,7 +24,7 @@ simulate_already_removed() {
 
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
-  assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D aerospace sketchybar$"
+  assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D aerospace sketchybar claude$"
 }
 
 keeps_older_tool_links() {
@@ -50,6 +50,15 @@ removes_this_setups_links() {
 unstows_everything_with_all_flag() {
   run_in_sandbox "$UNINSTALL" --all >/dev/null
   assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D $ALL_PACKAGES$"
+}
+
+removes_usage_line() {
+  mkdir -p "$HOME_DIR/.claude"
+  printf 'input=$(cat)\nprintf x | "$HOME/.claude/bar-usage.sh" & # omv bar usage\n' > "$HOME_DIR/.claude/statusline-wrapper.sh"
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  if grep -q bar-usage "$HOME_DIR/.claude/statusline-wrapper.sh"; then
+    fail 'line is still in the wrapper'
+  fi
 }
 
 deletes_macos_settings() {
@@ -98,10 +107,11 @@ skips_quit_when_not_running() {
   assert_not_called '^osascript'
 }
 
-run_case 'should unstow only aerospace and sketchybar when run without flags' unstows_only_this_setup
+run_case 'should unstow only aerospace, sketchybar and claude when run without flags' unstows_only_this_setup
 run_case 'should keep the ghostty, nvim, btop and hammerspoon links when run without flags' keeps_older_tool_links
 run_case 'should remove the aerospace and sketchybar links when run without flags' removes_this_setups_links
-run_case 'should unstow all six packages when run with --all' unstows_everything_with_all_flag
+run_case 'should unstow all seven packages when run with --all' unstows_everything_with_all_flag
+run_case 'should remove the usage line when uninstalling' removes_usage_line
 run_case 'should delete both macOS settings when they are set' deletes_macos_settings
 run_case 'should remove aerospace and sketchybar when they are installed' removes_both_tools
 run_case 'should succeed when the tools and settings are already gone' succeeds_when_already_removed

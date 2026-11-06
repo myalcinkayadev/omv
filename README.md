@@ -91,6 +91,20 @@ Ghostty windows share one process. The first time you use Option+Enter or Option
 
 There are five workspaces in total, not five per monitor, because AeroSpace workspaces are global. In the bar, the focused workspace is white and the one visible on the other monitor is gray.
 
+## Claude usage limit
+
+The bar shows Claude's limits to the left of the clock, with the Claude logo and `5h 23%  7d 41%`. Click it to swap to the reset times.
+
+| Highest usage | Look |
+|---|---|
+| Under 70% | Gray |
+| 70-89% | White |
+| 90% and up | White pill |
+
+The numbers come from Claude Code's status line, so they only update while Claude Code runs. Usage from elsewhere, such as claude.ai, shows after your next response here. A window past its reset time shows 0%.
+
+`install.sh` adds one line to `~/.claude/statusline-wrapper.sh` through `claude-usage.sh`. If that file doesn't exist, the item stays hidden. Only the four numbers are stored, in `~/.local/state/omv/claude-usage`.
+
 ## Differences from the article
 
 - Trusts the taps first, because Homebrew refuses to load untrusted ones.
