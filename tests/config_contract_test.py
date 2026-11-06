@@ -8,6 +8,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 AEROSPACE = REPO / "aerospace/.config/aerospace/aerospace.toml"
 HAMMERSPOON = REPO / "hammerspoon/.hammerspoon/init.lua"
+GHOSTTY = REPO / "ghostty/.config/ghostty/config"
 PACKAGES = ("aerospace", "sketchybar", "ghostty", "nvim", "btop", "hammerspoon")
 
 APPROVED_ROUTES = {
@@ -28,7 +29,7 @@ APPROVED_FLOATING = {
     "com.apple.calculator",
 }
 HAMMERSPOON_MODIFIERS = {"SUPER": "alt", "SUPER_SHIFT": "alt-shift"}
-HAMMERSPOON_KEYS = {"return": "enter"}
+HAMMERSPOON_KEYS = {"return": "enter", "44": "slash"}
 
 
 def load_aerospace() -> dict:
@@ -46,7 +47,7 @@ def aerospace_keys() -> set[str]:
 
 def hammerspoon_keys() -> list[str]:
     source = HAMMERSPOON.read_text(encoding="utf-8")
-    bindings = re.findall(r'hs\.hotkey\.bind\((\w+),\s*"(\w+)"', source)
+    bindings = re.findall(r'bindKey\((SUPER\w*),\s*"?(\w+)"?', source)
     return [
         f"{HAMMERSPOON_MODIFIERS[modifier]}-{HAMMERSPOON_KEYS.get(key, key)}"
         for modifier, key in bindings
@@ -94,6 +95,25 @@ class ConfigContract(unittest.TestCase):
             if path.is_file() and re.search(r'open -na Ghostty|"-na", "Ghostty"', path.read_text(encoding="utf-8"))
         ]
         self.assertEqual(stale, [])
+
+    def test_should_find_the_hammerspoon_keys_when_parsing_init_lua(self) -> None:
+        self.assertIn("alt-slash", hammerspoon_keys())
+
+    def test_should_leave_resize_mode_when_escape_or_enter_is_pressed(self) -> None:
+        resize = load_aerospace()["mode"]["resize"]["binding"]
+        self.assertEqual(
+            ["mode main" in resize[key] for key in ("esc", "enter")],
+            [True, True],
+        )
+
+    def test_should_have_no_ctrl_option_bindings_left(self) -> None:
+        self.assertEqual([key for key in aerospace_keys() if key.startswith("ctrl-alt")], [])
+
+    def test_should_bind_the_quick_terminal_in_the_ghostty_config(self) -> None:
+        self.assertIn(
+            "keybind = global:alt+backquote=toggle_quick_terminal",
+            GHOSTTY.read_text(encoding="utf-8"),
+        )
 
     def test_should_leave_no_omniwmctl_or_dmenu_reference_in_any_config(self) -> None:
         stale = [

@@ -89,14 +89,19 @@ alt-t = 'layout floating tiling'
 alt-b = 'balance-sizes'
 alt-r = 'layout tiles horizontal vertical'
 
-# Resize
-ctrl-alt-h = 'resize width -50'
-ctrl-alt-j = 'resize height +50'
-ctrl-alt-k = 'resize height -50'
-ctrl-alt-l = 'resize width +50'
+# Resize. Each mode key also tells the bar, which shows the current mode.
+alt-shift-r = ['mode resize', 'exec-and-forget /opt/homebrew/bin/sketchybar --trigger aerospace_mode_change MODE=resize']
 
 # New Ghostty windows route to workspace 1 without following, so go there first.
 alt-enter = ['workspace 1', 'exec-and-forget $HOME/.config/ghostty/new-window.sh']
+
+[mode.resize.binding]
+h = 'resize width -50'
+j = 'resize height +50'
+k = 'resize height -50'
+l = 'resize width +50'
+esc = ['mode main', 'exec-and-forget /opt/homebrew/bin/sketchybar --trigger aerospace_mode_change MODE=main']
+enter = ['mode main', 'exec-and-forget /opt/homebrew/bin/sketchybar --trigger aerospace_mode_change MODE=main']
 
 # Workspace 1: terminal
 [[on-window-detected]]

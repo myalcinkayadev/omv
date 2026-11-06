@@ -29,12 +29,13 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 |---|---|
 | Option+H/J/K/L | Focus the window in that direction |
 | Option+Shift+H/J/K/L | Move the window in that direction |
-| Ctrl+Option+H / L | Make the window narrower / wider |
-| Ctrl+Option+K / J | Make the window shorter / taller |
+| Option+Shift+R | Enter resize mode, shown as `RESIZE` in the bar |
 | Option+F | Toggle fullscreen |
 | Option+T | Toggle floating or tiled |
 | Option+R | Toggle the split between horizontal and vertical |
 | Option+B | Make window sizes even |
+
+In resize mode, H / L make the window narrower / wider, K / J make it shorter / taller, and Escape or Enter leaves. Other shortcuts stay off until you leave. Height only changes when windows are stacked vertically.
 
 ### Workspaces and monitors
 
@@ -57,10 +58,12 @@ A pinned workspace always opens on its own monitor, so Option+4 from the Dell mo
 | Option+Shift+Enter | New Helium window | Workspace 3 |
 | Option+Shift+F | Finder at your home folder | Current workspace, floating |
 | Option+Shift+Space | Show or hide the bar | |
+| Option+` | Drop-down terminal, over any workspace | Current workspace |
+| Option+/ | Show or hide this list of keys, Escape also closes it | |
 
 ### Who handles each key
 
-AeroSpace handles the window and workspace keys and Option+Enter, in `aerospace.toml`. Hammerspoon handles the other app keys, in `init.lua`. A key should be bound in only one of them, and `tests/run.sh` fails if one is bound in both.
+AeroSpace handles the window and workspace keys and Option+Enter, in `aerospace.toml`. Hammerspoon handles the other app keys and Option+/, in `init.lua`. Ghostty handles Option+\`, in its `config`. A key should be bound in only one of them, and `tests/run.sh` fails if one is bound in both.
 
 ### Clashes
 

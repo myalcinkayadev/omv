@@ -51,6 +51,11 @@ sketchybar --add event aerospace_workspace_change \
   --set aerospace_listener drawing=off script="$PLUGIN_DIR/aerospace.sh" \
   --subscribe aerospace_listener aerospace_workspace_change display_change system_woke
 
+sketchybar --add event aerospace_mode_change \
+  --add item mode left \
+  --set mode drawing=off icon.drawing=off label.color=$WHITE script="$PLUGIN_DIR/aerospace_mode.sh" \
+  --subscribe mode aerospace_mode_change
+
 sketchybar --add item battery right \
   --set battery label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
     click_script="sketchybar --set battery label.drawing=toggle" \
