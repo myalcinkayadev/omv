@@ -10,8 +10,14 @@ WHITE=0xffffffff
 MUTED=0xff7a7a7a
 BLACK=0xff000000
 ACCENT=0xff8d8d8d
-# 22 columns of the 14pt font plus padding; SketchyBar clips narrower auto-sized labels.
-CALENDAR_WIDTH=210
+# SketchyBar clips auto-sized labels here, so the row width is explicit. It includes the left
+# padding and ignores the right padding. Visible text is 20 columns of 8.4pt, plus 20pt each side.
+CALENDAR_WIDTH=208
+# calendar.sh starts each row with one space, so 12 gives the 20pt left margin.
+CALENDAR_PADDING_LEFT=12
+CALENDAR_LINE_HEIGHT=20
+# Empty rows above and below the month use the popup's row height, so lines set their own.
+CALENDAR_SPACER_HEIGHT=12
 WIFI_SETTINGS="x-apple.systempreferences:com.apple.wifi-settings-extension"
 
 sketchybar --bar position=top height=36 notch_display_height=36 color=$BLACK \
@@ -62,15 +68,22 @@ sketchybar --add item wifi right \
 
 sketchybar --add item clock right \
   --set clock icon.drawing=off update_freq=30 script="$PLUGIN_DIR/clock.sh" \
-    click_script="$PLUGIN_DIR/calendar.sh" popup.align=right popup.height=20 \
+    click_script="$PLUGIN_DIR/calendar.sh" popup.align=right popup.height=$CALENDAR_SPACER_HEIGHT \
     popup.background.color=$BLACK popup.background.corner_radius=0 \
     popup.background.border_color=$ACCENT popup.background.border_width=2 \
   --subscribe clock mouse.exited.global
 
+sketchybar --add item cal.top popup.clock \
+  --set cal.top icon.drawing=off label.drawing=off
+
 for line in 1 2 3 4 5 6 7 8; do
   sketchybar --add item "cal.$line" popup.clock \
     --set "cal.$line" icon.drawing=off drawing=off label.width=$CALENDAR_WIDTH \
-      label.padding_left=8 label.padding_right=8
+      label.padding_left=$CALENDAR_PADDING_LEFT label.padding_right=0 \
+      background.drawing=on background.color=0x00000000 background.height=$CALENDAR_LINE_HEIGHT
 done
+
+sketchybar --add item cal.bottom popup.clock \
+  --set cal.bottom icon.drawing=off label.drawing=off
 
 sketchybar --update
