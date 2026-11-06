@@ -69,7 +69,7 @@ AeroSpace handles the window and workspace keys and Option+Enter, in `aerospace.
 
 These tools take the keys system-wide, so apps never receive them:
 
-- **Turkish-QWERTY-PC:** Option+1-5 and Option+T may be unable to type their characters, likely including `#` and `$`.
+- **Turkish-QWERTY-PC:** these characters can't be typed, because the keys are taken: `>` `£` `#` `$` `½` (Option+1-5), `^` (Option+H), `₺` (Option+T) and `€` (Option+Shift+2).
 - **Shell:** Option+B and Option+F no longer jump by word.
 - **Neovim and other terminal apps:** any Alt mapping on these keys stops working.
 
