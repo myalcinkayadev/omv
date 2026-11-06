@@ -1,0 +1,153 @@
+# AeroSpace: keyboard-driven tiling. See README.md for the keymap.
+
+# persistent-workspaces needs version 2.
+config-version = 2
+
+start-at-login = true
+
+# The bar always draws five items, so all five workspaces must stay alive when empty.
+persistent-workspaces = ['1', '2', '3', '4', '5']
+
+# SketchyBar detects a running copy, so restarting AeroSpace will not start a second bar.
+after-startup-command = ['exec-and-forget /opt/homebrew/bin/sketchybar']
+
+exec-on-workspace-change = ['/bin/bash', '-c',
+  '/opt/homebrew/bin/sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE']
+
+# Switching monitors changes the focused workspace without firing the callback above.
+on-focused-monitor-changed = [
+  'move-mouse monitor-lazy-center',
+  'exec-and-forget /opt/homebrew/bin/sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$(/opt/homebrew/bin/aerospace list-workspaces --focused)',
+]
+
+# Apps started at login get a minimal environment. SketchyBar and its plugins inherit
+# this one, and its Homebrew formula asks for this LANG.
+[exec]
+inherit-env-vars = true
+
+[exec.env-vars]
+PATH = '/opt/homebrew/bin:/opt/homebrew/sbin:${PATH}'
+LANG = 'en_US.UTF-8'
+
+[gaps]
+inner.horizontal = 10
+inner.vertical = 10
+outer.left = 10
+outer.right = 10
+outer.bottom = 10
+# 46 clears the 36pt bar on external displays. macOS keeps windows below the notch on the built-in one.
+outer.top = [{ monitor."built-in" = 10 }, 46]
+
+# AeroSpace workspaces are global, so pinning decides which monitor shows each one.
+[workspace-to-monitor-force-assignment]
+1 = 'main'
+2 = 'main'
+3 = 'main'
+4 = ['secondary', 'main']
+5 = ['secondary', 'main']
+
+[mode.main.binding]
+
+# Focus
+alt-h = 'focus left'
+alt-j = 'focus down'
+alt-k = 'focus up'
+alt-l = 'focus right'
+
+# Move windows
+alt-shift-h = 'move left'
+alt-shift-j = 'move down'
+alt-shift-k = 'move up'
+alt-shift-l = 'move right'
+
+# Workspaces
+alt-1 = 'workspace 1'
+alt-2 = 'workspace 2'
+alt-3 = 'workspace 3'
+alt-4 = 'workspace 4'
+alt-5 = 'workspace 5'
+
+alt-shift-1 = 'move-node-to-workspace 1'
+alt-shift-2 = 'move-node-to-workspace 2'
+alt-shift-3 = 'move-node-to-workspace 3'
+alt-shift-4 = 'move-node-to-workspace 4'
+alt-shift-5 = 'move-node-to-workspace 5'
+
+# Monitors
+alt-comma = 'focus-monitor left'
+alt-period = 'focus-monitor right'
+alt-shift-comma = 'move-node-to-monitor left'
+alt-shift-period = 'move-node-to-monitor right'
+
+# Layout
+alt-f = 'fullscreen'
+alt-t = 'layout floating tiling'
+alt-b = 'balance-sizes'
+alt-r = 'layout tiles horizontal vertical'
+
+# Resize
+ctrl-alt-h = 'resize width -50'
+ctrl-alt-j = 'resize height +50'
+ctrl-alt-k = 'resize height -50'
+ctrl-alt-l = 'resize width +50'
+
+# New Ghostty windows route to workspace 1 without following, so go there first.
+alt-enter = ['workspace 1', 'exec-and-forget open -na Ghostty']
+
+# Workspace 1: terminal
+[[on-window-detected]]
+if.app-id = 'com.mitchellh.ghostty'
+run = 'move-node-to-workspace 1'
+
+# Workspace 2: browser
+[[on-window-detected]]
+if.app-id = 'net.imput.helium'
+run = 'move-node-to-workspace 2'
+
+# Workspace 3: editor
+[[on-window-detected]]
+if.app-id = 'dev.zed.Zed'
+run = 'move-node-to-workspace 3'
+
+# Workspace 4: notes and planning
+[[on-window-detected]]
+if.app-id = 'md.obsidian'
+run = 'move-node-to-workspace 4'
+
+[[on-window-detected]]
+if.app-id = 'notion.id'
+run = 'move-node-to-workspace 4'
+
+[[on-window-detected]]
+if.app-id = 'com.linear'
+run = 'move-node-to-workspace 4'
+
+# Workspace 5: everything else
+[[on-window-detected]]
+if.app-id = 'com.apple.Notes'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.MobileSMS'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'net.whatsapp.WhatsApp'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'com.hnc.Discord'
+run = 'move-node-to-workspace 5'
+
+# Floating, on whichever workspace is current
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.systempreferences'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.calculator'
+run = 'layout floating'

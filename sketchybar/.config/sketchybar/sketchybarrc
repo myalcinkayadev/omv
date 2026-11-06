@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Vantablack top bar: AeroSpace workspaces left, day, time and status right.
+
+export PATH="/opt/homebrew/bin:$PATH"
+
+PLUGIN_DIR="$CONFIG_DIR/plugins"
+FONT="JetBrainsMono Nerd Font Mono"
+ICON_FONT="JetBrainsMono Nerd Font Propo"
+WHITE=0xffffffff
+MUTED=0xff7a7a7a
+BLACK=0xff000000
+ACCENT=0xff8d8d8d
+# 22 columns of the 14pt font plus padding; SketchyBar clips narrower auto-sized labels.
+CALENDAR_WIDTH=210
+WIFI_SETTINGS="x-apple.systempreferences:com.apple.wifi-settings-extension"
+
+sketchybar --bar position=top height=36 notch_display_height=36 color=$BLACK \
+  blur_radius=0 shadow=off padding_left=10 padding_right=10
+
+default=(
+  icon.font="$ICON_FONT:Regular:16.0"
+  label.font="$FONT:Regular:14.0"
+  icon.color=$WHITE
+  label.color=$WHITE
+  padding_left=0
+  padding_right=0
+  icon.padding_left=10
+  icon.padding_right=10
+  label.padding_left=9
+  label.padding_right=9
+)
+sketchybar --default "${default[@]}"
+
+for number in 1 2 3 4 5; do
+  sketchybar --add item "space.$number" left \
+    --set "space.$number" icon="$number" icon.font="$FONT:Regular:14.0" icon.color=$MUTED \
+      label.drawing=off background.color=0x00000000 background.corner_radius=5 \
+      background.height=24 padding_right=2 \
+      click_script="/opt/homebrew/bin/aerospace workspace $number"
+done
+
+# Hidden controller: one script updates all five items per event.
+sketchybar --add event aerospace_workspace_change \
+  --add item aerospace_listener left \
+  --set aerospace_listener drawing=off script="$PLUGIN_DIR/aerospace.sh" \
+  --subscribe aerospace_listener aerospace_workspace_change display_change system_woke
+
+sketchybar --add item battery right \
+  --set battery label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
+    click_script="sketchybar --set battery label.drawing=toggle" \
+  --subscribe battery system_woke power_source_change
+
+sketchybar --add item volume right \
+  --set volume label.drawing=off script="$PLUGIN_DIR/volume.sh" \
+  --subscribe volume volume_change mouse.clicked mouse.scrolled
+
+# SketchyBar's wifi_change event has not worked since macOS Sonoma, hence the timer.
+sketchybar --add item wifi right \
+  --set wifi label.drawing=off update_freq=60 script="$PLUGIN_DIR/wifi.sh" \
+    click_script="open '$WIFI_SETTINGS'" \
+  --subscribe wifi system_woke
+
+sketchybar --add item clock right \
+  --set clock icon.drawing=off update_freq=30 script="$PLUGIN_DIR/clock.sh" \
+    click_script="$PLUGIN_DIR/calendar.sh" popup.align=right popup.height=20 \
+    popup.background.color=$BLACK popup.background.corner_radius=0 \
+    popup.background.border_color=$ACCENT popup.background.border_width=2 \
+  --subscribe clock mouse.exited.global
+
+for line in 1 2 3 4 5 6 7 8; do
+  sketchybar --add item "cal.$line" popup.clock \
+    --set "cal.$line" icon.drawing=off drawing=off label.width=$CALENDAR_WIDTH \
+      label.padding_left=8 label.padding_right=8
+done
+
+sketchybar --update
