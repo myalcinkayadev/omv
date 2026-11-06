@@ -92,6 +92,8 @@ Finder, System Settings and Calculator float on the current workspace.
 
 Ghostty windows share one process. The first time you use Option+Enter or Option+Shift+T, macOS asks to let AeroSpace and Hammerspoon control Ghostty, and those keys need that permission.
 
+Scrolling over the numbers in the bar moves one workspace, wrapping around.
+
 There are six workspaces in total, not six per monitor, because AeroSpace workspaces are global. In the bar, the focused workspace is white and the one visible on the other monitor is gray.
 
 ## Claude usage limit

@@ -133,6 +133,10 @@ class ConfigContract(unittest.TestCase):
             [True, True],
         )
 
+    def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn('--subscribe "space.$number" mouse.scrolled', source)
+
     def test_should_leave_no_omniwmctl_or_dmenu_reference_in_any_config(self) -> None:
         stale = [
             str(path.relative_to(REPO))
