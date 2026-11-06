@@ -2,6 +2,8 @@
 
 Keyboard-driven macOS desktop: AeroSpace for tiling, SketchyBar for the top bar, and the Vantablack configs for Ghostty, Neovim and btop. Based on [Koen van Gilst's setup](https://koenvangilst.nl/lab/aerospace-sketchybar-macos-setup), with the corrections listed below. Every package is linked into `$HOME` with GNU Stow.
 
+![Workspace 1 with btop and Vim, under the top bar](docs/workspace-1.png)
+
 ## Install
 
 Requires Homebrew and `stow`.
