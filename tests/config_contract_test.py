@@ -12,8 +12,8 @@ PACKAGES = ("aerospace", "sketchybar", "ghostty", "nvim", "btop", "hammerspoon")
 
 APPROVED_ROUTES = {
     "com.mitchellh.ghostty": "1",
-    "net.imput.helium": "2",
-    "dev.zed.Zed": "3",
+    "dev.zed.Zed": "2",
+    "net.imput.helium": "3",
     "md.obsidian": "4",
     "notion.id": "4",
     "com.linear": "4",

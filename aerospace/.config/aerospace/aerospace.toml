@@ -100,14 +100,14 @@ alt-enter = ['workspace 1', 'exec-and-forget open -na Ghostty']
 if.app-id = 'com.mitchellh.ghostty'
 run = 'move-node-to-workspace 1'
 
-# Workspace 2: browser
-[[on-window-detected]]
-if.app-id = 'net.imput.helium'
-run = 'move-node-to-workspace 2'
-
-# Workspace 3: editor
+# Workspace 2: editor
 [[on-window-detected]]
 if.app-id = 'dev.zed.Zed'
+run = 'move-node-to-workspace 2'
+
+# Workspace 3: browser
+[[on-window-detected]]
+if.app-id = 'net.imput.helium'
 run = 'move-node-to-workspace 3'
 
 # Workspace 4: notes and planning

@@ -23,8 +23,8 @@ local function openOnWorkspace(workspace, arguments)
   return run(LAUNCH, { workspace, table.unpack(arguments) })
 end
 
-hs.hotkey.bind(SUPER_SHIFT, "return", openOnWorkspace("2", { "-na", "Helium", "--args", "--new-window" }))
-hs.hotkey.bind(SUPER_SHIFT, "n", openOnWorkspace("3", { "-a", "Zed" }))
+hs.hotkey.bind(SUPER_SHIFT, "return", openOnWorkspace("3", { "-na", "Helium", "--args", "--new-window" }))
+hs.hotkey.bind(SUPER_SHIFT, "n", openOnWorkspace("2", { "-a", "Zed" }))
 hs.hotkey.bind(SUPER_SHIFT, "f", open({ os.getenv("HOME") }))
 hs.hotkey.bind(SUPER_SHIFT, "t", openOnWorkspace("1", { "-na", "Ghostty", "--args", "-e", "/opt/homebrew/bin/btop" }))
 hs.hotkey.bind(SUPER_SHIFT, "space", run("/opt/homebrew/bin/sketchybar", { "--bar", "hidden=toggle" }))

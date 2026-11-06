@@ -53,8 +53,8 @@ A pinned workspace always opens on its own monitor, so Option+4 from the Dell mo
 |---|---|---|
 | Option+Enter | New Ghostty window | Workspace 1 |
 | Option+Shift+T | btop in a new Ghostty window | Workspace 1 |
-| Option+Shift+Enter | New Helium window | Workspace 2 |
-| Option+Shift+N | Open Zed | Workspace 3 |
+| Option+Shift+N | Open Zed | Workspace 2 |
+| Option+Shift+Enter | New Helium window | Workspace 3 |
 | Option+Shift+F | Finder at your home folder | Current workspace, floating |
 | Option+Shift+Space | Show or hide the bar | |
 
@@ -75,8 +75,8 @@ These tools take the keys system-wide, so apps never receive them:
 | Workspace | Apps | Monitor |
 |---|---|---|
 | 1 | Ghostty | Main |
-| 2 | Helium | Main |
-| 3 | Zed | Main |
+| 2 | Zed | Main |
+| 3 | Helium | Main |
 | 4 | Obsidian, Notion, Linear | Secondary, or main if there is only one |
 | 5 | Notes, Messages, WhatsApp, Discord | Secondary, or main if there is only one |
 
