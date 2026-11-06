@@ -21,29 +21,54 @@ Then do these by hand:
 
 ## Keys
 
+Every shortcut starts with Option. Option alone goes somewhere or acts on the current window, and adding Shift takes the window with it or launches an app. H/J/K/L mean left, down, up and right, as in Vim.
+
+### Windows
+
 | Keys | Action |
 |---|---|
-| Option+H/J/K/L | Focus window |
-| Option+Shift+H/J/K/L | Move window |
-| Ctrl+Option+H/J/K/L | Resize window |
-| Option+1-5 | Go to workspace |
-| Option+Shift+1-5 | Send window to workspace |
-| Option+, / Option+. | Focus left / right monitor |
-| Option+Shift+, / Option+Shift+. | Send window to left / right monitor |
-| Option+F | Fullscreen |
-| Option+T | Toggle floating |
-| Option+B | Balance window sizes |
-| Option+R | Toggle horizontal / vertical |
-| Option+Enter | New Ghostty window, on workspace 1 |
-| Option+Shift+Enter | New Helium window, on workspace 2 |
-| Option+Shift+N | Zed, on workspace 3 |
-| Option+Shift+T | btop, on workspace 1 |
-| Option+Shift+F | Finder at home |
-| Option+Shift+Space | Show or hide the bar |
+| Option+H/J/K/L | Focus the window in that direction |
+| Option+Shift+H/J/K/L | Move the window in that direction |
+| Ctrl+Option+H / L | Make the window narrower / wider |
+| Ctrl+Option+K / J | Make the window shorter / taller |
+| Option+F | Toggle fullscreen |
+| Option+T | Toggle floating or tiled |
+| Option+R | Toggle the split between horizontal and vertical |
+| Option+B | Make window sizes even |
 
-AeroSpace owns the window keys. Hammerspoon owns the launchers, except Option+Enter.
+### Workspaces and monitors
 
-On Turkish-QWERTY-PC, Option+1-5 and Option+T may be unable to type their characters, and Option+B and Option+F no longer work as word jumps in the shell.
+| Keys | Action |
+|---|---|
+| Option+1-5 | Go to that workspace |
+| Option+Shift+1-5 | Send the window to that workspace, and stay where you are |
+| Option+, / Option+. | Focus the left / right monitor |
+| Option+Shift+, / Option+Shift+. | Send the window to the left / right monitor |
+
+A pinned workspace always opens on its own monitor, so Option+4 from the Dell moves focus to the laptop.
+
+### Apps
+
+| Keys | Action | Goes to |
+|---|---|---|
+| Option+Enter | New Ghostty window | Workspace 1 |
+| Option+Shift+T | btop in a new Ghostty window | Workspace 1 |
+| Option+Shift+Enter | New Helium window | Workspace 2 |
+| Option+Shift+N | Open Zed | Workspace 3 |
+| Option+Shift+F | Finder at your home folder | Current workspace, floating |
+| Option+Shift+Space | Show or hide the bar | |
+
+### Who handles each key
+
+AeroSpace handles the window and workspace keys and Option+Enter, in `aerospace.toml`. Hammerspoon handles the other app keys, in `init.lua`. A key should be bound in only one of them, and `tests/run.sh` fails if one is bound in both.
+
+### Clashes
+
+These tools take the keys system-wide, so apps never receive them:
+
+- **Turkish-QWERTY-PC:** Option+1-5 and Option+T may be unable to type their characters, likely including `#` and `$`.
+- **Shell:** Option+B and Option+F no longer jump by word.
+- **Neovim and other terminal apps:** any Alt mapping on these keys stops working.
 
 ## Workspaces
 
