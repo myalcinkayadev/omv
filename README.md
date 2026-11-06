@@ -84,6 +84,8 @@ Finder, System Settings and Calculator float on the current workspace.
 
 `btop` opens on workspace 1 whenever AeroSpace starts, so each AeroSpace restart adds another one.
 
+Ghostty windows share one process. The first time you use Option+Enter or Option+Shift+T, macOS asks to let AeroSpace and Hammerspoon control Ghostty, and those keys need that permission.
+
 There are five workspaces in total, not five per monitor, because AeroSpace workspaces are global. In the bar, the focused workspace is white and the one visible on the other monitor is gray.
 
 ## Differences from the article

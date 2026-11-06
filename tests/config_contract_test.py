@@ -80,6 +80,12 @@ class ConfigContract(unittest.TestCase):
             load_aerospace()["after-startup-command"],
         )
 
+    def test_should_use_new_window_script_for_option_enter(self) -> None:
+        self.assertIn(
+            "exec-and-forget $HOME/.config/ghostty/new-window.sh",
+            load_aerospace()["mode"]["main"]["binding"]["alt-enter"],
+        )
+
     def test_should_leave_no_omniwmctl_or_dmenu_reference_in_any_config(self) -> None:
         stale = [
             str(path.relative_to(REPO))

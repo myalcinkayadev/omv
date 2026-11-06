@@ -97,7 +97,7 @@ ctrl-alt-k = 'resize height -50'
 ctrl-alt-l = 'resize width +50'
 
 # New Ghostty windows route to workspace 1 without following, so go there first.
-alt-enter = ['workspace 1', 'exec-and-forget open -na Ghostty']
+alt-enter = ['workspace 1', 'exec-and-forget $HOME/.config/ghostty/new-window.sh']
 
 # Workspace 1: terminal
 [[on-window-detected]]
