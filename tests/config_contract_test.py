@@ -74,6 +74,12 @@ class ConfigContract(unittest.TestCase):
         }
         self.assertEqual(floating, APPROVED_FLOATING)
 
+    def test_should_open_btop_in_ghostty_when_aerospace_starts(self) -> None:
+        self.assertIn(
+            "exec-and-forget open -na Ghostty --args -e /opt/homebrew/bin/btop",
+            load_aerospace()["after-startup-command"],
+        )
+
     def test_should_leave_no_omniwmctl_or_dmenu_reference_in_any_config(self) -> None:
         stale = [
             str(path.relative_to(REPO))
