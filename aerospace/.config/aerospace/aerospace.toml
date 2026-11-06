@@ -35,8 +35,9 @@ inner.vertical = 10
 outer.left = 10
 outer.right = 10
 outer.bottom = 10
-# 46 clears the 36pt bar on external displays. macOS keeps windows below the notch on the built-in one.
-outer.top = [{ monitor."built-in" = 10 }, 46]
+# 46 clears the 36pt bar on external displays. On the built-in one, macOS already keeps
+# windows 32pt down for the notch, so 14 leaves 10pt below the bar.
+outer.top = [{ monitor."built-in" = 14 }, 46]
 
 # AeroSpace workspaces are global, so pinning decides which monitor shows each one.
 [workspace-to-monitor-force-assignment]
