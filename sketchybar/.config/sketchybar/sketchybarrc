@@ -94,7 +94,7 @@ sketchybar --add item cal.bottom popup.clock \
 # Added after the clock, so it sits just to the left of it.
 sketchybar --add event claude_usage_change \
   --add item claude_usage right \
-  --set claude_usage drawing=off icon.width=22 icon.padding_left=6 icon.padding_right=0 \
+  --set claude_usage drawing=off icon.width=27 icon.padding_left=0 icon.padding_right=0 \
     icon.background.drawing=on icon.background.image="$CONFIG_DIR/icons/claude.png" \
     icon.background.image.drawing=on icon.background.image.scale=0.25 update_freq=60 script="$PLUGIN_DIR/claude_usage.sh" \
     background.drawing=off background.color=$WHITE background.corner_radius=5 background.height=24 \
