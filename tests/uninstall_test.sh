@@ -101,6 +101,22 @@ keeps_real_file_at_stowed_path() {
   [ "$(cat "$HOME_DIR/.config/aerospace/aerospace.toml")" = 'mine' ] || fail 'real file was changed'
 }
 
+stops_keep_awake() {
+  mkdir -p "$HOME_DIR/.local/state/omv"
+  echo 4242 > "$HOME_DIR/.local/state/omv/keep-awake.pid"
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called "^pkill -F $HOME_DIR/.local/state/omv/keep-awake.pid -x caffeinate$"
+}
+
+removes_keep_awake_pid() {
+  mkdir -p "$HOME_DIR/.local/state/omv"
+  echo 4242 > "$HOME_DIR/.local/state/omv/keep-awake.pid"
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  if [ -e "$HOME_DIR/.local/state/omv/keep-awake.pid" ]; then
+    fail 'pid file was kept'
+  fi
+}
+
 skips_quit_when_not_running() {
   stub pgrep 1
   run_in_sandbox "$UNINSTALL" >/dev/null
@@ -120,4 +136,6 @@ run_case 'should exit non-zero when given an unknown flag' rejects_unknown_flag
 run_case 'should change nothing when given an unknown flag' changes_nothing_on_unknown_flag
 run_case 'should leave a real file in place when it sits at a stowed path' keeps_real_file_at_stowed_path
 run_case 'should not ask AeroSpace to quit when it is not running' skips_quit_when_not_running
+run_case 'should stop keep-awake when uninstalling' stops_keep_awake
+run_case 'should remove the keep-awake pid file when uninstalling' removes_keep_awake_pid
 finish

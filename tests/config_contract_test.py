@@ -137,6 +137,13 @@ class ConfigContract(unittest.TestCase):
         bindings = load_aerospace()["mode"]["main"]["binding"]
         self.assertEqual(bindings.get("alt-tab"), "workspace-back-and-forth")
 
+    def test_should_bind_option_shift_i_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-i", hammerspoon_keys())
+
+    def test_should_subscribe_keep_awake_to_its_toggle_and_clicks(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("--subscribe keep_awake keep_awake_toggle mouse.clicked", source)
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)

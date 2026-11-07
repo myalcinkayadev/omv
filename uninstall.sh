@@ -33,6 +33,14 @@ quit_apps() {
   fi
 }
 
+# Otherwise the saved caffeinate would keep the Mac awake after the bar is gone.
+stop_keep_awake() {
+  local pid_file=$HOME/.local/state/omv/keep-awake.pid
+  [ -e "$pid_file" ] || return 0
+  pkill -F "$pid_file" -x caffeinate
+  rm -f "$pid_file"
+}
+
 # Runs before unlinking, so the status line never calls a script that is already gone.
 remove_claude_usage() {
   "$REPO_DIR/claude-usage.sh" remove
@@ -84,6 +92,7 @@ EOF
 
 parse_arguments "$@"
 quit_apps
+stop_keep_awake
 remove_claude_usage
 unlink_configs
 reset_macos_settings

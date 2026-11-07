@@ -101,4 +101,10 @@ sketchybar --add event claude_usage_change \
     background.drawing=off background.color=$WHITE background.corner_radius=5 background.height=24 \
   --subscribe claude_usage claude_usage_change mouse.clicked system_woke
 
+# Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the Claude item.
+sketchybar --add event keep_awake_toggle \
+  --add item keep_awake right \
+  --set keep_awake drawing=off icon=󰒳 label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \
+  --subscribe keep_awake keep_awake_toggle mouse.clicked
+
 sketchybar --update

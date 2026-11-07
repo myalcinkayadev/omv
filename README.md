@@ -61,6 +61,7 @@ A pinned workspace always opens on its own monitor, so Option+4 from the main mo
 | Option+Shift+Enter | New Helium window | Workspace 3 |
 | Option+Shift+F | Finder at your home folder | Current workspace, floating |
 | Option+Shift+Space | Show or hide the bar | |
+| Option+Shift+I | Keep the Mac awake, shown as a crossed-out Zzz in the bar; press again or click it to stop | |
 | Option+` | Drop-down terminal, over any workspace | Current workspace |
 | Option+/ | Show or hide this list of keys, Escape also closes it | |
 

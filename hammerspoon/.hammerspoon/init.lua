@@ -39,6 +39,7 @@ bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New Helium window", openOn
 bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open Zed", openOnWorkspace("2", { "-a", "Zed" }))
 bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", open({ os.getenv("HOME") }))
 bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", run(LAUNCH, { "1", GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
+bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", run("/opt/homebrew/bin/sketchybar", { "--trigger", "keep_awake_toggle" }))
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run("/opt/homebrew/bin/sketchybar", { "--bar", "hidden=toggle" }))
 
 -- Ghostty owns this key, so it is listed here rather than bound.
