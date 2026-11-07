@@ -26,7 +26,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 - The JetBrainsMono Nerd Font, in both the Mono and Propo variants.
 - The apps the keys and workspaces expect: Ghostty, Hammerspoon, Zed, Helium, Neovim and btop.
 
-`install.sh` installs only AeroSpace, SketchyBar and SwipeAeroSpace. Everything else on this list must already be there.
+`install.sh` installs only AeroSpace, SketchyBar, borders and SwipeAeroSpace. Everything else on this list must already be there.
 
 ## Install
 
@@ -36,7 +36,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 
 It is safe to run again. It:
 
-1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, then installs AeroSpace, SketchyBar and SwipeAeroSpace from them.
+1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, then installs AeroSpace, SketchyBar, borders and SwipeAeroSpace from them.
 2. Links all eight packages with Stow.
 3. Adds the Claude usage line to your status line wrapper, as described in [Claude usage](#claude-usage).
 4. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, lets Ctrl+Cmd drag a window from anywhere, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
@@ -136,6 +136,7 @@ These tools take the keys system-wide, so apps never receive them:
 - Swipe three fingers left or right on the trackpad to move one workspace, wrapping around. A swipe stays on the focused monitor, so with two monitors it cycles 1-3 on the main one and 4-6 on the secondary. Scrolling over the bar's numbers crosses all six.
 - When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it is plugged back in.
 - `btop` opens on workspace 1 when AeroSpace starts, unless one is already running.
+- The focused window gets a 2pt gray outline, the same gray as the cards' border, drawn by [JankyBorders](https://github.com/FelixKratz/JankyBorders). It starts with AeroSpace.
 - Ghostty windows share one process. The first time you use Option+Enter or Option+Shift+T, macOS asks to let AeroSpace and Hammerspoon control Ghostty, and those keys need that permission.
 
 ## System menu
@@ -204,17 +205,17 @@ The item shows Claude's 5-hour and 7-day usage, with the Claude logo. The higher
 ## Uninstall
 
 ```sh
-./uninstall.sh        # removes AeroSpace, SketchyBar and SwipeAeroSpace, keeps the older tool links
+./uninstall.sh        # removes AeroSpace, SketchyBar, borders and SwipeAeroSpace, keeps the older tool links
 ./uninstall.sh --all  # also unlinks ghostty, nvim, btop and hammerspoon
 ```
 
 It:
 
-1. Quits AeroSpace, SwipeAeroSpace and SketchyBar, and stops keep-awake if it is on.
+1. Quits AeroSpace, SwipeAeroSpace, SketchyBar and borders, and stops keep-awake if it is on.
 2. Removes the Claude usage line from your status line wrapper.
 3. Unlinks the packages.
 4. Returns the macOS, animation, dragging and trackpad settings to their defaults.
-5. Uninstalls the three tools and untaps their taps.
+5. Uninstalls the four tools and untaps their taps.
 6. Prints the steps left for you.
 
 It leaves this repo, other Homebrew packages, fonts, `~/.config/omniwm` and `~/.config-backup` alone.

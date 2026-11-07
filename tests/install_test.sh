@@ -64,6 +64,11 @@ trusts_swipe_tap() {
   assert_called '^brew trust --tap mediosz/tap$'
 }
 
+installs_borders() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called '^brew install felixkratz/formulae/borders$'
+}
+
 installs_swipe_cask() {
   run_in_sandbox "$INSTALL" >/dev/null
   assert_called '^brew install --cask mediosz/tap/swipeaerospace$'
@@ -129,6 +134,7 @@ run_case 'should keep .claude a real directory when linking' keeps_claude_dir_re
 run_case 'should add the usage line when installing' adds_usage_line
 run_case 'should apply both macOS settings when linking succeeds' applies_macos_settings
 run_case 'should trust mediosz/tap' trusts_swipe_tap
+run_case 'should install borders' installs_borders
 run_case 'should install the swipeaerospace cask' installs_swipe_cask
 run_case 'should turn off the three-finger swipe on the built-in trackpad' turns_off_builtin_trackpad_swipe
 run_case 'should turn off the three-finger swipe on the Magic Trackpad' turns_off_magic_trackpad_swipe

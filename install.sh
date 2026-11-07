@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs AeroSpace, SketchyBar and SwipeAeroSpace, links every config with Stow and applies the
+# Installs AeroSpace, SketchyBar, borders and SwipeAeroSpace, links every config with Stow and applies the
 # macOS settings. Safe to run again. uninstall.sh reverses it.
 
 set -euo pipefail
@@ -23,6 +23,7 @@ install_tools() {
   done
   brew install --cask nikitabobko/tap/aerospace
   brew install felixkratz/formulae/sketchybar
+  brew install felixkratz/formulae/borders
   brew install --cask mediosz/tap/swipeaerospace
 }
 

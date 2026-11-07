@@ -172,6 +172,17 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertNotIn("popup.clock", source)
 
+    def test_should_start_borders_after_aerospace_starts(self) -> None:
+        started = [c for c in load_aerospace()["after-startup-command"] if c.startswith("exec-and-forget borders ")]
+        self.assertEqual(len(started), 1)
+
+    def test_should_draw_the_border_in_the_card_gray_at_2pt(self) -> None:
+        started = next(c for c in load_aerospace()["after-startup-command"] if c.startswith("exec-and-forget borders "))
+        self.assertEqual(
+            ["active_color=0xff8d8d8d" in started, "width=2.0" in started],
+            [True, True],
+        )
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)

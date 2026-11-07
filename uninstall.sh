@@ -34,6 +34,9 @@ quit_apps() {
   if pgrep -x sketchybar >/dev/null 2>&1; then
     pkill -x sketchybar
   fi
+  if pgrep -x borders >/dev/null 2>&1; then
+    pkill -x borders
+  fi
 }
 
 # Otherwise the saved caffeinate would keep the Mac awake after the bar is gone.
@@ -77,6 +80,9 @@ remove_tools() {
   fi
   if brew list sketchybar >/dev/null 2>&1; then
     brew uninstall sketchybar
+  fi
+  if brew list borders >/dev/null 2>&1; then
+    brew uninstall borders
   fi
   if brew list --cask swipeaerospace >/dev/null 2>&1; then
     brew uninstall --cask swipeaerospace

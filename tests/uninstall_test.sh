@@ -108,6 +108,22 @@ restores_window_dragging() {
   assert_called '^defaults delete NSGlobalDomain NSWindowShouldDragOnGesture$'
 }
 
+stops_borders() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^pkill -x borders$'
+}
+
+skips_borders_when_not_running() {
+  stub pgrep 1
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_not_called '^pkill -x borders$'
+}
+
+removes_borders() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^brew uninstall borders$'
+}
+
 quits_swipe_app() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called '^osascript -e tell application "SwipeAeroSpace" to quit$'
@@ -177,6 +193,9 @@ run_case 'should restore the three-finger swipe on the Magic Trackpad' restores_
 run_case 'should restore the three-finger swipe for the current host' restores_current_host_swipe
 run_case 'should restore window-opening animations' restores_window_animations
 run_case 'should restore normal window dragging' restores_window_dragging
+run_case 'should stop borders when uninstalling' stops_borders
+run_case 'should not stop borders when it is not running' skips_borders_when_not_running
+run_case 'should remove borders when it is installed' removes_borders
 run_case 'should quit SwipeAeroSpace when it is running' quits_swipe_app
 run_case 'should succeed when the tools and settings are already gone' succeeds_when_already_removed
 run_case 'should succeed when executed twice' is_safe_to_rerun
