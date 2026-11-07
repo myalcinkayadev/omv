@@ -82,8 +82,13 @@ In resize mode, H / L make the window narrower / wider, and K / J make it shorte
 | Option+Tab | Go back to the previous workspace |
 | Option+, / Option+. | Focus the left / right monitor |
 | Option+Shift+, / Option+Shift+. | Send the window to the left / right monitor |
+| Option+Space | Go to any window, on any workspace |
 
 A pinned workspace always opens on its own monitor, so Option+4 from the main monitor moves focus to the secondary one.
+
+Option+Space lists every open window, with its app and workspace. Type to filter by title, app or workspace number, and press Enter to go there.
+
+<img src="docs/windows.png" alt="The window list, with btop selected" width="720">
 
 ### Apps and tools
 
@@ -106,7 +111,7 @@ The first time you use Option+Shift+U, macOS asks to let Hammerspoon control Hel
 ### Who handles each key
 
 - **AeroSpace** (`aerospace.toml`): the window and workspace keys, and Option+Enter.
-- **Hammerspoon** (`init.lua`): the other app and tool keys, Option+Escape and Option+/.
+- **Hammerspoon** (`init.lua`): the other app and tool keys, Option+Space, Option+Escape and Option+/.
 - **Ghostty** (`config`): Option+\`.
 
 A key should be bound in only one of them. `tests/run.sh` fails if one is bound in both.
@@ -156,7 +161,7 @@ Option+Escape opens a menu modeled on Omarchy's: a card whose title is also a se
 
 Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
 
-Scripts can open the menu, the key list and the calendar with `hs -c 'omvToggleSystemMenu()'`, `hs -c 'omvToggleKeyList()'` and `hs -c 'omvToggleCalendar()'`.
+Scripts can open the menu, the key list, the calendar and the window list with `hs -c 'omvToggleSystemMenu()'`, `hs -c 'omvToggleKeyList()'`, `hs -c 'omvToggleCalendar()'` and `hs -c 'omvToggleWindows()'`.
 
 ## The bar
 

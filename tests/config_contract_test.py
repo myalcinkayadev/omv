@@ -189,6 +189,9 @@ class ConfigContract(unittest.TestCase):
     def test_should_notify_for_commands_longer_than_10_seconds(self) -> None:
         self.assertIn("notify-on-command-finish-after = 10s", GHOSTTY.read_text(encoding="utf-8"))
 
+    def test_should_bind_option_space_in_hammerspoon(self) -> None:
+        self.assertIn("alt-space", hammerspoon_keys())
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)

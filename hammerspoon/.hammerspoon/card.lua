@@ -78,8 +78,17 @@ local SCRIPT = [[
     draw();
   });
 
+  // WebKit reports a move when the card appears under a still pointer, so hover only
+  // selects once the pointer has really moved.
+  let pointer = null;
   rows.forEach((row) => {
-    row.addEventListener("mousemove", () => { selected = visible().indexOf(row); draw(); });
+    row.addEventListener("mousemove", (event) => {
+      const at = event.screenX + "," + event.screenY;
+      if (pointer === null || pointer === at) { pointer = at; return; }
+      pointer = at;
+      selected = visible().indexOf(row);
+      draw();
+    });
     row.addEventListener("click", () => pick(row));
   });
 

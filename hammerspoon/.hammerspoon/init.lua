@@ -7,6 +7,7 @@ local keymap = require("keymap")
 local card = require("card")
 local menu = require("menu")
 local calendar = require("calendar")
+local windows = require("windows")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -207,6 +208,29 @@ local function toggleKeyList()
   showPanel("keys", centered(1100, 28 + 46 + rowsPerColumn * 30 + 8), keymap.html(bindings, launchers), onKeyListMessage)
 end
 
+-- Window summon (Option+Space)
+
+local WINDOWS_WIDTH = 720
+local WINDOWS_VISIBLE_ROWS = 14
+
+local function onWindowsMessage(message)
+  if message.type ~= "choose" then return closePanel() end
+  -- Leave focus to AeroSpace, rather than handing it back to the app open before.
+  panel.previous = nil
+  closePanel()
+  run(AEROSPACE, { "focus", "--window-id", message.id })()
+end
+
+local function toggleWindows()
+  if panel and panel.name == "windows" then return closePanel() end
+  hs.task.new(AEROSPACE, function(code, output)
+    if code ~= 0 then return end
+    local rows = windows.rows(output)
+    local height = 28 + 46 + math.min(#rows, WINDOWS_VISIBLE_ROWS) * 30 + 8
+    showPanel("windows", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Windows…", rows = rows, compact = true }), onWindowsMessage)
+  end, { "list-windows", "--all", "--format", windows.FORMAT }):start()
+end
+
 -- Calendar (click the clock)
 
 local CALENDAR_WIDTH = 360
@@ -260,6 +284,7 @@ bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", run(S
 bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", copyUrl)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
+bindKey(SUPER, "space", "Option+Space", "Go to any window", toggleWindows)
 
 -- Ghostty owns this key, so it is listed here rather than bound.
 launchers[#launchers + 1] = { label = "Option+`", description = "Drop-down terminal" }
@@ -277,3 +302,4 @@ end
 omvToggleSystemMenu = later(toggleSystemMenu)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
+omvToggleWindows = later(toggleWindows)
