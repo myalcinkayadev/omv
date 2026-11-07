@@ -158,6 +158,17 @@ class ConfigContract(unittest.TestCase):
     def test_should_use_three_fingers_for_swipes(self) -> None:
         self.assertEqual(load_swipe().get("fingers"), "Three")
 
+    def test_should_bind_option_escape_in_hammerspoon(self) -> None:
+        self.assertIn("alt-escape", hammerspoon_keys())
+
+    def test_should_open_the_calendar_card_when_the_clock_is_clicked(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("omvToggleCalendar()", source)
+
+    def test_should_leave_no_calendar_popup_in_the_bar(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertNotIn("popup.clock", source)
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)

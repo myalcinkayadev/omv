@@ -1,5 +1,6 @@
 -- Behavior of the cheat sheet's config parser. Run through keymap_test.sh with luajit.
 
+package.path = arg[1] .. "/hammerspoon/.hammerspoon/?.lua;" .. package.path
 local keymap = dofile(arg[1] .. "/hammerspoon/.hammerspoon/keymap.lua")
 
 local failed = 0
@@ -42,5 +43,17 @@ check("should hide bar notifications when a binding also tells the bar", notifie
 check("should show a readable label when a key has modifiers", keymap.label("alt-shift-h") == "Option+Shift+H")
 
 check("should label tab as Tab when building the cheat sheet", keymap.label("alt-tab") == "Option+Tab")
+
+check("should describe a known command in words", keymap.describe("focus left") == "Focus the window left")
+check("should describe a numbered workspace command", keymap.describe("move-node-to-workspace 4") == "Send the window to workspace 4")
+check("should keep the command when it has no description", keymap.describe("flatten-workspace-tree") == "flatten-workspace-tree")
+
+local sheet = keymap.html(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"), { { label = "Option+/", description = "Show this list" } })
+check("should title the key list Keybindings", sheet:find('data-prompt="Keybindings…"', 1, true) ~= nil)
+check("should show a binding's description in its row", sheet:find(">Focus the window left<", 1, true) ~= nil)
+check("should show a binding's key in its row", sheet:find(">Option+H<", 1, true) ~= nil)
+check("should show the key list in two columns", sheet:find("column-count: 2", 1, true) ~= nil)
+check("should count one row per binding and launcher", #keymap.rows(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"), { { label = "x", description = "y" } }) == 2)
+check("should list launcher keys as rows", sheet:find(">Show this list<", 1, true) ~= nil)
 
 os.exit(failed == 0 and 0 or 1)

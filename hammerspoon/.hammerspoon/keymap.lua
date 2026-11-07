@@ -1,6 +1,8 @@
 -- Builds the cheat sheet from aerospace.toml, so the sheet cannot go stale.
 -- Has no Hammerspoon dependency, so tests/keymap_test.sh can run it with luajit.
 
+local card = require("card")
+
 local keymap = {}
 
 local MODIFIER_LABELS = { alt = "Option", shift = "Shift", ctrl = "Ctrl", cmd = "Cmd" }
@@ -51,54 +53,58 @@ function keymap.label(key)
   return table.concat(parts, "+")
 end
 
-local function escapeHtml(text)
-  return (text:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+-- Plain descriptions for AeroSpace commands. A command missing here shows as itself,
+-- so a new binding still appears, just less readably.
+local DESCRIPTIONS = {
+  { "^focus (%a+)$", "Focus the window %1" },
+  { "^move (%a+)$", "Move the window %1" },
+  { "^workspace%-back%-and%-forth$", "Go back to the previous workspace" },
+  { "^workspace (%w+)$", "Go to workspace %1" },
+  { "^move%-node%-to%-workspace (%w+)$", "Send the window to workspace %1" },
+  { "^focus%-monitor (%a+)$", "Focus the %1 monitor" },
+  { "^move%-node%-to%-monitor (%a+)$", "Send the window to the %1 monitor" },
+  { "^fullscreen$", "Toggle fullscreen" },
+  { "^layout floating tiling$", "Toggle floating or tiled" },
+  { "^layout tiles horizontal vertical$", "Toggle the split direction" },
+  { "^balance%-sizes$", "Make window sizes even" },
+  { "^mode resize$", "Enter resize mode" },
+  { "^mode main$", "Leave resize mode" },
+  { "^resize width %-%d+$", "Resize: narrower" },
+  { "^resize width %+%d+$", "Resize: wider" },
+  { "^resize height %-%d+$", "Resize: shorter" },
+  { "^resize height %+%d+$", "Resize: taller" },
+  { "^workspace 1, exec%-and%-forget .*new%-window%.sh$", "New Ghostty window" },
+}
+
+function keymap.describe(command)
+  for _, rule in ipairs(DESCRIPTIONS) do
+    local described, matched = command:gsub(rule[1], rule[2])
+    if matched > 0 then return described end
+  end
+  return command
 end
 
-local function row(key, description)
-  return "<tr><td class=key>" .. escapeHtml(key) .. "</td><td>" .. escapeHtml(description) .. "</td></tr>"
-end
-
-local function section(title, rows)
-  return "<section><h2>" .. escapeHtml(title) .. "</h2><table>" .. table.concat(rows) .. "</table></section>"
-end
-
-local function rowsForMode(bindings, mode)
+local function bindingRows(bindings)
   local rows = {}
   for _, binding in ipairs(bindings) do
-    if binding.mode == mode then
-      rows[#rows + 1] = row(keymap.label(binding.key), binding.command)
-    end
+    local key = keymap.label(binding.key)
+    if binding.mode ~= "main" then key = key .. " (" .. binding.mode .. ")" end
+    rows[#rows + 1] = { id = binding.key, label = keymap.describe(binding.command), hint = key }
   end
   return rows
 end
 
-local function launcherRows(launchers)
-  local rows = {}
+function keymap.rows(bindings, launchers)
+  local rows = bindingRows(bindings)
   for _, launcher in ipairs(launchers) do
-    rows[#rows + 1] = row(launcher.label, launcher.description)
+    rows[#rows + 1] = { id = launcher.label, label = launcher.description, hint = launcher.label }
   end
   return rows
 end
 
-local STYLE = [[
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: #000; color: #fff; }
-  body { font: 14px "JetBrainsMono Nerd Font Mono", monospace; border: 2px solid #8d8d8d; padding: 18px 22px; overflow: hidden; }
-  main { columns: 2; column-gap: 28px; }
-  section { break-inside: avoid; padding-bottom: 14px; }
-  h2 { font-size: 14px; font-weight: normal; color: #7a7a7a; margin: 0 0 6px; }
-  table { border-collapse: collapse; width: 100%; }
-  td { padding: 1px 10px 1px 0; vertical-align: top; }
-  .key { white-space: nowrap; }
-]]
-
+-- Two columns fit every key on screen at once.
 function keymap.html(bindings, launchers)
-  return "<!doctype html><meta charset=utf-8><style>" .. STYLE .. "</style><main>"
-    .. section("Windows and workspaces", rowsForMode(bindings, "main"))
-    .. section("Resize mode", rowsForMode(bindings, "resize"))
-    .. section("Apps", launcherRows(launchers))
-    .. "</main>"
+  return card.html({ prompt = "Keybindings…", rows = keymap.rows(bindings, launchers), compact = true, columns = 2 })
 end
 
 return keymap

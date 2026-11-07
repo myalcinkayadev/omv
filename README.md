@@ -12,7 +12,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 |---|---|---|
 | `aerospace` | `~/.config/aerospace` | Tiling, workspaces and window keys |
 | `sketchybar` | `~/.config/sketchybar` | The top bar and its plugins |
-| `hammerspoon` | `~/.hammerspoon` | App keys, the keep-awake key and the key cheat sheet |
+| `hammerspoon` | `~/.hammerspoon` | App keys, the system menu, the key list and the calendar |
 | `ghostty` | `~/.config/ghostty` | Terminal config and window scripts |
 | `nvim` | `~/.config/nvim` | Neovim config |
 | `btop` | `~/.config/btop` | btop config |
@@ -22,7 +22,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 ## Requirements
 
 - Homebrew and `stow`, which `install.sh` checks for.
-- `jq`, used by the calendar popup and the Claude usage item.
+- `jq`, used by the Claude usage item.
 - The JetBrainsMono Nerd Font, in both the Mono and Propo variants.
 - The apps the keys and workspaces expect: Ghostty, Hammerspoon, Zed, Helium, Neovim and btop.
 
@@ -55,7 +55,7 @@ When you pull new files later, run `./install.sh` again. Stow links files one by
 
 Every shortcut starts with Option. Option alone goes somewhere or acts on the current window. Adding Shift takes the window with it or launches an app. H/J/K/L mean left, down, up and right, as in Vim.
 
-Press Option+/ to see every key on screen. The sheet is built from `aerospace.toml` and `init.lua`, so it never goes stale. Escape also closes it.
+Press Option+/ to see every key at once, in a searchable two-column list. Type to filter by description or key, and press Escape to close. The list is built from `aerospace.toml` and `init.lua`, so it never goes stale.
 
 ### Windows
 
@@ -95,12 +95,13 @@ A pinned workspace always opens on its own monitor, so Option+4 from the main mo
 | Option+` | Drop-down terminal | Over the current workspace |
 | Option+Shift+I | Keep the Mac awake, or stop | |
 | Option+Shift+Space | Show or hide the bar | |
-| Option+/ | Show or hide the key cheat sheet | |
+| Option+Escape | Open the [system menu](#system-menu) | |
+| Option+/ | Show or hide the key list | |
 
 ### Who handles each key
 
 - **AeroSpace** (`aerospace.toml`): the window and workspace keys, and Option+Enter.
-- **Hammerspoon** (`init.lua`): the other app and tool keys, and Option+/.
+- **Hammerspoon** (`init.lua`): the other app and tool keys, Option+Escape and Option+/.
 - **Ghostty** (`config`): Option+\`.
 
 A key should be bound in only one of them. `tests/run.sh` fails if one is bound in both.
@@ -132,6 +133,22 @@ These tools take the keys system-wide, so apps never receive them:
 - `btop` opens on workspace 1 when AeroSpace starts, unless one is already running.
 - Ghostty windows share one process. The first time you use Option+Enter or Option+Shift+T, macOS asks to let AeroSpace and Hammerspoon control Ghostty, and those keys need that permission.
 
+## System menu
+
+Option+Escape opens a menu modeled on Omarchy's: a card whose title is also a search field.
+
+| Item | Does |
+|---|---|
+| Lock | Locks the screen |
+| Screensaver | Starts the screensaver |
+| Sleep | Puts the Mac to sleep |
+| Log out, Restart, Shut down | Ask first, with Cancel selected |
+| Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
+
+Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
+
+Scripts can open the menu, the key list and the calendar with `hs -c 'omvToggleSystemMenu()'`, `hs -c 'omvToggleKeyList()'` and `hs -c 'omvToggleCalendar()'`.
+
 ## The bar
 
 Workspace numbers sit on the left. The focused workspace is a white pill, the one visible on the other monitor is a gray pill, and the mode shows next to them while it isn't the normal mode. Click a number to go there, or scroll over the numbers to move one workspace at a time, wrapping around.
@@ -142,10 +159,14 @@ On the right, from left to right:
 |---|---|---|---|
 | Keep-awake | A crossed-out Zzz, only while keep-awake is on | Turn it off | |
 | Claude | Usage limits, as `5h 23%  7d 41%` | Swap to the reset times | |
-| Clock | Day and time | Show this month's calendar, which closes when the pointer leaves | |
+| Clock | Day and time | Open the [calendar](#calendar) | |
 | Wi-Fi | Connected or not | Open Wi-Fi settings | |
 | Volume | Level | Mute or unmute | Change the volume by 5% |
 | Battery | Charge | Show or hide the percentage | |
+
+### Calendar
+
+Clicking the clock opens a calendar card under it. Weeks start on Monday and show their ISO week number, today is a white square, and the footer shows today's date and week. Left and Right (or ‹ and ›) change month, T goes back to today, and Escape or a click elsewhere closes it.
 
 ### Keep-awake
 
