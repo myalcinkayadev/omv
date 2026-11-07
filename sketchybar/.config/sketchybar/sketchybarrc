@@ -93,4 +93,11 @@ sketchybar --add event keep_awake_toggle \
   --set keep_awake drawing=off icon=󰒳 label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \
   --subscribe keep_awake keep_awake_toggle mouse.clicked
 
+# Hidden until a reminder is set. Hammerspoon sets its label every second, and turns it
+# into a white pill when one is due. Clicking it lists the reminders, to cancel one.
+sketchybar --add item reminder right \
+  --set reminder drawing=off icon=󰔛 icon.padding_right=3 label.padding_left=3 \
+    background.drawing=off background.color=$WHITE \
+    background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleReminders()'"
+
 sketchybar --update

@@ -37,6 +37,8 @@ local SCRIPT = [[
   const text = document.querySelector(".text");
   const none = document.querySelector(".none");
   let query = "";
+  // An input card has no rows to pick: Enter sends what was typed.
+  const takesInput = document.body.dataset.input !== undefined;
   let selected = Math.max(0, Number(document.body.dataset.selected || 1) - 1);
 
   const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
@@ -55,7 +57,7 @@ local SCRIPT = [[
       shown[selected].classList.add("selected");
       shown[selected].scrollIntoView({ block: "nearest" });
     }
-    none.style.display = shown.length ? "none" : "block";
+    none.style.display = shown.length && !takesInput ? "none" : "block";
     text.textContent = query;
     prompt.classList.toggle("empty", query === "");
   }
@@ -69,6 +71,7 @@ local SCRIPT = [[
     if (event.key === "Escape") return send("close");
     if (event.key === "ArrowDown" || (event.ctrlKey && event.key === "n")) selected = (selected + 1) % Math.max(1, shown.length);
     else if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) selected = (selected - 1 + shown.length) % Math.max(1, shown.length);
+    else if (event.key === "Enter" && takesInput) return send("submit", query);
     else if (event.key === "Enter" || event.key === "ArrowRight") return pick(shown[selected]);
     else if (event.key === "ArrowLeft" || (event.key === "Backspace" && query === "")) return send("back");
     else if (event.key === "Backspace") query = query.slice(0, -1);
@@ -117,14 +120,16 @@ local function rowsOpen(columns)
 end
 
 -- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu } },
---            selected = 1, compact = false, columns = 1 }
+--            selected = 1, compact = false, columns = 1, input = false, hint = "" }
+-- An input card sends what was typed on Enter, and shows its hint under the prompt.
 function card.html(screen)
   local rows = {}
   for _, row in ipairs(screen.rows) do rows[#rows + 1] = rowHtml(row) end
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
-    .. '<body class="' .. (screen.compact and "compact" or "") .. '" data-selected="' .. (screen.selected or 1) .. '">'
+    .. '<body class="' .. (screen.compact and "compact" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
+    .. (screen.input and " data-input" or "") .. ">"
     .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span><span class=caret></span></div>'
-    .. rowsOpen(screen.columns) .. table.concat(rows) .. "<div class=none>No matches</div></div>"
+    .. rowsOpen(screen.columns) .. table.concat(rows) .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 

@@ -104,6 +104,7 @@ Option+Space lists every open window, with its app and workspace. Type to filter
 | Option+Shift+I | Keep the Mac awake, or stop | |
 | Option+Shift+U | Copy Helium's current URL | |
 | Option+Shift+S | Open the [capture menu](#capture-menu) | |
+| Option+Shift+M | Set a [reminder](#reminders) | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Escape | Open the [system menu](#system-menu) | |
 | Option+/ | Show or hide the key list | |
@@ -163,7 +164,7 @@ Option+Escape opens a menu modeled on Omarchy's: a card whose title is also a se
 
 Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
 
-Scripts can open the menu, the key list, the calendar and the window list with `hs -c 'omvToggleSystemMenu()'`, `hs -c 'omvToggleKeyList()'`, `hs -c 'omvToggleCalendar()'` and `hs -c 'omvToggleWindows()'`.
+Scripts can open each card with `hs -c`: `omvToggleSystemMenu()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Capture menu
 
@@ -193,6 +194,7 @@ On the right, from left to right:
 
 | Item | Shows | Click | Scroll |
 |---|---|---|---|
+| Reminder | Time left on the next reminder, only while one is set | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, only while keep-awake is on | Turn it off | |
 | Claude | Usage limits, as `5h 23%  7d 41%` | Swap to the reset times | |
 | Clock | Day and time | Open the [calendar](#calendar) | |
@@ -205,6 +207,17 @@ On the right, from left to right:
 Clicking the clock opens a calendar card under it. Weeks start on Monday and show their ISO week number, today is a white square, and the footer shows today's date and week. Left and Right (or ‹ and ›) change month, T goes back to today, and Escape or a click elsewhere closes it.
 
 <img src="docs/calendar.png" alt="The calendar card, with today marked" width="360">
+
+### Reminders
+
+Option+Shift+M asks "Remind me…". Type a time, then what to remember, such as `25m check deploy` or `1h30m stand up`, and press Enter. Times use `h`, `m` and `s`, and can be combined.
+
+<img src="docs/reminder.png" alt="The reminder card" width="480">
+
+- The bar shows the time left on the soonest reminder, plus `+N` for the others, such as `24:10 +1`. The text stays out of the bar, so it doesn't run under the notch.
+- When one is due, you get a notification and an alert, and the bar item turns into a white pill with the start of its text for 10 seconds.
+- Click the bar item to list your reminders, and press Enter on one to cancel it.
+- Reminders are saved in `~/.local/state/omv/reminders`, so they survive a Hammerspoon reload. One whose time passed while Hammerspoon wasn't running is dropped.
 
 ### Keep-awake
 

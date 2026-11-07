@@ -206,6 +206,13 @@ class ConfigContract(unittest.TestCase):
             [True, True],
         )
 
+    def test_should_bind_option_shift_m_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-m", hammerspoon_keys())
+
+    def test_should_list_reminders_when_the_bar_item_is_clicked(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("omvToggleReminders()", source)
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)

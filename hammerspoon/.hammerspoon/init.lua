@@ -9,6 +9,7 @@ local menu = require("menu")
 local calendar = require("calendar")
 local windows = require("windows")
 local capture = require("capture")
+local reminders = require("reminders")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -266,6 +267,119 @@ local function toggleCapture()
   showPanel("capture", centered(MENU_WIDTH, menuHeight(screen)), card.html(screen), onCaptureMessage)
 end
 
+-- Quick reminders (Option+Shift+M). The bar shows the soonest one; clicking it lists them.
+-- They are saved to a file, so they survive a reload of this config.
+
+local STATE_DIR = os.getenv("HOME") .. "/.local/state/omv"
+local REMINDERS_FILE = STATE_DIR .. "/reminders"
+local REMINDER_FLASH_SECONDS = 10
+local REMINDER_WIDTH = 480
+local BLACK, WHITE = "0xff000000", "0xffffffff"
+
+local reminderList = {}
+local reminderTimer = nil
+local flashUntil = nil
+
+local function saveReminders()
+  os.execute("/bin/mkdir -p '" .. STATE_DIR .. "'")
+  local file = io.open(REMINDERS_FILE, "w")
+  if not file then return end
+  file:write(reminders.encode(reminderList))
+  file:close()
+end
+
+local function loadReminders()
+  local file = io.open(REMINDERS_FILE, "r")
+  if not file then return {} end
+  local text = file:read("*a")
+  file:close()
+  return reminders.decode(text, os.time())
+end
+
+local function setReminderBar(properties)
+  hs.task.new(SKETCHYBAR, nil, { "--set", "reminder", table.unpack(properties) }):start()
+end
+
+-- A due reminder notifies, and turns the bar item into a white pill for a moment.
+local function fireReminder(reminder)
+  hs.notify.new({ title = "Reminder", informativeText = reminder.text, withdrawAfter = 0 }):send()
+  hs.alert.show("󰔛 " .. reminder.text, ALERT_STYLE, 4)
+  setReminderBar({ "drawing=on", "label=" .. reminders.short(reminder.text), "background.drawing=on", "icon.color=" .. BLACK, "label.color=" .. BLACK })
+  flashUntil = os.time() + REMINDER_FLASH_SECONDS
+end
+
+local function tickReminders()
+  local now = os.time()
+  local waiting = {}
+  for _, reminder in ipairs(reminderList) do
+    if reminder.due <= now then fireReminder(reminder) else waiting[#waiting + 1] = reminder end
+  end
+  if #waiting ~= #reminderList then
+    reminderList = waiting
+    saveReminders()
+  end
+  if flashUntil and now < flashUntil then return end
+  flashUntil = nil
+  if #reminderList == 0 then
+    setReminderBar({ "drawing=off", "background.drawing=off" })
+    reminderTimer:stop()
+    return
+  end
+  setReminderBar({ "drawing=on", "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE,
+    "label=" .. reminders.label(reminderList, now) })
+end
+
+reminderTimer = hs.timer.new(1, tickReminders)
+
+local function startReminders()
+  tickReminders()
+  if not reminderTimer:running() then reminderTimer:start() end
+end
+
+local function onReminderInput(message)
+  if message.type == "close" then return closePanel() end
+  if message.type ~= "submit" then return end
+  local seconds, text = reminders.parse(message.id)
+  if not seconds then
+    hs.alert.show("Start with a time, like 25m", ALERT_STYLE, 1.5)
+    return
+  end
+  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text }
+  reminderList = reminders.sorted(reminderList)
+  saveReminders()
+  closePanel()
+  startReminders()
+end
+
+local function newReminder()
+  if panel and panel.name == "reminder" then return closePanel() end
+  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy · 1h30m stand up" }
+  showPanel("reminder", centered(REMINDER_WIDTH, 28 + 46 + 44 + 4), card.html(screen), onReminderInput)
+end
+
+local function onReminderList(message)
+  if message.type ~= "choose" then return closePanel() end
+  table.remove(reminderList, tonumber(message.id))
+  saveReminders()
+  closePanel()
+  startReminders()
+end
+
+local function toggleReminders()
+  if panel and panel.name == "reminders" then return closePanel() end
+  if #reminderList == 0 then return newReminder() end
+  local now, rows = os.time(), {}
+  for index, reminder in ipairs(reminderList) do
+    rows[index] = { id = tostring(index), icon = "󰔛", label = reminder.text, hint = reminders.left(reminder.due - now) }
+  end
+  local screen = { prompt = "Cancel a reminder…", rows = rows }
+  showPanel("reminders", centered(REMINDER_WIDTH, menuHeight(screen)), card.html(screen), onReminderList)
+end
+
+-- Redraw even with none saved, so a reload clears an item left over from before.
+reminderList = loadReminders()
+if #reminderList > 0 then startReminders() else tickReminders() end
+
 -- Calendar (click the clock)
 
 local CALENDAR_WIDTH = 360
@@ -318,6 +432,7 @@ bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", run(LAUNCH, { "1", GHOSTTY_W
 bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", run(SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
 bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", copyUrl)
 bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", toggleCapture)
+bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", newReminder)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
 bindKey(SUPER, "space", "Option+Space", "Go to any window", toggleWindows)
@@ -347,3 +462,5 @@ omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)
 omvToggleCapture = later(toggleCapture)
+omvToggleReminders = later(toggleReminders)
+omvNewReminder = later(newReminder)
