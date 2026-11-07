@@ -39,6 +39,8 @@ apply_macos_settings() {
   defaults write com.apple.spaces spans-displays -bool true
   # New windows appear at once instead of zooming in.
   defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false
+  # Ctrl+Cmd+drag moves a window by any part of it, which helps with floating windows.
+  defaults write NSGlobalDomain NSWindowShouldDragOnGesture -bool true
   # SwipeAeroSpace owns the three-finger swipe, so macOS's own would fire a second action.
   defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 0
   defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture -int 0

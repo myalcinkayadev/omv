@@ -89,6 +89,11 @@ turns_off_window_animations() {
   assert_called '^defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false$'
 }
 
+enables_drag_from_anywhere() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called '^defaults write NSGlobalDomain NSWindowShouldDragOnGesture -bool true$'
+}
+
 is_safe_to_rerun() {
   use_real_stow
   run_in_sandbox "$INSTALL" >/dev/null
@@ -129,6 +134,7 @@ run_case 'should turn off the three-finger swipe on the built-in trackpad' turns
 run_case 'should turn off the three-finger swipe on the Magic Trackpad' turns_off_magic_trackpad_swipe
 run_case 'should turn off the three-finger swipe for the current host' turns_off_current_host_swipe
 run_case 'should turn off window-opening animations' turns_off_window_animations
+run_case 'should let Ctrl+Cmd drag a window from anywhere' enables_drag_from_anywhere
 run_case 'should succeed when executed twice' is_safe_to_rerun
 run_case 'should exit non-zero when stow finds a conflicting real file' fails_on_stow_conflict
 run_case 'should skip macOS and trackpad settings when stow finds a conflicting real file' stops_before_settings_on_stow_conflict

@@ -39,7 +39,7 @@ It is safe to run again. It:
 1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, then installs AeroSpace, SketchyBar and SwipeAeroSpace from them.
 2. Links all eight packages with Stow.
 3. Adds the Claude usage line to your status line wrapper, as described in [Claude usage](#claude-usage).
-4. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
+4. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, lets Ctrl+Cmd drag a window from anywhere, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
 
 Then do these by hand:
 
@@ -125,6 +125,7 @@ These tools take the keys system-wide, so apps never receive them:
 | 6 | Apple Music, Spotify | Secondary, or main if there is only one |
 
 - Each app opens on its workspace. Finder, System Settings and Calculator float on the current workspace instead.
+- Ctrl+Cmd+drag moves a floating window by any part of it. A tiled window snaps back to its tile when you let go.
 - There are six workspaces in total, not six per monitor, because AeroSpace workspaces are global.
 - Swipe three fingers left or right on the trackpad to move one workspace, wrapping around. A swipe stays on the focused monitor, so with two monitors it cycles 1-3 on the main one and 4-6 on the secondary. Scrolling over the bar's numbers crosses all six.
 - When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it is plugged back in.
@@ -182,7 +183,7 @@ It:
 1. Quits AeroSpace, SwipeAeroSpace and SketchyBar, and stops keep-awake if it is on.
 2. Removes the Claude usage line from your status line wrapper.
 3. Unlinks the packages.
-4. Returns the macOS, animation and trackpad settings to their defaults.
+4. Returns the macOS, animation, dragging and trackpad settings to their defaults.
 5. Uninstalls the three tools and untaps their taps.
 6. Prints the steps left for you.
 
