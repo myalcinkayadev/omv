@@ -57,6 +57,8 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 
 Press Option+/ to see every key at once, in a searchable two-column list. Type to filter by description or key, and press Escape to close. The list is built from `aerospace.toml` and `init.lua`, so it never goes stale.
 
+![The key list, showing every shortcut in two columns](docs/key-list.png)
+
 ### Windows
 
 | Keys | Action |
@@ -140,6 +142,8 @@ These tools take the keys system-wide, so apps never receive them:
 
 Option+Escape opens a menu modeled on Omarchy's: a card whose title is also a search field.
 
+<img src="docs/system-menu.png" alt="The system menu, with Lock selected" width="320">
+
 | Item | Does |
 |---|---|
 | Lock | Locks the screen |
@@ -170,6 +174,8 @@ On the right, from left to right:
 ### Calendar
 
 Clicking the clock opens a calendar card under it. Weeks start on Monday and show their ISO week number, today is a white square, and the footer shows today's date and week. Left and Right (or ‹ and ›) change month, T goes back to today, and Escape or a click elsewhere closes it.
+
+<img src="docs/calendar.png" alt="The calendar card, with today marked" width="360">
 
 ### Keep-awake
 
