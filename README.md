@@ -94,9 +94,12 @@ A pinned workspace always opens on its own monitor, so Option+4 from the main mo
 | Option+Shift+F | Finder at your home folder | Current workspace, floating |
 | Option+` | Drop-down terminal | Over the current workspace |
 | Option+Shift+I | Keep the Mac awake, or stop | |
+| Option+Shift+U | Copy Helium's current URL | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Escape | Open the [system menu](#system-menu) | |
 | Option+/ | Show or hide the key list | |
+
+The first time you use Option+Shift+U, macOS asks to let Hammerspoon control Helium, and the key needs that permission.
 
 ### Who handles each key
 

@@ -18,9 +18,20 @@ local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
 local AEROSPACE_CONFIG = os.getenv("HOME") .. "/.config/aerospace/aerospace.toml"
 local LAUNCH = hs.configdir .. "/launch.sh"
+local COPY_URL = hs.configdir .. "/copy-url.sh"
 local GHOSTTY_WINDOW = os.getenv("HOME") .. "/.config/ghostty/new-window.sh"
 local AEROSPACE = "/opt/homebrew/bin/aerospace"
 local SKETCHYBAR = "/opt/homebrew/bin/sketchybar"
+
+local ALERT_STYLE = {
+  fillColor = { white = 0, alpha = 1 },
+  strokeColor = { white = 0.55, alpha = 1 },
+  strokeWidth = 2,
+  radius = 0,
+  textColor = { white = 1, alpha = 1 },
+  textFont = "JetBrainsMono Nerd Font Mono",
+  textSize = 15,
+}
 
 local function run(command, arguments)
   return function()
@@ -232,11 +243,21 @@ local function toggleCalendar()
   showCalendar()
 end
 
+-- Copy URL (Option+Shift+U)
+
+local function copyUrl()
+  hs.task.new(COPY_URL, function(code, _, errors)
+    local message = code == 0 and "Copied URL" or (errors:gsub("%s+$", ""))
+    hs.alert.show(message, ALERT_STYLE, 1.2)
+  end):start()
+end
+
 bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New Helium window", openOnWorkspace("3", { "-na", "Helium", "--args", "--new-window" }))
 bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open Zed", openOnWorkspace("2", { "-a", "Zed" }))
 bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", open({ os.getenv("HOME") }))
 bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", run(LAUNCH, { "1", GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
 bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", run(SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
+bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", copyUrl)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
 
