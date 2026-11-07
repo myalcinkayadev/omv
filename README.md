@@ -45,6 +45,7 @@ In resize mode, H / L make the window narrower / wider, K / J make it shorter / 
 |---|---|
 | Option+1-6 | Go to that workspace |
 | Option+Shift+1-6 | Send the window to that workspace, and stay where you are |
+| Option+Tab | Go back to the previous workspace |
 | Option+, / Option+. | Focus the left / right monitor |
 | Option+Shift+, / Option+Shift+. | Send the window to the left / right monitor |
 

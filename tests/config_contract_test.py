@@ -133,6 +133,10 @@ class ConfigContract(unittest.TestCase):
             [True, True],
         )
 
+    def test_should_bind_option_tab_to_workspace_back_and_forth(self) -> None:
+        bindings = load_aerospace()["mode"]["main"]["binding"]
+        self.assertEqual(bindings.get("alt-tab"), "workspace-back-and-forth")
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)

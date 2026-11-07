@@ -4,7 +4,7 @@
 local keymap = {}
 
 local MODIFIER_LABELS = { alt = "Option", shift = "Shift", ctrl = "Ctrl", cmd = "Cmd" }
-local KEY_LABELS = { enter = "Enter", esc = "Escape", comma = ",", period = "." }
+local KEY_LABELS = { enter = "Enter", esc = "Escape", tab = "Tab", comma = ",", period = "." }
 
 local function parseCommand(value)
   local single = value:match("^'(.*)'$")

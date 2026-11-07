@@ -41,4 +41,6 @@ check("should hide bar notifications when a binding also tells the bar", notifie
 
 check("should show a readable label when a key has modifiers", keymap.label("alt-shift-h") == "Option+Shift+H")
 
+check("should label tab as Tab when building the cheat sheet", keymap.label("alt-tab") == "Option+Tab")
+
 os.exit(failed == 0 and 0 or 1)
