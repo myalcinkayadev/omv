@@ -39,7 +39,7 @@ It is safe to run again. It:
 1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, then installs AeroSpace, SketchyBar and SwipeAeroSpace from them.
 2. Links all eight packages with Stow.
 3. Adds the Claude usage line to your status line wrapper, as described in [Claude usage](#claude-usage).
-4. Hides the macOS menu bar, turns off "Displays have separate Spaces", and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
+4. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
 
 Then do these by hand:
 
@@ -182,7 +182,7 @@ It:
 1. Quits AeroSpace, SwipeAeroSpace and SketchyBar, and stops keep-awake if it is on.
 2. Removes the Claude usage line from your status line wrapper.
 3. Unlinks the packages.
-4. Returns the macOS and trackpad settings to their defaults.
+4. Returns the macOS, animation and trackpad settings to their defaults.
 5. Uninstalls the three tools and untaps their taps.
 6. Prints the steps left for you.
 

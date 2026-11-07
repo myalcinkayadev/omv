@@ -37,6 +37,8 @@ link_configs() {
 apply_macos_settings() {
   defaults write NSGlobalDomain _HIHideMenuBar -bool true
   defaults write com.apple.spaces spans-displays -bool true
+  # New windows appear at once instead of zooming in.
+  defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false
   # SwipeAeroSpace owns the three-finger swipe, so macOS's own would fire a second action.
   defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 0
   defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture -int 0

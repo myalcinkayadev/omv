@@ -98,6 +98,11 @@ restores_current_host_swipe() {
   assert_called '^defaults -currentHost delete NSGlobalDomain com\.apple\.trackpad\.threeFingerHorizSwipeGesture$'
 }
 
+restores_window_animations() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^defaults delete NSGlobalDomain NSAutomaticWindowAnimationsEnabled$'
+}
+
 quits_swipe_app() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called '^osascript -e tell application "SwipeAeroSpace" to quit$'
@@ -165,6 +170,7 @@ run_case 'should untap mediosz/tap' untaps_swipe_tap
 run_case 'should restore the three-finger swipe on the built-in trackpad' restores_builtin_trackpad_swipe
 run_case 'should restore the three-finger swipe on the Magic Trackpad' restores_magic_trackpad_swipe
 run_case 'should restore the three-finger swipe for the current host' restores_current_host_swipe
+run_case 'should restore window-opening animations' restores_window_animations
 run_case 'should quit SwipeAeroSpace when it is running' quits_swipe_app
 run_case 'should succeed when the tools and settings are already gone' succeeds_when_already_removed
 run_case 'should succeed when executed twice' is_safe_to_rerun

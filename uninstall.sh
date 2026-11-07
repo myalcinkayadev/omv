@@ -61,6 +61,7 @@ unlink_configs() {
 reset_macos_settings() {
   defaults delete NSGlobalDomain _HIHideMenuBar 2>/dev/null
   defaults delete com.apple.spaces spans-displays 2>/dev/null
+  defaults delete NSGlobalDomain NSAutomaticWindowAnimationsEnabled 2>/dev/null
   defaults delete com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture 2>/dev/null
   defaults delete com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture 2>/dev/null
   defaults -currentHost delete NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture 2>/dev/null
