@@ -23,6 +23,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 
 - Homebrew and `stow`, which `install.sh` checks for.
 - `jq`, used by the Claude usage item.
+- Xcode's Command Line Tools, for `swiftc`, used by the capture menu's text and color items.
 - The JetBrainsMono Nerd Font, in both the Mono and Propo variants.
 - The apps the keys and workspaces expect: Ghostty, Hammerspoon, Zed, Helium, Neovim and btop.
 
@@ -102,6 +103,7 @@ Option+Space lists every open window, with its app and workspace. Type to filter
 | Option+` | Drop-down terminal | Over the current workspace |
 | Option+Shift+I | Keep the Mac awake, or stop | |
 | Option+Shift+U | Copy Helium's current URL | |
+| Option+Shift+S | Open the [capture menu](#capture-menu) | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Escape | Open the [system menu](#system-menu) | |
 | Option+/ | Show or hide the key list | |
@@ -162,6 +164,24 @@ Option+Escape opens a menu modeled on Omarchy's: a card whose title is also a se
 Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
 
 Scripts can open the menu, the key list, the calendar and the window list with `hs -c 'omvToggleSystemMenu()'`, `hs -c 'omvToggleKeyList()'`, `hs -c 'omvToggleCalendar()'` and `hs -c 'omvToggleWindows()'`.
+
+## Capture menu
+
+Option+Shift+S opens a card for screen captures:
+
+| Item | Does |
+|---|---|
+| Region to clipboard | Select an area, copy it as a picture |
+| Region to file | Select an area, save it to the Desktop, named like macOS's own screenshots |
+| Window to clipboard | Click a window, copy it |
+| Screen to clipboard | Copy the whole screen |
+| Text from screen | Select an area, copy the text in it, read by macOS's Vision framework |
+| Pick a color | Click anywhere, copy its color as `#RRGGBB` |
+
+<img src="docs/capture.png" alt="The capture menu" width="320">
+
+- The first capture asks you to give Hammerspoon Screen Recording, in System Settings > Privacy & Security > Screen & System Audio Recording. Every item except Pick a color needs it.
+- Text and color use a small Swift helper, `capture.swift`. It's built with `swiftc` the first time you use one of them, which takes a few seconds, and kept in `~/.cache/omv/capture`. `swiftc` comes with Xcode's Command Line Tools.
 
 ## The bar
 

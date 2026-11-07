@@ -8,6 +8,7 @@ local card = require("card")
 local menu = require("menu")
 local calendar = require("calendar")
 local windows = require("windows")
+local capture = require("capture")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -20,6 +21,7 @@ local SUPER_SHIFT = { "alt", "shift" }
 local AEROSPACE_CONFIG = os.getenv("HOME") .. "/.config/aerospace/aerospace.toml"
 local LAUNCH = hs.configdir .. "/launch.sh"
 local COPY_URL = hs.configdir .. "/copy-url.sh"
+local CAPTURE = hs.configdir .. "/capture.sh"
 local GHOSTTY_WINDOW = os.getenv("HOME") .. "/.config/ghostty/new-window.sh"
 local AEROSPACE = "/opt/homebrew/bin/aerospace"
 local SKETCHYBAR = "/opt/homebrew/bin/sketchybar"
@@ -231,6 +233,39 @@ local function toggleWindows()
   end, { "list-windows", "--all", "--format", windows.FORMAT }):start()
 end
 
+-- Capture menu (Option+Shift+S)
+
+local CAPTURE_DONE = {
+  ["region.clipboard"] = "Copied screenshot",
+  ["region.file"] = "Saved to Desktop",
+  ["window.clipboard"] = "Copied screenshot",
+  ["screen.clipboard"] = "Copied screenshot",
+  text = "Copied text",
+}
+
+local function runCapture(id)
+  local program, arguments = capture.command(id, os.getenv("HOME"), CAPTURE, os.time())
+  if not program then return end
+  hs.task.new(program, function(code, output, errors)
+    -- A cancelled selection exits non-zero with nothing to say, so it stays quiet.
+    local message = code == 0 and (CAPTURE_DONE[id] or ("Copied " .. output:gsub("%s+$", ""))) or errors:gsub("%s+$", "")
+    if message ~= "" then hs.alert.show(message, ALERT_STYLE, 1.2) end
+  end, arguments):start()
+end
+
+local function onCaptureMessage(message)
+  closePanel()
+  if message.type ~= "choose" then return end
+  -- Wait for the card to disappear, so it never ends up in the picture.
+  hs.timer.doAfter(0.2, function() runCapture(message.id) end)
+end
+
+local function toggleCapture()
+  if panel and panel.name == "capture" then return closePanel() end
+  local screen = capture.screen()
+  showPanel("capture", centered(MENU_WIDTH, menuHeight(screen)), card.html(screen), onCaptureMessage)
+end
+
 -- Calendar (click the clock)
 
 local CALENDAR_WIDTH = 360
@@ -282,6 +317,7 @@ bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", open({ os.getenv("
 bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", run(LAUNCH, { "1", GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
 bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", run(SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
 bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", copyUrl)
+bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", toggleCapture)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
 bindKey(SUPER, "space", "Option+Space", "Go to any window", toggleWindows)
@@ -303,3 +339,4 @@ omvToggleSystemMenu = later(toggleSystemMenu)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)
+omvToggleCapture = later(toggleCapture)

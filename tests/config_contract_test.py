@@ -192,6 +192,9 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_space_in_hammerspoon(self) -> None:
         self.assertIn("alt-space", hammerspoon_keys())
 
+    def test_should_bind_option_shift_s_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-s", hammerspoon_keys())
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)
