@@ -75,9 +75,13 @@ assert_exit_nonzero() {
 }
 
 # Runs one case in a subshell so a failure cannot leak state into the next case.
+# The subshell must not sit inside an if: bash ignores set -e there, so only the
+# last assertion would count.
 run_case() {
-  local name=$1 case_function=$2
-  if (set -e; new_sandbox; "$case_function"); then
+  local name=$1 case_function=$2 status
+  (set -e; new_sandbox; "$case_function")
+  status=$?
+  if [ "$status" -eq 0 ]; then
     passed=$((passed + 1))
     echo "ok   - $name"
   else
