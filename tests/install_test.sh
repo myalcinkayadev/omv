@@ -34,7 +34,7 @@ links_all_packages() {
   use_real_stow
   run_in_sandbox "$INSTALL" >/dev/null
   local link
-  for link in .config/aerospace .config/sketchybar .config/ghostty .config/nvim .config/btop .hammerspoon .claude/bar-usage.sh; do
+  for link in .config/aerospace .config/sketchybar .config/ghostty .config/nvim .config/btop .hammerspoon .claude/bar-usage.sh .config/swipeareospace; do
     [ -L "$HOME_DIR/$link" ] || fail "not linked: $link"
   done
 }
@@ -57,6 +57,31 @@ applies_macos_settings() {
   run_in_sandbox "$INSTALL" >/dev/null
   assert_called '^defaults write NSGlobalDomain _HIHideMenuBar -bool true$'
   assert_called '^defaults write com\.apple\.spaces spans-displays -bool true$'
+}
+
+trusts_swipe_tap() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called '^brew trust --tap mediosz/tap$'
+}
+
+installs_swipe_cask() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called '^brew install --cask mediosz/tap/swipeaerospace$'
+}
+
+turns_off_builtin_trackpad_swipe() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called '^defaults write com\.apple\.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 0$'
+}
+
+turns_off_magic_trackpad_swipe() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called '^defaults write com\.apple\.driver\.AppleBluetoothMultitouch\.trackpad TrackpadThreeFingerHorizSwipeGesture -int 0$'
+}
+
+turns_off_current_host_swipe() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called '^defaults -currentHost write NSGlobalDomain com\.apple\.trackpad\.threeFingerHorizSwipeGesture -int 0$'
 }
 
 is_safe_to_rerun() {
@@ -88,13 +113,18 @@ reports_stow_conflict() {
 
 run_case 'should exit non-zero when brew is missing' fails_without_brew
 run_case 'should exit non-zero when stow is missing' fails_without_stow
-run_case 'should trust both taps before installing' trusts_taps_before_installing
-run_case 'should link all seven packages when the target is clean' links_all_packages
+run_case 'should trust the taps before installing' trusts_taps_before_installing
+run_case 'should link all eight packages when the target is clean' links_all_packages
 run_case 'should keep .claude a real directory when linking' keeps_claude_dir_real
 run_case 'should add the usage line when installing' adds_usage_line
 run_case 'should apply both macOS settings when linking succeeds' applies_macos_settings
+run_case 'should trust mediosz/tap' trusts_swipe_tap
+run_case 'should install the swipeaerospace cask' installs_swipe_cask
+run_case 'should turn off the three-finger swipe on the built-in trackpad' turns_off_builtin_trackpad_swipe
+run_case 'should turn off the three-finger swipe on the Magic Trackpad' turns_off_magic_trackpad_swipe
+run_case 'should turn off the three-finger swipe for the current host' turns_off_current_host_swipe
 run_case 'should succeed when executed twice' is_safe_to_rerun
 run_case 'should exit non-zero when stow finds a conflicting real file' fails_on_stow_conflict
-run_case 'should skip macOS settings when stow finds a conflicting real file' stops_before_settings_on_stow_conflict
+run_case 'should skip macOS and trackpad settings when stow finds a conflicting real file' stops_before_settings_on_stow_conflict
 run_case 'should report the failure when stow finds a conflicting real file' reports_stow_conflict
 finish

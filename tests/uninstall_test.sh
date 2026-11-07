@@ -4,7 +4,7 @@
 source "$(dirname "$0")/lib.sh"
 
 readonly UNINSTALL=$REPO_DIR/uninstall.sh
-readonly ALL_PACKAGES='aerospace sketchybar claude ghostty nvim btop hammerspoon'
+readonly ALL_PACKAGES='aerospace sketchybar claude swipeaerospace ghostty nvim btop hammerspoon'
 
 # Links every package with the real stow, as a finished install would leave them.
 link_everything() {
@@ -24,7 +24,7 @@ simulate_already_removed() {
 
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
-  assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D aerospace sketchybar claude$"
+  assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D aerospace sketchybar claude swipeaerospace$"
 }
 
 keeps_older_tool_links() {
@@ -71,6 +71,36 @@ removes_both_tools() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called '^brew uninstall --cask aerospace$'
   assert_called '^brew uninstall sketchybar$'
+}
+
+removes_swipe_cask() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^brew uninstall --cask swipeaerospace$'
+}
+
+untaps_swipe_tap() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^brew untap mediosz/tap$'
+}
+
+restores_builtin_trackpad_swipe() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^defaults delete com\.apple\.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture$'
+}
+
+restores_magic_trackpad_swipe() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^defaults delete com\.apple\.driver\.AppleBluetoothMultitouch\.trackpad TrackpadThreeFingerHorizSwipeGesture$'
+}
+
+restores_current_host_swipe() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^defaults -currentHost delete NSGlobalDomain com\.apple\.trackpad\.threeFingerHorizSwipeGesture$'
+}
+
+quits_swipe_app() {
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  assert_called '^osascript -e tell application "SwipeAeroSpace" to quit$'
 }
 
 succeeds_when_already_removed() {
@@ -123,19 +153,25 @@ skips_quit_when_not_running() {
   assert_not_called '^osascript'
 }
 
-run_case 'should unstow only aerospace, sketchybar and claude when run without flags' unstows_only_this_setup
+run_case 'should unstow only aerospace, sketchybar, claude and swipeaerospace when run without flags' unstows_only_this_setup
 run_case 'should keep the ghostty, nvim, btop and hammerspoon links when run without flags' keeps_older_tool_links
 run_case 'should remove the aerospace and sketchybar links when run without flags' removes_this_setups_links
-run_case 'should unstow all seven packages when run with --all' unstows_everything_with_all_flag
+run_case 'should unstow all eight packages when run with --all' unstows_everything_with_all_flag
 run_case 'should remove the usage line when uninstalling' removes_usage_line
 run_case 'should delete both macOS settings when they are set' deletes_macos_settings
 run_case 'should remove aerospace and sketchybar when they are installed' removes_both_tools
+run_case 'should remove the swipeaerospace cask when it is installed' removes_swipe_cask
+run_case 'should untap mediosz/tap' untaps_swipe_tap
+run_case 'should restore the three-finger swipe on the built-in trackpad' restores_builtin_trackpad_swipe
+run_case 'should restore the three-finger swipe on the Magic Trackpad' restores_magic_trackpad_swipe
+run_case 'should restore the three-finger swipe for the current host' restores_current_host_swipe
+run_case 'should quit SwipeAeroSpace when it is running' quits_swipe_app
 run_case 'should succeed when the tools and settings are already gone' succeeds_when_already_removed
 run_case 'should succeed when executed twice' is_safe_to_rerun
 run_case 'should exit non-zero when given an unknown flag' rejects_unknown_flag
 run_case 'should change nothing when given an unknown flag' changes_nothing_on_unknown_flag
 run_case 'should leave a real file in place when it sits at a stowed path' keeps_real_file_at_stowed_path
-run_case 'should not ask AeroSpace to quit when it is not running' skips_quit_when_not_running
+run_case 'should not ask AeroSpace or SwipeAeroSpace to quit when they are not running' skips_quit_when_not_running
 run_case 'should stop keep-awake when uninstalling' stops_keep_awake
 run_case 'should remove the keep-awake pid file when uninstalling' removes_keep_awake_pid
 finish

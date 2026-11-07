@@ -7,8 +7,8 @@ set -uo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly REPO_DIR
-readonly TAPS=(nikitabobko/tap felixkratz/formulae)
-readonly SETUP_PACKAGES=(aerospace sketchybar claude)
+readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap)
+readonly SETUP_PACKAGES=(aerospace sketchybar claude swipeaerospace)
 readonly OLDER_PACKAGES=(ghostty nvim btop hammerspoon)
 
 packages=("${SETUP_PACKAGES[@]}")
@@ -27,6 +27,9 @@ parse_arguments() {
 quit_apps() {
   if pgrep -x AeroSpace >/dev/null 2>&1; then
     osascript -e 'tell application "AeroSpace" to quit'
+  fi
+  if pgrep -x SwipeAeroSpace >/dev/null 2>&1; then
+    osascript -e 'tell application "SwipeAeroSpace" to quit'
   fi
   if pgrep -x sketchybar >/dev/null 2>&1; then
     pkill -x sketchybar
@@ -58,6 +61,9 @@ unlink_configs() {
 reset_macos_settings() {
   defaults delete NSGlobalDomain _HIHideMenuBar 2>/dev/null
   defaults delete com.apple.spaces spans-displays 2>/dev/null
+  defaults delete com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture 2>/dev/null
+  defaults delete com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture 2>/dev/null
+  defaults -currentHost delete NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture 2>/dev/null
   killall SystemUIServer 2>/dev/null
 }
 
@@ -70,6 +76,9 @@ remove_tools() {
   if brew list sketchybar >/dev/null 2>&1; then
     brew uninstall sketchybar
   fi
+  if brew list --cask swipeaerospace >/dev/null 2>&1; then
+    brew uninstall --cask swipeaerospace
+  fi
   local tap
   for tap in "${TAPS[@]}"; do
     brew untap "$tap" 2>/dev/null || echo "uninstall.sh: kept tap $tap; it is absent or still in use."
@@ -81,9 +90,11 @@ print_remaining_steps() {
   cat <<'EOF'
 
 Removed. These steps are yours:
-  1. Log out and back in, so "Displays have separate Spaces" returns to its default.
+  1. Log out and back in, so "Displays have separate Spaces" and the three-finger
+     swipe return to their defaults.
   2. If you hid the menu bar in System Settings > Menu Bar, change that setting back.
-  3. Remove AeroSpace from System Settings > Privacy & Security > Accessibility.
+  3. Remove AeroSpace and SwipeAeroSpace from System Settings > Privacy & Security >
+     Accessibility.
 
 Left in place: this repo, Homebrew's other packages, your fonts, ~/.config/omniwm
 and ~/.config-backup.

@@ -17,6 +17,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 | `nvim` | `~/.config/nvim` | Neovim config |
 | `btop` | `~/.config/btop` | btop config |
 | `claude` | `~/.claude/bar-usage.sh` | Feeds Claude's usage limits to the bar |
+| `swipeaerospace` | `~/.config/swipeareospace` | Three-finger swipe between workspaces |
 
 ## Requirements
 
@@ -25,7 +26,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 - The JetBrainsMono Nerd Font, in both the Mono and Propo variants.
 - The apps the keys and workspaces expect: Ghostty, Hammerspoon, Zed, Helium, Neovim and btop.
 
-`install.sh` installs only AeroSpace and SketchyBar. Everything else on this list must already be there.
+`install.sh` installs only AeroSpace, SketchyBar and SwipeAeroSpace. Everything else on this list must already be there.
 
 ## Install
 
@@ -35,17 +36,18 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 
 It is safe to run again. It:
 
-1. Trusts the third-party taps `nikitabobko/tap` and `felixkratz/formulae`, then installs AeroSpace and SketchyBar from them.
-2. Links all seven packages with Stow.
+1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, then installs AeroSpace, SketchyBar and SwipeAeroSpace from them.
+2. Links all eight packages with Stow.
 3. Adds the Claude usage line to your status line wrapper, as described in [Claude usage](#claude-usage).
-4. Hides the macOS menu bar, and turns off "Displays have separate Spaces".
+4. Hides the macOS menu bar, turns off "Displays have separate Spaces", and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
 
 Then do these by hand:
 
 1. Open AeroSpace from Finder and grant Accessibility in System Settings.
-2. Log out and back in, so "Displays have separate Spaces" turns off.
+2. Log out and back in, so "Displays have separate Spaces" and macOS's three-finger swipe turn off.
 3. If the menu bar still shows, set System Settings > Menu Bar > "Automatically hide and show the menu bar" to Always.
 4. In System Settings > Displays > Arrange, leave each display a free bottom corner, because AeroSpace hides windows there.
+5. Open SwipeAeroSpace, grant Accessibility, and turn on Launch at Login in its Settings.
 
 When you pull new files later, run `./install.sh` again. Stow links files one by one, so a new file has no link until then.
 
@@ -124,6 +126,7 @@ These tools take the keys system-wide, so apps never receive them:
 
 - Each app opens on its workspace. Finder, System Settings and Calculator float on the current workspace instead.
 - There are six workspaces in total, not six per monitor, because AeroSpace workspaces are global.
+- Swipe three fingers left or right on the trackpad to move one workspace, wrapping around. A swipe stays on the focused monitor, so with two monitors it cycles 1-3 on the main one and 4-6 on the secondary. Scrolling over the bar's numbers crosses all six.
 - When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it is plugged back in.
 - `btop` opens on workspace 1 when AeroSpace starts, unless one is already running.
 - Ghostty windows share one process. The first time you use Option+Enter or Option+Shift+T, macOS asks to let AeroSpace and Hammerspoon control Ghostty, and those keys need that permission.
@@ -170,17 +173,17 @@ The item shows Claude's 5-hour and 7-day usage, with the Claude logo. The higher
 ## Uninstall
 
 ```sh
-./uninstall.sh        # removes AeroSpace and SketchyBar, keeps the older tool links
+./uninstall.sh        # removes AeroSpace, SketchyBar and SwipeAeroSpace, keeps the older tool links
 ./uninstall.sh --all  # also unlinks ghostty, nvim, btop and hammerspoon
 ```
 
 It:
 
-1. Quits AeroSpace and SketchyBar, and stops keep-awake if it is on.
+1. Quits AeroSpace, SwipeAeroSpace and SketchyBar, and stops keep-awake if it is on.
 2. Removes the Claude usage line from your status line wrapper.
 3. Unlinks the packages.
-4. Returns both macOS settings to their defaults.
-5. Uninstalls both tools and untaps both taps.
+4. Returns the macOS and trackpad settings to their defaults.
+5. Uninstalls the three tools and untaps their taps.
 6. Prints the steps left for you.
 
 It leaves this repo, other Homebrew packages, fonts, `~/.config/omniwm` and `~/.config-backup` alone.

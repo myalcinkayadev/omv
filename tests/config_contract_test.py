@@ -9,7 +9,8 @@ REPO = Path(__file__).resolve().parent.parent
 AEROSPACE = REPO / "aerospace/.config/aerospace/aerospace.toml"
 HAMMERSPOON = REPO / "hammerspoon/.hammerspoon/init.lua"
 GHOSTTY = REPO / "ghostty/.config/ghostty/config"
-PACKAGES = ("aerospace", "sketchybar", "claude", "ghostty", "nvim", "btop", "hammerspoon")
+PACKAGES = ("aerospace", "sketchybar", "claude", "swipeaerospace", "ghostty", "nvim", "btop", "hammerspoon")
+SWIPE = REPO / "swipeaerospace/.config/swipeareospace/config.toml"
 
 APPROVED_ROUTES = {
     "com.mitchellh.ghostty": "1",
@@ -36,6 +37,10 @@ HAMMERSPOON_KEYS = {"return": "enter", "44": "slash"}
 
 def load_aerospace() -> dict:
     return tomllib.loads(AEROSPACE.read_text(encoding="utf-8"))
+
+
+def load_swipe() -> dict:
+    return tomllib.loads(SWIPE.read_text(encoding="utf-8"))
 
 
 def commands_for(rule: dict) -> list[str]:
@@ -143,6 +148,15 @@ class ConfigContract(unittest.TestCase):
     def test_should_subscribe_keep_awake_to_its_toggle_and_clicks(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("--subscribe keep_awake keep_awake_toggle mouse.clicked", source)
+
+    def test_should_wrap_around_when_swiping_like_the_bar_scroll(self) -> None:
+        self.assertIs(load_swipe().get("wrap"), True)
+
+    def test_should_leave_the_swipe_up_overview_off(self) -> None:
+        self.assertIs(load_swipe().get("swipeUpOverview"), False)
+
+    def test_should_use_three_fingers_for_swipes(self) -> None:
+        self.assertEqual(load_swipe().get("fingers"), "Three")
 
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")

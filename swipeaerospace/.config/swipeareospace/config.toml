@@ -1,0 +1,13 @@
+# SwipeAeroSpace: a three-finger horizontal swipe moves one workspace on the focused monitor.
+# The folder name "swipeareospace" is the app's own spelling, so it must stay as is.
+# install.sh turns off macOS's three-finger swipe, so a swipe fires only this.
+fingers = "Three"
+natural = true
+# Matches the bar's scroll, which wraps from 6 back to 1.
+wrap = true
+# All six workspaces are persistent, so none are skipped.
+skip-empty = false
+# One swipe moves exactly one workspace.
+multiSwipe = false
+# Swiping up keeps opening Mission Control.
+swipeUpOverview = false
