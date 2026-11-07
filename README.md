@@ -137,6 +137,7 @@ These tools take the keys system-wide, so apps never receive them:
 - When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it is plugged back in.
 - `btop` opens on workspace 1 when AeroSpace starts, unless one is already running.
 - The focused window gets a 2pt gray outline, the same gray as the cards' border, drawn by [JankyBorders](https://github.com/FelixKratz/JankyBorders). It starts with AeroSpace.
+- In Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
 - Ghostty windows share one process. The first time you use Option+Enter or Option+Shift+T, macOS asks to let AeroSpace and Hammerspoon control Ghostty, and those keys need that permission.
 
 ## System menu

@@ -12,3 +12,8 @@ shell-integration-features = no-cursor
 
 # Drop-down terminal. A global key needs Accessibility for Ghostty.
 keybind = global:alt+backquote=toggle_quick_terminal
+
+# Notify when a command over 10s finishes while you're in another window. No bell.
+notify-on-command-finish = unfocused
+notify-on-command-finish-action = no-bell,notify
+notify-on-command-finish-after = 10s

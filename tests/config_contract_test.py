@@ -183,6 +183,12 @@ class ConfigContract(unittest.TestCase):
             [True, True],
         )
 
+    def test_should_notify_only_when_ghostty_is_not_focused(self) -> None:
+        self.assertIn("notify-on-command-finish = unfocused", GHOSTTY.read_text(encoding="utf-8"))
+
+    def test_should_notify_for_commands_longer_than_10_seconds(self) -> None:
+        self.assertIn("notify-on-command-finish-after = 10s", GHOSTTY.read_text(encoding="utf-8"))
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)
