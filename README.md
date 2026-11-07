@@ -187,6 +187,8 @@ Option+Shift+S opens a card for screen captures:
 
 Workspace numbers sit on the left. The focused workspace is a white pill, the one visible on the other monitor is a gray pill, and the mode shows next to them while it isn't the normal mode. Click a number to go there, or scroll over the numbers to move one workspace at a time, wrapping around.
 
+While Music or Spotify plays, the track shows after the numbers as `Artist — Title`, cut at 40 characters. Click it to play or pause, and scroll up or down for the next or previous track. It hides when nothing plays, and it never opens a player that is closed. The first time, macOS asks to let SketchyBar control Music and Spotify.
+
 On the right, from left to right:
 
 | Item | Shows | Click | Scroll |

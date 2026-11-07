@@ -322,6 +322,13 @@ bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(
 bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
 bindKey(SUPER, "space", "Option+Space", "Go to any window", toggleWindows)
 
+-- Now playing: Music and Spotify announce every track and play-state change, so the bar
+-- redraws only then. Global, so the watchers are never garbage-collected.
+omvMediaWatchers = {}
+for _, name in ipairs({ "com.apple.Music.playerInfo", "com.spotify.client.PlaybackStateChanged" }) do
+  omvMediaWatchers[#omvMediaWatchers + 1] = hs.distributednotifications.new(run(SKETCHYBAR, { "--trigger", "now_playing_change" }), name):start()
+end
+
 -- Ghostty owns this key, so it is listed here rather than bound.
 launchers[#launchers + 1] = { label = "Option+`", description = "Drop-down terminal" }
 

@@ -48,6 +48,16 @@ sketchybar --add event aerospace_mode_change \
   --set mode drawing=off icon.drawing=off label.color=$WHITE script="$PLUGIN_DIR/aerospace_mode.sh" \
   --subscribe mode aerospace_mode_change
 
+# Hidden while nothing plays. Hammerspoon sends now_playing_change when Music or Spotify
+# changes. It can't be called media_change: that is SketchyBar's own event, which ignores
+# --trigger and relies on MediaRemote, closed to other apps on recent macOS.
+sketchybar --add event now_playing_change \
+  --add item now_playing left \
+  --set now_playing drawing=off icon=󰝚 icon.color=$MUTED label.color=$MUTED padding_left=8 \
+    icon.padding_right=3 label.padding_left=3 \
+    script="$PLUGIN_DIR/now_playing.sh" \
+  --subscribe now_playing now_playing_change mouse.clicked mouse.scrolled system_woke
+
 sketchybar --add item battery right \
   --set battery label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
     click_script="sketchybar --set battery label.drawing=toggle" \
