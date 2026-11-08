@@ -27,7 +27,6 @@ APPROVED_ROUTES = {
     "com.spotify.client": "6",
 }
 APPROVED_FLOATING = {
-    "com.apple.finder",
     "com.apple.systempreferences",
     "com.apple.calculator",
 }
@@ -74,7 +73,7 @@ class ConfigContract(unittest.TestCase):
                     routes[rule["if"]["app-id"]] = match.group(1)
         self.assertEqual(routes, APPROVED_ROUTES)
 
-    def test_should_float_finder_system_settings_and_calculator(self) -> None:
+    def test_should_float_system_settings_and_calculator(self) -> None:
         floating = {
             rule["if"]["app-id"]
             for rule in load_aerospace()["on-window-detected"]
