@@ -34,6 +34,11 @@ check.that("should show an empty bar when Wi-Fi is on without a network", check.
 check.that("should show dashes for missing values when Wi-Fi is on without a network",
   select(2, check.visible(searching):gsub(DASH, "")) >= 4)
 
+local hidden = check.visible(network.html(network.wifiModel({ power = true, rssi = -58, ip = "192.168.1.24", router = "192.168.1.1" })))
+check.that("should show the signal when Location is refused while connected", check.contains(hidden, "53%"))
+check.that("should show the IP address when Location is refused while connected", check.contains(hidden, "192.168.1.24"))
+check.that("should not say not connected when Location is refused while connected", not check.contains(hidden, "NOT CONNECTED"))
+
 local off = check.visible(network.html(network.wifiModel({ power = false })))
 check.that("should say off when Wi-Fi power is off", check.contains(off, "OFF"))
 check.that("should offer to turn Wi-Fi on when it is off", check.contains(off, "Turn on"))

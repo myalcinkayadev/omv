@@ -28,15 +28,25 @@ function network.signalPercent(rssi)
   return math.floor(math.max(0, math.min(1, share)) * 100 + 0.5)
 end
 
+local function hasName(info)
+  return info.ssid ~= nil and info.ssid ~= ""
+end
+
+-- Without Location, macOS hides the network's name but not the address, so an address
+-- also counts as connected; the name then shows as a dash.
+local function isConnected(info)
+  return info.power and (hasName(info) or (info.ip ~= nil and info.ip ~= "")) or false
+end
+
 local function wifiStatus(info)
   if not info.power then return "OFF" end
-  if not info.ssid or info.ssid == "" then return "NOT CONNECTED" end
-  return info.ssid:upper()
+  if not isConnected(info) then return "NOT CONNECTED" end
+  return hasName(info) and info.ssid:upper() or DASH
 end
 
 -- info = { power, ssid, rssi, ip, router, channel, band }
 function network.wifiModel(info)
-  local connected = info.power and info.ssid ~= nil and info.ssid ~= ""
+  local connected = isConnected(info)
   local percent = connected and network.signalPercent(info.rssi) or 0
   local signal = connected and info.rssi and info.rssi ~= 0 and (info.rssi .. " dBm") or nil
   local channel = connected and info.channel and (info.channel .. (info.band and (" (" .. info.band .. ")") or "")) or nil
