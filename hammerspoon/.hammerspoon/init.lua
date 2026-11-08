@@ -10,6 +10,8 @@ local calendar = require("calendar")
 local windows = require("windows")
 local capture = require("capture")
 local reminders = require("reminders")
+local pomo = require("pomo")
+local agenda = require("agenda")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -23,6 +25,7 @@ local AEROSPACE_CONFIG = os.getenv("HOME") .. "/.config/aerospace/aerospace.toml
 local LAUNCH = hs.configdir .. "/launch.sh"
 local COPY_URL = hs.configdir .. "/copy-url.sh"
 local CAPTURE = hs.configdir .. "/capture.sh"
+local AGENDA = hs.configdir .. "/agenda.sh"
 local GHOSTTY_WINDOW = os.getenv("HOME") .. "/.config/ghostty/new-window.sh"
 local AEROSPACE = "/opt/homebrew/bin/aerospace"
 local SKETCHYBAR = "/opt/homebrew/bin/sketchybar"
@@ -100,20 +103,25 @@ local function makeView()
     if action ~= "focusChange" or not panel then return end
     if focused then
       panel.hadFocus = true
-    elseif panel.hadFocus then
+    elseif panel.hadFocus and not panel.keepOnBlur then
       panel.previous = nil
       closePanel()
     end
   end)
 end
 
-local function showPanel(name, frame, html, onMessage)
+-- options.onEscape replaces closing on Escape, and options.keepOnBlur keeps the card open
+-- when focus moves away. The Pomodoro cards use both: a break shouldn't vanish on Cmd+Tab.
+local function showPanel(name, frame, html, onMessage, options)
+  options = options or {}
   if panel then
     panel.name, panel.onMessage = name, onMessage
+    panel.onEscape, panel.keepOnBlur = options.onEscape, options.keepOnBlur
     view:frame(frame):html(html)
     return
   end
-  panel = { name = name, onMessage = onMessage, previous = hs.application.frontmostApplication() }
+  panel = { name = name, onMessage = onMessage, previous = hs.application.frontmostApplication(),
+    onEscape = options.onEscape, keepOnBlur = options.keepOnBlur }
   view:frame(frame):html(html):show()
   -- Typing needs Hammerspoon active. Its console would come forward with it, so close it.
   hs.closeConsole()
@@ -123,14 +131,18 @@ local function showPanel(name, frame, html, onMessage)
 end
 
 makeView()
-closeOnEscape = hs.hotkey.new({}, "escape", closePanel)
+closeOnEscape = hs.hotkey.new({}, "escape", function()
+  if panel and panel.onEscape then return panel.onEscape() end
+  closePanel()
+end)
 
 -- System menu (Option+Escape)
 
 local MENU_WIDTH = 320
 
 local function menuHeight(screen)
-  return 28 + 46 + #screen.rows * 44 + 4
+  -- An empty screen still has room for its "No matches" line.
+  return 28 + 46 + math.max(1, #screen.rows) * 44 + 4
 end
 
 local ACTIONS = {
@@ -152,7 +164,34 @@ local ACTIONS = {
 
 local menuStack = {}
 
+-- Output devices change as AirPods connect or a monitor is plugged in, so the Sound
+-- screen is read each time it opens.
+local function soundScreen()
+  local current = hs.audiodevice.defaultOutputDevice()
+  local currentUid = current and current:uid()
+  local devices = {}
+  for _, device in ipairs(hs.audiodevice.allOutputDevices()) do
+    devices[#devices + 1] = {
+      uid = device:uid(),
+      name = device:name(),
+      transport = device:transportType(),
+      current = device:uid() == currentUid,
+    }
+  end
+  return menu.sound(devices)
+end
+
+local function setOutput(uid)
+  local device = hs.audiodevice.findDeviceByUID(uid)
+  if device and device:setDefaultOutputDevice() then
+    hs.alert.show("󰕾 " .. device:name(), ALERT_STYLE, 1.2)
+  else
+    hs.alert.show("Couldn't switch the sound output", ALERT_STYLE, 1.5)
+  end
+end
+
 local function screenFor(key)
+  if key == "sound" then return soundScreen() end
   local confirmed = key:match("^confirm:(.+)$")
   if confirmed then return menu.confirm(confirmed) end
   return menu.screen(key)
@@ -162,7 +201,7 @@ local onMenuMessage
 
 local function showMenuTop()
   local screen = screenFor(menuStack[#menuStack])
-  showPanel("menu", centered(MENU_WIDTH, menuHeight(screen)), card.html(screen), onMenuMessage)
+  showPanel("menu", centered(screen.width or MENU_WIDTH, menuHeight(screen)), card.html(screen), onMenuMessage)
 end
 
 local function menuBack()
@@ -173,7 +212,7 @@ end
 
 local function menuChoose(id)
   if id == "cancel" then return menuBack() end
-  if menu.screen(id) then
+  if menu.opens(id) then
     menuStack[#menuStack + 1] = id
     return showMenuTop()
   end
@@ -182,6 +221,8 @@ local function menuChoose(id)
     return showMenuTop()
   end
   local action = ACTIONS[id]
+  local output = id:match("^sound%.(.+)$")
+  if output then action = function() setOutput(output) end end
   closePanel()
   if action then action() end
 end
@@ -195,6 +236,13 @@ end
 local function toggleSystemMenu()
   if panel and panel.name == "menu" then return closePanel() end
   menuStack = { "system" }
+  showMenuTop()
+end
+
+-- Opens straight on Sound, with the system menu under it, so Left goes back to it.
+local function toggleSound()
+  if panel and panel.name == "menu" and menuStack[#menuStack] == "sound" then return closePanel() end
+  menuStack = { "system", "sound" }
   showMenuTop()
 end
 
@@ -279,6 +327,8 @@ local BLACK, WHITE = "0xff000000", "0xffffffff"
 local reminderList = {}
 local reminderTimer = nil
 local flashUntil = nil
+-- Set below, with the Pomodoro cards, which add and remove reminders themselves.
+local onPomoReminder
 
 local function saveReminders()
   os.execute("/bin/mkdir -p '" .. STATE_DIR .. "'")
@@ -301,7 +351,9 @@ local function setReminderBar(properties)
 end
 
 -- A due reminder notifies, and turns the bar item into a white pill for a moment.
+-- Pomodoro reminders open their cards instead.
 local function fireReminder(reminder)
+  if reminder.kind then return onPomoReminder(reminder) end
   hs.notify.new({ title = "Reminder", informativeText = reminder.text, withdrawAfter = 0 }):send()
   hs.alert.show("󰔛 " .. reminder.text, ALERT_STYLE, 4)
   setReminderBar({ "drawing=on", "label=" .. reminders.short(reminder.text), "background.drawing=on", "icon.color=" .. BLACK, "label.color=" .. BLACK })
@@ -325,7 +377,7 @@ local function tickReminders()
     reminderTimer:stop()
     return
   end
-  setReminderBar({ "drawing=on", "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE,
+  setReminderBar({ "drawing=on", "icon=" .. reminders.icon(reminderList), "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE,
     "label=" .. reminders.label(reminderList, now) })
 end
 
@@ -336,15 +388,28 @@ local function startReminders()
   if not reminderTimer:running() then reminderTimer:start() end
 end
 
+-- "c" in the reminder box cancels the soonest reminder, and says which one.
+local function cancelSoonestReminder()
+  closePanel()
+  local soonest = table.remove(reminderList, 1)
+  if not soonest then return hs.alert.show("No reminders", ALERT_STYLE, 1.5) end
+  saveReminders()
+  startReminders()
+  hs.alert.show("Cancelled: " .. soonest.text, ALERT_STYLE, 1.5)
+end
+
 local function onReminderInput(message)
   if message.type == "close" then return closePanel() end
   if message.type ~= "submit" then return end
-  local seconds, text = reminders.parse(message.id)
+  local seconds, text, kind = reminders.parse(message.id)
+  if kind == "cancel" then return cancelSoonestReminder() end
   if not seconds then
     hs.alert.show("Start with a time, like 25m", ALERT_STYLE, 1.5)
     return
   end
-  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text }
+  -- A typed break goes straight to its countdown card.
+  if kind == "break" then return onPomoReminder({ kind = "start-break", seconds = seconds }) end
+  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text, kind = kind }
   reminderList = reminders.sorted(reminderList)
   saveReminders()
   closePanel()
@@ -353,7 +418,7 @@ end
 
 local function newReminder()
   if panel and panel.name == "reminder" then return closePanel() end
-  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy · 1h30m stand up" }
+  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy · pomo · b break · c cancel" }
   showPanel("reminder", centered(REMINDER_WIDTH, 28 + 46 + 44 + 4), card.html(screen), onReminderInput)
 end
 
@@ -367,6 +432,8 @@ end
 
 local function toggleReminders()
   if panel and panel.name == "reminders" then return closePanel() end
+  -- During a break, the bar item reopens its countdown.
+  if reminderList[1] and reminderList[1].kind == "break" then return onPomoReminder({ kind = "show-break" }) end
   if #reminderList == 0 then return newReminder() end
   local now, rows = os.time(), {}
   for index, reminder in ipairs(reminderList) do
@@ -376,6 +443,117 @@ local function toggleReminders()
   showPanel("reminders", centered(REMINDER_WIDTH, menuHeight(screen)), card.html(screen), onReminderList)
 end
 
+-- Pomodoro break cards. A pomo coming due opens "Time for a break.", and nothing after it
+-- starts on its own: the break, the next pomo and stopping are all picked on a card.
+
+local POMO_FILE = STATE_DIR .. "/pomo"
+local pomoStep = nil
+
+local function todayKey()
+  return os.date("%Y-%m-%d")
+end
+
+local function readPomoRecord()
+  local file = io.open(POMO_FILE, "r")
+  if not file then return pomo.decode("") end
+  local text = file:read("*a")
+  file:close()
+  return pomo.decode(text)
+end
+
+local function pomoCount()
+  return pomo.countFor(readPomoRecord(), todayKey())
+end
+
+local function countFinishedPomo()
+  os.execute("/bin/mkdir -p '" .. STATE_DIR .. "'")
+  local file = io.open(POMO_FILE, "w")
+  if not file then return end
+  file:write(pomo.encode(pomo.finished(readPomoRecord(), todayKey())))
+  file:close()
+end
+
+local function addReminder(seconds, text, kind)
+  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text, kind = kind }
+  reminderList = reminders.sorted(reminderList)
+  saveReminders()
+  startReminders()
+end
+
+local function removeBreaks()
+  local kept = {}
+  for _, reminder in ipairs(reminderList) do
+    if reminder.kind ~= "break" then kept[#kept + 1] = reminder end
+  end
+  reminderList = kept
+  saveReminders()
+  startReminders()
+end
+
+local onPomoMessage
+
+local function showPomo()
+  local count = pomoCount()
+  local screen
+  if pomoStep.step == "done" then
+    screen = pomo.doneScreen({ task = pomoStep.task, count = count, postponed = pomoStep.postponed })
+  elseif pomoStep.step == "break" then
+    screen = pomo.breakScreen({ ends = pomoStep.ends, seconds = pomoStep.seconds, count = count, tip = count + 1 })
+  else
+    screen = pomo.overScreen({ task = pomoStep.task, count = count })
+  end
+  -- Escape skips the break on the first card, ends it early on the second, and stops on the last.
+  local escape = { done = "break.skip", ["break"] = "break.end", over = "pomo.stop" }
+  showPanel("pomo", hs.screen.mainScreen():fullFrame(), card.big(screen), onPomoMessage, {
+    keepOnBlur = true,
+    onEscape = function() onPomoMessage({ type = "choose", id = escape[pomoStep.step] }) end,
+  })
+end
+
+local function startBreak(seconds)
+  removeBreaks()
+  addReminder(seconds, "Break", "break")
+  pomoStep = { step = "break", task = pomoStep and pomoStep.task, ends = os.time() + seconds, seconds = seconds }
+  showPomo()
+end
+
+onPomoMessage = function(message)
+  if message.type ~= "choose" or not pomoStep then return end
+  local id, task = message.id, pomoStep.task
+  if id == "break.start" then return startBreak(pomo.BREAK_SECONDS) end
+  if id == "break.skip" or id == "break.end" then
+    removeBreaks()
+    pomoStep = { step = "over", task = task }
+    return showPomo()
+  end
+  pomoStep = nil
+  closePanel()
+  if id == "pomo.postpone" then addReminder(pomo.POSTPONE_SECONDS, pomo.task(task), "postponed") end
+  if id == "pomo.next" then addReminder(pomo.POMO_SECONDS, pomo.task(task), "pomo") end
+end
+
+onPomoReminder = function(reminder)
+  if reminder.kind == "start-break" then
+    pomoStep = { step = "break", task = pomoStep and pomoStep.task }
+    return startBreak(reminder.seconds)
+  end
+  if reminder.kind == "show-break" then
+    local current = reminderList[1]
+    pomoStep = { step = "break", task = pomoStep and pomoStep.task, ends = current.due, seconds = pomo.BREAK_SECONDS }
+    return showPomo()
+  end
+  if reminder.kind == "break" then
+    hs.notify.new({ title = "Break over", informativeText = "Back to work when you're ready.", withdrawAfter = 0 }):send()
+    pomoStep = { step = "over", task = pomoStep and pomoStep.task }
+    return showPomo()
+  end
+  -- A pomo counts when its 25 minutes are done, not again after "5 more minutes".
+  if reminder.kind == "pomo" then countFinishedPomo() end
+  hs.notify.new({ title = "Pomodoro done", informativeText = reminder.text, withdrawAfter = 0 }):send()
+  pomoStep = { step = "done", task = reminder.text, postponed = reminder.kind == "postponed" }
+  showPomo()
+end
+
 -- Redraw even with none saved, so a reload clears an item left over from before.
 reminderList = loadReminders()
 if #reminderList > 0 then startReminders() else tickReminders() end
@@ -383,8 +561,8 @@ if #reminderList > 0 then startReminders() else tickReminders() end
 -- Calendar (click the clock)
 
 local CALENDAR_WIDTH = 360
-local CALENDAR_HEIGHT = 384
 local shown = nil
+local agendaDay = nil
 
 local function today()
   local now = os.date("*t")
@@ -396,10 +574,65 @@ local onCalendarMessage
 local function showCalendar()
   local screen = hs.screen.mainScreen():fullFrame()
   -- Right-aligned under the clock, just below the 36pt bar.
-  local frame = hs.geometry.rect(screen.x + screen.w - CALENDAR_WIDTH - 10, screen.y + 40, CALENDAR_WIDTH, CALENDAR_HEIGHT)
+  local now = os.time()
+  local frame = hs.geometry.rect(screen.x + screen.w - CALENDAR_WIDTH - 10, screen.y + 40, CALENDAR_WIDTH, calendar.height(agendaDay, now))
   local model = calendar.month(shown.year, shown.month, today())
-  showPanel("calendar", frame, calendar.html(model, today()), onCalendarMessage)
+  showPanel("calendar", frame, calendar.html(model, today(), agendaDay, now), onCalendarMessage)
 end
+
+-- Today's events (agenda.sh). They are read every 5 minutes, on wake and when the
+-- calendar opens; the bar's next-meeting item is redrawn from them every 30 seconds.
+
+local AGENDA_REFRESH_SECONDS = 300
+local MEETING_REDRAW_SECONDS = 30
+local agendaText = nil
+local agendaTask = nil
+local meetingShown = nil
+
+local function drawMeeting()
+  local meeting = agendaDay and agenda.bar(agendaDay.events, os.time())
+  local properties
+  if not meeting then
+    properties = { "drawing=off" }
+  elseif meeting.soon then
+    properties = { "drawing=on", "label=" .. meeting.label, "background.drawing=on", "icon.color=" .. BLACK, "label.color=" .. BLACK }
+  else
+    properties = { "drawing=on", "label=" .. meeting.label, "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE }
+  end
+  -- Only a change reaches SketchyBar, since most redraws find the same meeting.
+  local key = table.concat(properties, "\n")
+  if key == meetingShown then return end
+  meetingShown = key
+  hs.task.new(SKETCHYBAR, nil, { "--set", "meeting", table.unpack(properties) }):start()
+end
+
+-- changed runs once the events are read, only if they differ from the ones before.
+local function readAgenda(changed)
+  if agendaTask and agendaTask:isRunning() then return end
+  agendaTask = hs.task.new(AGENDA, function(code, output)
+    agendaTask = nil
+    if code ~= 0 or output == agendaText then return drawMeeting() end
+    agendaText = output
+    agendaDay = agenda.decode(output)
+    drawMeeting()
+    if changed then changed() end
+  end)
+  agendaTask:start()
+end
+
+local function redrawOpenCalendar()
+  if panel and panel.name == "calendar" then showCalendar() end
+end
+
+-- Globals, so the timers and the watcher are never garbage-collected.
+omvAgendaTimers = {
+  hs.timer.doEvery(AGENDA_REFRESH_SECONDS, function() readAgenda(redrawOpenCalendar) end),
+  hs.timer.doEvery(MEETING_REDRAW_SECONDS, drawMeeting),
+}
+omvWakeWatcher = hs.caffeinate.watcher.new(function(event)
+  if event == hs.caffeinate.watcher.systemDidWake then readAgenda(redrawOpenCalendar) end
+end):start()
+readAgenda()
 
 onCalendarMessage = function(message)
   if message.type == "close" then return closePanel() end
@@ -414,6 +647,7 @@ local function toggleCalendar()
   if panel and panel.name == "calendar" then return closePanel() end
   shown = today()
   showCalendar()
+  readAgenda(redrawOpenCalendar)
 end
 
 -- Copy URL (Option+Shift+U)
@@ -458,6 +692,7 @@ local function later(fn)
 end
 
 omvToggleSystemMenu = later(toggleSystemMenu)
+omvToggleSound = later(toggleSound)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)

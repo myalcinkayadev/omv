@@ -1,5 +1,5 @@
 #!/bin/sh
-# Shows Claude's 5-hour and 7-day usage. A click swaps between percentages and reset times.
+# Shows Claude's 5-hour and 7-day usage. A click shows reset times for 10 seconds.
 # The numbers only update while Claude Code runs, so a window past its reset shows 0%.
 
 state_file="$HOME/.local/state/omv/claude-usage"
@@ -10,11 +10,25 @@ if [ ! -r "$state_file" ]; then
   exit 0
 fi
 
+# Reset times are the widest label, so they switch back to percentages after 10 seconds,
+# keeping the right side of the bar clear of the notch. The file holds a token, so a
+# timer from an earlier click never cuts a later view short.
+show_resets_briefly() {
+  token=$$-$(date +%s)
+  printf '%s' "$token" > "$resets_view"
+  (
+    sleep 10
+    [ "$(cat "$resets_view" 2>/dev/null)" = "$token" ] || exit 0
+    rm -f "$resets_view"
+    sketchybar --trigger claude_usage_change
+  ) >/dev/null 2>&1 &
+}
+
 if [ "${SENDER:-}" = mouse.clicked ]; then
   if [ -e "$resets_view" ]; then
     rm -f "$resets_view"
   else
-    : > "$resets_view"
+    show_resets_briefly
   fi
 fi
 

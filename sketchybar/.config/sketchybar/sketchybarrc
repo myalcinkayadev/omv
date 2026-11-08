@@ -58,6 +58,11 @@ sketchybar --add event now_playing_change \
     script="$PLUGIN_DIR/now_playing.sh" \
   --subscribe now_playing now_playing_change mouse.clicked mouse.scrolled system_woke
 
+# Added first, so the clock sits at the far right, as on macOS. Clicking it opens the calendar card, which Hammerspoon draws.
+sketchybar --add item clock right \
+  --set clock icon.drawing=off update_freq=30 script="$PLUGIN_DIR/clock.sh" \
+    click_script="hs -c 'omvToggleCalendar()'"
+
 sketchybar --add item battery right \
   --set battery label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
     click_script="sketchybar --set battery label.drawing=toggle" \
@@ -73,12 +78,7 @@ sketchybar --add item wifi right \
     click_script="open '$WIFI_SETTINGS'" \
   --subscribe wifi system_woke
 
-# Clicking the clock opens the calendar card, which Hammerspoon draws.
-sketchybar --add item clock right \
-  --set clock icon.drawing=off update_freq=30 script="$PLUGIN_DIR/clock.sh" \
-    click_script="hs -c 'omvToggleCalendar()'"
-
-# Added after the clock, so it sits just to the left of it.
+# Added after the status icons, so it sits just to the left of Wi-Fi.
 sketchybar --add event claude_usage_change \
   --add item claude_usage right \
   --set claude_usage drawing=off icon.width=27 icon.padding_left=0 icon.padding_right=0 \
@@ -99,5 +99,12 @@ sketchybar --add item reminder right \
   --set reminder drawing=off icon=󰔛 icon.padding_right=3 label.padding_left=3 \
     background.drawing=off background.color=$WHITE \
     background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleReminders()'"
+
+# Hidden until a meeting starts within the hour. Hammerspoon sets its label from
+# Calendar.app, and turns it into a white pill from 5 minutes before the start.
+sketchybar --add item meeting right \
+  --set meeting drawing=off icon=󰃭 icon.padding_right=3 label.padding_left=3 \
+    background.drawing=off background.color=$WHITE \
+    background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleCalendar()'"
 
 sketchybar --update

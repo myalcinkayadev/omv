@@ -23,7 +23,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 
 - Homebrew and `stow`, which `install.sh` checks for.
 - `jq`, used by the Claude usage item.
-- Xcode's Command Line Tools, for `swiftc`, used by the capture menu's text and color items.
+- Xcode's Command Line Tools, for `swiftc`, used by the capture menu's text and color items and by the calendar's events.
 - The JetBrainsMono Nerd Font, in both the Mono and Propo variants.
 - The apps the keys and workspaces expect: Ghostty, Hammerspoon, Zed, Helium, Neovim and btop.
 
@@ -160,11 +160,16 @@ Option+Escape opens a menu modeled on Omarchy's: a card whose title is also a se
 | Screensaver | Starts the screensaver |
 | Sleep | Puts the Mac to sleep |
 | Log out, Restart, Shut down | Ask first, with Cancel selected |
+| Sound › | Picks where sound plays: speakers, AirPods, a monitor |
 | Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
 
 Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
 
-Scripts can open each card with `hs -c`: `omvToggleSystemMenu()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+Sound lists every output device, with the one in use selected and marked `current`. It's read each time it opens, so AirPods show up as soon as they connect. Virtual devices, such as the ones Zoom and Teams add, are left out unless they're in use. Right-clicking the volume item in the bar opens it too.
+
+<img src="docs/sound.png" alt="The Sound card, with the speakers in use and AirPods listed" width="420">
+
+Scripts can open each card with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Capture menu
 
@@ -194,25 +199,56 @@ On the right, from left to right:
 
 | Item | Shows | Click | Scroll |
 |---|---|---|---|
+| Meeting | The next Calendar event, only from an hour before it starts | Open the [calendar](#calendar) | |
 | Reminder | Time left on the next reminder, only while one is set | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, only while keep-awake is on | Turn it off | |
-| Claude | Usage limits, as `5h 23%  7d 41%` | Swap to the reset times | |
-| Clock | Day and time | Open the [calendar](#calendar) | |
+| Claude | Usage limits, as `5h 23%  7d 41%` | Show the reset times for 10 seconds | |
 | Wi-Fi | Connected or not | Open Wi-Fi settings | |
-| Volume | Level | Mute or unmute | Change the volume by 5% |
+| Volume | Level | Mute or unmute. Right-click to pick the output | Change the volume by 5% |
 | Battery | Charge | Show or hide the percentage | |
+| Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar) | |
 
 ### Calendar
 
 Clicking the clock opens a calendar card under it. Weeks start on Monday and show their ISO week number, today is a white square, and the footer shows today's date and week. Left and Right (or ‹ and ›) change month, T goes back to today, and Escape or a click elsewhere closes it.
 
-<img src="docs/calendar.png" alt="The calendar card, with today marked" width="360">
+<img src="docs/calendar.png" alt="The calendar card, with today marked and today's events under it" width="360">
+
+Under the footer, the card lists today's events from Calendar.app, so it covers every account added there, such as iCloud, Google and Exchange.
+
+- Each event shows its start time, or `all day`. Events already over are dimmed, and the one going on now is white.
+- It lists five at most, then `+N more`. When there are more, events already over are left out first.
+- Cancelled events and ones you declined are left out.
+- The meeting item in the bar shows the next timed event's start time, as `14:00`, from an hour before it starts. The title stays in the card, so the item doesn't run under the notch next to a reminder. It turns into a white pill 5 minutes before the start and goes away 5 minutes after. All-day events stay out of the bar.
+- Events are read when Hammerspoon starts, every 5 minutes, when the Mac wakes and when the card opens.
+- They're read by a small Swift helper, `agenda.swift`. It's built the first time into `~/.cache/omv/Agenda.app`, which takes a few seconds, and it runs as its own app, because macOS asks the app that reads calendars for permission, and Hammerspoon can't ask. The first time, macOS asks to let "omv agenda" access your calendars. If you refuse, the card says so, and you can allow it later in System Settings > Privacy & Security > Calendars.
 
 ### Reminders
 
 Option+Shift+M asks "Remind me…". Type a time, then what to remember, such as `25m check deploy` or `1h30m stand up`, and press Enter. Times use `h`, `m` and `s`, and can be combined.
 
-<img src="docs/reminder.png" alt="The reminder card" width="480">
+Short forms: `r 25m check deploy` is the same as `25m check deploy`, `b` starts a break, and `c` cancels the soonest reminder.
+
+#### Pomodoro
+
+`pomo` starts 25 minutes of focus, and `pomo write tests` names the task. When the time is up, the screen dims and a large card takes over. Nothing after it starts on its own: you pick each step.
+
+1. **Time for a break.** Shows the task and today's count, as `2 OF 4 TODAY` with dots. Pick **Start 5-minute break**, **5 more minutes** (once per pomo), or **Skip break**.
+2. **Break.** A large countdown, a progress line and a tip that changes each break. The bar shows a coffee cup with the time left. **End break early** stops it.
+3. **Back to work?** Pick **Start next pomo**, which reuses the task, or **Done for now**.
+
+<img src="docs/pomo-done.png" alt="Time for a break: start the break, 5 more minutes, or skip it" width="560">
+<img src="docs/pomo-break.png" alt="The break: a countdown, a progress line and a tip" width="560">
+<img src="docs/pomo-over.png" alt="Back to work: start the next pomo or stop for now" width="560">
+
+- Each choice has a letter: `b` starts the break, `r` gives 5 more minutes, and `c` cancels, which skips the break, ends it early, or stops for now.
+- Escape skips the break on the first card, ends it early on the second, and stops on the last.
+- The cards stay open when focus moves away, since the break is the point. During a break, clicking the bar item reopens the countdown.
+- Typing `break` starts a 5-minute break straight away.
+- A break survives a Hammerspoon reload: the bar keeps counting down, and "Back to work?" opens when it ends.
+- Today's count is kept in `~/.local/state/omv/pomo`, and starts over each day.
+
+<img src="docs/reminder.png" alt="The reminder card, with its hint: 25m check deploy, pomo, b break, c cancel" width="480">
 
 - The bar shows the time left on the soonest reminder, plus `+N` for the others, such as `24:10 +1`. The text stays out of the bar, so it doesn't run under the notch.
 - When one is due, you get a notification and an alert, and the bar item turns into a white pill with the start of its text for 10 seconds.

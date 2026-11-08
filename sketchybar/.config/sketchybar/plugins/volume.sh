@@ -1,5 +1,6 @@
 #!/bin/sh
-# Handles the icon, click-to-mute and scroll-to-change. Volume glyphs are octal UTF-8 bytes.
+# Handles the icon, click-to-mute, right-click to pick the output, and scroll-to-change.
+# Volume glyphs are octal UTF-8 bytes.
 
 step=5
 
@@ -15,6 +16,11 @@ scrolled_level() {
     *) target=$((current + step)); [ "$target" -gt 100 ] && target=100; printf '%s' "$target" ;;
   esac
 }
+
+if [ "${SENDER:-}" = mouse.clicked ] && [ "${BUTTON:-}" = right ]; then
+  hs -c 'omvToggleSound()'
+  exit 0
+fi
 
 case ${SENDER:-} in
   mouse.clicked)

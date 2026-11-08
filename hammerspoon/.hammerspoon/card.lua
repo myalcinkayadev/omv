@@ -133,4 +133,96 @@ function card.html(screen)
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 
+-- The large card for Pomodoro breaks: the whole screen dims, and a wider card sits in
+-- the middle with a headline, or a countdown the page ticks itself. Up and Down move,
+-- Enter picks, and a row's letter key picks it at once. Escape is left to init.lua, which decides what it means on each card.
+local BIG_STYLE = [[
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; color: #fff; overflow: hidden;
+    font: 16px "JetBrainsMono Nerd Font Propo", "JetBrainsMono Nerd Font Mono", monospace; }
+  body.big { background: rgba(0, 0, 0, 0.72); display: flex; align-items: center; justify-content: center; }
+  .card { width: 560px; background: #000; border: 2px solid #8d8d8d; padding: 30px 30px 22px; }
+  .kicker { color: #7a7a7a; font-size: 14px; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .dots { display: flex; flex-wrap: wrap; gap: 8px; width: 72px; margin-bottom: 22px; }
+  .dots b { width: 10px; height: 10px; border-radius: 50%; background: #3a3a3a; }
+  .dots b.on { background: #fff; }
+  .title { font-size: 30px; margin: 0 0 8px; }
+  .sub { color: #bdbdbd; margin-bottom: 26px; }
+  .clock { font: 104px/1 "JetBrainsMono Nerd Font Mono", monospace; letter-spacing: 2px; margin: 6px 0 14px; }
+  .track { height: 4px; background: #2a2a2a; margin-bottom: 26px; }
+  .track i { display: block; height: 4px; width: 0; background: #fff; }
+  .tip { color: #d0d0d0; font-size: 17px; margin-bottom: 26px; }
+  .row { display: flex; align-items: center; height: 50px; padding: 0 14px; border-radius: 4px; color: #d0d0d0; font-size: 17px; cursor: default; }
+  .row .icon { width: 34px; font-size: 20px; }
+  .row .label { flex: 1; }
+  .row .hint { color: #7a7a7a; font-size: 14px; }
+  .row.selected { background: #fff; color: #000; }
+  .row.selected .hint { color: #3a3a3a; }
+]]
+
+local BIG_SCRIPT = [[
+  const rows = Array.from(document.querySelectorAll(".row"));
+  let selected = Math.max(0, Number(document.body.dataset.selected || 1) - 1);
+  const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
+  const draw = () => rows.forEach((row, index) => row.classList.toggle("selected", index === selected));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown") selected = (selected + 1) % rows.length;
+    else if (event.key === "ArrowUp") selected = (selected - 1 + rows.length) % rows.length;
+    else if (event.key === "Enter") return send("choose", rows[selected].dataset.id);
+    else {
+      const keyed = rows.find((row) => row.dataset.key === event.key.toLowerCase());
+      if (keyed) return send("choose", keyed.dataset.id);
+      return;
+    }
+    event.preventDefault();
+    draw();
+  });
+  rows.forEach((row) => row.addEventListener("click", () => send("choose", row.dataset.id)));
+  const clock = document.querySelector(".clock");
+  if (clock) {
+    const ends = Number(clock.dataset.ends), seconds = Number(clock.dataset.seconds);
+    const bar = document.querySelector(".track i");
+    const tick = () => {
+      const left = Math.max(0, Math.round(ends - Date.now() / 1000));
+      clock.textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+      bar.style.width = (100 * (1 - left / seconds)) + "%";
+    };
+    tick();
+    setInterval(tick, 250);
+  }
+  draw();
+]]
+
+local function bigRow(row)
+  local key = row.key and (' data-key="' .. card.escape(row.key) .. '"') or ""
+  return '<div class="row" data-id="' .. card.escape(row.id) .. '"' .. key .. ">"
+    .. "<span class=icon>" .. card.escape(row.icon or "") .. "</span>"
+    .. "<span class=label>" .. card.escape(row.label) .. "</span>"
+    .. "<span class=hint>" .. card.escape(row.hint or "") .. "</span></div>"
+end
+
+local function dotsHtml(dots)
+  if not dots then return "" end
+  local parts = {}
+  for index = 1, dots.total do parts[index] = index <= dots.filled and "<b class=on></b>" or "<b></b>" end
+  return "<div class=dots>" .. table.concat(parts) .. "</div>"
+end
+
+-- screen = { kicker, dots = { filled, total }, title, sub, countdown = { ends, seconds }, tip, rows, selected }
+function card.big(screen)
+  local rows = {}
+  for _, row in ipairs(screen.rows) do rows[#rows + 1] = bigRow(row) end
+  local body = "<div class=kicker>" .. card.escape(screen.kicker) .. "</div>" .. dotsHtml(screen.dots)
+  if screen.title then body = body .. "<div class=title>" .. card.escape(screen.title) .. "</div>" end
+  if screen.sub then body = body .. "<div class=sub>" .. card.escape(screen.sub) .. "</div>" end
+  if screen.countdown then
+    body = body .. '<div class=clock data-ends="' .. screen.countdown.ends .. '" data-seconds="' .. screen.countdown.seconds .. '"></div>'
+      .. "<div class=track><i></i></div>"
+  end
+  if screen.tip then body = body .. "<div class=tip>󰾄&nbsp; " .. card.escape(screen.tip) .. "</div>" end
+  return "<!doctype html><meta charset=utf-8><style>" .. BIG_STYLE .. "</style>"
+    .. '<body class="big" data-selected="' .. (screen.selected or 1) .. '"><div class=card>'
+    .. body .. table.concat(rows) .. "</div><script>" .. BIG_SCRIPT .. "</script></body>"
+end
+
 return card

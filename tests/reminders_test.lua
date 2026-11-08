@@ -18,6 +18,16 @@ check.that("should name a reminder without text Reminder", select(2, parsed("10m
 check.that("should refuse text without a duration", parsed("check deploy") == nil)
 check.that("should refuse a zero duration", parsed("0m nothing") == nil)
 check.that("should refuse a duration glued to the text", parsed("25mcheck") == nil)
+check.that("should read pomo as 25 minutes", (parsed("pomo")) == 25 * 60)
+check.that("should name a pomo without text Pomodoro", select(2, parsed("pomo")) == "Pomodoro")
+check.that("should keep the text after pomo", select(2, parsed("pomo write tests")) == "write tests")
+check.that("should read pomo in any case", (parsed("  Pomo ")) == 25 * 60)
+check.that("should read break as 5 minutes", (parsed("break")) == 5 * 60)
+check.that("should give typed pomo the pomo kind", select(3, reminders.parse("pomo write tests")) == "pomo")
+check.that("should give typed break the break kind", select(3, reminders.parse("break")) == "break")
+check.that("should give a timed reminder no kind", select(3, reminders.parse("25m check deploy")) == nil)
+check.that("should refuse a word that is not a preset", parsed("pomodoro") == nil)
+check.that("should refuse a preset glued to the text", parsed("pomo25") == nil)
 
 check.that("should format time left as m:ss under an hour", reminders.left(24 * 60 + 13) == "24:13")
 check.that("should format time left as h:mm from an hour up", reminders.left(2 * 3600 + 5 * 60 + 30) == "2:05")
@@ -45,5 +55,23 @@ check.that("should drop reminders already past when reloading",
 local input = card.html({ prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy" })
 check.that("should mark a card that takes typed input", check.contains(input, "data-input"))
 check.that("should show the input hint", check.contains(input, "25m check deploy"))
+
+local kinds = reminders.decode(reminders.encode({ { due = 2000, text = "Break", kind = "break" }, { due = 3000, text = "call" } }), 1000)
+check.that("should resume a break saved before a reload", kinds[1].kind == "break")
+check.that("should reload a plain reminder without a kind", kinds[2].kind == nil)
+check.that("should read reminders saved before kinds existed", reminders.decode("2000\tcall", 1000)[1].text == "call")
+
+check.that("should show a coffee cup in the bar during a break", reminders.icon({ { due = 1, text = "Break", kind = "break" } }) == "\u{F0176}")
+check.that("should show a target in the bar during a pomo", reminders.icon({ { due = 1, text = "write tests", kind = "pomo" } }) == "\u{F08C9}")
+check.that("should show a target for a postponed pomo", reminders.icon({ { due = 1, text = "write tests", kind = "postponed" } }) == "\u{F08C9}")
+check.that("should show the timer for a plain reminder", reminders.icon({ { due = 1, text = "call" } }) == "\u{F051B}")
+check.that("should pick the icon from the soonest reminder",
+  reminders.icon({ { due = 9, text = "call" }, { due = 2, text = "write tests", kind = "pomo" } }) == "\u{F08C9}")
+
+check.that("should read r 25m check deploy like 25m check deploy",
+  (parsed("r 25m check deploy")) == 25 * 60 and select(2, parsed("r 25m check deploy")) == "check deploy")
+check.that("should read b as a 5-minute break", (parsed("b")) == 5 * 60 and select(3, reminders.parse("b")) == "break")
+check.that("should read c as cancel", select(3, reminders.parse("c")) == "cancel" and parsed("c") == nil)
+check.that("should still refuse an unknown single letter", parsed("x") == nil and select(3, reminders.parse("x")) == nil)
 
 check.finish()
