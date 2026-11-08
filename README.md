@@ -36,6 +36,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 - **Focus border:** the focused window gets a 2pt gray outline, the same gray as the cards' border, drawn by [JankyBorders](https://github.com/FelixKratz/JankyBorders). It starts with AeroSpace.
 - **Trackpad:** swipe three fingers left or right to move one workspace, wrapping around. A swipe stays on the focused monitor, so with two monitors it cycles 1-3 on the main one and 4-6 on the secondary.
 - **Option+Tab** goes back to the previous workspace.
+- **Tabbed layout:** Option+A switches the workspace between tiles and tabs. In tabs, the focused window takes almost the whole width and the others peek out at the edges, which suits a laptop screen. Option+H / L move between them. AeroSpace remembers the layout per workspace.
 - **Dragging:** Ctrl+Cmd+drag moves a floating window by any part of it. A tiled window snaps back to its tile when you let go.
 - **Resize mode:** Option+Shift+R, shown as `RESIZE` in the bar. H / L make the window narrower / wider, and K / J shorter / taller. Escape or Enter leaves, and other shortcuts stay off until you do. Height only changes when windows are stacked vertically.
 - **btop** opens on workspace 1 when AeroSpace starts, unless one is already running.
@@ -190,6 +191,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+F | Toggle fullscreen |
 | Option+T | Toggle floating or tiled |
 | Option+R | Toggle the split between horizontal and vertical |
+| Option+A | Toggle tabbed or tiled |
 | Option+B | Make window sizes even |
 | Option+Shift+R | Enter resize mode |
 | Option+1-6 | Go to that workspace |

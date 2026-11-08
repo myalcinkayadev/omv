@@ -174,6 +174,9 @@ class ConfigContract(unittest.TestCase):
         triggers.append('"bar_fit"' in HAMMERSPOON.read_text(encoding="utf-8"))
         self.assertEqual(triggers, [True, True, True])
 
+    def test_should_bind_option_a_to_the_accordion_toggle(self) -> None:
+        self.assertEqual(load_aerospace()["mode"]["main"]["binding"].get("alt-a"), "layout accordion tiles")
+
     def test_should_put_the_clock_at_the_far_right(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertLess(source.index("--add item clock right"), source.index("--add item battery right"))

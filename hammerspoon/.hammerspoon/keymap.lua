@@ -66,6 +66,7 @@ local DESCRIPTIONS = {
   { "^fullscreen$", "Toggle fullscreen" },
   { "^layout floating tiling$", "Toggle floating or tiled" },
   { "^layout tiles horizontal vertical$", "Toggle the split direction" },
+  { "^layout accordion tiles$", "Toggle tabbed or tiled" },
   { "^balance%-sizes$", "Make window sizes even" },
   { "^mode resize$", "Enter resize mode" },
   { "^mode main$", "Leave resize mode" },

@@ -46,6 +46,7 @@ check("should label tab as Tab when building the cheat sheet", keymap.label("alt
 
 check("should describe a known command in words", keymap.describe("focus left") == "Focus the window left")
 check("should describe a numbered workspace command", keymap.describe("move-node-to-workspace 4") == "Send the window to workspace 4")
+check("should describe the accordion toggle in words", keymap.describe("layout accordion tiles") == "Toggle tabbed or tiled")
 check("should keep the command when it has no description", keymap.describe("flatten-workspace-tree") == "flatten-workspace-tree")
 
 local sheet = keymap.html(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"), { { label = "Option+/", description = "Show this list" } })

@@ -95,6 +95,8 @@ alt-f = 'fullscreen'
 alt-t = 'layout floating tiling'
 alt-b = 'balance-sizes'
 alt-r = 'layout tiles horizontal vertical'
+# Tabbed: the focused window takes the width, the others peek out at the edges.
+alt-a = 'layout accordion tiles'
 
 # Resize. Each mode key also tells the bar, which shows the current mode.
 alt-shift-r = ['mode resize', 'exec-and-forget /opt/homebrew/bin/sketchybar --trigger aerospace_mode_change MODE=resize']
