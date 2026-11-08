@@ -88,7 +88,8 @@ sketchybar --add item weather right \
   --set weather drawing=off icon.padding_right=3 label.padding_left=3 \
     click_script="hs -c 'omvToggleWeather()'"
 
-# Added after the status icons, so it sits just to the left of the weather.
+# Claude's logo and 5-hour limit; clicking it opens the Agents card. Added after the status
+# icons, so it sits just to the left of the weather.
 sketchybar --add event claude_usage_change \
   --add item claude_usage right \
   --set claude_usage drawing=off icon.width=27 icon.padding_left=0 icon.padding_right=0 \

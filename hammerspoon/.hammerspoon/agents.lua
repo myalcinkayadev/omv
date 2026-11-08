@@ -1,0 +1,144 @@
+-- The Agents card opened from the bar's robot: Claude Code's plan, and its session and
+-- weekly usage with the time until each resets. >_ continues the last Claude Code
+-- session, + starts a new one in a project picked from a list. Left and Right move
+-- between the two buttons, Enter or a click presses one, Escape closes.
+-- init.lua reads the usage file, ~/.claude.json and the session files, and passes them in.
+-- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
+
+local card = require("card")
+
+local agents = {}
+
+local DASH = "—"
+local DAY, HOUR, MINUTE = 86400, 3600, 60
+
+agents.WIDTH = 400
+agents.HEIGHT = 218
+
+local PLANS = { claude_pro = "Pro", claude_max = "Max" }
+
+local function window(used, resets, now)
+  if resets <= now then return { percent = 0 } end
+  return { percent = math.floor(used + 0.5), left = resets - now }
+end
+
+-- Reads ~/.local/state/omv/claude-usage: "<5h %> <5h reset> <7d %> <7d reset>".
+-- A window past its reset counts as 0%, since the file only updates while Claude Code runs.
+function agents.parseUsage(text, now)
+  local values = {}
+  for number in tostring(text or ""):gmatch("%S+") do values[#values + 1] = tonumber(number) end
+  if #values < 4 then return nil end
+  for index = 1, 4 do
+    if not values[index] then return nil end
+  end
+  return { five = window(values[1], values[2], now), seven = window(values[3], values[4], now) }
+end
+
+function agents.left(seconds)
+  if not seconds then return DASH end
+  if seconds >= DAY then
+    return string.format("%dd %dh", math.floor(seconds / DAY), math.floor(seconds % DAY / HOUR))
+  end
+  return string.format("%dh %02dm", math.floor(seconds / HOUR), math.floor(seconds % HOUR / MINUTE))
+end
+
+-- organizationType from ~/.claude.json, such as "claude_pro".
+function agents.plan(organizationType)
+  return PLANS[organizationType]
+end
+
+-- The folder a Claude Code session ran in, from its .jsonl file: the first "cwd" found.
+function agents.sessionCwd(text)
+  for line in tostring(text or ""):gmatch("[^\n]+") do
+    local cwd = line:match('"cwd"%s*:%s*"([^"]+)"')
+    if cwd then return cwd end
+  end
+  return nil
+end
+
+-- sessions = { { cwd, modified } }. Gives each folder once, the most recent first.
+function agents.projects(sessions)
+  local latest = {}
+  for _, session in ipairs(sessions) do
+    if not latest[session.cwd] or session.modified > latest[session.cwd] then latest[session.cwd] = session.modified end
+  end
+  local folders = {}
+  for folder in pairs(latest) do folders[#folders + 1] = folder end
+  table.sort(folders, function(a, b) return latest[a] > latest[b] end)
+  return folders
+end
+
+-- Rows for card.html: each project by its folder name, with its path from home.
+function agents.projectRows(folders, home)
+  local rows = {}
+  for _, folder in ipairs(folders) do
+    local short = folder:sub(1, #home) == home and ("~" .. folder:sub(#home + 1)) or folder
+    rows[#rows + 1] = { id = folder, icon = "󰉋", label = folder:match("([^/]+)/*$") or folder, hint = short }
+  end
+  return rows
+end
+
+function agents.shellQuote(text)
+  return "'" .. text:gsub("'", [['\'']]) .. "'"
+end
+
+local STYLE = [[
+  body { padding: 22px 24px; display: block; }
+  .head { display: flex; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid #2a2a2a; }
+  .head .icon { font-size: 28px; width: 30px; text-align: center; }
+  .head .title { font-size: 18px; }
+  .head .sub { color: #7a7a7a; letter-spacing: 2px; font-size: 13px; margin-top: 4px; }
+  .actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn { width: 40px; height: 36px; display: flex; align-items: center; justify-content: center;
+    background: #1a1a1a; color: #bdbdbd; font-size: 16px; cursor: default; }
+  .btn.selected { background: #333; color: #fff; }
+  .agent { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; }
+  .agent .logo { height: 20px; width: auto; }
+  .agent .logo.glyph { color: #d97757; font-size: 20px; line-height: 20px; text-align: center; }
+  .agent .name { font-size: 16px; flex: 1; }
+  .agent .plan { color: #7a7a7a; font-size: 13px; }
+  .limit { display: grid; grid-template-columns: 90px 1fr 70px; align-items: center; gap: 14px; height: 30px; font-size: 14px; }
+  .limit .bar { height: 4px; background: #2a2a2a; border-radius: 2px; }
+  .limit .fill { display: block; height: 4px; background: #fff; border-radius: 2px; }
+  .limit .left { color: #7a7a7a; text-align: right; white-space: nowrap; }
+]]
+
+local SCRIPT = [[
+  const buttons = Array.from(document.querySelectorAll(".btn"));
+  const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
+  let selected = 0;
+  const draw = () => buttons.forEach((button, index) => button.classList.toggle("selected", index === selected));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") return send("close");
+    if (event.key === "ArrowRight") selected = (selected + 1) % buttons.length;
+    else if (event.key === "ArrowLeft") selected = (selected - 1 + buttons.length) % buttons.length;
+    else if (event.key === "Enter") return send("choose", buttons[selected].dataset.id);
+    else return;
+    event.preventDefault();
+    draw();
+  });
+  buttons.forEach((button) => button.addEventListener("click", () => send("choose", button.dataset.id)));
+  draw();
+]]
+
+local function limit(name, usage)
+  usage = usage or { percent = 0 }
+  return "<div class=limit><span>" .. name .. "</span>"
+    .. '<span class=bar><i class=fill style="width: ' .. usage.percent .. '%"></i></span>'
+    .. "<span class=left>" .. agents.left(usage.left) .. "</span></div>"
+end
+
+-- model = { plan, usage = agents.parseUsage(...), logo = a data: URL of the Claude logo }
+function agents.html(model)
+  local usage = model.usage or {}
+  local logo = model.logo and ('<img class=logo src="' .. card.escape(model.logo) .. '">') or "<span class='logo glyph'>✳</span>"
+  return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. STYLE .. "</style><body>"
+    .. "<div class=head><div class=icon>󰚩</div><div><div class=title>Agents</div><div class=sub>SUBSCRIPTIONS</div></div>"
+    .. '<div class=actions><div class=btn data-id="agents.new">+</div><div class=btn data-id="agents.continue">&gt;_</div></div></div>'
+    .. "<div class=agent>" .. logo .. "<span class=name>Claude Code</span>"
+    .. "<span class=plan>" .. card.escape(model.plan or "") .. "</span></div>"
+    .. limit("Session", usage.five) .. limit("Weekly", usage.seven)
+    .. "<script>" .. SCRIPT .. "</script></body>"
+end
+
+return agents

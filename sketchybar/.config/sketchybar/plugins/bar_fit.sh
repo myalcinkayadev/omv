@@ -1,7 +1,7 @@
 #!/bin/sh
 # Keeps the right side of the bar clear of the notch. Run after an item there changes.
 # It shows everything, measures, then gives way in this order until it fits:
-#   1. Claude's numbers (its logo stays)
+#   1. Claude's 5-hour limit (its logo stays)
 #   2. the meeting's time (its icon stays)
 #   3. the weather's temperature (its icon stays)
 #   4. the Claude logo

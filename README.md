@@ -13,6 +13,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**System menu**](#system-menu): lock, sleep, restart and reload the tools.
 - [**Sound**](#sound): volume, mute, output and input devices, and a live mic level.
 - [**Wi-Fi and Ethernet**](#wi-fi-and-ethernet): the network, signal, address and router, a click away.
+- [**Agents**](#agents): Claude Code's session and weekly limits, and one click to continue or start a session.
 - [**Battery**](#battery): charge, time left, cycles and power draw.
 - [**Weather**](#weather): the temperature in the bar, and a three-day forecast for wherever the Mac is.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
@@ -63,7 +64,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Meeting | The next Calendar event's start time, from an hour before | Open the [calendar](#calendar-and-todays-events) | |
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
-| Claude | Usage limits, as `5h 23%  7d 41%` | Show the reset times for 10 seconds | |
+| Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
 | Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
 | Wi-Fi | Connected or not | Open the [Wi-Fi card](#wi-fi-and-ethernet) | |
@@ -71,9 +72,9 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Battery | Charge | Open the [Battery card](#battery) | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
-**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's numbers (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, the reminder and the status icons always stay, and everything comes back once there's room.
+**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, the reminder and the status icons always stay, and everything comes back once there's room.
 
-**Claude usage** shows the 5-hour and 7-day limits. The higher one sets the look: gray under 70%, white from 70%, and a white pill from 90%.
+**Claude usage** shows the 5-hour limit: gray under 70%, white from 70%, and a white pill from 90%. The 7-day limit is in the [Agents card](#agents).
 
 - The numbers come from Claude Code's status line, so they only update while Claude Code runs. Usage from elsewhere, such as claude.ai, shows after your next response in Claude Code.
 - A window past its reset time shows 0%.
@@ -131,6 +132,16 @@ The Ethernet item shows only while a cable is connected. Click it, or press Opti
 Left and Right move between the buttons, Enter presses one, and Escape or a click elsewhere closes.
 
 Since macOS 14, an app needs Location Services to read the Wi-Fi network's name. Hammerspoon asks for it once, for the weather, and without it the card shows `—` for the name.
+
+## Agents
+
+Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars for the session (5-hour) and weekly limits with the time until each resets.
+
+- **>_** continues your last Claude Code session, in the folder it ran in, with `claude --continue`.
+- **+** lists the folders you've used Claude Code in, most recent first. Type to filter, and Enter starts a new session there.
+- Both open a Ghostty window on workspace 1. Left and Right move between the two buttons, and Enter presses one.
+- The plan comes from `~/.claude.json`, and only its `organizationType` is read. The folders come from Claude Code's own session files in `~/.claude/projects`.
+- `claude` runs through your login shell, by `claude-in.sh`, so it's found on the PATH your shell sets up.
 
 ## Battery
 
@@ -220,7 +231,7 @@ Option+Shift+S opens a card for screen captures.
 - **Copy URL (Option+Shift+U):** copies Helium's current URL. The first time, macOS asks to let Hammerspoon control Helium.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 

@@ -16,6 +16,7 @@ local network = require("network")
 local sound = require("sound")
 local weather = require("weather")
 local battery = require("battery")
+local agents = require("agents")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -1044,6 +1045,99 @@ local function toggleBattery()
   showBattery()
 end
 
+-- Agents card (click the robot in the bar). >_ continues the last Claude Code session,
+-- in its folder; + lists the recent Claude Code projects, to start a new session in one.
+-- Both open a Ghostty window on workspace 1.
+
+local HOME = os.getenv("HOME")
+local CLAUDE_IN = hs.configdir .. "/claude-in.sh"
+local CLAUDE_USAGE = HOME .. "/.local/state/omv/claude-usage"
+local CLAUDE_CONFIG = HOME .. "/.claude.json"
+local CLAUDE_LOGO = HOME .. "/.config/sketchybar/icons/claude.png"
+-- Enough recent sessions to fill the project list, without reading every one.
+local RECENT_SESSIONS = 60
+-- A session's folder is near the start of its file, so only that much is read.
+local SESSION_HEAD_BYTES = 65536
+local PROJECTS_VISIBLE_ROWS = 10
+local claudeLogo = nil
+
+local function readText(path, bytes)
+  local file = io.open(path, "r")
+  if not file then return nil end
+  local text = file:read(bytes or "*a")
+  file:close()
+  return text
+end
+
+-- Only organizationType is read from ~/.claude.json, for the plan's name.
+local function claudePlan()
+  local ok, config = pcall(hs.json.read, CLAUDE_CONFIG)
+  local account = ok and type(config) == "table" and config.oauthAccount or nil
+  return agents.plan(account and account.organizationType)
+end
+
+local function logoUrl()
+  if claudeLogo == nil then
+    local image = hs.image.imageFromPath(CLAUDE_LOGO)
+    claudeLogo = image and image:encodeAsURLString() or false
+  end
+  return claudeLogo or nil
+end
+
+-- The recent Claude Code sessions, newest first, as { cwd, modified }.
+local function recentSessions()
+  local listing = hs.execute("/bin/ls -t " .. HOME .. "/.claude/projects/*/*.jsonl 2>/dev/null | /usr/bin/head -n " .. RECENT_SESSIONS)
+  local sessions = {}
+  for path in listing:gmatch("[^\n]+") do
+    local cwd = agents.sessionCwd(readText(path, SESSION_HEAD_BYTES))
+    if cwd then sessions[#sessions + 1] = { cwd = cwd, modified = hs.fs.attributes(path, "modification") or 0 } end
+  end
+  return sessions
+end
+
+local function startClaude(folder, arguments)
+  local command = CLAUDE_IN .. " " .. agents.shellQuote(folder) .. (arguments and (" " .. arguments) or "")
+  run(LAUNCH, { "1", GHOSTTY_WINDOW, command })()
+end
+
+local onAgentsMessage
+
+local function showAgents()
+  local model = { plan = claudePlan(), usage = agents.parseUsage(readText(CLAUDE_USAGE), os.time()), logo = logoUrl() }
+  showPanel("agents", anchored(agents.WIDTH, agents.HEIGHT), agents.html(model), onAgentsMessage)
+end
+
+local function onProjectMessage(message)
+  if message.type == "back" then return showAgents() end
+  if message.type ~= "choose" then return closePanel() end
+  -- Leave focus to the new window, rather than handing it back to the app open before.
+  panel.previous = nil
+  closePanel()
+  startClaude(message.id)
+end
+
+local function showProjects()
+  local rows = agents.projectRows(agents.projects(recentSessions()), HOME)
+  local screen = { prompt = "New Claude session in…", rows = rows, compact = true, hint = "No Claude Code projects yet" }
+  local height = 28 + 46 + math.max(1, math.min(#rows, PROJECTS_VISIBLE_ROWS)) * 30 + 8
+  showPanel("agents-projects", centered(WINDOWS_WIDTH, height), card.html(screen), onProjectMessage)
+end
+
+onAgentsMessage = function(message)
+  if message.type ~= "choose" then return closePanel() end
+  if message.id == "agents.new" then return showProjects() end
+  local latest = recentSessions()[1]
+  if not latest then return hs.alert.show("No Claude Code sessions yet", ALERT_STYLE, 1.5) end
+  panel.previous = nil
+  closePanel()
+  startClaude(latest.cwd, "--continue")
+end
+
+local function toggleAgents()
+  if panel and (panel.name == "agents" or panel.name == "agents-projects") then return closePanel() end
+  showAgents()
+end
+
 -- Copy URL (Option+Shift+U)
 
 local function copyUrl()
@@ -1098,6 +1192,7 @@ omvToggleWifi = later(toggleWifi)
 omvToggleEthernet = later(toggleEthernet)
 omvToggleWeather = later(toggleWeather)
 omvToggleBattery = later(toggleBattery)
+omvToggleAgents = later(toggleAgents)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)

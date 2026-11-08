@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Behavior of the bar's Claude usage limit: the writer, the bar plugin and the wrapper line.
+# Behavior of the bar's Claude usage: the writer, the bar item and the wrapper line.
 
 source "$(dirname "$0")/lib.sh"
 
@@ -75,22 +75,22 @@ skips_notify_when_unchanged() {
   assert_not_called '^sketchybar'
 }
 
-shows_both_windows() {
+shows_only_the_session_limit() {
   save_usage 23 "$FUTURE" 41 "$FUTURE"
   run_plugin
-  assert_called 'label=5h 23%  7d 41% '
+  assert_called '^sketchybar --set claude_usage drawing=on label=5h 23% '
 }
 
-rounds_percentages() {
-  save_usage 23.5 "$FUTURE" 41.2 "$FUTURE"
+rounds_the_session_limit() {
+  save_usage 23.5 "$FUTURE" 41 "$FUTURE"
   run_plugin
-  assert_called 'label=5h 24%  7d 41% '
+  assert_called ' label=5h 24% '
 }
 
-zeroes_passed_window() {
+zeroes_a_passed_session() {
   save_usage 90 "$PAST" 41 "$FUTURE"
   run_plugin
-  assert_called 'label=5h 0%  7d 41% '
+  assert_called ' label=5h 0% '
 }
 
 gray_under_70() {
@@ -111,59 +111,22 @@ pill_at_90() {
   assert_called 'label.color=0xff000000 background.drawing=on$'
 }
 
-uses_higher_window() {
+ignores_weekly_limit() {
   save_usage 10 "$FUTURE" 95 "$FUTURE"
   run_plugin
-  assert_called 'label.color=0xff000000 background.drawing=on$'
-}
-
-shows_resets_after_click() {
-  save_usage 23 "$FUTURE" 41 "$FUTURE"
-  run_plugin SENDER=mouse.clicked
-  local five seven
-  five=$(date -r "$FUTURE" '+%H:%M')
-  seven=$(date -r "$FUTURE" '+%a %H:%M')
-  assert_called "label=5h $five  7d $seven "
-}
-
-shows_percentages_after_second_click() {
-  save_usage 23 "$FUTURE" 41 "$FUTURE"
-  run_plugin SENDER=mouse.clicked
-  : > "$CALL_LOG"
-  run_plugin SENDER=mouse.clicked
-  assert_called 'label=5h 23%  7d 41% '
-}
-
-# sleep is stubbed, so the 10-second switch back happens at once, in the background.
-returns_to_percentages() {
-  stub sleep
-  save_usage 23 "$FUTURE" 41 "$FUTURE"
-  run_plugin SENDER=mouse.clicked
-  local attempt
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    [ -e "$(state_file)-resets-view" ] || break
-    /bin/sleep 0.1
-  done
-  if [ -e "$(state_file)-resets-view" ]; then
-    fail 'reset times stayed on'
-  fi
-}
-
-tells_bar_when_returning() {
-  stub sleep
-  save_usage 23 "$FUTURE" 41 "$FUTURE"
-  run_plugin SENDER=mouse.clicked
-  local attempt
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    grep -q -e '--trigger claude_usage_change' "$CALL_LOG" && break
-    /bin/sleep 0.1
-  done
-  assert_called '^sketchybar --trigger claude_usage_change$'
+  assert_called 'label.color=0xff7a7a7a background.drawing=off$'
 }
 
 hides_without_data() {
   run_plugin
   assert_called '^sketchybar --set claude_usage drawing=off$'
+}
+
+opens_agents_on_click() {
+  stub hs
+  save_usage 23 "$FUTURE" 41 "$FUTURE"
+  run_plugin SENDER=mouse.clicked
+  assert_called "^hs -c omvToggleAgents\(\)$"
 }
 
 adds_line() {
@@ -228,18 +191,15 @@ run_case 'should exit zero when the input is invalid JSON' survives_invalid_json
 run_case 'should exit zero when sketchybar is missing' survives_missing_sketchybar
 run_case 'should notify the bar when the values change' notifies_when_changed
 run_case 'should not notify the bar when the values are unchanged' skips_notify_when_unchanged
-run_case 'should show both windows when data exists' shows_both_windows
-run_case 'should round percentages to whole numbers' rounds_percentages
-run_case 'should show 0% for a window whose reset time has passed' zeroes_passed_window
-run_case 'should switch back to percentages after showing reset times' returns_to_percentages
-run_case 'should tell the bar when it switches back to percentages' tells_bar_when_returning
+run_case 'should show only the session limit when data exists' shows_only_the_session_limit
+run_case 'should round the session limit to a whole number' rounds_the_session_limit
+run_case 'should show 0% when the session has reset' zeroes_a_passed_session
 run_case 'should use gray when usage is under 70%' gray_under_70
 run_case 'should use white when usage is 70%' white_at_70
 run_case 'should use the pill when usage is 90%' pill_at_90
-run_case 'should use the higher window for the color' uses_higher_window
-run_case 'should show reset times after a click' shows_resets_after_click
-run_case 'should show percentages after a second click' shows_percentages_after_second_click
+run_case 'should color by the session limit alone, leaving the weekly one to the card' ignores_weekly_limit
 run_case 'should hide the item when no data exists' hides_without_data
+run_case 'should open the Agents card on a click' opens_agents_on_click
 run_case 'should add the line when it is missing' adds_line
 run_case 'should add the line after the input is read' adds_line_after_input_is_read
 run_case 'should add nothing when run twice' adds_nothing_twice

@@ -17,20 +17,23 @@ fi
 
 percent=$(printf '%s\n' "$battery_line" | sed -E 's/.*[[:space:]]([0-9]{1,3})%.*/\1/')
 
+# Upright Material Design batteries, filled to the tens below the charge.
 case $status in
-  *"'AC Power'"*) glyph='\357\203\247' ;;
+  *"'AC Power'"*) glyph='\363\260\202\204' ;;
   *)
-    if [ "$percent" -ge 90 ]; then
-      glyph='\357\211\200'
-    elif [ "$percent" -ge 60 ]; then
-      glyph='\357\211\201'
-    elif [ "$percent" -ge 35 ]; then
-      glyph='\357\211\202'
-    elif [ "$percent" -ge 10 ]; then
-      glyph='\357\211\203'
-    else
-      glyph='\357\211\204'
-    fi
+    case $((percent / 10)) in
+      10) glyph='\363\260\201\271' ;;
+      9) glyph='\363\260\202\202' ;;
+      8) glyph='\363\260\202\201' ;;
+      7) glyph='\363\260\202\200' ;;
+      6) glyph='\363\260\201\277' ;;
+      5) glyph='\363\260\201\276' ;;
+      4) glyph='\363\260\201\275' ;;
+      3) glyph='\363\260\201\274' ;;
+      2) glyph='\363\260\201\273' ;;
+      1) glyph='\363\260\201\272' ;;
+      0) glyph='\363\260\202\216' ;;
+    esac
     ;;
 esac
 

@@ -38,15 +38,16 @@ fit() {
 
 fits_already() {
   stub_bar; status_items
-  item claude_usage 1088 162
+  item weather 1180 70
+  item claude_usage 1140 40
   fit
   assert_not_called 'drawing=off'
 }
 
 shrinks_claude_first() {
   stub_bar; status_items
-  item claude_usage 1088 162
-  item reminder 900 90
+  item claude_usage 1150 90
+  item reminder 900 250
   item meeting 840 60
   fit
   assert_called '^sketchybar --set claude_usage label.drawing=off$'
@@ -54,64 +55,73 @@ shrinks_claude_first() {
 
 keeps_meeting_when_claude_is_enough() {
   stub_bar; status_items
-  item claude_usage 1088 162
-  item reminder 900 90
+  item claude_usage 1150 90
+  item reminder 900 250
   item meeting 840 60
   fit
   assert_not_called '^sketchybar --set meeting label.drawing=off$'
 }
 
-then_shrinks_meeting() {
+shrinks_meeting_first() {
   stub_bar; status_items
-  item claude_usage 1088 162
-  item keep_awake 1050 38
-  item reminder 700 350
-  item meeting 640 60
+  item claude_usage 1210 40
+  item reminder 900 310
+  item meeting 840 60
   fit
   assert_called '^sketchybar --set meeting label.drawing=off$'
 }
 
-hides_claude_last() {
+keeps_weather_when_meeting_is_enough() {
   stub_bar; status_items
-  item claude_usage 1088 162
-  item reminder 520 568
-  item meeting 440 80
+  item claude_usage 1210 40
+  item reminder 900 310
+  item meeting 840 60
+  item weather 1140 70
+  fit
+  assert_not_called '^sketchybar --set weather label.drawing=off$'
+}
+
+then_shrinks_weather() {
+  stub_bar; status_items
+  item weather 1180 70
+  item claude_usage 1140 40
+  item reminder 700 440
+  item meeting 640 60
+  fit
+  assert_called '^sketchybar --set weather label.drawing=off$'
+}
+
+keeps_logo_when_weather_is_enough() {
+  stub_bar; status_items
+  item weather 1180 70
+  item claude_usage 1140 40
+  item reminder 860 280
+  item meeting 800 60
+  fit
+  assert_not_called '^sketchybar --set claude_usage icon.drawing=off$'
+}
+
+hides_logo_last() {
+  stub_bar; status_items
+  item weather 1180 70
+  item claude_usage 1140 40
+  item reminder 700 440
+  item meeting 640 60
   fit
   assert_called '^sketchybar --set claude_usage icon.drawing=off$'
 }
 
 restores_when_room() {
   stub_bar; status_items
-  item claude_usage 1088 162
+  item claude_usage 1210 40
   fit
   assert_called '^sketchybar --set claude_usage icon.drawing=on label.drawing=on --set meeting label.drawing=on --set weather label.drawing=on$'
 }
 
-then_shrinks_weather() {
-  stub_bar; status_items
-  item weather 1180 70
-  item claude_usage 1018 162
-  item reminder 470 548
-  item meeting 410 60
-  fit
-  assert_called '^sketchybar --set weather label.drawing=off$'
-}
-
-keeps_weather_when_meeting_is_enough() {
-  stub_bar; status_items
-  item weather 1180 70
-  item claude_usage 1018 162
-  item keep_awake 980 38
-  item reminder 760 220
-  item meeting 700 60
-  fit
-  assert_not_called '^sketchybar --set weather label.drawing=off$'
-}
-
 never_hides_keep_awake_or_reminder() {
   stub_bar; status_items
-  item claude_usage 1088 162
-  item reminder 520 568
+  item claude_usage 1210 40
+  item reminder 520 690
   item meeting 440 80
   fit
   assert_not_called '--set (keep_awake|reminder) '
@@ -119,7 +129,7 @@ never_hides_keep_awake_or_reminder() {
 
 ignores_hidden_items() {
   stub_bar; status_items
-  item claude_usage 1088 162
+  item claude_usage 1210 40
   printf '{"geometry":{"drawing":"off"},"bounding_rects":{"display-1":{"origin":[100,0],"size":[90,36]}}}' > "$SANDBOX/meeting.json"
   fit
   assert_not_called 'drawing=off'
@@ -128,10 +138,11 @@ ignores_hidden_items() {
 run_case 'should change nothing when everything fits' fits_already
 run_case "should shrink Claude to its logo first" shrinks_claude_first
 run_case 'should keep the meeting time when shrinking Claude is enough' keeps_meeting_when_claude_is_enough
-run_case 'should then show the meeting as just its icon' then_shrinks_meeting
-run_case 'should then show the weather as just its icon' then_shrinks_weather
+run_case 'should then show the meeting as just its icon' shrinks_meeting_first
 run_case 'should keep the weather temperature when shrinking the meeting is enough' keeps_weather_when_meeting_is_enough
-run_case 'should hide Claude completely last' hides_claude_last
+run_case 'should then show the weather as just its icon' then_shrinks_weather
+run_case 'should keep the Claude logo when shrinking the weather is enough' keeps_logo_when_weather_is_enough
+run_case 'should hide the Claude logo last' hides_logo_last
 run_case 'should bring back every item before measuring' restores_when_room
 run_case 'should never hide keep-awake or the reminder' never_hides_keep_awake_or_reminder
 run_case 'should leave hidden items out of the measure' ignores_hidden_items
