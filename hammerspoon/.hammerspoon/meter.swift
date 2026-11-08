@@ -1,6 +1,7 @@
 // Mic level helper for the Sound card's meter. Usage: meter <file>
 // Writes the default input's level to <file> about ten times a second, as one line from
-// 0.000 to 1.000, or "denied" when microphone access was refused.
+// 0.000 to 1.000, "denied" when microphone access was refused, or "none" when the Mac
+// has no input to listen to.
 // It stops by itself once <file>.alive is more than 3 seconds old, so it never outlives
 // the card, even if Hammerspoon stops touching that file without stopping it.
 import AVFoundation
@@ -32,7 +33,11 @@ var shown: Float = 0
 
 func start() {
   let input = engine.inputNode
-  input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0)) { buffer, _ in
+  let format = input.outputFormat(forBus: 0)
+  // A Mac mini or Studio with nothing plugged in has an input with no channels, and
+  // tapping it would crash.
+  guard format.sampleRate > 0, format.channelCount > 0 else { write("none"); exit(0) }
+  input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
     latest = level(buffer)
   }
   do { try engine.start() } catch { write("0.000"); exit(1) }

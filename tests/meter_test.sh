@@ -61,12 +61,12 @@ skips_build_when_helper_is_fresh() {
 starts_helper_hidden_without_waiting() {
   stub_meter_tools
   meter start "$SANDBOX/level"
-  assert_called "^open -g -j $(app) --args $SANDBOX/level$"
+  assert_called "^open -n -g -j $(app) --args $SANDBOX/level$"
 }
 
 stops_helper_by_name() {
   meter stop
-  assert_called '^pkill -x meter$'
+  assert_called "^pkill -f $(app)/Contents/MacOS/meter$"
 }
 
 fails_when_the_build_fails() {

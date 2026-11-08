@@ -776,14 +776,28 @@ end
 local METER_FILE = os.getenv("HOME") .. "/.cache/omv/meter-level"
 local METER_ALIVE = METER_FILE .. ".alive"
 local METER_SECONDS = 0.1
+-- How long to wait for the helper's first answer before letting a click elsewhere close
+-- the card again, in case the helper never starts.
+local METER_ANSWER_SECONDS = 10
 local meterTimer = nil
--- Whether the helper has answered since it started: a level, or "denied". Until then the
--- card may be under macOS's microphone prompt, so losing focus must not close it.
+local meterAnswerTimer = nil
+-- Bumped by every start and stop, so a start still waiting on an earlier stop gives up.
+local meterGeneration = 0
+-- Whether the helper has answered since it started: a level, "denied" or "none". Until
+-- then the card may be under macOS's microphone prompt, so losing focus must not close it.
 local meterAnswered = false
 
 local function touchMeterAlive()
   local file = io.open(METER_ALIVE, "w")
   if file then file:close() end
+end
+
+local function meterHasAnswered()
+  if meterAnswered then return end
+  meterAnswered = true
+  if meterAnswerTimer then meterAnswerTimer:stop() end
+  meterAnswerTimer = nil
+  if panel and panel.name == "sound" then panel.keepOnBlur = false end
 end
 
 local function readMeter()
@@ -793,37 +807,46 @@ local function readMeter()
   local line = file:read("*l")
   file:close()
   if not line then return end
-  if not meterAnswered then
-    meterAnswered = true
-    if panel and panel.name == "sound" then panel.keepOnBlur = false end
-  end
+  meterHasAnswered()
   local level = tonumber(line)
   if level and panel and panel.name == "sound" then view:evaluateJavaScript("omvLevel(" .. level .. ")") end
 end
 
-local function stopMeter()
+local function stopMeterTimers()
   if meterTimer then meterTimer:stop() end
-  meterTimer = nil
+  if meterAnswerTimer then meterAnswerTimer:stop() end
+  meterTimer, meterAnswerTimer = nil, nil
+end
+
+local function stopMeter()
+  meterGeneration = meterGeneration + 1
+  stopMeterTimers()
   os.remove(METER_ALIVE)
   hs.task.new(METER, nil, { "stop" }):start()
 end
 
-local function startMeter()
+local function launchMeter(generation)
   os.execute("/bin/mkdir -p '" .. os.getenv("HOME") .. "/.cache/omv'")
   os.remove(METER_FILE)
   touchMeterAlive()
-  meterAnswered = false
-  hs.task.new(METER, nil, { "start", METER_FILE }):start()
+  hs.task.new(METER, function(code)
+    -- The helper couldn't be built or started: it will never answer.
+    if code ~= 0 and generation == meterGeneration then meterHasAnswered() end
+  end, { "start", METER_FILE }):start()
   meterTimer = hs.timer.doEvery(METER_SECONDS, readMeter)
+  meterAnswerTimer = hs.timer.doAfter(METER_ANSWER_SECONDS, meterHasAnswered)
 end
 
--- The helper listens to the input that was default when it started, so a new input
--- restarts it once the old one has stopped.
-local function restartMeter()
-  if meterTimer then meterTimer:stop() end
-  meterTimer = nil
+-- Stops any helper first and starts the new one once it has gone, so the two never
+-- overlap. The helper listens to the input that was default when it started, so picking
+-- a new input starts it again this way too.
+local function startMeter()
+  meterGeneration = meterGeneration + 1
+  local generation = meterGeneration
+  stopMeterTimers()
+  meterAnswered = false
   hs.task.new(METER, function()
-    if panel and panel.name == "sound" then startMeter() end
+    if generation == meterGeneration and panel and panel.name == "sound" then launchMeter(generation) end
   end, { "stop" }):start()
 end
 
@@ -880,15 +903,16 @@ onSoundMessage = function(message)
   if device and message.type == "output" then device:setDefaultOutputDevice() end
   if device and message.type == "input" then
     device:setDefaultInputDevice()
-    restartMeter()
+    startMeter()
   end
   showSound()
   redrawVolumeBar()
 end
 
+-- The meter starts first, so the card opens knowing the helper hasn't answered yet.
 openSound = function()
-  showSound()
   startMeter()
+  showSound()
 end
 
 local function toggleSound()
@@ -970,11 +994,16 @@ local function readWeather(tries)
   end
   hs.location.start()
   local location = hs.location.get()
-  if location then return fetchWeather(location) end
+  -- One fix is enough, so Location Services isn't kept running between readings.
+  if location then
+    hs.location.stop()
+    return fetchWeather(location)
+  end
   -- The first fix, or the permission answer, can take a few seconds.
   if tries < LOCATION_RETRIES then
     hs.timer.doAfter(LOCATION_RETRY_SECONDS, function() readWeather(tries + 1) end)
   else
+    hs.location.stop()
     weatherProblem = "Couldn't find your location"
     weatherChanged()
   end

@@ -45,11 +45,13 @@ case ${1:-} in
   start)
     [ -n "${2:-}" ] || exit 2
     build_helper
-    # -g keeps focus where it is, -j starts it hidden. No -W: it runs until stopped.
-    open -g -j "$app" --args "$2"
+    # -n starts a new one even while a stopped one is still exiting, -g keeps focus where
+    # it is, -j starts it hidden. No -W: it runs until stopped.
+    open -n -g -j "$app" --args "$2"
     ;;
   stop)
-    pkill -x meter
+    # By its full path, so no other process called "meter" is touched.
+    pkill -f "$helper"
     exit 0
     ;;
   *)
