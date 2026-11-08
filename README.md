@@ -6,7 +6,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 
 ## Features
 
-- [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app, Vim-style keys, a tabbed layout, a focus border, and three-finger swipes.
+- [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app, Vim-style keys, Option+Tab back to the last workspace, a tabbed layout, a focus border, and three-finger swipes.
 - [**The bar**](#the-bar): workspaces, the playing track, reminders, meetings, Claude usage, and a macOS-style clock that stays clear of the notch.
 - [**Window list**](#window-list): Option+Space jumps to any window on any workspace.
 - [**Key list**](#key-list): Option+/ shows every shortcut at once, and runs the one you pick.
@@ -15,6 +15,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
 - [**Capture menu**](#capture-menu): screenshots, text from the screen, and a color picker.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
+- [**Doctor**](#doctor): `./doctor.sh` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
 Every card shares one design: a black card with a gray border, a title that doubles as a search field, and Up, Down, Enter and Escape to drive it.
 
