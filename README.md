@@ -41,6 +41,8 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 - **Resize mode:** Option+Shift+R, shown as `RESIZE` in the bar. H / L make the window narrower / wider, and K / J shorter / taller. Escape or Enter leaves, and other shortcuts stay off until you do. Height only changes when windows are stacked vertically.
 - **btop** opens on workspace 1 when AeroSpace starts, unless one is already running.
 
+![Tiles against tabbed: three code windows in thirds, where long lines wrap, and the same three tabbed, where the focused window gets the width and the others wait as strips at the edges](docs/tabbed.png)
+
 ## The bar
 
 ![The bar: workspaces and the playing track on the left, a reminder, Claude usage, status icons and the clock on the right](docs/bar.png)
