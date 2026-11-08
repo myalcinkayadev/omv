@@ -16,4 +16,7 @@ check.that("should use the pull request's URL as the row id", rows[2].id == "htt
 check.that("should return no rows when gh's answer could not be read", #prs.rows(nil) == 0)
 check.that("should skip a pull request without a URL", #prs.rows({ { number = 1, title = "x" } }) == 0)
 
+check.that("should send an empty card to GitHub's review requests page",
+  prs.REVIEW_REQUESTED_URL == "https://github.com/pulls/review-requested")
+
 check.finish()

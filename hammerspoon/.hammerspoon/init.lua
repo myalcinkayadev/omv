@@ -308,7 +308,7 @@ end
 local function showPrs(output)
   local readable, found = pcall(hs.json.decode, output)
   local rows = prs.rows(readable and found or nil)
-  if #rows == 0 then return hs.alert.show("No pull requests wait for your review", ALERT_STYLE, 1.2) end
+  if #rows == 0 then return open({ "-a", "Helium", prs.REVIEW_REQUESTED_URL })() end
   local height = 28 + 46 + math.min(#rows, WINDOWS_VISIBLE_ROWS) * 30 + 8
   showPanel("prs", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Pull requests…", rows = rows, compact = true }), onPrsMessage)
 end

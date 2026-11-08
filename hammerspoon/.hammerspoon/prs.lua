@@ -5,6 +5,9 @@ local prs = {}
 
 prs.FIELDS = "number,title,url,repository"
 
+-- Opened instead of the card when nothing waits, so the key always lands on GitHub.
+prs.REVIEW_REQUESTED_URL = "https://github.com/pulls/review-requested"
+
 -- found is gh's JSON already decoded, or nil when it could not be read.
 function prs.rows(found)
   local rows = {}

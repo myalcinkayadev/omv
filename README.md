@@ -281,7 +281,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+S | Capture menu | |
 | Option+Shift+M | Set a reminder | |
 | Option+Shift+D | Add a line to today's daily note | |
-| Option+Shift+G | Pull requests waiting for your review | |
+| Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |
 | Option+Shift+E | Ethernet card | |
