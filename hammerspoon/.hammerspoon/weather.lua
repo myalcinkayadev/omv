@@ -11,7 +11,7 @@ local DASH = "—"
 local FORECAST_DAYS = 3
 
 weather.WIDTH = 500
-weather.HEIGHT = 190
+weather.HEIGHT = 206
 weather.PROBLEM_HEIGHT = 120
 
 local WEEKDAYS = { "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY" }

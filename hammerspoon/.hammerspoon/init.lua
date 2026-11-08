@@ -12,6 +12,9 @@ local capture = require("capture")
 local reminders = require("reminders")
 local pomo = require("pomo")
 local agenda = require("agenda")
+local network = require("network")
+local sound = require("sound")
+local weather = require("weather")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -26,6 +29,7 @@ local LAUNCH = hs.configdir .. "/launch.sh"
 local COPY_URL = hs.configdir .. "/copy-url.sh"
 local CAPTURE = hs.configdir .. "/capture.sh"
 local AGENDA = hs.configdir .. "/agenda.sh"
+local METER = hs.configdir .. "/meter.sh"
 local GHOSTTY_WINDOW = os.getenv("HOME") .. "/.config/ghostty/new-window.sh"
 local AEROSPACE = "/opt/homebrew/bin/aerospace"
 local SKETCHYBAR = "/opt/homebrew/bin/sketchybar"
@@ -75,11 +79,18 @@ local view = nil
 local function closePanel()
   if not panel then return end
   -- Cleared first, because hiding fires the focus-loss callback, which calls this.
-  local previous = panel.previous
+  local previous, onClose = panel.previous, panel.onClose
   panel = nil
+  if onClose then onClose() end
   view:hide()
   closeOnEscape:disable()
   if previous then previous:activate() end
+end
+
+-- Right-aligned just below the 36pt bar, under the status items.
+local function anchored(width, height)
+  local screen = hs.screen.mainScreen():fullFrame()
+  return hs.geometry.rect(screen.x + screen.w - width - 10, screen.y + 40, width, height)
 end
 
 local function centered(width, height)
@@ -113,16 +124,18 @@ end
 
 -- options.onEscape replaces closing on Escape, and options.keepOnBlur keeps the card open
 -- when focus moves away. The Pomodoro cards use both: a break shouldn't vanish on Cmd+Tab.
+-- options.onClose runs when the card closes or another card takes its place.
 local function showPanel(name, frame, html, onMessage, options)
   options = options or {}
   if panel then
-    panel.name, panel.onMessage = name, onMessage
+    if panel.name ~= name and panel.onClose then panel.onClose() end
+    panel.name, panel.onMessage, panel.onClose = name, onMessage, options.onClose
     panel.onEscape, panel.keepOnBlur = options.onEscape, options.keepOnBlur
     view:frame(frame):html(html)
     return
   end
   panel = { name = name, onMessage = onMessage, previous = hs.application.frontmostApplication(),
-    onEscape = options.onEscape, keepOnBlur = options.keepOnBlur }
+    onEscape = options.onEscape, keepOnBlur = options.keepOnBlur, onClose = options.onClose }
   view:frame(frame):html(html):show()
   -- Typing needs Hammerspoon active. Its console would come forward with it, so close it.
   hs.closeConsole()
@@ -165,40 +178,15 @@ local ACTIONS = {
 
 local menuStack = {}
 
--- Output devices change as AirPods connect or a monitor is plugged in, so the Sound
--- screen is read each time it opens.
-local function soundScreen()
-  local current = hs.audiodevice.defaultOutputDevice()
-  local currentUid = current and current:uid()
-  local devices = {}
-  for _, device in ipairs(hs.audiodevice.allOutputDevices()) do
-    devices[#devices + 1] = {
-      uid = device:uid(),
-      name = device:name(),
-      transport = device:transportType(),
-      current = device:uid() == currentUid,
-    }
-  end
-  return menu.sound(devices)
-end
-
-local function setOutput(uid)
-  local device = hs.audiodevice.findDeviceByUID(uid)
-  if device and device:setDefaultOutputDevice() then
-    hs.alert.show("󰕾 " .. device:name(), ALERT_STYLE, 1.2)
-  else
-    hs.alert.show("Couldn't switch the sound output", ALERT_STYLE, 1.5)
-  end
-end
-
 local function screenFor(key)
-  if key == "sound" then return soundScreen() end
   local confirmed = key:match("^confirm:(.+)$")
   if confirmed then return menu.confirm(confirmed) end
   return menu.screen(key)
 end
 
 local onMenuMessage
+-- Defined with the Sound card below, which the system menu's Sound row opens.
+local openSound
 
 local function showMenuTop()
   local screen = screenFor(menuStack[#menuStack])
@@ -213,6 +201,7 @@ end
 
 local function menuChoose(id)
   if id == "cancel" then return menuBack() end
+  if id == "sound" then return openSound() end
   if menu.opens(id) then
     menuStack[#menuStack + 1] = id
     return showMenuTop()
@@ -222,8 +211,6 @@ local function menuChoose(id)
     return showMenuTop()
   end
   local action = ACTIONS[id]
-  local output = id:match("^sound%.(.+)$")
-  if output then action = function() setOutput(output) end end
   closePanel()
   if action then action() end
 end
@@ -237,13 +224,6 @@ end
 local function toggleSystemMenu()
   if panel and panel.name == "menu" then return closePanel() end
   menuStack = { "system" }
-  showMenuTop()
-end
-
--- Opens straight on Sound, with the system menu under it, so Left goes back to it.
-local function toggleSound()
-  if panel and panel.name == "menu" and menuStack[#menuStack] == "sound" then return closePanel() end
-  menuStack = { "system", "sound" }
   showMenuTop()
 end
 
@@ -619,10 +599,8 @@ end
 local onCalendarMessage
 
 local function showCalendar()
-  local screen = hs.screen.mainScreen():fullFrame()
-  -- Right-aligned under the clock, just below the 36pt bar.
   local now = os.time()
-  local frame = hs.geometry.rect(screen.x + screen.w - CALENDAR_WIDTH - 10, screen.y + 40, CALENDAR_WIDTH, calendar.height(agendaDay, now))
+  local frame = anchored(CALENDAR_WIDTH, calendar.height(agendaDay, now))
   local model = calendar.month(shown.year, shown.month, today())
   showPanel("calendar", frame, calendar.html(model, today(), agendaDay, now), onCalendarMessage)
 end
@@ -699,6 +677,322 @@ local function toggleCalendar()
   readAgenda(redrawOpenCalendar)
 end
 
+-- Wi-Fi and Ethernet cards (click the bar icons, Option+Shift+W / E)
+
+local WIFI_SETTINGS = "x-apple.systempreferences:com.apple.wifi-settings-extension"
+local NETWORK_SETTINGS = "x-apple.systempreferences:com.apple.Network-Settings.extension"
+-- Joining a network takes a moment after Wi-Fi turns on, so the card redraws again then.
+local WIFI_JOIN_SECONDS = 4
+
+local function ipv4(interface)
+  for _, address in ipairs(hs.network.addresses(interface) or {}) do
+    if address:match("^%d+%.%d+%.%d+%.%d+$") then return address end
+  end
+  return nil
+end
+
+local function routeFor(interface)
+  local scope = interface and ("-ifscope " .. interface .. " ") or ""
+  return network.parseRoute(hs.execute("/sbin/route -n get " .. scope .. "default 2>/dev/null"))
+end
+
+-- The network name needs Location for Hammerspoon; without it ssid is nil.
+local function wifiInfo()
+  local details = hs.wifi.interfaceDetails() or {}
+  local interface = details.interface or "en0"
+  local channel = details.wlanChannel or {}
+  return {
+    power = details.power == true,
+    ssid = details.ssid,
+    rssi = details.rssi,
+    ip = ipv4(interface),
+    router = routeFor(interface).gateway,
+    channel = channel.number,
+    band = channel.band,
+  }
+end
+
+-- The wired port with an address, preferring the one the default route leaves by.
+local function ethernetInfo()
+  local default = routeFor(nil).interface
+  local chosen = nil
+  for _, port in ipairs(network.wiredPorts(hs.execute("/usr/sbin/networksetup -listallhardwareports"))) do
+    local media = network.parseMedia(hs.execute("/sbin/ifconfig " .. port .. " 2>/dev/null"))
+    local ip = ipv4(port)
+    if media.active and ip and (not chosen or port == default) then
+      chosen = { port = port, ip = ip, mbps = media.mbps, duplex = media.duplex }
+    end
+  end
+  if chosen then chosen.router = routeFor(chosen.port).gateway end
+  return chosen
+end
+
+local onNetworkMessage
+local showWifi
+
+showWifi = function()
+  showPanel("wifi", anchored(network.WIDTH, network.HEIGHT), network.html(network.wifiModel(wifiInfo())), onNetworkMessage)
+end
+
+local function showEthernet(info)
+  showPanel("ethernet", anchored(network.WIDTH, network.HEIGHT), network.html(network.ethernetModel(info)), onNetworkMessage)
+end
+
+local function redrawWifi()
+  if panel and panel.name == "wifi" then showWifi() end
+  hs.task.new(SKETCHYBAR, nil, { "--update" }):start()
+end
+
+onNetworkMessage = function(message)
+  if message.type ~= "choose" then return closePanel() end
+  if message.id == "wifi.power" then
+    hs.wifi.setPower(not wifiInfo().power)
+    redrawWifi()
+    hs.timer.doAfter(WIFI_JOIN_SECONDS, redrawWifi)
+    return
+  end
+  local url = message.id == "wifi.settings" and WIFI_SETTINGS or NETWORK_SETTINGS
+  closePanel()
+  open({ url })()
+end
+
+local function toggleWifi()
+  if panel and panel.name == "wifi" then return closePanel() end
+  showWifi()
+end
+
+local function toggleEthernet()
+  if panel and panel.name == "ethernet" then return closePanel() end
+  local info = ethernetInfo()
+  if not info then return hs.alert.show("No cable connected", ALERT_STYLE, 1.5) end
+  showEthernet(info)
+end
+
+-- Sound card (click the volume icon, Option+Shift+V, or Sound in the system menu)
+-- While it is open, meter.sh runs a helper that writes the mic's level to a file. The card
+-- reads it ten times a second, and touches an .alive file the helper watches, so the
+-- helper stops by itself if this config is reloaded or stops reading.
+
+local METER_FILE = os.getenv("HOME") .. "/.cache/omv/meter-level"
+local METER_ALIVE = METER_FILE .. ".alive"
+local METER_SECONDS = 0.1
+local meterTimer = nil
+-- Whether the helper has answered since it started: a level, or "denied". Until then the
+-- card may be under macOS's microphone prompt, so losing focus must not close it.
+local meterAnswered = false
+
+local function touchMeterAlive()
+  local file = io.open(METER_ALIVE, "w")
+  if file then file:close() end
+end
+
+local function readMeter()
+  touchMeterAlive()
+  local file = io.open(METER_FILE, "r")
+  if not file then return end
+  local line = file:read("*l")
+  file:close()
+  if not line then return end
+  if not meterAnswered then
+    meterAnswered = true
+    if panel and panel.name == "sound" then panel.keepOnBlur = false end
+  end
+  local level = tonumber(line)
+  if level and panel and panel.name == "sound" then view:evaluateJavaScript("omvLevel(" .. level .. ")") end
+end
+
+local function stopMeter()
+  if meterTimer then meterTimer:stop() end
+  meterTimer = nil
+  os.remove(METER_ALIVE)
+  hs.task.new(METER, nil, { "stop" }):start()
+end
+
+local function startMeter()
+  os.execute("/bin/mkdir -p '" .. os.getenv("HOME") .. "/.cache/omv'")
+  os.remove(METER_FILE)
+  touchMeterAlive()
+  meterAnswered = false
+  hs.task.new(METER, nil, { "start", METER_FILE }):start()
+  meterTimer = hs.timer.doEvery(METER_SECONDS, readMeter)
+end
+
+-- The helper listens to the input that was default when it started, so a new input
+-- restarts it once the old one has stopped.
+local function restartMeter()
+  if meterTimer then meterTimer:stop() end
+  meterTimer = nil
+  hs.task.new(METER, function()
+    if panel and panel.name == "sound" then startMeter() end
+  end, { "stop" }):start()
+end
+
+local function deviceList(devices, current)
+  local currentUid = current and current:uid()
+  local result = {}
+  for _, device in ipairs(devices) do
+    result[#result + 1] = { uid = device:uid(), name = device:name(), transport = device:transportType(), current = device:uid() == currentUid }
+  end
+  return result
+end
+
+-- A device that takes no volume reports nil, which the card shows as a dash.
+local function soundState()
+  local output, input = hs.audiodevice.defaultOutputDevice(), hs.audiodevice.defaultInputDevice()
+  return {
+    outputs = deviceList(hs.audiodevice.allOutputDevices(), output),
+    inputs = deviceList(hs.audiodevice.allInputDevices(), input),
+    outputVolume = output and output:outputVolume() or false,
+    inputVolume = input and input:inputVolume() or false,
+    muted = output and output:outputMuted() or false,
+  }
+end
+
+local function redrawVolumeBar()
+  local output = hs.audiodevice.defaultOutputDevice()
+  local level = output and output:outputVolume()
+  hs.task.new(SKETCHYBAR, nil, { "--trigger", "volume_change", "INFO=" .. (level and math.floor(level + 0.5) or "") }):start()
+end
+
+local onSoundMessage
+
+local function showSound()
+  local state = soundState()
+  showPanel("sound", anchored(sound.WIDTH, sound.height(state)), sound.html(state), onSoundMessage,
+    { keepOnBlur = not meterAnswered, onClose = stopMeter })
+end
+
+onSoundMessage = function(message)
+  if message.type == "close" then return closePanel() end
+  local output, input = hs.audiodevice.defaultOutputDevice(), hs.audiodevice.defaultInputDevice()
+  local level = tonumber(message.id)
+  -- The page already shows a new volume, so only the bar is redrawn.
+  if message.type == "volume" and output and level then
+    output:setOutputVolume(level)
+    return redrawVolumeBar()
+  end
+  if message.type == "inputVolume" and input and level then
+    input:setInputVolume(level)
+    return
+  end
+  if message.type == "mute" and output then output:setOutputMuted(not output:outputMuted()) end
+  local device = (message.type == "output" or message.type == "input") and hs.audiodevice.findDeviceByUID(message.id)
+  if device and message.type == "output" then device:setDefaultOutputDevice() end
+  if device and message.type == "input" then
+    device:setDefaultInputDevice()
+    restartMeter()
+  end
+  showSound()
+  redrawVolumeBar()
+end
+
+openSound = function()
+  showSound()
+  startMeter()
+end
+
+local function toggleSound()
+  if panel and panel.name == "sound" then return closePanel() end
+  openSound()
+end
+
+-- A helper left running by an earlier load of this config.
+hs.task.new(METER, nil, { "stop" }):start()
+
+-- Weather (the bar item, Option+Shift+O). It follows the Mac's location, which macOS asks
+-- to share with Hammerspoon the first time. Read every 30 minutes, on wake and when the
+-- card opens. The last good reading stays shown when a later one fails.
+
+local WEATHER_REFRESH_SECONDS = 1800
+local LOCATION_RETRY_SECONDS = 5
+local LOCATION_RETRIES = 6
+local weatherReading, weatherCity, weatherProblem = nil, nil, nil
+local weatherBarShown = nil
+
+local function drawWeatherBar()
+  local properties = { "drawing=off" }
+  if weatherReading then
+    properties = { "drawing=on", "icon=" .. weatherReading.icon, "label=" .. weather.barLabel(weatherReading) }
+  end
+  local key = table.concat(properties, "\n")
+  if key == weatherBarShown then return end
+  weatherBarShown = key
+  local arguments = { "--set", "weather" }
+  for _, property in ipairs(properties) do arguments[#arguments + 1] = property end
+  arguments[#arguments + 1] = "--trigger"
+  arguments[#arguments + 1] = "bar_fit"
+  hs.task.new(SKETCHYBAR, nil, arguments):start()
+end
+
+local function showWeather()
+  showPanel("weather", anchored(weather.WIDTH, weather.height(weatherReading)),
+    weather.html(weatherReading, weatherCity, weatherProblem), function() closePanel() end)
+end
+
+local function weatherChanged()
+  drawWeatherBar()
+  if panel and panel.name == "weather" then showWeather() end
+end
+
+local function fetchWeather(location)
+  -- Two decimals is about a kilometre: close enough for weather, and no more exact than needed.
+  local url = weather.url(string.format("%.2f", location.latitude), string.format("%.2f", location.longitude))
+  hs.http.asyncGet(url, nil, function(status, body)
+    local ok, data = pcall(hs.json.decode, body or "")
+    local reading = status == 200 and ok and weather.reading(data) or nil
+    if reading then
+      weatherReading, weatherProblem = reading, nil
+    else
+      weatherProblem = status == 200 and "Couldn't read the weather" or "No connection"
+    end
+    weatherChanged()
+  end)
+  hs.location.geocoder.lookupLocation(location, function(found, places)
+    if not found or not places or not places[1] then return end
+    weatherCity = places[1].locality or places[1].name
+    weatherChanged()
+  end)
+end
+
+local function locationProblem()
+  if not hs.location.servicesEnabled() then return "Turn on Location Services in System Settings" end
+  local status = hs.location.authorizationStatus()
+  if status == "denied" or status == "restricted" then return "Allow Location for Hammerspoon in System Settings" end
+  return nil
+end
+
+local function readWeather(tries)
+  tries = tries or 0
+  local problem = locationProblem()
+  if problem then
+    weatherProblem = problem
+    return weatherChanged()
+  end
+  hs.location.start()
+  local location = hs.location.get()
+  if location then return fetchWeather(location) end
+  -- The first fix, or the permission answer, can take a few seconds.
+  if tries < LOCATION_RETRIES then
+    hs.timer.doAfter(LOCATION_RETRY_SECONDS, function() readWeather(tries + 1) end)
+  else
+    weatherProblem = "Couldn't find your location"
+    weatherChanged()
+  end
+end
+
+local function toggleWeather()
+  if panel and panel.name == "weather" then return closePanel() end
+  showWeather()
+  readWeather()
+end
+
+-- Globals, so the timer and the watcher are never garbage-collected.
+omvWeatherTimer = hs.timer.doEvery(WEATHER_REFRESH_SECONDS, function() readWeather() end)
+omvWeatherWakeWatcher = hs.caffeinate.watcher.new(function(event)
+  if event == hs.caffeinate.watcher.systemDidWake then readWeather() end
+end):start()
+readWeather()
+
 -- Copy URL (Option+Shift+U)
 
 local function copyUrl()
@@ -717,6 +1011,10 @@ bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", copyUrl
 bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", toggleCapture)
 bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", newReminder)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
+bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi card", toggleWifi)
+bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet card", toggleEthernet)
+bindKey(SUPER_SHIFT, "v", "Option+Shift+V", "Sound card", toggleSound)
+bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather card", toggleWeather)
 bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
 bindKey(SUPER, "space", "Option+Space", "Go to any window", toggleWindows)
 
@@ -744,6 +1042,9 @@ end
 
 omvToggleSystemMenu = later(toggleSystemMenu)
 omvToggleSound = later(toggleSound)
+omvToggleWifi = later(toggleWifi)
+omvToggleEthernet = later(toggleEthernet)
+omvToggleWeather = later(toggleWeather)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)

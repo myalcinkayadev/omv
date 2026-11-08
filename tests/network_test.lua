@@ -94,4 +94,16 @@ check.that("should list a USB LAN port as wired", #ports == 1 and ports[1] == "e
 check.that("should list no wired ports when there is only Wi-Fi",
   #network.wiredPorts("Hardware Port: Wi-Fi\nDevice: en0\n") == 0)
 
+local route = network.parseRoute([[
+   route to: default
+destination: default
+       mask: default
+    gateway: 192.168.1.1
+  interface: en5
+      flags: <UP,GATEWAY,DONE,STATIC,PRCLONING,GLOBAL>
+]])
+check.that("should read the gateway from route", route.gateway == "192.168.1.1")
+check.that("should read the interface from route", route.interface == "en5")
+check.that("should read nothing when there is no default route", network.parseRoute("route: writing to routing socket: not in table\n").gateway == nil)
+
 check.finish()

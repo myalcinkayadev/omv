@@ -20,7 +20,7 @@ panel.STYLE = [[
   .track { height: 10px; background: #2a2a2a; border-radius: 5px; margin: 22px 0 18px; }
   .track i { display: block; height: 10px; border-radius: 5px; background: #fff; }
   .grid { display: grid; grid-template-columns: 1fr auto 1fr auto; column-gap: 18px; row-gap: 10px;
-    color: #7a7a7a; font-size: 14px; }
+    color: #7a7a7a; font-size: 14px; white-space: nowrap; }
   .grid b { color: #fff; font-weight: normal; text-align: right; white-space: nowrap; }
   .sec { border-top: 1px solid #2a2a2a; margin-top: 18px; padding-top: 16px; color: #7a7a7a;
     letter-spacing: 1px; font-size: 13px; }

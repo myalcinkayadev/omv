@@ -16,7 +16,7 @@ local STEP = 5
 sound.WIDTH = 420
 
 -- Card height: the padding and header, each section's label and slider, the meter, each row.
-local FRAME_HEIGHT = 44 + 66
+local FRAME_HEIGHT = 44 + 36
 local SECTION_HEIGHT = 74
 local METER_HEIGHT = 16
 local ROW_HEIGHT = 40
@@ -62,7 +62,8 @@ local STYLE = [[
   .switch.on i { left: 24px; background: #fff; }
   .label { display: flex; justify-content: space-between; color: #7a7a7a; font-size: 13px; letter-spacing: 1px; margin: 16px 0 10px; }
   .section + .section { border-top: 1px solid #2a2a2a; }
-  input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; background: #2a2a2a; border-radius: 2px; margin: 4px 0 10px; }
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; margin: 4px 0 10px;
+    background: linear-gradient(to right, #fff var(--fill, 0%), #2a2a2a var(--fill, 0%)); }
   input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
   input[type=range]:disabled::-webkit-slider-thumb { background: #4a4a4a; }
   .meter { height: 6px; background: #2a2a2a; margin: 0 0 10px; }
@@ -81,7 +82,10 @@ local SCRIPT = [==[
   const out = document.querySelector(".out"), input = document.querySelector(".in");
   let selected = -1;
   const draw = () => rows.forEach((row, index) => row.classList.toggle("selected", index === selected));
-  const showLevel = (slider, value) => { slider.closest(".section").querySelector(".pct").textContent = value + "%"; };
+  const showLevel = (slider, value) => {
+    slider.closest(".section").querySelector(".pct").textContent = value + "%";
+    slider.style.setProperty("--fill", value + "%");
+  };
   const setOut = (value) => {
     if (out.disabled) return;
     out.value = Math.max(0, Math.min(100, value));
@@ -89,6 +93,7 @@ local SCRIPT = [==[
     send("volume", out.value);
   };
   [[out, "volume"], [input, "inputVolume"]].forEach(([slider, type]) => {
+    if (!slider.disabled) slider.style.setProperty("--fill", slider.value + "%");
     slider.addEventListener("input", () => showLevel(slider, slider.value));
     slider.addEventListener("change", () => send(type, slider.value));
   });

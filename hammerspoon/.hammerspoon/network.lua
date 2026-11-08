@@ -10,8 +10,8 @@ local network = {}
 local DASH = "—"
 local WEAKEST, STRONGEST = -90, -30
 
-network.WIDTH = 400
-network.HEIGHT = 262
+network.WIDTH = 420
+network.HEIGHT = 300
 
 local WIFI_SETTINGS = { id = "wifi.settings", icon = "󰒓", label = "Wi-Fi settings" }
 local NETWORK_SETTINGS = { id = "network.settings", icon = "󰒓", label = "Network settings" }
@@ -98,6 +98,11 @@ function network.parseMedia(text)
     mbps = speed and tonumber(speed) or nil,
     duplex = duplex,
   }
+end
+
+-- Reads `route -n get default`: the router and the interface the traffic leaves by.
+function network.parseRoute(text)
+  return { gateway = text:match("gateway:%s*(%S+)"), interface = text:match("interface:%s*(%S+)") }
 end
 
 local NOT_WIRED = { ["Wi-Fi"] = true, ["Bluetooth PAN"] = true, ["Thunderbolt Bridge"] = true }
