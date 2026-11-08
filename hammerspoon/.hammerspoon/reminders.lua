@@ -5,20 +5,21 @@ local reminders = {}
 
 local UNIT_SECONDS = { h = 3600, m = 60, s = 1 }
 
--- Words that stand for a time and a text: "pomo" is a 25-minute focus block, "break" the
--- 5 minutes after it. Text after the word replaces the default, as in "pomo write tests".
+-- Words that stand for a time and a kind: "pomo" is a 25-minute focus block, "break" the
+-- 5 minutes after it. Text after the word names the task, as in "pomo write tests".
+-- A kind tells init.lua to open the Pomodoro cards instead of the usual pill.
 local PRESETS = {
-  pomo = { seconds = 25 * 60, text = "Pomodoro done, take a break" },
-  ["break"] = { seconds = 5 * 60, text = "Break over" },
+  pomo = { seconds = 25 * 60, text = "Pomodoro", kind = "pomo" },
+  ["break"] = { seconds = 5 * 60, text = "Break", kind = "break" },
 }
 
--- Returns seconds and text for "1h30m stand up" or "pomo", or nil when it doesn't start
--- with a time or a preset.
+-- Returns seconds, text and kind (nil for a plain reminder) for "1h30m stand up" or
+-- "pomo", or nil when it doesn't start with a time or a preset.
 function reminders.parse(input)
   local word, after = input:match("^%s*(%a+)%s+(.-)%s*$")
   if not word then word, after = input:match("^%s*(%a+)%s*$"), "" end
   local preset = word and PRESETS[word:lower()]
-  if preset then return preset.seconds, after ~= "" and after or preset.text end
+  if preset then return preset.seconds, after ~= "" and after or preset.text, preset.kind end
   local duration, rest = input:match("^%s*([%dhms]+)%s*(.-)%s*$")
   if not duration or not duration:match("^%d") then return nil end
   if rest ~= "" and not input:match("^%s*[%dhms]+%s") then return nil end
@@ -68,11 +69,13 @@ function reminders.short(text)
   return table.concat(characters, "", 1, SHORT_CHARACTERS - 1) .. "…"
 end
 
--- One reminder per line: due time, a tab, then the text.
+-- One reminder per line: due time, the text, then the kind when it has one, split by tabs.
 function reminders.encode(list)
   local lines = {}
   for _, reminder in ipairs(reminders.sorted(list)) do
-    lines[#lines + 1] = reminder.due .. "\t" .. reminder.text:gsub("[\t\n]", " ")
+    local line = reminder.due .. "\t" .. reminder.text:gsub("[\t\n]", " ")
+    if reminder.kind then line = line .. "\t" .. reminder.kind end
+    lines[#lines + 1] = line
   end
   return table.concat(lines, "\n")
 end
@@ -80,8 +83,9 @@ end
 -- Reminders already past are dropped, since their moment is gone.
 function reminders.decode(text, now)
   local list = {}
-  for due, message in text:gmatch("(%d+)\t([^\n]*)") do
-    if tonumber(due) > now then list[#list + 1] = { due = tonumber(due), text = message } end
+  for due, rest in text:gmatch("(%d+)\t([^\n]*)") do
+    local message, kind = rest:match("^([^\t]*)\t(%a+)$")
+    if tonumber(due) > now then list[#list + 1] = { due = tonumber(due), text = message or rest, kind = kind } end
   end
   return reminders.sorted(list)
 end

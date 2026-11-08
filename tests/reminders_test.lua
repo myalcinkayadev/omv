@@ -19,10 +19,13 @@ check.that("should refuse text without a duration", parsed("check deploy") == ni
 check.that("should refuse a zero duration", parsed("0m nothing") == nil)
 check.that("should refuse a duration glued to the text", parsed("25mcheck") == nil)
 check.that("should read pomo as 25 minutes", (parsed("pomo")) == 25 * 60)
-check.that("should say a pomo is done when no text is given", select(2, parsed("pomo")) == "Pomodoro done, take a break")
+check.that("should name a pomo without text Pomodoro", select(2, parsed("pomo")) == "Pomodoro")
 check.that("should keep the text after pomo", select(2, parsed("pomo write tests")) == "write tests")
 check.that("should read pomo in any case", (parsed("  Pomo ")) == 25 * 60)
-check.that("should read break as 5 minutes", (parsed("break")) == 5 * 60 and select(2, parsed("break")) == "Break over")
+check.that("should read break as 5 minutes", (parsed("break")) == 5 * 60)
+check.that("should give typed pomo the pomo kind", select(3, reminders.parse("pomo write tests")) == "pomo")
+check.that("should give typed break the break kind", select(3, reminders.parse("break")) == "break")
+check.that("should give a timed reminder no kind", select(3, reminders.parse("25m check deploy")) == nil)
 check.that("should refuse a word that is not a preset", parsed("pomodoro") == nil)
 check.that("should refuse a preset glued to the text", parsed("pomo25") == nil)
 
@@ -52,5 +55,10 @@ check.that("should drop reminders already past when reloading",
 local input = card.html({ prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy" })
 check.that("should mark a card that takes typed input", check.contains(input, "data-input"))
 check.that("should show the input hint", check.contains(input, "25m check deploy"))
+
+local kinds = reminders.decode(reminders.encode({ { due = 2000, text = "Break", kind = "break" }, { due = 3000, text = "call" } }), 1000)
+check.that("should resume a break saved before a reload", kinds[1].kind == "break")
+check.that("should reload a plain reminder without a kind", kinds[2].kind == nil)
+check.that("should read reminders saved before kinds existed", reminders.decode("2000\tcall", 1000)[1].text == "call")
 
 check.finish()

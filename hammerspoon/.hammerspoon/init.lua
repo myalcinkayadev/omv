@@ -10,6 +10,7 @@ local calendar = require("calendar")
 local windows = require("windows")
 local capture = require("capture")
 local reminders = require("reminders")
+local pomo = require("pomo")
 local agenda = require("agenda")
 
 hs.menuIcon(false)
@@ -102,20 +103,25 @@ local function makeView()
     if action ~= "focusChange" or not panel then return end
     if focused then
       panel.hadFocus = true
-    elseif panel.hadFocus then
+    elseif panel.hadFocus and not panel.keepOnBlur then
       panel.previous = nil
       closePanel()
     end
   end)
 end
 
-local function showPanel(name, frame, html, onMessage)
+-- options.onEscape replaces closing on Escape, and options.keepOnBlur keeps the card open
+-- when focus moves away. The Pomodoro cards use both: a break shouldn't vanish on Cmd+Tab.
+local function showPanel(name, frame, html, onMessage, options)
+  options = options or {}
   if panel then
     panel.name, panel.onMessage = name, onMessage
+    panel.onEscape, panel.keepOnBlur = options.onEscape, options.keepOnBlur
     view:frame(frame):html(html)
     return
   end
-  panel = { name = name, onMessage = onMessage, previous = hs.application.frontmostApplication() }
+  panel = { name = name, onMessage = onMessage, previous = hs.application.frontmostApplication(),
+    onEscape = options.onEscape, keepOnBlur = options.keepOnBlur }
   view:frame(frame):html(html):show()
   -- Typing needs Hammerspoon active. Its console would come forward with it, so close it.
   hs.closeConsole()
@@ -125,7 +131,10 @@ local function showPanel(name, frame, html, onMessage)
 end
 
 makeView()
-closeOnEscape = hs.hotkey.new({}, "escape", closePanel)
+closeOnEscape = hs.hotkey.new({}, "escape", function()
+  if panel and panel.onEscape then return panel.onEscape() end
+  closePanel()
+end)
 
 -- System menu (Option+Escape)
 
@@ -318,6 +327,8 @@ local BLACK, WHITE = "0xff000000", "0xffffffff"
 local reminderList = {}
 local reminderTimer = nil
 local flashUntil = nil
+-- Set below, with the Pomodoro cards, which add and remove reminders themselves.
+local onPomoReminder
 
 local function saveReminders()
   os.execute("/bin/mkdir -p '" .. STATE_DIR .. "'")
@@ -340,7 +351,9 @@ local function setReminderBar(properties)
 end
 
 -- A due reminder notifies, and turns the bar item into a white pill for a moment.
+-- Pomodoro reminders open their cards instead.
 local function fireReminder(reminder)
+  if reminder.kind then return onPomoReminder(reminder) end
   hs.notify.new({ title = "Reminder", informativeText = reminder.text, withdrawAfter = 0 }):send()
   hs.alert.show("󰔛 " .. reminder.text, ALERT_STYLE, 4)
   setReminderBar({ "drawing=on", "label=" .. reminders.short(reminder.text), "background.drawing=on", "icon.color=" .. BLACK, "label.color=" .. BLACK })
@@ -364,7 +377,9 @@ local function tickReminders()
     reminderTimer:stop()
     return
   end
-  setReminderBar({ "drawing=on", "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE,
+  -- A coffee cup while a break counts down, the timer for anything else.
+  local icon = reminderList[1].kind == "break" and "󰅶" or "󰔛"
+  setReminderBar({ "drawing=on", "icon=" .. icon, "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE,
     "label=" .. reminders.label(reminderList, now) })
 end
 
@@ -378,12 +393,14 @@ end
 local function onReminderInput(message)
   if message.type == "close" then return closePanel() end
   if message.type ~= "submit" then return end
-  local seconds, text = reminders.parse(message.id)
+  local seconds, text, kind = reminders.parse(message.id)
   if not seconds then
     hs.alert.show("Start with a time, like 25m", ALERT_STYLE, 1.5)
     return
   end
-  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text }
+  -- A typed break goes straight to its countdown card.
+  if kind == "break" then return onPomoReminder({ kind = "start-break", seconds = seconds }) end
+  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text, kind = kind }
   reminderList = reminders.sorted(reminderList)
   saveReminders()
   closePanel()
@@ -406,6 +423,8 @@ end
 
 local function toggleReminders()
   if panel and panel.name == "reminders" then return closePanel() end
+  -- During a break, the bar item reopens its countdown.
+  if reminderList[1] and reminderList[1].kind == "break" then return onPomoReminder({ kind = "show-break" }) end
   if #reminderList == 0 then return newReminder() end
   local now, rows = os.time(), {}
   for index, reminder in ipairs(reminderList) do
@@ -413,6 +432,117 @@ local function toggleReminders()
   end
   local screen = { prompt = "Cancel a reminder…", rows = rows }
   showPanel("reminders", centered(REMINDER_WIDTH, menuHeight(screen)), card.html(screen), onReminderList)
+end
+
+-- Pomodoro break cards. A pomo coming due opens "Time for a break.", and nothing after it
+-- starts on its own: the break, the next pomo and stopping are all picked on a card.
+
+local POMO_FILE = STATE_DIR .. "/pomo"
+local pomoStep = nil
+
+local function todayKey()
+  return os.date("%Y-%m-%d")
+end
+
+local function readPomoRecord()
+  local file = io.open(POMO_FILE, "r")
+  if not file then return pomo.decode("") end
+  local text = file:read("*a")
+  file:close()
+  return pomo.decode(text)
+end
+
+local function pomoCount()
+  return pomo.countFor(readPomoRecord(), todayKey())
+end
+
+local function countFinishedPomo()
+  os.execute("/bin/mkdir -p '" .. STATE_DIR .. "'")
+  local file = io.open(POMO_FILE, "w")
+  if not file then return end
+  file:write(pomo.encode(pomo.finished(readPomoRecord(), todayKey())))
+  file:close()
+end
+
+local function addReminder(seconds, text, kind)
+  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text, kind = kind }
+  reminderList = reminders.sorted(reminderList)
+  saveReminders()
+  startReminders()
+end
+
+local function removeBreaks()
+  local kept = {}
+  for _, reminder in ipairs(reminderList) do
+    if reminder.kind ~= "break" then kept[#kept + 1] = reminder end
+  end
+  reminderList = kept
+  saveReminders()
+  startReminders()
+end
+
+local onPomoMessage
+
+local function showPomo()
+  local count = pomoCount()
+  local screen
+  if pomoStep.step == "done" then
+    screen = pomo.doneScreen({ task = pomoStep.task, count = count, postponed = pomoStep.postponed })
+  elseif pomoStep.step == "break" then
+    screen = pomo.breakScreen({ ends = pomoStep.ends, seconds = pomoStep.seconds, count = count, tip = count + 1 })
+  else
+    screen = pomo.overScreen({ task = pomoStep.task, count = count })
+  end
+  -- Escape skips the break on the first card, ends it early on the second, and stops on the last.
+  local escape = { done = "break.skip", ["break"] = "break.end", over = "pomo.stop" }
+  showPanel("pomo", hs.screen.mainScreen():fullFrame(), card.big(screen), onPomoMessage, {
+    keepOnBlur = true,
+    onEscape = function() onPomoMessage({ type = "choose", id = escape[pomoStep.step] }) end,
+  })
+end
+
+local function startBreak(seconds)
+  removeBreaks()
+  addReminder(seconds, "Break", "break")
+  pomoStep = { step = "break", task = pomoStep and pomoStep.task, ends = os.time() + seconds, seconds = seconds }
+  showPomo()
+end
+
+onPomoMessage = function(message)
+  if message.type ~= "choose" or not pomoStep then return end
+  local id, task = message.id, pomoStep.task
+  if id == "break.start" then return startBreak(pomo.BREAK_SECONDS) end
+  if id == "break.skip" or id == "break.end" then
+    removeBreaks()
+    pomoStep = { step = "over", task = task }
+    return showPomo()
+  end
+  pomoStep = nil
+  closePanel()
+  if id == "pomo.postpone" then addReminder(pomo.POSTPONE_SECONDS, pomo.task(task), "postponed") end
+  if id == "pomo.next" then addReminder(pomo.POMO_SECONDS, pomo.task(task), "pomo") end
+end
+
+onPomoReminder = function(reminder)
+  if reminder.kind == "start-break" then
+    pomoStep = { step = "break", task = pomoStep and pomoStep.task }
+    return startBreak(reminder.seconds)
+  end
+  if reminder.kind == "show-break" then
+    local current = reminderList[1]
+    pomoStep = { step = "break", task = pomoStep and pomoStep.task, ends = current.due, seconds = pomo.BREAK_SECONDS }
+    return showPomo()
+  end
+  if reminder.kind == "break" then
+    hs.notify.new({ title = "Break over", informativeText = "Back to work when you're ready.", withdrawAfter = 0 }):send()
+    pomoStep = { step = "over", task = pomoStep and pomoStep.task }
+    return showPomo()
+  end
+  -- A pomo counts when its 25 minutes are done, not again after "5 more minutes".
+  if reminder.kind == "pomo" then countFinishedPomo() end
+  hs.notify.new({ title = "Pomodoro done", informativeText = reminder.text, withdrawAfter = 0 }):send()
+  pomoStep = { step = "done", task = reminder.text, postponed = reminder.kind == "postponed" }
+  showPomo()
 end
 
 -- Redraw even with none saved, so a reload clears an item left over from before.

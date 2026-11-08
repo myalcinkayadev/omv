@@ -225,7 +225,19 @@ Under the footer, the card lists today's events from Calendar.app, so it covers 
 
 Option+Shift+M asks "Remind me…". Type a time, then what to remember, such as `25m check deploy` or `1h30m stand up`, and press Enter. Times use `h`, `m` and `s`, and can be combined.
 
-Two words stand for a time, for Pomodoro-style work: `pomo` sets 25 minutes, and `break` sets 5. Text after them replaces what the reminder says, as in `pomo write tests`.
+#### Pomodoro
+
+`pomo` starts 25 minutes of focus, and `pomo write tests` names the task. When the time is up, the screen dims and a large card takes over. Nothing after it starts on its own: you pick each step.
+
+1. **Time for a break.** Shows the task and today's count, as `2 OF 4 TODAY` with dots. Pick **Start 5-minute break**, **5 more minutes** (once per pomo), or **Skip break**.
+2. **Break.** A large countdown, a progress line and a tip that changes each break. The bar shows a coffee cup with the time left. **End break early** stops it.
+3. **Back to work?** Pick **Start next pomo**, which reuses the task, or **Done for now**.
+
+- Escape skips the break on the first card, ends it early on the second, and stops on the last.
+- The cards stay open when focus moves away, since the break is the point. During a break, clicking the bar item reopens the countdown.
+- Typing `break` starts a 5-minute break straight away.
+- A break survives a Hammerspoon reload: the bar keeps counting down, and "Back to work?" opens when it ends.
+- Today's count is kept in `~/.local/state/omv/pomo`, and starts over each day.
 
 <img src="docs/reminder.png" alt="The reminder card" width="480">
 
