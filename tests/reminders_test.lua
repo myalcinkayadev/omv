@@ -61,4 +61,11 @@ check.that("should resume a break saved before a reload", kinds[1].kind == "brea
 check.that("should reload a plain reminder without a kind", kinds[2].kind == nil)
 check.that("should read reminders saved before kinds existed", reminders.decode("2000\tcall", 1000)[1].text == "call")
 
+check.that("should show a coffee cup in the bar during a break", reminders.icon({ { due = 1, text = "Break", kind = "break" } }) == "\u{F0176}")
+check.that("should show a target in the bar during a pomo", reminders.icon({ { due = 1, text = "write tests", kind = "pomo" } }) == "\u{F08C9}")
+check.that("should show a target for a postponed pomo", reminders.icon({ { due = 1, text = "write tests", kind = "postponed" } }) == "\u{F08C9}")
+check.that("should show the timer for a plain reminder", reminders.icon({ { due = 1, text = "call" } }) == "\u{F051B}")
+check.that("should pick the icon from the soonest reminder",
+  reminders.icon({ { due = 9, text = "call" }, { due = 2, text = "write tests", kind = "pomo" } }) == "\u{F08C9}")
+
 check.finish()

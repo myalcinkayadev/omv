@@ -377,9 +377,7 @@ local function tickReminders()
     reminderTimer:stop()
     return
   end
-  -- A coffee cup while a break counts down, the timer for anything else.
-  local icon = reminderList[1].kind == "break" and "󰅶" or "󰔛"
-  setReminderBar({ "drawing=on", "icon=" .. icon, "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE,
+  setReminderBar({ "drawing=on", "icon=" .. reminders.icon(reminderList), "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE,
     "label=" .. reminders.label(reminderList, now) })
 end
 

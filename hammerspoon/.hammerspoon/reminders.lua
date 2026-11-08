@@ -57,6 +57,16 @@ function reminders.label(list, now)
   return label
 end
 
+-- The bar's icon for the soonest reminder: a coffee cup during a break, a target while a
+-- pomo runs, and a timer for anything else, so the three never look alike.
+local ICONS = { ["break"] = "󰅶", pomo = "󰣉", postponed = "󰣉" }
+local TIMER = "󰔛"
+
+function reminders.icon(list)
+  local soonest = reminders.sorted(list)[1]
+  return soonest and ICONS[soonest.kind] or TIMER
+end
+
 -- 10 fits beside the notch even when the Claude item shows its wider reset times.
 local SHORT_CHARACTERS = 10
 
