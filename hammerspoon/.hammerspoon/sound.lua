@@ -16,7 +16,7 @@ local STEP = 5
 sound.WIDTH = 420
 
 -- Card height: the padding and header, each section's label and slider, the meter, each row.
-local FRAME_HEIGHT = 44 + 36
+local FRAME_HEIGHT = 44 + 52
 local SECTION_HEIGHT = 74
 local METER_HEIGHT = 16
 local ROW_HEIGHT = 40

@@ -14,12 +14,12 @@ panel.STYLE = [[
   .head .icon { font-size: 26px; width: 28px; text-align: center; padding-top: 2px; }
   .head .title { font-size: 18px; }
   .head .sub { color: #7a7a7a; letter-spacing: 2px; font-size: 13px; margin-top: 4px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
   .head .big { margin-left: auto; font-size: 38px; line-height: 1; white-space: nowrap; }
   .head .big small { font-size: 16px; color: #7a7a7a; }
   .track { height: 10px; background: #2a2a2a; border-radius: 5px; margin: 22px 0 18px; }
   .track i { display: block; height: 10px; border-radius: 5px; background: #fff; }
-  .grid { display: grid; grid-template-columns: 1fr auto 1fr auto; column-gap: 18px; row-gap: 10px;
+  .grid { display: grid; grid-template-columns: auto 1fr auto auto; column-gap: 14px; row-gap: 10px;
     color: #7a7a7a; font-size: 14px; white-space: nowrap; }
   .grid b { color: #fff; font-weight: normal; text-align: right; white-space: nowrap; }
   .sec { border-top: 1px solid #2a2a2a; margin-top: 18px; padding-top: 16px; color: #7a7a7a;
