@@ -270,6 +270,16 @@ Then, by hand:
 
 When you pull new files later, run `./install.sh` again. Stow links files one by one, so a new file has no link until then.
 
+### Doctor
+
+```sh
+./doctor.sh
+```
+
+Checks that everything is in place, and says how to fix what isn't: the tools, apps and font, that every package is linked with no broken links left behind, that AeroSpace, SketchyBar, borders, Hammerspoon and SwipeAeroSpace are running with the omv config loaded, the macOS settings, AeroSpace's Accessibility, and the Claude usage line. It only reads, and exits non-zero when something fails.
+
+It also lists what macOS doesn't let a script read, to check by hand: Screen Recording for Hammerspoon, Calendar access for "omv agenda", and Accessibility for SwipeAeroSpace.
+
 ### What's inside
 
 Each folder is a GNU Stow package, linked into `$HOME`.

@@ -62,6 +62,8 @@ Installed. These steps are yours:
      corner. AeroSpace hides windows there.
   5. Open SwipeAeroSpace, grant Accessibility, and turn on Launch at Login in
      its Settings.
+
+Then run ./doctor.sh to check that everything is in place.
 EOF
 }
 
