@@ -393,8 +393,11 @@ local function tickReminders()
     reminderTimer:stop()
     return
   end
-  setReminderBar({ "drawing=on", "icon=" .. reminders.icon(reminderList), "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE,
-    "label=" .. reminders.label(reminderList, now) })
+  -- A pomo's last 30 seconds turn the item into a white pill, a quiet heads-up.
+  local warning = pomo.warning(reminderList[1], now)
+  local text = warning and BLACK or WHITE
+  setReminderBar({ "drawing=on", "icon=" .. reminders.icon(reminderList), "background.drawing=" .. (warning and "on" or "off"),
+    "icon.color=" .. text, "label.color=" .. text, "label=" .. reminders.label(reminderList, now) })
 end
 
 reminderTimer = hs.timer.new(1, tickReminders)
@@ -536,7 +539,7 @@ end
 onPomoMessage = function(message)
   if message.type ~= "choose" or not pomoStep then return end
   local id, task = message.id, pomoStep.task
-  if id == "break.start" then return startBreak(pomo.BREAK_SECONDS) end
+  if id == "break.start" then return startBreak(pomo.breakSeconds(pomoCount())) end
   if id == "break.skip" or id == "break.end" then
     removeBreaks()
     pomoStep = { step = "over", task = task }
@@ -555,7 +558,7 @@ onPomoReminder = function(reminder)
   end
   if reminder.kind == "show-break" then
     local current = reminderList[1]
-    pomoStep = { step = "break", task = pomoStep and pomoStep.task, ends = current.due, seconds = pomo.BREAK_SECONDS }
+    pomoStep = { step = "break", task = pomoStep and pomoStep.task, ends = current.due, seconds = pomo.breakSeconds(pomoCount()) }
     return showPomo()
   end
   if reminder.kind == "break" then

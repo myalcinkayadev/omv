@@ -56,4 +56,15 @@ check.that("should give End break early the key C", keyOf(brk, "break.end") == "
 check.that("should give Done for now the key C", keyOf(over, "pomo.stop") == "c")
 check.that("should pick a row by its letter key", check.contains(card.big(done), 'data-key="b"'))
 
+local fourth = pomo.doneScreen({ task = "write tests", count = 4, postponed = false })
+check.that("should offer a 15-minute break after the 4th pomo", fourth.rows[1].label == "Start 15-minute break")
+check.that("should offer a 5-minute break otherwise", done.rows[1].label == "Start 5-minute break")
+check.that("should count the long break for 15 minutes", pomo.breakSeconds(4) == 15 * 60 and pomo.breakSeconds(8) == 15 * 60)
+check.that("should count a short break for 5 minutes", pomo.breakSeconds(2) == 5 * 60 and pomo.breakSeconds(0) == 5 * 60)
+check.that("should warn in a pomo's last 30 seconds", pomo.warning({ due = 1030, kind = "pomo" }, 1000))
+check.that("should warn for a postponed pomo too", pomo.warning({ due = 1030, kind = "postponed" }, 1000))
+check.that("should not warn before the last 30 seconds", not pomo.warning({ due = 1031, kind = "pomo" }, 1000))
+check.that("should not warn for a plain reminder", not pomo.warning({ due = 1010 }, 1000))
+check.that("should not warn for a break", not pomo.warning({ due = 1010, kind = "break" }, 1000))
+
 check.finish()

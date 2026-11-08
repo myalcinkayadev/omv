@@ -141,7 +141,7 @@ Option+Shift+M asks "Remind me…". Type a time, then what to remember, and pres
 
 **Pomodoro.** When a pomo's time is up, the screen dims and a large card takes over. Nothing after it starts on its own: you pick each step.
 
-1. **Time for a break.** The task and today's count, as `2 OF 4 TODAY` with dots. `b` starts the break, `r` gives 5 more minutes (once per pomo), and `c` skips the break.
+1. **Time for a break.** The task and today's count, as `2 OF 4 TODAY` with dots. `b` starts the break, which is 15 minutes after every 4th pomo and 5 minutes otherwise, `r` gives 5 more minutes (once per pomo), and `c` skips the break.
 2. **Break.** A large countdown, a progress line and a tip that changes each break. The bar shows a coffee cup with the time left. `c` ends it early.
 3. **Back to work?** Enter starts the next pomo with the same task, and `c` stops for now.
 
@@ -149,6 +149,7 @@ Option+Shift+M asks "Remind me…". Type a time, then what to remember, and pres
 <img src="docs/pomo-break.png" alt="The break: a countdown, a progress line and a tip" width="560">
 <img src="docs/pomo-over.png" alt="Back to work: start the next pomo or stop for now" width="560">
 
+- In a pomo's last 30 seconds, the bar's target item turns into a white pill, so the card never comes as a surprise.
 - Escape does the same as `c` on each card.
 - The cards stay open when focus moves away, since the break is the point. During a break, clicking the bar item reopens the countdown.
 - A break survives a Hammerspoon reload: the bar keeps counting down, and "Back to work?" opens when it ends.

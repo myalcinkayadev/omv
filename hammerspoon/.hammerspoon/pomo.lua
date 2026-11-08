@@ -7,7 +7,21 @@ local pomo = {}
 pomo.POMO_SECONDS = 25 * 60
 pomo.BREAK_SECONDS = 5 * 60
 pomo.POSTPONE_SECONDS = 5 * 60
+pomo.LONG_BREAK_SECONDS = 15 * 60
+pomo.WARNING_SECONDS = 30
 local GOAL = 4
+
+-- Every 4th pomo of the day earns a 15-minute break; the others get 5.
+function pomo.breakSeconds(count)
+  return (count > 0 and count % GOAL == 0) and pomo.LONG_BREAK_SECONDS or pomo.BREAK_SECONDS
+end
+
+-- True in a pomo's last 30 seconds, when the bar gives a quiet heads-up.
+function pomo.warning(reminder, now)
+  if reminder.kind ~= "pomo" and reminder.kind ~= "postponed" then return false end
+  local left = reminder.due - now
+  return left > 0 and left <= pomo.WARNING_SECONDS
+end
 
 pomo.TIPS = {
   "Stand up and stretch your shoulders.",
@@ -39,7 +53,8 @@ end
 
 -- Card 1, when a pomo is due. "5 more minutes" is offered once per pomo.
 function pomo.doneScreen(context)
-  local rows = { { id = "break.start", icon = "󰅶", label = "Start 5-minute break", key = "b", hint = "b" } }
+  local minutes = math.floor(pomo.breakSeconds(context.count) / 60)
+  local rows = { { id = "break.start", icon = "󰅶", label = "Start " .. minutes .. "-minute break", key = "b", hint = "b" } }
   if not context.postponed then
     rows[#rows + 1] = { id = "pomo.postpone", icon = "󰔛", label = "5 more minutes", key = "r", hint = "r" }
   end
