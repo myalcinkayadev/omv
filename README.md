@@ -51,7 +51,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 
 ## The bar
 
-![The bar: workspaces and the playing track on the left, a reminder, Claude usage, status icons and the clock on the right](docs/bar.png)
+![The bar: workspaces on the left; keep-awake, Claude's 5-hour limit, the weather, status icons and the clock on the right](docs/bar.png)
 
 **On the left**, workspace numbers: the focused one is a white pill, and the one visible on the other monitor is a gray pill. Click a number to go there, or scroll over them to move one workspace at a time across all six, wrapping around. The binding mode shows next to them while it isn't the normal one.
 
@@ -123,6 +123,8 @@ Click the volume item in the bar, or press Option+Shift+V, for the Sound card un
 - **Keys:** Up and Down move through the devices, Enter picks one, Left and Right change the volume by 5%, M mutes, and Escape or a click elsewhere closes.
 - **The level meter** comes from a small Swift helper, `meter.swift`, built the first time into `~/.cache/omv/Meter.app`. It listens only while the card is open, so macOS shows its orange microphone dot until the card closes. The first time, macOS asks to let "omv meter" use the microphone. If you refuse, the meter stays empty and the rest of the card still works.
 
+<img src="docs/sound.png" alt="The Sound card: the speakers in use, AirPods and a monitor listed, and the mic level meter" width="420">
+
 ## Wi-Fi and Ethernet
 
 Click the Wi-Fi item, or press Option+Shift+W, for the Wi-Fi card: the network's name, the signal as a percentage and in dBm, the IP address, the router and the channel. **Turn off** (or **Turn on**) switches Wi-Fi, and **Wi-Fi settings** opens System Settings.
@@ -130,6 +132,8 @@ Click the Wi-Fi item, or press Option+Shift+W, for the Wi-Fi card: the network's
 The Ethernet item shows only while a cable is connected. Click it, or press Option+Shift+E, for the Ethernet card: the link speed, the IP address, the router, the port and the duplex, and **Network settings**. With more than one cable, it shows the one the Mac's traffic goes out by.
 
 Left and Right move between the buttons, Enter presses one, and Escape or a click elsewhere closes.
+
+<img src="docs/wifi.png" alt="The Wi-Fi card: network name, signal, IP address, router and channel" width="420"> <img src="docs/ethernet.png" alt="The Ethernet card: link speed, IP address, router, port and duplex" width="420">
 
 Since macOS 14, an app needs Location Services to read the Wi-Fi network's name. Hammerspoon asks for it once, for the weather, and without it the card shows `—` for the name.
 
@@ -143,11 +147,15 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - The plan comes from `~/.claude.json`, and only its `organizationType` is read. The folders come from Claude Code's own session files in `~/.claude/projects`.
 - `claude` runs through your login shell, by `claude-in.sh`, so it's found on the PATH your shell sets up.
 
+<img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, with session and weekly limits" width="400">
+
 ## Battery
 
 Click the battery item, or press Option+Shift+B, for the Battery card: the charge, whether it's draining, charging or charged, the battery's size in Wh, the time left (or to full), the charge cycles and the power going in or out.
 
 **Battery settings** opens System Settings, where Low Power Mode is. The card doesn't switch it itself: macOS lets only its own apps do that without an admin password.
+
+<img src="docs/battery.png" alt="The Battery card: charge, battery size, time left, charge cycles and power" width="420">
 
 ## Weather
 
@@ -157,6 +165,8 @@ The weather item shows the condition and the temperature where the Mac is. Click
 - The weather comes from [Open-Meteo](https://open-meteo.com), which needs no key. Only the location, rounded to about a kilometre, is sent.
 - It's read when Hammerspoon starts, every 30 minutes, when the Mac wakes, and when the card opens.
 - When a reading fails, the last one stays. With none yet, the item stays hidden and the card says why.
+
+<img src="docs/weather.png" alt="The weather card: temperature, feels-like, wind, humidity and three days ahead" width="500">
 
 ## Calendar and today's events
 
