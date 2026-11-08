@@ -6,13 +6,13 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 
 ## Features
 
-- [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app, Vim-style keys, a focus border, and three-finger swipes.
+- [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app, Vim-style keys, a tabbed layout, a focus border, and three-finger swipes.
 - [**The bar**](#the-bar): workspaces, the playing track, reminders, meetings, Claude usage, and a macOS-style clock that stays clear of the notch.
 - [**Window list**](#window-list): Option+Space jumps to any window on any workspace.
-- [**Key list**](#key-list): Option+/ shows every shortcut at once.
+- [**Key list**](#key-list): Option+/ shows every shortcut at once, and runs the one you pick.
 - [**System menu and Sound**](#system-menu-and-sound): lock, sleep, restart, reload the tools, and pick where sound plays.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
-- [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards.
+- [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
 - [**Capture menu**](#capture-menu): screenshots, text from the screen, and a color picker.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 
