@@ -81,7 +81,8 @@ function reminders.short(text)
   local characters = {}
   for character in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do characters[#characters + 1] = character end
   if #characters <= SHORT_CHARACTERS then return text end
-  return table.concat(characters, "", 1, SHORT_CHARACTERS - 1) .. "…"
+  -- Spaces before the cut are dropped, so it reads "Pomodoro…", not "Pomodoro …".
+  return (table.concat(characters, "", 1, SHORT_CHARACTERS - 1):gsub("%s+$", "")) .. "…"
 end
 
 -- One reminder per line: due time, the text, then the kind when it has one, split by tabs.

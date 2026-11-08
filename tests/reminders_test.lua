@@ -74,4 +74,6 @@ check.that("should read b as a 5-minute break", (parsed("b")) == 5 * 60 and sele
 check.that("should read c as cancel", select(3, reminders.parse("c")) == "cancel" and parsed("c") == nil)
 check.that("should still refuse an unknown single letter", parsed("x") == nil and select(3, reminders.parse("x")) == nil)
 
+check.that("should not leave a space before the ellipsis", reminders.short("Pomodoro done, take a break") == "Pomodoro…")
+
 check.finish()
