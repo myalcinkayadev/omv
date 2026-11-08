@@ -174,6 +174,11 @@ class ConfigContract(unittest.TestCase):
     def test_should_define_the_bar_redraw_in_hammerspoon(self) -> None:
         self.assertIn("omvRedrawBar = later(", HAMMERSPOON.read_text(encoding="utf-8"))
 
+    def test_should_draw_the_focus_outline_at_1x_to_save_memory(self) -> None:
+        commands = " ".join(load_aerospace()["after-startup-command"])
+        self.assertIn("borders ", commands)
+        self.assertIn("hidpi=off", commands)
+
     def test_should_place_the_weather_left_of_claudes_item(self) -> None:
         # Right-side items are added from the right edge inward, so a later one sits further left.
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")

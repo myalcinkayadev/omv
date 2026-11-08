@@ -10,10 +10,11 @@ persistent-workspaces = ['1', '2', '3', '4', '5', '6']
 
 # SketchyBar detects a running copy, so restarting AeroSpace will not start a second bar.
 # borders outlines the focused window in the cards' gray. It follows the rounded window
-# corners, and like SketchyBar it refuses to start a second copy.
+# corners, and like SketchyBar it refuses to start a second copy. hidpi=off draws it at 1x,
+# which looks the same for a 2pt outline and uses about a quarter of the memory.
 after-startup-command = [
   'exec-and-forget /opt/homebrew/bin/sketchybar',
-  'exec-and-forget borders active_color=0xff8d8d8d inactive_color=0x00000000 width=2.0 style=round hidpi=on',
+  'exec-and-forget borders active_color=0xff8d8d8d inactive_color=0x00000000 width=2.0 style=round hidpi=off',
   'exec-and-forget $HOME/.config/ghostty/start-btop.sh',
 ]
 

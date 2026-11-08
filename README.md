@@ -39,7 +39,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 
 - **Each app opens on its workspace.** Finder tiles on the current workspace instead, and System Settings and Calculator float there.
 - **Six workspaces in total,** not six per monitor, because AeroSpace workspaces are global. A pinned workspace always opens on its own monitor, so Option+4 from the main monitor moves focus to the secondary one. When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it's plugged back in.
-- **Focus border:** the focused window gets a 2pt gray outline, the same gray as the cards' border, drawn by [JankyBorders](https://github.com/FelixKratz/JankyBorders). It starts with AeroSpace.
+- **Focus border:** the focused window gets a 2pt gray outline, the same gray as the cards' border, drawn by [JankyBorders](https://github.com/FelixKratz/JankyBorders). It starts with AeroSpace. It's drawn at 1x (`hidpi=off`), which takes about 40 MB instead of up to 209 MB. For a sharper outline on Retina, change `hidpi=off` to `hidpi=on` in `aerospace.toml`, then run `pkill -x borders` and restart AeroSpace.
 - **Trackpad:** swipe three fingers left or right to move one workspace, wrapping around. A swipe stays on the focused monitor, so with two monitors it cycles 1-3 on the main one and 4-6 on the secondary.
 - **Option+Tab** goes back to the previous workspace.
 - **Tabbed layout:** Option+A switches the workspace between tiles and tabs. In tabs, the focused window takes almost the whole width and the others peek out at the edges, which suits a laptop screen. Option+H / L move between them. AeroSpace remembers the layout per workspace.
@@ -392,13 +392,15 @@ Memory, measured on a MacBook Pro (M3 Pro, 18 GB) with everything running and no
 | Process | Memory |
 |---|---|
 | AeroSpace | 37–139 MB |
-| borders | 186–209 MB |
-| Hammerspoon | 45 MB |
+| borders | 40–45 MB |
+| Hammerspoon | 27–36 MB |
 | SwipeAeroSpace | 34 MB |
 | SketchyBar | 23–24 MB |
-| **Total** | **349–447 MB** |
+| **Total** | **161–278 MB** |
 
-- AeroSpace's memory varied the most: it was 136–139 MB in two runs and 37 MB in one. Hammerspoon and SketchyBar stayed steady.
+- AeroSpace's memory varied the most: it was 136–139 MB in two runs and 37 MB in one. SketchyBar stayed steady.
+- Hammerspoon takes 27 MB when it starts and 36 MB once the cards have been opened.
+- borders draws the focus outline at 1x (`hidpi=off`). At 2x it took 149–209 MB for an outline that looks the same.
 - The cards are drawn by one WebKit view that is made once and hidden between uses. WebKit runs it in a process of its own, which isn't in the table.
 - The helpers run only when needed: "omv agenda" for a moment every 5 minutes, and "omv meter" only while the Sound card is open.
 
