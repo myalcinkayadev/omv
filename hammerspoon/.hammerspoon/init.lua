@@ -19,6 +19,7 @@ local battery = require("battery")
 local agents = require("agents")
 local quicknote = require("quicknote")
 local prs = require("prs")
+local claudewait = require("claudewait")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -1167,6 +1168,29 @@ local function toggleAgents()
   showAgents()
 end
 
+-- Waiting Claude (Option+Shift+A, or a click on the bar's pill): focuses the terminal of
+-- the session that has waited longest.
+
+-- Only focusClaude is a main-chunk local: init.lua is near Lua's limit of 200.
+local function focusClaude()
+  local function alive(pid)
+    return os.execute("/bin/kill -0 " .. math.floor(pid) .. " 2>/dev/null") == true
+  end
+  local sessions = {}
+  -- hs.fs.dir gives an iterator and the folder it reads, and the loop needs both.
+  local ok, files, folder = pcall(hs.fs.dir, claudewait.STATE_DIR)
+  for name in (ok and files) and files or function() end, folder do
+    local session = name:sub(1, 1) ~= "." and claudewait.parse(readText(claudewait.STATE_DIR .. "/" .. name) or "")
+    if session then sessions[#sessions + 1] = session end
+  end
+  local session = claudewait.oldest(sessions, alive)
+  if not session then return hs.alert.show("No Claude session is waiting", ALERT_STYLE, 1.2) end
+  local script = claudewait.focusScript(session.tty)
+  if not (script and hs.osascript.applescript(script)) then
+    hs.alert.show("Claude waits in " .. session.folder .. ", outside Ghostty", ALERT_STYLE, 2)
+  end
+end
+
 -- Quick note (Option+Shift+D): one line, with the time, at the end of today's daily note.
 
 local NOTE_VAULT = os.getenv("HOME") .. "/Documents/vault/work"
@@ -1216,6 +1240,7 @@ bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", toggleCapture)
 bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", newReminder)
 bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", newNote)
 bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "Pull requests waiting for your review", togglePrs)
+bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Go to the Claude session waiting for you", focusClaude)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi card", toggleWifi)
 bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet card", toggleEthernet)
@@ -1268,6 +1293,7 @@ omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)
 omvTogglePrs = later(togglePrs)
+omvFocusClaude = later(focusClaude)
 omvToggleCapture = later(toggleCapture)
 omvToggleReminders = later(toggleReminders)
 omvNewReminder = later(newReminder)

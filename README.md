@@ -13,7 +13,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**System menu**](#system-menu): lock, sleep, restart and reload the tools.
 - [**Sound**](#sound): volume, mute, output and input devices, and a live mic level.
 - [**Wi-Fi and Ethernet**](#wi-fi-and-ethernet): the network, signal, address and router, a click away.
-- [**Agents**](#agents): Claude Code's session and weekly limits, and one click to continue or start a session.
+- [**Agents**](#agents): Claude Code's session and weekly limits, one click to continue or start a session, and a pill when a session waits for you.
 - [**Battery**](#battery): charge, time left, cycles and power draw.
 - [**Weather**](#weather): the temperature in the bar, and a three-day forecast for wherever the Mac is.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
@@ -64,6 +64,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Meeting | The next Calendar event's start time, from an hour before | Open the [calendar](#calendar-and-todays-events) | |
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
+| Waiting Claude | A white pill, `waiting · omv`, while a Claude Code session waits for you, plus `+N` for others | Go to that session's terminal | |
 | Pull requests | How many open pull requests ask for your review, checked with `gh` every 5 minutes. Hidden when none wait, or when `gh` is missing, logged out or offline | List them; Enter opens one in Helium | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
 | Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
@@ -73,7 +74,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Battery | Charge | Open the [Battery card](#battery) | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
-**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, the pull request count, the reminder and the status icons always stay, and everything comes back once there's room.
+**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, the waiting Claude, the pull request count, the reminder and the status icons always stay, and everything comes back once there's room.
 
 **Claude usage** shows the 5-hour limit: gray under 70%, white from 70%, and a white pill from 90%. The 7-day limit is in the [Agents card](#agents).
 
@@ -147,6 +148,13 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - Both open a Ghostty window on workspace 1. Left and Right move between the two buttons, and Enter presses one.
 - The plan comes from `~/.claude.json`, and only its `organizationType` is read. The folders come from Claude Code's own session files in `~/.claude/projects`.
 - `claude` runs through your login shell, by `claude-in.sh`, so it's found on the PATH your shell sets up.
+
+**Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder. Click it, or press Option+Shift+A, to go to the terminal of the session that has waited longest, even in another tab or on another workspace. The pill goes when you answer, when a tool runs after your approval, or when the session ends.
+
+- `install.sh` adds hooks to `~/.claude/settings.json` through `claude-hooks.sh`: `Stop` and `Notification` mark a session as waiting, and `UserPromptSubmit`, `PostToolUse` and `SessionEnd` clear it. Other hooks and settings stay as they are, and `uninstall.sh` removes only these.
+- Ghostty runs every window in one process, so the terminal is found by its tty through Ghostty's AppleScript. The first time, macOS asks to let Hammerspoon control Ghostty.
+- Only Claude's PID, its tty, the folder name and the time are saved, in `~/.local/state/omv/claude-waiting`. A session whose Claude has ended is dropped within 30 seconds.
+- A session outside Ghostty, such as in an editor's terminal, still shows, but can't be focused: you get its folder name instead. The drop-down terminal can't be focused either.
 
 <img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, with session and weekly limits" width="400">
 
@@ -243,7 +251,7 @@ Option+Shift+S opens a card for screen captures.
 - **Quick note (Option+Shift+D):** type a line and Enter adds it, after the time, as `- 09:05 call the bank` at the end of today's daily note in `~/Documents/vault/work/00 - Daily/`. A day without a note gets a plain file, not your template, because Obsidian only applies templates to notes it creates itself.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 
@@ -281,6 +289,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+S | Capture menu | |
 | Option+Shift+M | Set a reminder | |
 | Option+Shift+D | Add a line to today's daily note | |
+| Option+Shift+A | Go to the Claude session waiting for you | |
 | Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |

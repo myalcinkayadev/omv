@@ -53,6 +53,12 @@ adds_usage_line() {
   grep -q bar-usage "$HOME_DIR/.claude/statusline-wrapper.sh" || fail 'line was not added'
 }
 
+adds_waiting_hooks() {
+  use_real_stow
+  run_in_sandbox "$INSTALL" >/dev/null
+  grep -q claude-waiting.sh "$HOME_DIR/.claude/settings.json" || fail 'hooks were not added'
+}
+
 applies_macos_settings() {
   run_in_sandbox "$INSTALL" >/dev/null
   assert_called '^defaults write NSGlobalDomain _HIHideMenuBar -bool true$'
@@ -132,6 +138,7 @@ run_case 'should trust the taps before installing' trusts_taps_before_installing
 run_case 'should link all eight packages when the target is clean' links_all_packages
 run_case 'should keep .claude a real directory when linking' keeps_claude_dir_real
 run_case 'should add the usage line when installing' adds_usage_line
+run_case "should add the waiting hooks to Claude's settings when installing" adds_waiting_hooks
 run_case 'should apply both macOS settings when linking succeeds' applies_macos_settings
 run_case 'should trust mediosz/tap' trusts_swipe_tap
 run_case 'should install borders' installs_borders

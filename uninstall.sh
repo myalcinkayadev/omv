@@ -50,7 +50,9 @@ stop_keep_awake() {
 # Runs before unlinking, so the status line never calls a script that is already gone.
 remove_claude_usage() {
   "$REPO_DIR/claude-usage.sh" remove
+  "$REPO_DIR/claude-hooks.sh" remove
   rm -f "$HOME/.local/state/omv/claude-usage" "$HOME/.local/state/omv/claude-usage-resets-view"
+  rm -rf "$HOME/.local/state/omv/claude-waiting"
 }
 
 unlink_configs() {

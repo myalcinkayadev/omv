@@ -61,6 +61,15 @@ removes_usage_line() {
   fi
 }
 
+removes_waiting_hooks() {
+  mkdir -p "$HOME_DIR/.claude"
+  printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"$HOME/.claude/claude-waiting.sh wait"}]}]}}' > "$HOME_DIR/.claude/settings.json"
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  if grep -q claude-waiting.sh "$HOME_DIR/.claude/settings.json"; then
+    fail 'hooks are still in the settings'
+  fi
+}
+
 deletes_macos_settings() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called '^defaults delete NSGlobalDomain _HIHideMenuBar$'
@@ -184,6 +193,7 @@ run_case 'should keep the ghostty, nvim, btop and hammerspoon links when run wit
 run_case 'should remove the aerospace and sketchybar links when run without flags' removes_this_setups_links
 run_case 'should unstow all eight packages when run with --all' unstows_everything_with_all_flag
 run_case 'should remove the usage line when uninstalling' removes_usage_line
+run_case "should remove the waiting hooks from Claude's settings when uninstalling" removes_waiting_hooks
 run_case 'should delete both macOS settings when they are set' deletes_macos_settings
 run_case 'should remove aerospace and sketchybar when they are installed' removes_both_tools
 run_case 'should remove the swipeaerospace cask when it is installed' removes_swipe_cask
