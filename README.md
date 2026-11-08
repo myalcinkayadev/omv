@@ -383,6 +383,25 @@ It:
 
 It leaves this repo, other Homebrew packages, fonts, `~/.config/omniwm` and `~/.config-backup` alone.
 
+## Resource use
+
+It won't slow the Mac down or noticeably drain the battery: together, these tools use less than a tenth of one CPU core even while you work, mostly AeroSpace reacting as windows open, close and move.
+
+Memory, measured on a MacBook Pro (M3 Pro, 18 GB) with everything running and no card open, in three runs over two hours. It's each process's footprint, the figure Activity Monitor shows.
+
+| Process | Memory |
+|---|---|
+| AeroSpace | 37–139 MB |
+| borders | 186–209 MB |
+| Hammerspoon | 45 MB |
+| SwipeAeroSpace | 34 MB |
+| SketchyBar | 23–24 MB |
+| **Total** | **349–447 MB** |
+
+- AeroSpace's memory varied the most: it was 136–139 MB in two runs and 37 MB in one. Hammerspoon and SketchyBar stayed steady.
+- The cards are drawn by one WebKit view that is made once and hidden between uses. WebKit runs it in a process of its own, which isn't in the table.
+- The helpers run only when needed: "omv agenda" for a moment every 5 minutes, and "omv meter" only while the Sound card is open.
+
 ## Tests
 
 ```sh
