@@ -99,7 +99,14 @@ sketchybar --add item weather right \
   --set weather drawing=off icon.padding_right=3 label.padding_left=3 \
     click_script="hs -c 'omvToggleWeather()'"
 
-# Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the weather.
+# Pull requests waiting for your review, counted with gh every 5 minutes. Hidden when none
+# wait or GitHub can't be reached. Sits left of the weather; clicking it opens the card.
+sketchybar --add item github_prs right \
+  --set github_prs drawing=off icon=󰊤 icon.padding_right=3 label.padding_left=3 update_freq=300 \
+    script="$PLUGIN_DIR/github_prs.sh" \
+  --subscribe github_prs mouse.clicked system_woke
+
+# Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the pull requests.
 sketchybar --add event keep_awake_toggle \
   --add item keep_awake right \
   --set keep_awake drawing=off icon=󰒳 label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \

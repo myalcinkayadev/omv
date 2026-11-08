@@ -30,6 +30,8 @@ APPROVED_FLOATING = {
     "com.apple.systempreferences",
     "com.apple.calculator",
 }
+# Finder names a Get Info window after the item, as in "report.txt Info".
+FINDER_INFO_TITLE = " Info$"
 HAMMERSPOON_MODIFIERS = {"SUPER": "alt", "SUPER_SHIFT": "alt-shift"}
 HAMMERSPOON_KEYS = {"return": "enter", "44": "slash"}
 
@@ -60,6 +62,18 @@ def hammerspoon_keys() -> list[str]:
     ]
 
 
+def floating_rules() -> list[dict]:
+    return [rule for rule in load_aerospace()["on-window-detected"] if "layout floating" in commands_for(rule)]
+
+
+def finder_title_filters() -> list[str]:
+    return [
+        rule["if"]["window-title-regex-substring"]
+        for rule in floating_rules()
+        if rule["if"]["app-id"] == "com.apple.finder" and "window-title-regex-substring" in rule["if"]
+    ]
+
+
 class ConfigContract(unittest.TestCase):
     def test_should_bind_each_key_only_once_when_aerospace_and_hammerspoon_are_compared(self) -> None:
         self.assertEqual(aerospace_keys() & set(hammerspoon_keys()), set())
@@ -76,10 +90,19 @@ class ConfigContract(unittest.TestCase):
     def test_should_float_system_settings_and_calculator(self) -> None:
         floating = {
             rule["if"]["app-id"]
-            for rule in load_aerospace()["on-window-detected"]
-            if "layout floating" in commands_for(rule)
+            for rule in floating_rules()
+            if "window-title-regex-substring" not in rule["if"]
         }
         self.assertEqual(floating, APPROVED_FLOATING)
+
+    def test_should_float_a_finder_window_when_its_title_ends_in_info(self) -> None:
+        self.assertIn(FINDER_INFO_TITLE, finder_title_filters())
+
+    def test_should_match_a_get_info_title_with_the_finder_filter(self) -> None:
+        self.assertRegex("report.txt Info", FINDER_INFO_TITLE)
+
+    def test_should_keep_a_finder_folder_window_tiled_when_info_is_in_its_name(self) -> None:
+        self.assertNotRegex("Info Docs", FINDER_INFO_TITLE)
 
     def test_should_run_start_btop_when_aerospace_starts(self) -> None:
         self.assertIn(
@@ -160,6 +183,12 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_escape_in_hammerspoon(self) -> None:
         self.assertIn("alt-escape", hammerspoon_keys())
 
+    def test_should_bind_option_shift_d_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-d", hammerspoon_keys())
+
+    def test_should_bind_option_shift_g_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-g", hammerspoon_keys())
+
     def test_should_bind_option_shift_u_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-u", hammerspoon_keys())
 
@@ -186,9 +215,9 @@ class ConfigContract(unittest.TestCase):
 
     def test_should_check_the_fit_when_a_right_side_item_changes(self) -> None:
         plugins = REPO / "sketchybar/.config/sketchybar/plugins"
-        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh")]
+        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh", "github_prs.sh")]
         triggers.append('"bar_fit"' in HAMMERSPOON.read_text(encoding="utf-8"))
-        self.assertEqual(triggers, [True, True, True])
+        self.assertEqual(triggers, [True, True, True, True])
 
     def test_should_bind_option_a_to_the_accordion_toggle(self) -> None:
         self.assertEqual(load_aerospace()["mode"]["main"]["binding"].get("alt-a"), "layout accordion tiles")

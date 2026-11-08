@@ -37,7 +37,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 | 5 | Notes, Messages, WhatsApp, Discord | Secondary, or main if there is only one |
 | 6 | Apple Music, Spotify | Secondary, or main if there is only one |
 
-- **Each app opens on its workspace.** Finder tiles on the current workspace instead, and System Settings and Calculator float there.
+- **Each app opens on its workspace.** Finder tiles on the current workspace instead, though its Get Info windows float, and System Settings and Calculator float there.
 - **Six workspaces in total,** not six per monitor, because AeroSpace workspaces are global. A pinned workspace always opens on its own monitor, so Option+4 from the main monitor moves focus to the secondary one. When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it's plugged back in.
 - **Focus border:** the focused window gets a 2pt gray outline, the same gray as the cards' border, drawn by [JankyBorders](https://github.com/FelixKratz/JankyBorders). It starts with AeroSpace. It's drawn at 1x (`hidpi=off`), which takes about 40 MB instead of up to 209 MB. For a sharper outline on Retina, change `hidpi=off` to `hidpi=on` in `aerospace.toml`, then run `pkill -x borders` and restart AeroSpace.
 - **Trackpad:** swipe three fingers left or right to move one workspace, wrapping around. A swipe stays on the focused monitor, so with two monitors it cycles 1-3 on the main one and 4-6 on the secondary.
@@ -64,6 +64,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Meeting | The next Calendar event's start time, from an hour before | Open the [calendar](#calendar-and-todays-events) | |
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
+| Pull requests | How many open pull requests ask for your review, checked with `gh` every 5 minutes. Hidden when none wait, or when `gh` is missing, logged out or offline | List them; Enter opens one in Helium | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
 | Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
 | Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
@@ -72,7 +73,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Battery | Charge | Open the [Battery card](#battery) | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
-**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, the reminder and the status icons always stay, and everything comes back once there's room.
+**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, the pull request count, the reminder and the status icons always stay, and everything comes back once there's room.
 
 **Claude usage** shows the 5-hour limit: gray under 70%, white from 70%, and a white pill from 90%. The 7-day limit is in the [Agents card](#agents).
 
@@ -239,9 +240,10 @@ Option+Shift+S opens a card for screen captures.
 
 - **Keep awake (Option+Shift+I):** runs `caffeinate -di`, keeping the display and system awake during long builds or Claude Code runs. Press the key again or click the icon to stop. It stays on when the bar restarts and turns off at reboot. Only the `caffeinate` it started is checked or stopped, through its process ID in `~/.local/state/omv/keep-awake.pid`. Closing the lid on battery still puts the Mac to sleep, and the key does nothing while SketchyBar isn't running.
 - **Copy URL (Option+Shift+U):** copies Helium's current URL. The first time, macOS asks to let Hammerspoon control Helium.
+- **Quick note (Option+Shift+D):** type a line and Enter adds it, after the time, as `- 09:05 call the bank` at the end of today's daily note in `~/Documents/vault/work/00 - Daily/`. A day without a note gets a plain file, not your template, because Obsidian only applies templates to notes it creates itself.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 
@@ -278,6 +280,8 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+U | Copy Helium's current URL | |
 | Option+Shift+S | Capture menu | |
 | Option+Shift+M | Set a reminder | |
+| Option+Shift+D | Add a line to today's daily note | |
+| Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |
 | Option+Shift+E | Ethernet card | |

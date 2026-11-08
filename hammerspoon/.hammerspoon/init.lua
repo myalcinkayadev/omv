@@ -17,6 +17,8 @@ local sound = require("sound")
 local weather = require("weather")
 local battery = require("battery")
 local agents = require("agents")
+local quicknote = require("quicknote")
+local prs = require("prs")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -35,6 +37,7 @@ local METER = hs.configdir .. "/meter.sh"
 local GHOSTTY_WINDOW = os.getenv("HOME") .. "/.config/ghostty/new-window.sh"
 local AEROSPACE = "/opt/homebrew/bin/aerospace"
 local SKETCHYBAR = "/opt/homebrew/bin/sketchybar"
+local GH = "/opt/homebrew/bin/gh"
 
 local ALERT_STYLE = {
   fillColor = { white = 0, alpha = 1 },
@@ -290,6 +293,32 @@ local function toggleWindows()
     local height = 28 + 46 + math.min(#rows, WINDOWS_VISIBLE_ROWS) * 30 + 8
     showPanel("windows", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Windows…", rows = rows, compact = true }), onWindowsMessage)
   end, { "list-windows", "--all", "--format", windows.FORMAT }):start()
+end
+
+-- Pull requests waiting for your review (Option+Shift+G, or a click on the bar's count).
+
+local function onPrsMessage(message)
+  if message.type ~= "choose" then return closePanel() end
+  -- Leave focus to Helium, which AeroSpace shows on workspace 3.
+  panel.previous = nil
+  closePanel()
+  open({ "-a", "Helium", message.id })()
+end
+
+local function showPrs(output)
+  local readable, found = pcall(hs.json.decode, output)
+  local rows = prs.rows(readable and found or nil)
+  if #rows == 0 then return open({ "-a", "Helium", prs.REVIEW_REQUESTED_URL })() end
+  local height = 28 + 46 + math.min(#rows, WINDOWS_VISIBLE_ROWS) * 30 + 8
+  showPanel("prs", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Pull requests…", rows = rows, compact = true }), onPrsMessage)
+end
+
+local function togglePrs()
+  if panel and panel.name == "prs" then return closePanel() end
+  hs.task.new(GH, function(code, output)
+    if code ~= 0 then return hs.alert.show("Could not reach GitHub", ALERT_STYLE, 1.2) end
+    showPrs(output)
+  end, { "search", "prs", "--review-requested=@me", "--state=open", "--json", prs.FIELDS }):start()
 end
 
 -- Capture menu (Option+Shift+S)
@@ -1138,6 +1167,36 @@ local function toggleAgents()
   showAgents()
 end
 
+-- Quick note (Option+Shift+D): one line, with the time, at the end of today's daily note.
+
+local NOTE_VAULT = os.getenv("HOME") .. "/Documents/vault/work"
+
+local function saveNote(line)
+  local path = quicknote.path(NOTE_VAULT, os.time())
+  os.execute("/bin/mkdir -p '" .. path:match("^(.*)/") .. "'")
+  local content = quicknote.appended(readText(path), line)
+  local file = io.open(path, "w")
+  if not file then return false end
+  file:write(content)
+  file:close()
+  return true
+end
+
+local function onNoteInput(message)
+  if message.type == "close" then return closePanel() end
+  if message.type ~= "submit" then return end
+  local line = quicknote.line(message.id, os.time())
+  if not line then return closePanel() end
+  closePanel()
+  hs.alert.show(saveNote(line) and "Noted" or "Could not write today's note", ALERT_STYLE, 1.2)
+end
+
+local function newNote()
+  if panel and panel.name == "note" then return closePanel() end
+  local screen = { prompt = "Note…", rows = {}, input = true, hint = "Adds a line to today's daily note" }
+  showPanel("note", centered(REMINDER_WIDTH, 28 + 46 + 44 + 4), card.html(screen), onNoteInput)
+end
+
 -- Copy URL (Option+Shift+U)
 
 local function copyUrl()
@@ -1155,6 +1214,8 @@ bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", run(S
 bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", copyUrl)
 bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", toggleCapture)
 bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", newReminder)
+bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", newNote)
+bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "Pull requests waiting for your review", togglePrs)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi card", toggleWifi)
 bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet card", toggleEthernet)
@@ -1205,6 +1266,7 @@ end)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)
+omvTogglePrs = later(togglePrs)
 omvToggleCapture = later(toggleCapture)
 omvToggleReminders = later(toggleReminders)
 omvNewReminder = later(newReminder)

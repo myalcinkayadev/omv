@@ -168,6 +168,12 @@ if.app-id = 'com.spotify.client'
 run = 'move-node-to-workspace 6'
 
 # Floating, on whichever workspace is current
+# Finder tiles, but its Get Info windows, titled like "report.txt Info", float.
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+if.window-title-regex-substring = ' Info$'
+run = 'layout floating'
+
 [[on-window-detected]]
 if.app-id = 'com.apple.systempreferences'
 run = 'layout floating'
