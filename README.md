@@ -167,6 +167,8 @@ Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace t
 
 Sound lists every output device, with the one in use selected and marked `current`. It's read each time it opens, so AirPods show up as soon as they connect. Virtual devices, such as the ones Zoom and Teams add, are left out unless they're in use. Right-clicking the volume item in the bar opens it too.
 
+<img src="docs/sound.png" alt="The Sound card, with the speakers in use and AirPods listed" width="420">
+
 Scripts can open each card with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Capture menu
@@ -210,7 +212,7 @@ On the right, from left to right:
 
 Clicking the clock opens a calendar card under it. Weeks start on Monday and show their ISO week number, today is a white square, and the footer shows today's date and week. Left and Right (or ‹ and ›) change month, T goes back to today, and Escape or a click elsewhere closes it.
 
-<img src="docs/calendar.png" alt="The calendar card, with today marked" width="360">
+<img src="docs/calendar.png" alt="The calendar card, with today marked and today's events under it" width="360">
 
 Under the footer, the card lists today's events from Calendar.app, so it covers every account added there, such as iCloud, Google and Exchange.
 
@@ -235,6 +237,10 @@ Short forms: `r 25m check deploy` is the same as `25m check deploy`, `b` starts 
 2. **Break.** A large countdown, a progress line and a tip that changes each break. The bar shows a coffee cup with the time left. **End break early** stops it.
 3. **Back to work?** Pick **Start next pomo**, which reuses the task, or **Done for now**.
 
+<img src="docs/pomo-done.png" alt="Time for a break: start the break, 5 more minutes, or skip it" width="560">
+<img src="docs/pomo-break.png" alt="The break: a countdown, a progress line and a tip" width="560">
+<img src="docs/pomo-over.png" alt="Back to work: start the next pomo or stop for now" width="560">
+
 - Each choice has a letter: `b` starts the break, `r` gives 5 more minutes, and `c` cancels, which skips the break, ends it early, or stops for now.
 - Escape skips the break on the first card, ends it early on the second, and stops on the last.
 - The cards stay open when focus moves away, since the break is the point. During a break, clicking the bar item reopens the countdown.
@@ -242,7 +248,7 @@ Short forms: `r 25m check deploy` is the same as `25m check deploy`, `b` starts 
 - A break survives a Hammerspoon reload: the bar keeps counting down, and "Back to work?" opens when it ends.
 - Today's count is kept in `~/.local/state/omv/pomo`, and starts over each day.
 
-<img src="docs/reminder.png" alt="The reminder card" width="480">
+<img src="docs/reminder.png" alt="The reminder card, with its hint: 25m check deploy, pomo, b break, c cancel" width="480">
 
 - The bar shows the time left on the soonest reminder, plus `+N` for the others, such as `24:10 +1`. The text stays out of the bar, so it doesn't run under the notch.
 - When one is due, you get a notification and an alert, and the bar item turns into a white pill with the start of its text for 10 seconds.
