@@ -164,6 +164,16 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_shift_u_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-u", hammerspoon_keys())
 
+    def test_should_run_the_fit_check_on_its_event(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("--subscribe bar_fit bar_fit system_woke display_change", source)
+
+    def test_should_check_the_fit_when_a_right_side_item_changes(self) -> None:
+        plugins = REPO / "sketchybar/.config/sketchybar/plugins"
+        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh")]
+        triggers.append('"bar_fit"' in HAMMERSPOON.read_text(encoding="utf-8"))
+        self.assertEqual(triggers, [True, True, True])
+
     def test_should_put_the_clock_at_the_far_right(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertLess(source.index("--add item clock right"), source.index("--add item battery right"))

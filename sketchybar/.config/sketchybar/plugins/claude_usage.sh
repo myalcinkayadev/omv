@@ -7,6 +7,7 @@ resets_view="$state_file-resets-view"
 
 if [ ! -r "$state_file" ]; then
   sketchybar --set "$NAME" drawing=off
+  sketchybar --trigger bar_fit
   exit 0
 fi
 
@@ -74,3 +75,5 @@ fi
 # Word splitting is intended: style holds only space-separated properties.
 # shellcheck disable=SC2086
 sketchybar --set "$NAME" drawing=on "label=$label" $style
+# The label's width changes, so the right side may need to give way before the notch.
+sketchybar --trigger bar_fit

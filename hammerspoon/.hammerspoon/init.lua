@@ -346,8 +346,24 @@ local function loadReminders()
   return reminders.decode(text, os.time())
 end
 
+-- The bar's fit check runs only when the item's width can change: it appears or goes, or
+-- its label changes length. The countdown ticking from 24:10 to 24:09 doesn't count.
+local reminderShape = nil
+
 local function setReminderBar(properties)
-  hs.task.new(SKETCHYBAR, nil, { "--set", "reminder", table.unpack(properties) }):start()
+  local arguments = { "--set", "reminder", table.unpack(properties) }
+  local drawing, label = "", ""
+  for _, property in ipairs(properties) do
+    drawing = property:match("^drawing=(.*)") or drawing
+    label = property:match("^label=(.*)") or label
+  end
+  local shape = drawing .. ":" .. utf8.len(label)
+  if shape ~= reminderShape then
+    reminderShape = shape
+    arguments[#arguments + 1] = "--trigger"
+    arguments[#arguments + 1] = "bar_fit"
+  end
+  hs.task.new(SKETCHYBAR, nil, arguments):start()
 end
 
 -- A due reminder notifies, and turns the bar item into a white pill for a moment.
@@ -603,6 +619,8 @@ local function drawMeeting()
   local key = table.concat(properties, "\n")
   if key == meetingShown then return end
   meetingShown = key
+  properties[#properties + 1] = "--trigger"
+  properties[#properties + 1] = "bar_fit"
   hs.task.new(SKETCHYBAR, nil, { "--set", "meeting", table.unpack(properties) }):start()
 end
 

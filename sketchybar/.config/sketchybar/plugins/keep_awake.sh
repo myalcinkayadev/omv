@@ -38,3 +38,6 @@ case "${SENDER:-}" in
     if is_on; then show on; else show off; fi
     ;;
 esac
+
+# Showing or hiding the icon changes how much room the right side of the bar needs.
+sketchybar --trigger bar_fit

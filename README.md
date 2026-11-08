@@ -208,6 +208,8 @@ On the right, from left to right:
 | Battery | Charge | Show or hide the percentage | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar) | |
 
+When the right side gets too full for the notch, items give way in this order until it fits: Claude's numbers (its logo stays), then the meeting's time (its icon stays), then the Claude logo. Keep-awake, the reminder and the status icons always stay. Everything comes back once there's room.
+
 ### Calendar
 
 Clicking the clock opens a calendar card under it. Weeks start on Monday and show their ISO week number, today is a white square, and the footer shows today's date and week. Left and Right (or ‹ and ›) change month, T goes back to today, and Escape or a click elsewhere closes it.

@@ -107,4 +107,10 @@ sketchybar --add item meeting right \
     background.drawing=off background.color=$WHITE \
     background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleCalendar()'"
 
+# Hidden. Gives way on the right side of the bar before the notch; see bar_fit.sh.
+sketchybar --add event bar_fit \
+  --add item bar_fit right \
+  --set bar_fit drawing=off script="$PLUGIN_DIR/bar_fit.sh" \
+  --subscribe bar_fit bar_fit system_woke display_change
+
 sketchybar --update
