@@ -64,8 +64,8 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Meeting | The next Calendar event's start time, from an hour before | Open the [calendar](#calendar-and-todays-events) | |
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
-| Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
+| Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
 | Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
 | Wi-Fi | Connected or not | Open the [Wi-Fi card](#wi-fi-and-ethernet) | |
 | Volume | Level | Open the [Sound card](#sound), with either button | Change the volume by 5% |

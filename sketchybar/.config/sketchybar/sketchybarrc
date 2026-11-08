@@ -82,14 +82,8 @@ sketchybar --add item ethernet right \
   --set ethernet drawing=off label.drawing=off update_freq=60 script="$PLUGIN_DIR/ethernet.sh" \
   --subscribe ethernet system_woke mouse.clicked
 
-# Hidden until Hammerspoon has a reading. It sets the icon and temperature, and the
-# temperature gives way before the notch; see bar_fit.sh. Clicking it opens the weather card.
-sketchybar --add item weather right \
-  --set weather drawing=off icon.padding_right=3 label.padding_left=3 \
-    click_script="hs -c 'omvToggleWeather()'"
-
 # Claude's logo and 5-hour limit; clicking it opens the Agents card. Added after the status
-# icons, so it sits just to the left of the weather.
+# icons, so it sits just to the left of them.
 sketchybar --add event claude_usage_change \
   --add item claude_usage right \
   --set claude_usage drawing=off icon.width=27 icon.padding_left=0 icon.padding_right=0 \
@@ -98,7 +92,14 @@ sketchybar --add event claude_usage_change \
     background.drawing=off background.color=$WHITE background.corner_radius=5 background.height=24 \
   --subscribe claude_usage claude_usage_change mouse.clicked system_woke
 
-# Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the Claude item.
+# Added after Claude's item, so it sits just to the left of it. Hidden until Hammerspoon
+# has a reading. It sets the icon and temperature, and the temperature gives way before
+# the notch; see bar_fit.sh. Clicking it opens the weather card.
+sketchybar --add item weather right \
+  --set weather drawing=off icon.padding_right=3 label.padding_left=3 \
+    click_script="hs -c 'omvToggleWeather()'"
+
+# Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the weather.
 sketchybar --add event keep_awake_toggle \
   --add item keep_awake right \
   --set keep_awake drawing=off icon=󰒳 label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \

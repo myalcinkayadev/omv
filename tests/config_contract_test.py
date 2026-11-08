@@ -168,6 +168,11 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("--subscribe bar_fit bar_fit system_woke display_change", source)
 
+    def test_should_place_the_weather_left_of_claudes_item(self) -> None:
+        # Right-side items are added from the right edge inward, so a later one sits further left.
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertLess(source.index("--add item claude_usage right"), source.index("--add item weather right"))
+
     def test_should_check_the_fit_when_a_right_side_item_changes(self) -> None:
         plugins = REPO / "sketchybar/.config/sketchybar/plugins"
         triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh")]
