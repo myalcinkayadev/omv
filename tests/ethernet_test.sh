@@ -17,7 +17,8 @@ Hardware Port: USB 10/100/1000 LAN
 Device: en5
 Ethernet Address: 00:e0:4c:68:01:02'
 
-# networksetup prints $SANDBOX/ports. ipconfig getifaddr answers only for devices
+# networksetup prints $SANDBOX/ports. ifconfig reports every port active unless it is
+# listed in $SANDBOX/inactive. ipconfig getifaddr answers only for devices
 # listed in $SANDBOX/addresses, as "<device> <ip>".
 stub_network() {
   printf '%s\n' "$1" > "$SANDBOX/ports"
@@ -31,7 +32,12 @@ STUB
 echo "ipconfig \$*" >> "$CALL_LOG"
 awk -v d="\$2" '\$1 == d { print \$2; found = 1 } END { exit !found }' "$SANDBOX/addresses"
 STUB
-  chmod +x "$STUB_DIR/networksetup" "$STUB_DIR/ipconfig"
+  : > "$SANDBOX/inactive"
+  cat > "$STUB_DIR/ifconfig" <<STUB
+#!/bin/sh
+if grep -qx "\$1" "$SANDBOX/inactive"; then echo "	status: inactive"; else echo "	status: active"; fi
+STUB
+  chmod +x "$STUB_DIR/networksetup" "$STUB_DIR/ipconfig" "$STUB_DIR/ifconfig"
 }
 
 draw() {
@@ -63,6 +69,13 @@ ignores_thunderbolt_bridge() {
   assert_called '^sketchybar --set ethernet drawing=off'
 }
 
+hides_item_when_link_is_down() {
+  stub_network "$PORTS_WITH_LAN" "en5 192.168.1.31"
+  echo en5 > "$SANDBOX/inactive"
+  draw
+  assert_called '^sketchybar --set ethernet drawing=off'
+}
+
 opens_card_on_click() {
   stub hs
   run_in_sandbox NAME=ethernet SENDER=mouse.clicked "$PLUGIN"
@@ -73,5 +86,6 @@ run_case "should show the item when a LAN port has an address" shows_item_with_c
 run_case "should hide the item when the LAN port has no address" hides_item_when_unplugged
 run_case "should hide the item when there is only Wi-Fi" hides_item_with_only_wifi
 run_case "should hide the item when only the Thunderbolt Bridge has an address" ignores_thunderbolt_bridge
+run_case "should hide the item when the port has an address but no link" hides_item_when_link_is_down
 run_case "should open the Ethernet card on a click" opens_card_on_click
 finish

@@ -1,9 +1,9 @@
 #!/bin/sh
 # Shows the Ethernet icon while a cable is connected, and opens the Ethernet card on a click.
-# A port counts as connected when it has an address. Wi-Fi, Bluetooth PAN and the
+# A port counts as connected when its link is up and it has an address. Wi-Fi, Bluetooth PAN and the
 # Thunderbolt Bridge between two Macs are not cables to the network.
 
-PATH="$PATH:/usr/sbin"
+PATH="$PATH:/usr/sbin:/sbin"
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
   hs -c 'omvToggleEthernet()'
@@ -17,7 +17,7 @@ wired_ports() {
 }
 
 for device in $(wired_ports); do
-  if ipconfig getifaddr "$device" >/dev/null 2>&1; then
+  if ifconfig "$device" 2>/dev/null | grep -q 'status: active' && ipconfig getifaddr "$device" >/dev/null 2>&1; then
     sketchybar --set "$NAME" drawing=on icon="$(printf '\363\260\210\200')"
     exit 0
   fi
