@@ -10,7 +10,10 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**The bar**](#the-bar): workspaces, the playing track, reminders, meetings, Claude usage, and a macOS-style clock that stays clear of the notch.
 - [**Window list**](#window-list): Option+Space jumps to any window on any workspace.
 - [**Key list**](#key-list): Option+/ shows every shortcut at once, and runs the one you pick.
-- [**System menu and Sound**](#system-menu-and-sound): lock, sleep, restart, reload the tools, and pick where sound plays.
+- [**System menu**](#system-menu): lock, sleep, restart and reload the tools.
+- [**Sound**](#sound): volume, mute, output and input devices, and a live mic level.
+- [**Wi-Fi and Ethernet**](#wi-fi-and-ethernet): the network, signal, address and router, a click away.
+- [**Weather**](#weather): the temperature in the bar, and a three-day forecast for wherever the Mac is.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
 - [**Capture menu**](#capture-menu): screenshots, text from the screen, and a color picker.
@@ -60,12 +63,14 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
 | Claude | Usage limits, as `5h 23%  7d 41%` | Show the reset times for 10 seconds | |
-| Wi-Fi | Connected or not | Open Wi-Fi settings | |
-| Volume | Level | Mute or unmute. Right-click to pick the output | Change the volume by 5% |
+| Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
+| Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
+| Wi-Fi | Connected or not | Open the [Wi-Fi card](#wi-fi-and-ethernet) | |
+| Volume | Level | Open the [Sound card](#sound), with either button | Change the volume by 5% |
 | Battery | Charge | Show or hide the percentage | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
-**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's numbers (its logo stays), then the meeting's time (its icon stays), then the Claude logo. Keep-awake, the reminder and the status icons always stay, and everything comes back once there's room.
+**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's numbers (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, the reminder and the status icons always stay, and everything comes back once there's room.
 
 **Claude usage** shows the 5-hour and 7-day limits. The higher one sets the look: gray under 70%, white from 70%, and a white pill from 90%.
 
@@ -88,7 +93,7 @@ Option+/ shows every key at once, in a searchable two-column list. Type to filte
 
 ![The key list, showing every shortcut in two columns](docs/key-list.png)
 
-## System menu and Sound
+## System menu
 
 Option+Escape opens a menu modeled on Omarchy's.
 
@@ -100,14 +105,40 @@ Option+Escape opens a menu modeled on Omarchy's.
 | Screensaver | Starts the screensaver |
 | Sleep | Puts the Mac to sleep |
 | Log out, Restart, Shut down | Ask first, with Cancel selected |
-| Sound › | Picks where sound plays: speakers, AirPods, a monitor |
+| Sound | Opens the [Sound card](#sound) |
 | Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
 
 Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
 
-**Sound** lists every output device, with the one in use selected and marked `current`. It's read each time it opens, so AirPods show up as soon as they connect. Virtual devices, such as the ones Zoom and Teams add, are left out unless they're in use. Right-clicking the volume item in the bar opens it too.
+## Sound
 
-<img src="docs/sound.png" alt="The Sound card, with the speakers in use and AirPods listed" width="420">
+Click the volume item in the bar, or press Option+Shift+V, for the Sound card under it.
+
+- **Header:** the output in use, and a switch that mutes and unmutes.
+- **Output:** a volume slider, then every output device, with the one in use highlighted. Click one to switch to it. They're read each time the card opens, so AirPods show up as soon as they connect.
+- **Input:** a volume slider for the mic, a live level meter, then every input device.
+- Virtual devices, such as the ones Zoom and Teams add, are left out unless they're in use.
+- **Keys:** Up and Down move through the devices, Enter picks one, Left and Right change the volume by 5%, M mutes, and Escape or a click elsewhere closes.
+- **The level meter** comes from a small Swift helper, `meter.swift`, built the first time into `~/.cache/omv/Meter.app`. It listens only while the card is open, so macOS shows its orange microphone dot until the card closes. The first time, macOS asks to let "omv meter" use the microphone. If you refuse, the meter stays empty and the rest of the card still works.
+
+## Wi-Fi and Ethernet
+
+Click the Wi-Fi item, or press Option+Shift+W, for the Wi-Fi card: the network's name, the signal as a percentage and in dBm, the IP address, the router and the channel. **Turn off** (or **Turn on**) switches Wi-Fi, and **Wi-Fi settings** opens System Settings.
+
+The Ethernet item shows only while a cable is connected. Click it, or press Option+Shift+E, for the Ethernet card: the link speed, the IP address, the router, the port and the duplex, and **Network settings**. With more than one cable, it shows the one the Mac's traffic goes out by.
+
+Left and Right move between the buttons, Enter presses one, and Escape or a click elsewhere closes.
+
+Since macOS 14, an app needs Location Services to read the Wi-Fi network's name. Hammerspoon asks for it once, for the weather, and without it the card shows `—` for the name.
+
+## Weather
+
+The weather item shows the condition and the temperature where the Mac is. Click it, or press Option+Shift+O, for the weather card: the temperature, what it feels like, wind and humidity, and the next three days' highs and lows.
+
+- The location comes from macOS's Location Services. The first time, macOS asks to let Hammerspoon use it. The city's name comes from macOS too.
+- The weather comes from [Open-Meteo](https://open-meteo.com), which needs no key. Only the location, rounded to about a kilometre, is sent.
+- It's read when Hammerspoon starts, every 30 minutes, when the Mac wakes, and when the card opens.
+- When a reading fails, the last one stays. With none yet, the item stays hidden and the card says why.
 
 ## Calendar and today's events
 
@@ -182,7 +213,7 @@ Option+Shift+S opens a card for screen captures.
 - **Copy URL (Option+Shift+U):** copies Helium's current URL. The first time, macOS asks to let Hammerspoon control Helium.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 
@@ -220,6 +251,10 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+S | Capture menu | |
 | Option+Shift+M | Set a reminder | |
 | Option+Shift+Space | Show or hide the bar | |
+| Option+Shift+W | Wi-Fi card | |
+| Option+Shift+E | Ethernet card | |
+| Option+Shift+V | Sound card | |
+| Option+Shift+O | Weather card | |
 | Option+Escape | System menu | |
 | Option+/ | Show or hide the key list | |
 
@@ -284,7 +319,7 @@ When you pull new files later, run `./install.sh` again. Stow links files one by
 
 Checks that everything is in place, and says how to fix what isn't: the tools, apps and font, that every package is linked with no broken links left behind, that AeroSpace, SketchyBar, borders, Hammerspoon and SwipeAeroSpace are running with the omv config loaded, the macOS settings, AeroSpace's Accessibility, and the Claude usage line. It only reads, and exits non-zero when something fails.
 
-It also lists what macOS doesn't let a script read, to check by hand: Screen Recording for Hammerspoon, Calendar access for "omv agenda", and Accessibility for SwipeAeroSpace.
+It also lists what macOS doesn't let a script read, to check by hand: Screen Recording for Hammerspoon, Calendar access for "omv agenda", Location Services for Hammerspoon, Microphone access for "omv meter", and Accessibility for SwipeAeroSpace.
 
 ### What's inside
 
@@ -294,7 +329,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 |---|---|---|
 | `aerospace` | `~/.config/aerospace` | Tiling, workspaces and window keys |
 | `sketchybar` | `~/.config/sketchybar` | The top bar and its plugins |
-| `hammerspoon` | `~/.hammerspoon` | App keys and every card: menus, lists, calendar, reminders, capture |
+| `hammerspoon` | `~/.hammerspoon` | App keys and every card: menus, lists, calendar, reminders, capture, sound, network, weather |
 | `ghostty` | `~/.config/ghostty` | Terminal config and window scripts |
 | `nvim` | `~/.config/nvim` | Neovim config |
 | `btop` | `~/.config/btop` | btop config |

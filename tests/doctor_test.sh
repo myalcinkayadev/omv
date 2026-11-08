@@ -152,6 +152,16 @@ lists_manual_checks() {
   expect_report 'Check by hand'
 }
 
+lists_location_check() {
+  complete_setup
+  expect_report 'Location Services for Hammerspoon'
+}
+
+lists_microphone_check() {
+  complete_setup
+  expect_report 'Microphone access for "omv meter"'
+}
+
 changes_nothing() {
   complete_setup
   doctor >/dev/null 2>&1
@@ -172,5 +182,7 @@ run_case "should report a macOS setting that's off" reports_setting_off
 run_case "should report when AeroSpace can't list windows" reports_missing_accessibility
 run_case 'should report a missing Claude usage line' reports_missing_usage_line
 run_case 'should list the checks it cannot do as check by hand' lists_manual_checks
+run_case 'should list Location for Hammerspoon as a check by hand' lists_location_check
+run_case 'should list Microphone for the meter helper as a check by hand' lists_microphone_check
 run_case 'should change nothing on the system' changes_nothing
 finish

@@ -169,6 +169,10 @@ Check by hand (macOS doesn't let a script read these)
     System Settings > Privacy & Security > Screen & System Audio Recording
   - Calendar access for "omv agenda", for today's events:
     System Settings > Privacy & Security > Calendars
+  - Location Services for Hammerspoon, for the weather and the Wi-Fi network's name:
+    System Settings > Privacy & Security > Location Services
+  - Microphone access for "omv meter", for the Sound card's level meter:
+    System Settings > Privacy & Security > Microphone
   - Accessibility for SwipeAeroSpace, for three-finger swipes:
     System Settings > Privacy & Security > Accessibility
 EOF
