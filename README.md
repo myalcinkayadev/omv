@@ -201,10 +201,10 @@ On the right, from left to right:
 | Reminder | Time left on the next reminder, only while one is set | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, only while keep-awake is on | Turn it off | |
 | Claude | Usage limits, as `5h 23%  7d 41%` | Show the reset times for 10 seconds | |
-| Clock | Day and time | Open the [calendar](#calendar) | |
 | Wi-Fi | Connected or not | Open Wi-Fi settings | |
 | Volume | Level | Mute or unmute. Right-click to pick the output | Change the volume by 5% |
 | Battery | Charge | Show or hide the percentage | |
+| Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar) | |
 
 ### Calendar
 

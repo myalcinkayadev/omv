@@ -164,6 +164,10 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_shift_u_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-u", hammerspoon_keys())
 
+    def test_should_put_the_clock_at_the_far_right(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertLess(source.index("--add item clock right"), source.index("--add item battery right"))
+
     def test_should_open_the_calendar_card_when_the_clock_is_clicked(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("omvToggleCalendar()", source)
