@@ -130,11 +130,12 @@ sketchybar --add item reminder right \
     background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleReminders()'"
 
 # Hidden until a meeting starts within the hour. Hammerspoon sets its label from
-# Calendar.app, and turns it into a white pill from 5 minutes before the start.
+# Calendar.app, and turns it into a white pill from 5 minutes before the start. Clicking
+# it joins the meeting's video call, or opens the calendar when there's none to join.
 sketchybar --add item meeting right \
   --set meeting drawing=off icon=󰃭 icon.padding_right=3 label.padding_left=3 \
     background.drawing=off background.color=$WHITE \
-    background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleCalendar()'"
+    background.corner_radius=5 background.height=24 click_script="hs -c 'omvJoinMeeting()'"
 
 # Hidden. Gives way on the right side of the bar before the notch; see bar_fit.sh.
 sketchybar --add event bar_fit \

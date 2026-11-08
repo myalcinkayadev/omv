@@ -192,6 +192,9 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_shift_a_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-a", hammerspoon_keys())
 
+    def test_should_bind_option_shift_c_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-c", hammerspoon_keys())
+
     def test_should_bind_option_shift_u_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-u", hammerspoon_keys())
 
@@ -278,10 +281,10 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("omvToggleReminders()", source)
 
-    def test_should_open_the_calendar_card_when_the_meeting_item_is_clicked(self) -> None:
+    def test_should_join_the_meeting_when_the_meeting_item_is_clicked(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         meeting = re.search(r"--add item meeting right(.*?)\n\n", source, re.S)
-        self.assertIn("omvToggleCalendar()", meeting.group(1) if meeting else "")
+        self.assertIn("omvJoinMeeting()", meeting.group(1) if meeting else "")
 
     def test_should_subscribe_volume_to_clicks_for_the_sound_menu(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")

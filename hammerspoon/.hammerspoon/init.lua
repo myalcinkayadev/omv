@@ -709,6 +709,24 @@ local function toggleCalendar()
   readAgenda(redrawOpenCalendar)
 end
 
+-- Join a meeting (Option+Shift+C, or a click on the meeting in the bar): one meeting with a
+-- call link opens it, several list them, and none opens the calendar card instead.
+local function joinMeeting()
+  if panel and panel.name == "join" then return closePanel() end
+  local meetings = agendaDay and agenda.joinable(agendaDay.events, os.time()) or {}
+  if #meetings == 0 then return toggleCalendar() end
+  if #meetings == 1 then return open({ meetings[1].link })() end
+  local rows = agenda.joinRows(meetings)
+  local height = 28 + 46 + #rows * 30 + 8
+  showPanel("join", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Join…", rows = rows, compact = true }), function(message)
+    if message.type ~= "choose" then return closePanel() end
+    -- Leave focus to the call app, rather than handing it back to the app open before.
+    panel.previous = nil
+    closePanel()
+    open({ message.id })()
+  end)
+end
+
 -- Wi-Fi and Ethernet cards (click the bar icons, Option+Shift+W / E)
 
 local WIFI_SETTINGS = "x-apple.systempreferences:com.apple.wifi-settings-extension"
@@ -1241,6 +1259,7 @@ bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", newReminder)
 bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", newNote)
 bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "Pull requests waiting for your review", togglePrs)
 bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Go to the Claude session waiting for you", focusClaude)
+bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting that is starting", joinMeeting)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi card", toggleWifi)
 bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet card", toggleEthernet)
@@ -1291,6 +1310,7 @@ omvRedrawBar = later(function()
 end)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
+omvJoinMeeting = later(joinMeeting)
 omvToggleWindows = later(toggleWindows)
 omvTogglePrs = later(togglePrs)
 omvFocusClaude = later(focusClaude)

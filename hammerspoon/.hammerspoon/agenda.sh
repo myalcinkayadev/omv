@@ -1,7 +1,7 @@
 #!/bin/sh
 # Usage: agenda.sh
-# Prints today's Calendar.app events, one per line: start, end, all-day (1 or 0) and title,
-# split by tabs, or "denied" when Calendar access was refused. See agenda.swift.
+# Prints today's Calendar.app events, one per line: start, end, all-day (1 or 0), title and
+# video call links, split by tabs, or "denied" when Calendar access was refused. See agenda.swift.
 # The helper is built from agenda.swift the first time, into an app bundle in the cache.
 
 PATH="$PATH:/usr/bin:/bin:/usr/sbin"

@@ -61,7 +61,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 
 | Item | Shows | Click | Scroll |
 |---|---|---|---|
-| Meeting | The next Calendar event's start time, from an hour before | Open the [calendar](#calendar-and-todays-events) | |
+| Meeting | The next Calendar event's start time, from an hour before | Join its video call, or open the [calendar](#calendar-and-todays-events) | |
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
 | Waiting Claude | A white pill, `waiting · omv`, while a Claude Code session waits for you, plus `+N` for others | Go to that session's terminal | |
@@ -188,6 +188,7 @@ Under the footer are today's events from Calendar.app, so every account added th
 - Each event shows its start time, or `all day`. Events already over are dimmed, and the one going on now is white.
 - It lists five at most, then `+N more`. When there are more, events already over are left out first. Cancelled events and ones you declined are left out.
 - **In the bar,** the meeting item shows the next timed event's start time, as `14:00`, from an hour before it starts. It turns into a white pill 5 minutes before the start and goes away 5 minutes after. All-day events stay out of the bar.
+- **Joining:** from 5 minutes before a meeting until it ends, Option+Shift+C or a click on the meeting item opens its Zoom, Google Meet or Teams link. When several meetings can be joined, a card lists them, with the one starting next selected, else the one that started last. With none to join, the calendar card opens. The link comes from the event's URL, else its location, else its notes. Only those links are saved, never the notes themselves.
 - Events are read when Hammerspoon starts, every 5 minutes, when the Mac wakes, and when the card opens.
 - They're read by a small Swift helper, `agenda.swift`, built the first time into `~/.cache/omv/Agenda.app`. It runs as its own app because macOS asks the app that reads calendars for permission, and Hammerspoon can't ask. The first time, macOS asks to let "omv agenda" access your calendars. If you refuse, the card says so, and you can allow it later in System Settings > Privacy & Security > Calendars.
 
@@ -251,7 +252,7 @@ Option+Shift+S opens a card for screen captures.
 - **Quick note (Option+Shift+D):** type a line and Enter adds it, after the time, as `- 09:05 call the bank` at the end of today's daily note in `~/Documents/vault/work/00 - Daily/`. A day without a note gets a plain file, not your template, because Obsidian only applies templates to notes it creates itself.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 
@@ -289,6 +290,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+S | Capture menu | |
 | Option+Shift+M | Set a reminder | |
 | Option+Shift+D | Add a line to today's daily note | |
+| Option+Shift+C | Join the meeting that is starting | |
 | Option+Shift+A | Go to the Claude session waiting for you | |
 | Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+Space | Show or hide the bar | |

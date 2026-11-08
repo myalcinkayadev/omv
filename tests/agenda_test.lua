@@ -53,4 +53,46 @@ check.that("should keep the meeting until 5 minutes after it started", agenda.ba
 check.that("should move on 5 minutes after it started", agenda.bar(day.events, at(14, 5)) == nil)
 check.that("should leave all-day events out of the bar", agenda.bar({ day.events[1] }, at(0, 30)) == nil)
 
+-- Joining: the link comes from the event's URL, location and notes, in that order.
+check.that("should find a Zoom link in the notes",
+  agenda.link("Room 4 Agenda: https://acme.zoom.us/j/123456?pwd=abc see you") == "https://acme.zoom.us/j/123456?pwd=abc")
+check.that("should find a Meet link", agenda.link("https://meet.google.com/abc-defg-hij") == "https://meet.google.com/abc-defg-hij")
+check.that("should find a Teams link",
+  agenda.link("Join: https://teams.microsoft.com/l/meetup-join/19%3ameeting_x%40thread.v2/0?context=y") == "https://teams.microsoft.com/l/meetup-join/19%3ameeting_x%40thread.v2/0?context=y")
+check.that("should prefer the link that comes first, the event's URL",
+  agenda.link("https://meet.google.com/aaa-bbbb-ccc notes https://acme.zoom.us/j/1") == "https://meet.google.com/aaa-bbbb-ccc")
+check.that("should give no link when the text has only other URLs", agenda.link("https://example.com/doc") == nil)
+check.that("should give no link for empty text", agenda.link("") == nil)
+
+local linked = agenda.decode(table.concat({
+  at(9) .. "\t" .. at(9, 30) .. "\t0\tStandup\thttps://meet.google.com/aaa-bbbb-ccc",
+  at(9, 15) .. "\t" .. at(10) .. "\t0\tInterview\tRoom 4 https://acme.zoom.us/j/42",
+  at(9, 20) .. "\t" .. at(10) .. "\t0\tLunch plan\t",
+  at(0) .. "\t" .. at(23, 59) .. "\t1\tHoliday\thttps://meet.google.com/zzz-zzzz-zzz",
+}, "\n") .. "\n")
+check.that("should read the link field", linked.events[3] and linked.events[3].link ~= nil)
+check.that("should read an old line without the link field", agenda.decode(at(9) .. "\t" .. at(10) .. "\t0\tOld\n").events[1].title == "Old")
+
+local function titles(list)
+  local names = {}
+  for index, event in ipairs(list) do names[index] = event.title end
+  return table.concat(names, ",")
+end
+check.that("should offer nothing to join more than 5 minutes before", #agenda.joinable(linked.events, at(8, 54)) == 0)
+check.that("should offer a meeting from 5 minutes before", titles(agenda.joinable(linked.events, at(8, 55))) == "Standup")
+check.that("should offer a meeting until it ends", titles(agenda.joinable(linked.events, at(9, 29))):find("Standup", 1, true) ~= nil)
+check.that("should stop offering a meeting once it ends", titles(agenda.joinable(linked.events, at(9, 30))) == "Interview")
+check.that("should put the meeting starting next first when one is running",
+  titles(agenda.joinable(linked.events, at(9, 12))) == "Interview,Standup")
+check.that("should put the latest started first when all have started",
+  titles(agenda.joinable(linked.events, at(9, 16))) == "Interview,Standup")
+check.that("should leave out meetings without a link", not titles(agenda.joinable(linked.events, at(9, 25))):find("Lunch", 1, true))
+check.that("should leave out all-day events", not titles(agenda.joinable(linked.events, at(9, 25))):find("Holiday", 1, true))
+
+local joinRows = agenda.joinRows(agenda.joinable(linked.events, at(9, 12)))
+check.that("should label a join row with the meeting's title", joinRows[1].label == "Interview")
+check.that("should hint the time and the service", joinRows[1].hint == "09:15–10:00 · Zoom")
+check.that("should name a Meet link Meet", joinRows[2].hint == "09:00–09:30 · Meet")
+check.that("should use the link as the row id", joinRows[2].id == "https://meet.google.com/aaa-bbbb-ccc")
+
 check.finish()
