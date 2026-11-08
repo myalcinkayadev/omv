@@ -1193,6 +1193,15 @@ omvToggleEthernet = later(toggleEthernet)
 omvToggleWeather = later(toggleWeather)
 omvToggleBattery = later(toggleBattery)
 omvToggleAgents = later(toggleAgents)
+
+-- SketchyBar's config calls this when it starts: a restarted bar has lost the items set
+-- here, and they are only sent again when they change.
+omvRedrawBar = later(function()
+  weatherBarShown, meetingShown, reminderShape = nil, nil, nil
+  drawWeatherBar()
+  drawMeeting()
+  tickReminders()
+end)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)

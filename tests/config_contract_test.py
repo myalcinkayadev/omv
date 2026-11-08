@@ -168,6 +168,13 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("--subscribe bar_fit bar_fit system_woke display_change", source)
 
+    def test_should_ask_hammerspoon_to_redraw_its_items_when_the_bar_starts(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("hs -t 2 -c 'omvRedrawBar()' >/dev/null 2>&1 &", source)
+
+    def test_should_define_the_bar_redraw_in_hammerspoon(self) -> None:
+        self.assertIn("omvRedrawBar = later(", HAMMERSPOON.read_text(encoding="utf-8"))
+
     def test_should_place_the_weather_left_of_claudes_item(self) -> None:
         # Right-side items are added from the right edge inward, so a later one sits further left.
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")

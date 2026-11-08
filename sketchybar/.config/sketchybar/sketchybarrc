@@ -126,3 +126,8 @@ sketchybar --add event bar_fit \
   --subscribe bar_fit bar_fit system_woke display_change
 
 sketchybar --update
+
+# Hammerspoon sets the weather, meeting and reminder items, and only when they change, so
+# after a restart of the bar it is asked to draw them again. In the background, so the bar
+# never waits on it, and quietly when Hammerspoon isn't running.
+hs -t 2 -c 'omvRedrawBar()' >/dev/null 2>&1 &
