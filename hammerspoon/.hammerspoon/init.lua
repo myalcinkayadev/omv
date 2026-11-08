@@ -10,6 +10,7 @@ local calendar = require("calendar")
 local windows = require("windows")
 local capture = require("capture")
 local reminders = require("reminders")
+local agenda = require("agenda")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -23,6 +24,7 @@ local AEROSPACE_CONFIG = os.getenv("HOME") .. "/.config/aerospace/aerospace.toml
 local LAUNCH = hs.configdir .. "/launch.sh"
 local COPY_URL = hs.configdir .. "/copy-url.sh"
 local CAPTURE = hs.configdir .. "/capture.sh"
+local AGENDA = hs.configdir .. "/agenda.sh"
 local GHOSTTY_WINDOW = os.getenv("HOME") .. "/.config/ghostty/new-window.sh"
 local AEROSPACE = "/opt/homebrew/bin/aerospace"
 local SKETCHYBAR = "/opt/homebrew/bin/sketchybar"
@@ -130,7 +132,8 @@ closeOnEscape = hs.hotkey.new({}, "escape", closePanel)
 local MENU_WIDTH = 320
 
 local function menuHeight(screen)
-  return 28 + 46 + #screen.rows * 44 + 4
+  -- An empty screen still has room for its "No matches" line.
+  return 28 + 46 + math.max(1, #screen.rows) * 44 + 4
 end
 
 local ACTIONS = {
@@ -152,7 +155,34 @@ local ACTIONS = {
 
 local menuStack = {}
 
+-- Output devices change as AirPods connect or a monitor is plugged in, so the Sound
+-- screen is read each time it opens.
+local function soundScreen()
+  local current = hs.audiodevice.defaultOutputDevice()
+  local currentUid = current and current:uid()
+  local devices = {}
+  for _, device in ipairs(hs.audiodevice.allOutputDevices()) do
+    devices[#devices + 1] = {
+      uid = device:uid(),
+      name = device:name(),
+      transport = device:transportType(),
+      current = device:uid() == currentUid,
+    }
+  end
+  return menu.sound(devices)
+end
+
+local function setOutput(uid)
+  local device = hs.audiodevice.findDeviceByUID(uid)
+  if device and device:setDefaultOutputDevice() then
+    hs.alert.show("󰕾 " .. device:name(), ALERT_STYLE, 1.2)
+  else
+    hs.alert.show("Couldn't switch the sound output", ALERT_STYLE, 1.5)
+  end
+end
+
 local function screenFor(key)
+  if key == "sound" then return soundScreen() end
   local confirmed = key:match("^confirm:(.+)$")
   if confirmed then return menu.confirm(confirmed) end
   return menu.screen(key)
@@ -173,7 +203,7 @@ end
 
 local function menuChoose(id)
   if id == "cancel" then return menuBack() end
-  if menu.screen(id) then
+  if menu.opens(id) then
     menuStack[#menuStack + 1] = id
     return showMenuTop()
   end
@@ -182,6 +212,8 @@ local function menuChoose(id)
     return showMenuTop()
   end
   local action = ACTIONS[id]
+  local output = id:match("^sound%.(.+)$")
+  if output then action = function() setOutput(output) end end
   closePanel()
   if action then action() end
 end
@@ -195,6 +227,13 @@ end
 local function toggleSystemMenu()
   if panel and panel.name == "menu" then return closePanel() end
   menuStack = { "system" }
+  showMenuTop()
+end
+
+-- Opens straight on Sound, with the system menu under it, so Left goes back to it.
+local function toggleSound()
+  if panel and panel.name == "menu" and menuStack[#menuStack] == "sound" then return closePanel() end
+  menuStack = { "system", "sound" }
   showMenuTop()
 end
 
@@ -353,7 +392,7 @@ end
 
 local function newReminder()
   if panel and panel.name == "reminder" then return closePanel() end
-  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy · 1h30m stand up" }
+  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy · 1h30m stand up · pomo" }
   showPanel("reminder", centered(REMINDER_WIDTH, 28 + 46 + 44 + 4), card.html(screen), onReminderInput)
 end
 
@@ -383,8 +422,8 @@ if #reminderList > 0 then startReminders() else tickReminders() end
 -- Calendar (click the clock)
 
 local CALENDAR_WIDTH = 360
-local CALENDAR_HEIGHT = 384
 local shown = nil
+local agendaDay = nil
 
 local function today()
   local now = os.date("*t")
@@ -396,10 +435,65 @@ local onCalendarMessage
 local function showCalendar()
   local screen = hs.screen.mainScreen():fullFrame()
   -- Right-aligned under the clock, just below the 36pt bar.
-  local frame = hs.geometry.rect(screen.x + screen.w - CALENDAR_WIDTH - 10, screen.y + 40, CALENDAR_WIDTH, CALENDAR_HEIGHT)
+  local now = os.time()
+  local frame = hs.geometry.rect(screen.x + screen.w - CALENDAR_WIDTH - 10, screen.y + 40, CALENDAR_WIDTH, calendar.height(agendaDay, now))
   local model = calendar.month(shown.year, shown.month, today())
-  showPanel("calendar", frame, calendar.html(model, today()), onCalendarMessage)
+  showPanel("calendar", frame, calendar.html(model, today(), agendaDay, now), onCalendarMessage)
 end
+
+-- Today's events (agenda.sh). They are read every 5 minutes, on wake and when the
+-- calendar opens; the bar's next-meeting item is redrawn from them every 30 seconds.
+
+local AGENDA_REFRESH_SECONDS = 300
+local MEETING_REDRAW_SECONDS = 30
+local agendaText = nil
+local agendaTask = nil
+local meetingShown = nil
+
+local function drawMeeting()
+  local meeting = agendaDay and agenda.bar(agendaDay.events, os.time())
+  local properties
+  if not meeting then
+    properties = { "drawing=off" }
+  elseif meeting.soon then
+    properties = { "drawing=on", "label=" .. meeting.label, "background.drawing=on", "icon.color=" .. BLACK, "label.color=" .. BLACK }
+  else
+    properties = { "drawing=on", "label=" .. meeting.label, "background.drawing=off", "icon.color=" .. WHITE, "label.color=" .. WHITE }
+  end
+  -- Only a change reaches SketchyBar, since most redraws find the same meeting.
+  local key = table.concat(properties, "\n")
+  if key == meetingShown then return end
+  meetingShown = key
+  hs.task.new(SKETCHYBAR, nil, { "--set", "meeting", table.unpack(properties) }):start()
+end
+
+-- changed runs once the events are read, only if they differ from the ones before.
+local function readAgenda(changed)
+  if agendaTask and agendaTask:isRunning() then return end
+  agendaTask = hs.task.new(AGENDA, function(code, output)
+    agendaTask = nil
+    if code ~= 0 or output == agendaText then return drawMeeting() end
+    agendaText = output
+    agendaDay = agenda.decode(output)
+    drawMeeting()
+    if changed then changed() end
+  end)
+  agendaTask:start()
+end
+
+local function redrawOpenCalendar()
+  if panel and panel.name == "calendar" then showCalendar() end
+end
+
+-- Globals, so the timers and the watcher are never garbage-collected.
+omvAgendaTimers = {
+  hs.timer.doEvery(AGENDA_REFRESH_SECONDS, function() readAgenda(redrawOpenCalendar) end),
+  hs.timer.doEvery(MEETING_REDRAW_SECONDS, drawMeeting),
+}
+omvWakeWatcher = hs.caffeinate.watcher.new(function(event)
+  if event == hs.caffeinate.watcher.systemDidWake then readAgenda(redrawOpenCalendar) end
+end):start()
+readAgenda()
 
 onCalendarMessage = function(message)
   if message.type == "close" then return closePanel() end
@@ -414,6 +508,7 @@ local function toggleCalendar()
   if panel and panel.name == "calendar" then return closePanel() end
   shown = today()
   showCalendar()
+  readAgenda(redrawOpenCalendar)
 end
 
 -- Copy URL (Option+Shift+U)
@@ -458,6 +553,7 @@ local function later(fn)
 end
 
 omvToggleSystemMenu = later(toggleSystemMenu)
+omvToggleSound = later(toggleSound)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)

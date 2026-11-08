@@ -23,7 +23,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 
 - Homebrew and `stow`, which `install.sh` checks for.
 - `jq`, used by the Claude usage item.
-- Xcode's Command Line Tools, for `swiftc`, used by the capture menu's text and color items.
+- Xcode's Command Line Tools, for `swiftc`, used by the capture menu's text and color items and by the calendar's events.
 - The JetBrainsMono Nerd Font, in both the Mono and Propo variants.
 - The apps the keys and workspaces expect: Ghostty, Hammerspoon, Zed, Helium, Neovim and btop.
 
@@ -160,11 +160,14 @@ Option+Escape opens a menu modeled on Omarchy's: a card whose title is also a se
 | Screensaver | Starts the screensaver |
 | Sleep | Puts the Mac to sleep |
 | Log out, Restart, Shut down | Ask first, with Cancel selected |
+| Sound › | Picks where sound plays: speakers, AirPods, a monitor |
 | Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
 
 Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
 
-Scripts can open each card with `hs -c`: `omvToggleSystemMenu()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+Sound lists every output device, with the one in use selected and marked `current`. It's read each time it opens, so AirPods show up as soon as they connect. Virtual devices, such as the ones Zoom and Teams add, are left out unless they're in use. Right-clicking the volume item in the bar opens it too.
+
+Scripts can open each card with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Capture menu
 
@@ -194,12 +197,13 @@ On the right, from left to right:
 
 | Item | Shows | Click | Scroll |
 |---|---|---|---|
+| Meeting | The next Calendar event, only from an hour before it starts | Open the [calendar](#calendar) | |
 | Reminder | Time left on the next reminder, only while one is set | List them, to cancel one | |
 | Keep-awake | A crossed-out Zzz, only while keep-awake is on | Turn it off | |
-| Claude | Usage limits, as `5h 23%  7d 41%` | Swap to the reset times | |
+| Claude | Usage limits, as `5h 23%  7d 41%` | Show the reset times for 10 seconds | |
 | Clock | Day and time | Open the [calendar](#calendar) | |
 | Wi-Fi | Connected or not | Open Wi-Fi settings | |
-| Volume | Level | Mute or unmute | Change the volume by 5% |
+| Volume | Level | Mute or unmute. Right-click to pick the output | Change the volume by 5% |
 | Battery | Charge | Show or hide the percentage | |
 
 ### Calendar
@@ -208,9 +212,20 @@ Clicking the clock opens a calendar card under it. Weeks start on Monday and sho
 
 <img src="docs/calendar.png" alt="The calendar card, with today marked" width="360">
 
+Under the footer, the card lists today's events from Calendar.app, so it covers every account added there, such as iCloud, Google and Exchange.
+
+- Each event shows its start time, or `all day`. Events already over are dimmed, and the one going on now is white.
+- It lists five at most, then `+N more`. When there are more, events already over are left out first.
+- Cancelled events and ones you declined are left out.
+- The meeting item in the bar shows the next timed event's start time, as `14:00`, from an hour before it starts. The title stays in the card, so the item doesn't run under the notch next to a reminder. It turns into a white pill 5 minutes before the start and goes away 5 minutes after. All-day events stay out of the bar.
+- Events are read when Hammerspoon starts, every 5 minutes, when the Mac wakes and when the card opens.
+- They're read by a small Swift helper, `agenda.swift`. It's built the first time into `~/.cache/omv/Agenda.app`, which takes a few seconds, and it runs as its own app, because macOS asks the app that reads calendars for permission, and Hammerspoon can't ask. The first time, macOS asks to let "omv agenda" access your calendars. If you refuse, the card says so, and you can allow it later in System Settings > Privacy & Security > Calendars.
+
 ### Reminders
 
 Option+Shift+M asks "Remind me…". Type a time, then what to remember, such as `25m check deploy` or `1h30m stand up`, and press Enter. Times use `h`, `m` and `s`, and can be combined.
+
+Two words stand for a time, for Pomodoro-style work: `pomo` sets 25 minutes, and `break` sets 5. Text after them replaces what the reminder says, as in `pomo write tests`.
 
 <img src="docs/reminder.png" alt="The reminder card" width="480">
 

@@ -18,6 +18,13 @@ check.that("should name a reminder without text Reminder", select(2, parsed("10m
 check.that("should refuse text without a duration", parsed("check deploy") == nil)
 check.that("should refuse a zero duration", parsed("0m nothing") == nil)
 check.that("should refuse a duration glued to the text", parsed("25mcheck") == nil)
+check.that("should read pomo as 25 minutes", (parsed("pomo")) == 25 * 60)
+check.that("should say a pomo is done when no text is given", select(2, parsed("pomo")) == "Pomodoro done, take a break")
+check.that("should keep the text after pomo", select(2, parsed("pomo write tests")) == "write tests")
+check.that("should read pomo in any case", (parsed("  Pomo ")) == 25 * 60)
+check.that("should read break as 5 minutes", (parsed("break")) == 5 * 60 and select(2, parsed("break")) == "Break over")
+check.that("should refuse a word that is not a preset", parsed("pomodoro") == nil)
+check.that("should refuse a preset glued to the text", parsed("pomo25") == nil)
 
 check.that("should format time left as m:ss under an hour", reminders.left(24 * 60 + 13) == "24:13")
 check.that("should format time left as h:mm from an hour up", reminders.left(2 * 3600 + 5 * 60 + 30) == "2:05")

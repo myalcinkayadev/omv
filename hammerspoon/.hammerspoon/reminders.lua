@@ -5,8 +5,20 @@ local reminders = {}
 
 local UNIT_SECONDS = { h = 3600, m = 60, s = 1 }
 
--- Returns seconds and text for "1h30m stand up", or nil when it doesn't start with a time.
+-- Words that stand for a time and a text: "pomo" is a 25-minute focus block, "break" the
+-- 5 minutes after it. Text after the word replaces the default, as in "pomo write tests".
+local PRESETS = {
+  pomo = { seconds = 25 * 60, text = "Pomodoro done, take a break" },
+  ["break"] = { seconds = 5 * 60, text = "Break over" },
+}
+
+-- Returns seconds and text for "1h30m stand up" or "pomo", or nil when it doesn't start
+-- with a time or a preset.
 function reminders.parse(input)
+  local word, after = input:match("^%s*(%a+)%s+(.-)%s*$")
+  if not word then word, after = input:match("^%s*(%a+)%s*$"), "" end
+  local preset = word and PRESETS[word:lower()]
+  if preset then return preset.seconds, after ~= "" and after or preset.text end
   local duration, rest = input:match("^%s*([%dhms]+)%s*(.-)%s*$")
   if not duration or not duration:match("^%d") then return nil end
   if rest ~= "" and not input:match("^%s*[%dhms]+%s") then return nil end

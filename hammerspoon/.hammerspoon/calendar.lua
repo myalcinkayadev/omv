@@ -1,13 +1,20 @@
 -- The calendar card opened by clicking the clock. Weeks start on Monday and carry their
 -- ISO week number, and every month shows six of them. Left and Right change month, T returns to today, Escape closes.
+-- Today's events from agenda.lua are listed under the footer.
 -- Keys reach init.lua through the "omv" message handler as { type, id }.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local card = require("card")
+local agenda = require("agenda")
 
 local calendar = {}
 
 local DAY_SECONDS = 24 * 60 * 60
+
+-- The card's height without events, and what each listed line adds.
+local HEIGHT = 384
+local AGENDA_PADDING = 10
+local EVENT_HEIGHT = 22
 
 -- Noon keeps daylight-saving changes from moving a date to the day before.
 local function timeOf(year, month, day)
@@ -63,6 +70,13 @@ local STYLE = [[
   .foot { border-top: 1px solid #2a2a2a; margin-top: 10px; padding: 10px 4px 0; color: #7a7a7a;
     display: flex; justify-content: space-between; font-size: 13px; }
   .foot b { color: #fff; font-weight: normal; }
+  .agenda { padding: 10px 4px 0; font-size: 13px; }
+  .event { display: flex; height: 22px; align-items: center; color: #d0d0d0; }
+  .event .time { width: 68px; color: #7a7a7a; flex: none; }
+  .event .what { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event.past, .event.past .time { color: #4a4a4a; }
+  .event.current .what, .event.current .time { color: #fff; }
+  .agenda .note { color: #7a7a7a; height: 22px; line-height: 22px; }
 ]]
 
 local SCRIPT = [[
@@ -103,14 +117,42 @@ local function grid(model)
   return "<table>" .. table.concat(rows) .. "</table>"
 end
 
-function calendar.html(model, today)
+-- Lines under the footer: one per event, one for "+N more", or one note when there are none.
+-- Nothing while the events haven't been read yet.
+local function agendaLines(day, now)
+  if not day then return {} end
+  if day.denied then
+    return { "<div class=note>Allow Calendar access for omv agenda in System Settings</div>" }
+  end
+  local rows, more = agenda.rows(day, now)
+  if #rows == 0 then return { "<div class=note>No events today</div>" } end
+  local lines = {}
+  for index, row in ipairs(rows) do
+    local class = row.past and "event past" or (row.current and "event current" or "event")
+    lines[index] = '<div class="' .. class .. '"><span class=time>' .. card.escape(row.time) .. "</span>"
+      .. "<span class=what>" .. card.escape(row.title) .. "</span></div>"
+  end
+  if more > 0 then lines[#lines + 1] = "<div class=note>+" .. more .. " more</div>" end
+  return lines
+end
+
+-- day is agenda.decode's result, or nil before it is known. now is the current time.
+function calendar.height(day, now)
+  local count = #agendaLines(day, now)
+  if count == 0 then return HEIGHT end
+  return HEIGHT + AGENDA_PADDING + count * EVENT_HEIGHT
+end
+
+function calendar.html(model, today, day, clock)
   local now = timeOf(today.year, today.month, today.day)
+  local lines = agendaLines(day, clock or os.time())
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. STYLE .. "</style><body>"
     .. "<div class=head><span class=title>" .. card.escape(model.title) .. "</span>"
     .. "<span class=nav><span class=prev>‹</span><span class=next>›</span></span></div>"
     .. grid(model)
     .. "<div class=foot><span><b>" .. os.date("%A", now) .. "</b>, " .. tonumber(os.date("%d", now)) .. " " .. os.date("%B", now) .. "</span>"
     .. "<span>week " .. tonumber(os.date("%V", now)) .. "</span></div>"
+    .. (#lines > 0 and ("<div class=agenda>" .. table.concat(lines) .. "</div>") or "")
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 

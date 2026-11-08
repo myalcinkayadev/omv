@@ -36,4 +36,25 @@ local page = calendar.html(november, today)
 check.that("should show today's full date in the footer", check.contains(check.visible(page), "Saturday, 7 November"))
 check.that("should show this week's number in the footer", check.contains(page, "week 45"))
 
+check.that("should list nothing before the events are read", not check.contains(page, "class=agenda"))
+check.that("should keep its height before the events are read", calendar.height(nil, 0) == 384)
+
+local function at(hour, minute)
+  return os.time({ year = 2026, month = 11, day = 7, hour = hour, min = minute })
+end
+local day = { denied = false, events = {
+  { start = at(9, 0), finish = at(9, 30), allDay = false, title = "Standup" },
+  { start = at(14, 0), finish = at(15, 0), allDay = false, title = "Design <review>" },
+} }
+local withEvents = calendar.html(november, today, day, at(10, 0))
+check.that("should list today's events under the footer",
+  check.contains(check.visible(withEvents), "09:00Standup") and check.contains(check.visible(withEvents), "14:00Design"))
+check.that("should escape event titles", check.contains(withEvents, "Design &lt;review&gt;"))
+check.that("should dim events already over", check.contains(withEvents, "event past\"><span class=time>09:00"))
+check.that("should grow by one line per event", calendar.height(day, at(10, 0)) == 384 + 10 + 2 * 22)
+check.that("should say when there are no events today",
+  check.contains(calendar.html(november, today, { denied = false, events = {} }, at(10, 0)), "No events today"))
+check.that("should ask for Calendar access when it was refused",
+  check.contains(calendar.html(november, today, { denied = true, events = {} }, at(10, 0)), "Allow Calendar access"))
+
 check.finish()

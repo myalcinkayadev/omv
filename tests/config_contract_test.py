@@ -213,6 +213,15 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("omvToggleReminders()", source)
 
+    def test_should_open_the_calendar_card_when_the_meeting_item_is_clicked(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        meeting = re.search(r"--add item meeting right(.*?)\n\n", source, re.S)
+        self.assertIn("omvToggleCalendar()", meeting.group(1) if meeting else "")
+
+    def test_should_subscribe_volume_to_clicks_for_the_sound_menu(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("--subscribe volume volume_change mouse.clicked mouse.scrolled", source)
+
     def test_should_subscribe_every_workspace_item_to_scrolling(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn('--subscribe "space.$number" mouse.scrolled', source)

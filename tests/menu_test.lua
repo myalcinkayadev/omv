@@ -33,8 +33,9 @@ check.that("should lay rows out in columns when asked",
   check.contains(card.html({ prompt = "x", rows = { { id = "a", label = "a" } }, columns = 2 }), "column-count: 2"))
 check.that("should keep a single column by default", not check.contains(sample, "column-count"))
 check.that("should list the system items in order",
-  labels(menu.screen("system")) == "Lock,Screensaver,Sleep,Log out,Restart,Shut down,Reload")
-check.that("should open Reload as a submenu", menu.screen("system").rows[7].submenu == true)
+  labels(menu.screen("system")) == "Lock,Screensaver,Sleep,Log out,Restart,Shut down,Sound,Reload")
+check.that("should open Sound as a submenu", menu.screen("system").rows[7].submenu == true)
+check.that("should open Reload as a submenu", menu.screen("system").rows[8].submenu == true)
 check.that("should list the tools under Reload",
   labels(menu.screen("reload")) == "AeroSpace,SketchyBar,Hammerspoon,Everything")
 
@@ -50,5 +51,29 @@ check.that("should select Cancel first on a confirmation", confirm.selected == 1
 check.that("should offer the confirmed action second", confirm.rows[2].id == "confirmed.restart")
 
 check.that("should return nothing for an unknown screen", menu.screen("nope") == nil)
+check.that("should treat Sound and Reload as screens to open", menu.opens("sound") and menu.opens("reload"))
+check.that("should not treat an action as a screen", not menu.opens("lock"))
+
+local devices = {
+  { uid = "BuiltInSpeakerDevice", name = "MacBook Pro Speakers", transport = "Built-in", current = false },
+  { uid = "aa-bb", name = "Mehmet's AirPods Pro", transport = "Bluetooth", current = true },
+  { uid = "dell", name = "DELL U2723QE", transport = "DisplayPort", current = false },
+  { uid = "zoom", name = "ZoomAudioDevice", transport = "Virtual", current = false },
+  { uid = "jbl", name = "JBL Flip 6", transport = "Bluetooth", current = false },
+}
+local sound = menu.sound(devices)
+check.that("should title the sound screen", sound.prompt == "Sound…")
+check.that("should list the output devices in order, without virtual ones",
+  labels(sound) == "MacBook Pro Speakers,Mehmet's AirPods Pro,DELL U2723QE,JBL Flip 6")
+check.that("should select the device in use", sound.selected == 2)
+check.that("should mark the device in use", sound.rows[2].hint == "current" and sound.rows[1].hint == nil)
+check.that("should give each device row its uid", sound.rows[3].id == "sound.dell")
+check.that("should show headphones for AirPods", sound.rows[2].icon == "󰋋")
+check.that("should show a monitor for a display", sound.rows[3].icon == "󰍹")
+check.that("should show a speaker for built-in speakers", sound.rows[1].icon == "󰓃")
+check.that("should keep a virtual device while it is in use",
+  #menu.sound({ { uid = "z", name = "ZoomAudioDevice", transport = "Virtual", current = true } }).rows == 1)
+check.that("should say so when there are no devices",
+  check.contains(card.html(menu.sound({})), "No output devices"))
 
 check.finish()

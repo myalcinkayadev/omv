@@ -134,6 +134,33 @@ shows_percentages_after_second_click() {
   assert_called 'label=5h 23%  7d 41% '
 }
 
+# sleep is stubbed, so the 10-second switch back happens at once, in the background.
+returns_to_percentages() {
+  stub sleep
+  save_usage 23 "$FUTURE" 41 "$FUTURE"
+  run_plugin SENDER=mouse.clicked
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    [ -e "$(state_file)-resets-view" ] || break
+    /bin/sleep 0.1
+  done
+  if [ -e "$(state_file)-resets-view" ]; then
+    fail 'reset times stayed on'
+  fi
+}
+
+tells_bar_when_returning() {
+  stub sleep
+  save_usage 23 "$FUTURE" 41 "$FUTURE"
+  run_plugin SENDER=mouse.clicked
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    grep -q -e '--trigger claude_usage_change' "$CALL_LOG" && break
+    /bin/sleep 0.1
+  done
+  assert_called '^sketchybar --trigger claude_usage_change$'
+}
+
 hides_without_data() {
   run_plugin
   assert_called '^sketchybar --set claude_usage drawing=off$'
@@ -204,6 +231,8 @@ run_case 'should not notify the bar when the values are unchanged' skips_notify_
 run_case 'should show both windows when data exists' shows_both_windows
 run_case 'should round percentages to whole numbers' rounds_percentages
 run_case 'should show 0% for a window whose reset time has passed' zeroes_passed_window
+run_case 'should switch back to percentages after showing reset times' returns_to_percentages
+run_case 'should tell the bar when it switches back to percentages' tells_bar_when_returning
 run_case 'should use gray when usage is under 70%' gray_under_70
 run_case 'should use white when usage is 70%' white_at_70
 run_case 'should use the pill when usage is 90%' pill_at_90
