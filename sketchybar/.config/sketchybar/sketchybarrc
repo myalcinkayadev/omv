@@ -9,7 +9,6 @@ ICON_FONT="JetBrainsMono Nerd Font Propo"
 WHITE=0xffffffff
 MUTED=0xff7a7a7a
 BLACK=0xff000000
-WIFI_SETTINGS="x-apple.systempreferences:com.apple.wifi-settings-extension"
 
 sketchybar --bar position=top height=36 notch_display_height=36 color=$BLACK \
   blur_radius=0 shadow=off padding_left=10 padding_right=10
@@ -73,12 +72,23 @@ sketchybar --add item volume right \
   --subscribe volume volume_change mouse.clicked mouse.scrolled
 
 # SketchyBar's wifi_change event has not worked since macOS Sonoma, hence the timer.
+# Clicking it opens the Wi-Fi card, which Hammerspoon draws.
 sketchybar --add item wifi right \
   --set wifi label.drawing=off update_freq=60 script="$PLUGIN_DIR/wifi.sh" \
-    click_script="open '$WIFI_SETTINGS'" \
-  --subscribe wifi system_woke
+  --subscribe wifi system_woke mouse.clicked
 
-# Added after the status icons, so it sits just to the left of Wi-Fi.
+# Hidden unless a cable is connected. Clicking it opens the Ethernet card.
+sketchybar --add item ethernet right \
+  --set ethernet drawing=off label.drawing=off update_freq=60 script="$PLUGIN_DIR/ethernet.sh" \
+  --subscribe ethernet system_woke mouse.clicked
+
+# Hidden until Hammerspoon has a reading. It sets the icon and temperature, and the
+# temperature gives way before the notch; see bar_fit.sh. Clicking it opens the weather card.
+sketchybar --add item weather right \
+  --set weather drawing=off icon.padding_right=3 label.padding_left=3 \
+    click_script="hs -c 'omvToggleWeather()'"
+
+# Added after the status icons, so it sits just to the left of the weather.
 sketchybar --add event claude_usage_change \
   --add item claude_usage right \
   --set claude_usage drawing=off icon.width=27 icon.padding_left=0 icon.padding_right=0 \

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Handles the icon, click-to-mute, right-click to pick the output, and scroll-to-change.
+# Handles the icon, a click (left or right) to open the Sound card, and scroll-to-change.
 # Volume glyphs are octal UTF-8 bytes.
 
 step=5
@@ -17,16 +17,12 @@ scrolled_level() {
   esac
 }
 
-if [ "${SENDER:-}" = mouse.clicked ] && [ "${BUTTON:-}" = right ]; then
+if [ "${SENDER:-}" = mouse.clicked ]; then
   hs -c 'omvToggleSound()'
   exit 0
 fi
 
 case ${SENDER:-} in
-  mouse.clicked)
-    osascript -e 'set volume output muted not (output muted of (get volume settings))'
-    level=$(read_level)
-    ;;
   mouse.scrolled)
     level=$(read_level)
     case $level in

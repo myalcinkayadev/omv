@@ -84,7 +84,28 @@ restores_when_room() {
   stub_bar; status_items
   item claude_usage 1088 162
   fit
-  assert_called '^sketchybar --set claude_usage icon.drawing=on label.drawing=on --set meeting label.drawing=on$'
+  assert_called '^sketchybar --set claude_usage icon.drawing=on label.drawing=on --set meeting label.drawing=on --set weather label.drawing=on$'
+}
+
+then_shrinks_weather() {
+  stub_bar; status_items
+  item weather 1180 70
+  item claude_usage 1018 162
+  item reminder 470 548
+  item meeting 410 60
+  fit
+  assert_called '^sketchybar --set weather label.drawing=off$'
+}
+
+keeps_weather_when_meeting_is_enough() {
+  stub_bar; status_items
+  item weather 1180 70
+  item claude_usage 1018 162
+  item keep_awake 980 38
+  item reminder 760 220
+  item meeting 700 60
+  fit
+  assert_not_called '^sketchybar --set weather label.drawing=off$'
 }
 
 never_hides_keep_awake_or_reminder() {
@@ -108,6 +129,8 @@ run_case 'should change nothing when everything fits' fits_already
 run_case "should shrink Claude to its logo first" shrinks_claude_first
 run_case 'should keep the meeting time when shrinking Claude is enough' keeps_meeting_when_claude_is_enough
 run_case 'should then show the meeting as just its icon' then_shrinks_meeting
+run_case 'should then show the weather as just its icon' then_shrinks_weather
+run_case 'should keep the weather temperature when shrinking the meeting is enough' keeps_weather_when_meeting_is_enough
 run_case 'should hide Claude completely last' hides_claude_last
 run_case 'should bring back every item before measuring' restores_when_room
 run_case 'should never hide keep-awake or the reminder' never_hides_keep_awake_or_reminder

@@ -3,7 +3,8 @@
 # It shows everything, measures, then gives way in this order until it fits:
 #   1. Claude's numbers (its logo stays)
 #   2. the meeting's time (its icon stays)
-#   3. the Claude logo
+#   3. the weather's temperature (its icon stays)
+#   4. the Claude logo
 # Keep-awake, the reminder and the status icons never give way.
 
 PATH="$PATH:/opt/homebrew/bin"
@@ -12,8 +13,9 @@ PATH="$PATH:/opt/homebrew/bin"
 notch_width=200
 claude_logo_width=27
 meeting_icon_width=26
+weather_icon_width=26
 
-sketchybar --set claude_usage icon.drawing=on label.drawing=on --set meeting label.drawing=on
+sketchybar --set claude_usage icon.drawing=on label.drawing=on --set meeting label.drawing=on --set weather label.drawing=on
 
 # Prints "<display> <left> <width>" for an item drawn on each display, nothing if hidden.
 rects() {
@@ -27,7 +29,7 @@ rects() {
 need=0
 for display in $(sketchybar --query displays | jq -r '.[]."arrangement-id"'); do
   width=$(sketchybar --query displays | jq -r --argjson id "$display" '.[] | select(."arrangement-id" == $id) | .frame.w')
-  leftmost=$(for name in clock battery volume wifi claude_usage keep_awake reminder meeting; do rects "$name"; done |
+  leftmost=$(for name in clock battery volume wifi ethernet weather claude_usage keep_awake reminder meeting; do rects "$name"; done |
     awk -v d="$display" '$1 == d { if (min == "" || $2 < min) min = $2 } END { print min }')
   [ -n "$leftmost" ] || continue
   short=$(awk -v w="$width" -v n="$notch_width" -v l="$leftmost" 'BEGIN { printf "%d", w / 2 + n / 2 - l }')
@@ -49,6 +51,12 @@ meeting=$(width_of meeting)
 if [ -n "$meeting" ] && [ "$need" -gt 0 ]; then
   sketchybar --set meeting label.drawing=off
   need=$((need - (meeting - meeting_icon_width)))
+fi
+
+weather=$(width_of weather)
+if [ -n "$weather" ] && [ "$need" -gt 0 ]; then
+  sketchybar --set weather label.drawing=off
+  need=$((need - (weather - weather_icon_width)))
 fi
 
 if [ -n "$claude" ] && [ "$need" -gt 0 ]; then
