@@ -17,6 +17,7 @@ local sound = require("sound")
 local weather = require("weather")
 local battery = require("battery")
 local agents = require("agents")
+local quicknote = require("quicknote")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -1138,6 +1139,36 @@ local function toggleAgents()
   showAgents()
 end
 
+-- Quick note (Option+Shift+D): one line, with the time, at the end of today's daily note.
+
+local NOTE_VAULT = os.getenv("HOME") .. "/Documents/vault/work"
+
+local function saveNote(line)
+  local path = quicknote.path(NOTE_VAULT, os.time())
+  os.execute("/bin/mkdir -p '" .. path:match("^(.*)/") .. "'")
+  local content = quicknote.appended(readText(path), line)
+  local file = io.open(path, "w")
+  if not file then return false end
+  file:write(content)
+  file:close()
+  return true
+end
+
+local function onNoteInput(message)
+  if message.type == "close" then return closePanel() end
+  if message.type ~= "submit" then return end
+  local line = quicknote.line(message.id, os.time())
+  if not line then return closePanel() end
+  closePanel()
+  hs.alert.show(saveNote(line) and "Noted" or "Could not write today's note", ALERT_STYLE, 1.2)
+end
+
+local function newNote()
+  if panel and panel.name == "note" then return closePanel() end
+  local screen = { prompt = "Note…", rows = {}, input = true, hint = "Adds a line to today's daily note" }
+  showPanel("note", centered(REMINDER_WIDTH, 28 + 46 + 44 + 4), card.html(screen), onNoteInput)
+end
+
 -- Copy URL (Option+Shift+U)
 
 local function copyUrl()
@@ -1155,6 +1186,7 @@ bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", run(S
 bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", copyUrl)
 bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", toggleCapture)
 bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", newReminder)
+bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", newNote)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi card", toggleWifi)
 bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet card", toggleEthernet)

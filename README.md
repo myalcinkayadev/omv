@@ -239,6 +239,7 @@ Option+Shift+S opens a card for screen captures.
 
 - **Keep awake (Option+Shift+I):** runs `caffeinate -di`, keeping the display and system awake during long builds or Claude Code runs. Press the key again or click the icon to stop. It stays on when the bar restarts and turns off at reboot. Only the `caffeinate` it started is checked or stopped, through its process ID in `~/.local/state/omv/keep-awake.pid`. Closing the lid on battery still puts the Mac to sleep, and the key does nothing while SketchyBar isn't running.
 - **Copy URL (Option+Shift+U):** copies Helium's current URL. The first time, macOS asks to let Hammerspoon control Helium.
+- **Quick note (Option+Shift+D):** type a line and Enter adds it, after the time, as `- 09:05 call the bank` at the end of today's daily note in `~/Documents/vault/work/00 - Daily/`. A day without a note gets a plain file, not your template, because Obsidian only applies templates to notes it creates itself.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
 - **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
@@ -278,6 +279,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+U | Copy Helium's current URL | |
 | Option+Shift+S | Capture menu | |
 | Option+Shift+M | Set a reminder | |
+| Option+Shift+D | Add a line to today's daily note | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |
 | Option+Shift+E | Ethernet card | |

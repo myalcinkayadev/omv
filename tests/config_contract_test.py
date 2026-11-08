@@ -183,6 +183,9 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_escape_in_hammerspoon(self) -> None:
         self.assertIn("alt-escape", hammerspoon_keys())
 
+    def test_should_bind_option_shift_d_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-d", hammerspoon_keys())
+
     def test_should_bind_option_shift_u_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-u", hammerspoon_keys())
 
