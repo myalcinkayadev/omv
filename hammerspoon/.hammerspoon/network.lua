@@ -28,6 +28,9 @@ function network.signalPercent(rssi)
   return math.floor(math.max(0, math.min(1, share)) * 100 + 0.5)
 end
 
+-- macOS names the 2.4 GHz band "2GHz".
+local BAND_NAMES = { ["2GHz"] = "2.4GHz" }
+
 local function hasName(info)
   return info.ssid ~= nil and info.ssid ~= ""
 end
@@ -49,7 +52,8 @@ function network.wifiModel(info)
   local connected = isConnected(info)
   local percent = connected and network.signalPercent(info.rssi) or 0
   local signal = connected and info.rssi and info.rssi ~= 0 and (info.rssi .. " dBm") or nil
-  local channel = connected and info.channel and (info.channel .. (info.band and (" (" .. info.band .. ")") or "")) or nil
+  local band = info.band and (BAND_NAMES[info.band] or info.band)
+  local channel = connected and info.channel and (info.channel .. (band and (" (" .. band .. ")") or "")) or nil
   local power = info.power and { id = "wifi.power", icon = "󰖪", label = "Turn off" }
     or { id = "wifi.power", icon = "󰖩", label = "Turn on" }
   return {

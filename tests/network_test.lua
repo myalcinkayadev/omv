@@ -34,6 +34,9 @@ check.that("should show an empty bar when Wi-Fi is on without a network", check.
 check.that("should show dashes for missing values when Wi-Fi is on without a network",
   select(2, check.visible(searching):gsub(DASH, "")) >= 4)
 
+check.that("should show the 2.4 GHz band by its full name",
+  check.contains(check.visible(network.html(network.wifiModel({ power = true, ssid = "x", channel = 6, band = "2GHz" }))), "6 (2.4GHz)"))
+
 local hidden = check.visible(network.html(network.wifiModel({ power = true, rssi = -58, ip = "192.168.1.24", router = "192.168.1.1" })))
 check.that("should show the signal when Location is refused while connected", check.contains(hidden, "53%"))
 check.that("should show the IP address when Location is refused while connected", check.contains(hidden, "192.168.1.24"))
