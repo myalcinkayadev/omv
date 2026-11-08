@@ -76,4 +76,8 @@ check.that("should keep a virtual device while it is in use",
 check.that("should say so when there are no devices",
   check.contains(card.html(menu.sound({})), "No output devices"))
 
+check.that("should make the Sound card wide enough for full device names",
+  menu.sound({ { uid = "a", name = "MacBook Pro Speakers", transport = "Built-in", current = true } }).width == 420)
+check.that("should keep other menu screens at the standard width", menu.screen("system").width == nil)
+
 check.finish()

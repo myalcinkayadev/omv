@@ -71,7 +71,8 @@ function menu.sound(devices)
       if device.current then selected = #rows end
     end
   end
-  return { prompt = "Sound…", rows = rows, selected = selected, hint = "No output devices" }
+  -- Wider than the other menus, so a name like "MacBook Pro Speakers" fits beside "current".
+  return { prompt = "Sound…", rows = rows, selected = selected, hint = "No output devices", width = 420 }
 end
 
 function menu.needsConfirm(id)

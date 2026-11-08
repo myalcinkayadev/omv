@@ -192,7 +192,7 @@ local onMenuMessage
 
 local function showMenuTop()
   local screen = screenFor(menuStack[#menuStack])
-  showPanel("menu", centered(MENU_WIDTH, menuHeight(screen)), card.html(screen), onMenuMessage)
+  showPanel("menu", centered(screen.width or MENU_WIDTH, menuHeight(screen)), card.html(screen), onMenuMessage)
 end
 
 local function menuBack()
