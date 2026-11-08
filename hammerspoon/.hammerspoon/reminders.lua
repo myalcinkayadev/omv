@@ -11,11 +11,16 @@ local UNIT_SECONDS = { h = 3600, m = 60, s = 1 }
 local PRESETS = {
   pomo = { seconds = 25 * 60, text = "Pomodoro", kind = "pomo" },
   ["break"] = { seconds = 5 * 60, text = "Break", kind = "break" },
+  b = { seconds = 5 * 60, text = "Break", kind = "break" },
 }
 
 -- Returns seconds, text and kind (nil for a plain reminder) for "1h30m stand up" or
--- "pomo", or nil when it doesn't start with a time or a preset.
+-- "pomo", or nil when it doesn't start with a time or a preset. Short forms: "r 25m ..."
+-- is a reminder, "b" a break, and "c" alone returns nil, nil, "cancel".
 function reminders.parse(input)
+  if input:match("^%s*[cC]%s*$") then return nil, nil, "cancel" end
+  local rest = input:match("^%s*[rR]%s+(.+)$")
+  if rest then input = rest end
   local word, after = input:match("^%s*(%a+)%s+(.-)%s*$")
   if not word then word, after = input:match("^%s*(%a+)%s*$"), "" end
   local preset = word and PRESETS[word:lower()]

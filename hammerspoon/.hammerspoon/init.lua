@@ -388,10 +388,21 @@ local function startReminders()
   if not reminderTimer:running() then reminderTimer:start() end
 end
 
+-- "c" in the reminder box cancels the soonest reminder, and says which one.
+local function cancelSoonestReminder()
+  closePanel()
+  local soonest = table.remove(reminderList, 1)
+  if not soonest then return hs.alert.show("No reminders", ALERT_STYLE, 1.5) end
+  saveReminders()
+  startReminders()
+  hs.alert.show("Cancelled: " .. soonest.text, ALERT_STYLE, 1.5)
+end
+
 local function onReminderInput(message)
   if message.type == "close" then return closePanel() end
   if message.type ~= "submit" then return end
   local seconds, text, kind = reminders.parse(message.id)
+  if kind == "cancel" then return cancelSoonestReminder() end
   if not seconds then
     hs.alert.show("Start with a time, like 25m", ALERT_STYLE, 1.5)
     return
@@ -407,7 +418,7 @@ end
 
 local function newReminder()
   if panel and panel.name == "reminder" then return closePanel() end
-  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy · 1h30m stand up · pomo" }
+  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy · pomo · b break · c cancel" }
   showPanel("reminder", centered(REMINDER_WIDTH, 28 + 46 + 44 + 4), card.html(screen), onReminderInput)
 end
 

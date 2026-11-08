@@ -35,13 +35,15 @@ function pomo.task(task)
   return (task and task ~= "") and task or "Pomodoro"
 end
 
+-- Each row has a letter key: b for break, r to be reminded again, c to cancel.
+
 -- Card 1, when a pomo is due. "5 more minutes" is offered once per pomo.
 function pomo.doneScreen(context)
-  local rows = { { id = "break.start", icon = "󰅶", label = "Start 5-minute break", hint = "Enter" } }
+  local rows = { { id = "break.start", icon = "󰅶", label = "Start 5-minute break", key = "b", hint = "b" } }
   if not context.postponed then
-    rows[#rows + 1] = { id = "pomo.postpone", icon = "󰔛", label = "5 more minutes", hint = "one time" }
+    rows[#rows + 1] = { id = "pomo.postpone", icon = "󰔛", label = "5 more minutes", key = "r", hint = "r" }
   end
-  rows[#rows + 1] = { id = "break.skip", icon = "󰒭", label = "Skip break" }
+  rows[#rows + 1] = { id = "break.skip", icon = "󰒭", label = "Skip break", key = "c", hint = "c" }
   return {
     kicker = kicker("POMODORO DONE", context.count),
     dots = pomo.dots(context.count),
@@ -58,7 +60,7 @@ function pomo.breakScreen(context)
     kicker = kicker("BREAK", context.count),
     countdown = { ends = context.ends, seconds = context.seconds },
     tip = pomo.tip(context.tip),
-    rows = { { id = "break.end", icon = "󰓛", label = "End break early", hint = "Escape" } },
+    rows = { { id = "break.end", icon = "󰓛", label = "End break early", key = "c", hint = "c" } },
     selected = 1,
   }
 end
@@ -72,7 +74,7 @@ function pomo.overScreen(context)
     sub = "Next: " .. pomo.task(context.task),
     rows = {
       { id = "pomo.next", icon = "󰐊", label = "Start next pomo", hint = math.floor(pomo.POMO_SECONDS / 60) .. " min" },
-      { id = "pomo.stop", icon = "󰐥", label = "Done for now" },
+      { id = "pomo.stop", icon = "󰐥", label = "Done for now", key = "c", hint = "c" },
     },
     selected = 1,
   }

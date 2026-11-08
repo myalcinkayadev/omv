@@ -46,4 +46,14 @@ check.that("should render the large card's title", check.contains(page, "Time fo
 check.that("should render the countdown with its end time, for the page to tick",
   check.contains(card.big(brk), 'data-ends="1300"') and check.contains(card.big(brk), 'data-seconds="300"'))
 
+local function keyOf(screen, id)
+  for _, row in ipairs(screen.rows) do if row.id == id then return row.key, row.hint end end
+end
+check.that("should give Start break the key B", keyOf(done, "break.start") == "b" and select(2, keyOf(done, "break.start")) == "b")
+check.that("should give 5 more minutes the key R", keyOf(done, "pomo.postpone") == "r")
+check.that("should give Skip break the key C", keyOf(done, "break.skip") == "c")
+check.that("should give End break early the key C", keyOf(brk, "break.end") == "c")
+check.that("should give Done for now the key C", keyOf(over, "pomo.stop") == "c")
+check.that("should pick a row by its letter key", check.contains(card.big(done), 'data-key="b"'))
+
 check.finish()

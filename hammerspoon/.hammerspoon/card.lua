@@ -135,7 +135,7 @@ end
 
 -- The large card for Pomodoro breaks: the whole screen dims, and a wider card sits in
 -- the middle with a headline, or a countdown the page ticks itself. Up and Down move,
--- Enter picks. Escape is left to init.lua, which decides what it means on each card.
+-- Enter picks, and a row's letter key picks it at once. Escape is left to init.lua, which decides what it means on each card.
 local BIG_STYLE = [[
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; color: #fff; overflow: hidden;
@@ -169,7 +169,11 @@ local BIG_SCRIPT = [[
     if (event.key === "ArrowDown") selected = (selected + 1) % rows.length;
     else if (event.key === "ArrowUp") selected = (selected - 1 + rows.length) % rows.length;
     else if (event.key === "Enter") return send("choose", rows[selected].dataset.id);
-    else return;
+    else {
+      const keyed = rows.find((row) => row.dataset.key === event.key.toLowerCase());
+      if (keyed) return send("choose", keyed.dataset.id);
+      return;
+    }
     event.preventDefault();
     draw();
   });
@@ -190,7 +194,8 @@ local BIG_SCRIPT = [[
 ]]
 
 local function bigRow(row)
-  return '<div class="row" data-id="' .. card.escape(row.id) .. '">'
+  local key = row.key and (' data-key="' .. card.escape(row.key) .. '"') or ""
+  return '<div class="row" data-id="' .. card.escape(row.id) .. '"' .. key .. ">"
     .. "<span class=icon>" .. card.escape(row.icon or "") .. "</span>"
     .. "<span class=label>" .. card.escape(row.label) .. "</span>"
     .. "<span class=hint>" .. card.escape(row.hint or "") .. "</span></div>"

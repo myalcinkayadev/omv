@@ -68,4 +68,10 @@ check.that("should show the timer for a plain reminder", reminders.icon({ { due 
 check.that("should pick the icon from the soonest reminder",
   reminders.icon({ { due = 9, text = "call" }, { due = 2, text = "write tests", kind = "pomo" } }) == "\u{F08C9}")
 
+check.that("should read r 25m check deploy like 25m check deploy",
+  (parsed("r 25m check deploy")) == 25 * 60 and select(2, parsed("r 25m check deploy")) == "check deploy")
+check.that("should read b as a 5-minute break", (parsed("b")) == 5 * 60 and select(3, reminders.parse("b")) == "break")
+check.that("should read c as cancel", select(3, reminders.parse("c")) == "cancel" and parsed("c") == nil)
+check.that("should still refuse an unknown single letter", parsed("x") == nil and select(3, reminders.parse("x")) == nil)
+
 check.finish()
