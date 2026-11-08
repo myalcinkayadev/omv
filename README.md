@@ -81,7 +81,7 @@ Option+Space lists every open window with its app and workspace. Type to filter 
 
 ## Key list
 
-Option+/ shows every key at once, in a searchable two-column list. Type to filter by description or key. The list is built from `aerospace.toml` and `init.lua`, so it never goes stale.
+Option+/ shows every key at once, in a searchable two-column list. Type to filter by description or key, and press Enter (or click) on a row to run that shortcut: the list closes, focus goes back to your window, and the action runs. The list is built from `aerospace.toml` and `init.lua`, so it never goes stale.
 
 ![The key list, showing every shortcut in two columns](docs/key-list.png)
 

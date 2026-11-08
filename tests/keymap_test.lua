@@ -57,4 +57,27 @@ check("should show the key list in two columns", sheet:find("column-count: 2", 1
 check("should count one row per binding and launcher", #keymap.rows(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"), { { label = "x", description = "y" } }) == 2)
 check("should list launcher keys as rows", sheet:find(">Show this list<", 1, true) ~= nil)
 
+local listed = keymap.parse("[mode.main.binding]\nalt-enter = ['workspace 1', 'exec-and-forget $HOME/new-window.sh']\n")[1]
+check("should keep every command of a list binding",
+  #listed.commands == 2 and listed.commands[1] == "workspace 1" and listed.commands[2] == "exec-and-forget $HOME/new-window.sh")
+local triggered = keymap.parse("[mode.main.binding]\nalt-shift-r = ['mode resize', 'exec-and-forget /opt/homebrew/bin/sketchybar --trigger x']\n")[1]
+check("should keep the bar trigger in the commands it runs", #triggered.commands == 2)
+
+local focus = keymap.steps({ "focus left" })[1]
+check("should run an AeroSpace command through the aerospace CLI", focus.program == "aerospace" and focus.args[1] == "focus")
+local send = keymap.steps({ "move-node-to-workspace 4" })[1]
+check("should split an AeroSpace command into its arguments", #send.args == 2 and send.args[2] == "4")
+local exec = keymap.steps({ "exec-and-forget $HOME/x.sh --flag" })[1]
+check("should run an exec-and-forget command through /bin/sh",
+  exec.program == "/bin/sh" and exec.args[1] == "-c" and exec.args[2] == "$HOME/x.sh --flag")
+local ordered = keymap.steps({ "workspace 1", "exec-and-forget x" })
+check("should keep the steps in their written order", ordered[1].program == "aerospace" and ordered[2].program == "/bin/sh")
+
+local rows = keymap.rows(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"),
+  { { label = "Option+Shift+N", description = "Open Zed", runs = true }, { label = "Option+`", description = "Drop-down terminal" } })
+check("should mark rows whose action can run", rows[1].runnable and rows[2].runnable)
+check("should leave the drop-down terminal row without an action", not rows[3].runnable)
+check("should point a binding row back to its binding", rows[1].id == "binding:1")
+check("should point a launcher row back to its launcher", rows[2].id == "launcher:1")
+
 os.exit(failed == 0 and 0 or 1)

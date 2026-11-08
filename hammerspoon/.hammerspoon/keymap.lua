@@ -20,6 +20,15 @@ local function parseCommand(value)
   return table.concat(commands, ", ")
 end
 
+-- Every command a binding runs, in order, including the bar triggers the description hides.
+local function commandList(value)
+  local single = value:match("^'(.*)'$")
+  if single then return { single } end
+  local commands = {}
+  for command in value:gmatch("'([^']*)'") do commands[#commands + 1] = command end
+  return commands
+end
+
 function keymap.parse(text)
   local bindings = {}
   local mode = nil
@@ -30,7 +39,7 @@ function keymap.parse(text)
     elseif mode and trimmed:sub(1, 1) ~= "#" then
       local key, value = trimmed:match("^([%w-]+)%s*=%s*(.+)$")
       if key then
-        bindings[#bindings + 1] = { mode = mode, key = key, command = parseCommand(value) }
+        bindings[#bindings + 1] = { mode = mode, key = key, command = parseCommand(value), commands = commandList(value) }
       end
     end
   end
@@ -85,20 +94,38 @@ function keymap.describe(command)
   return command
 end
 
+-- How to run a binding's commands from the key list: AeroSpace commands through its CLI,
+-- and exec-and-forget through the shell, since the CLI doesn't take it. In written order.
+function keymap.steps(commands)
+  local steps = {}
+  for _, command in ipairs(commands) do
+    local shell = command:match("^exec%-and%-forget%s+(.+)$")
+    if shell then
+      steps[#steps + 1] = { program = "/bin/sh", args = { "-c", shell } }
+    else
+      local args = {}
+      for word in command:gmatch("%S+") do args[#args + 1] = word end
+      steps[#steps + 1] = { program = "aerospace", args = args }
+    end
+  end
+  return steps
+end
+
 local function bindingRows(bindings)
   local rows = {}
-  for _, binding in ipairs(bindings) do
+  for index, binding in ipairs(bindings) do
     local key = keymap.label(binding.key)
     if binding.mode ~= "main" then key = key .. " (" .. binding.mode .. ")" end
-    rows[#rows + 1] = { id = binding.key, label = keymap.describe(binding.command), hint = key }
+    rows[#rows + 1] = { id = "binding:" .. index, label = keymap.describe(binding.command), hint = key, runnable = true }
   end
   return rows
 end
 
 function keymap.rows(bindings, launchers)
   local rows = bindingRows(bindings)
-  for _, launcher in ipairs(launchers) do
-    rows[#rows + 1] = { id = launcher.label, label = launcher.description, hint = launcher.label }
+  -- A launcher runs only when init.lua gave it something to run.
+  for index, launcher in ipairs(launchers) do
+    rows[#rows + 1] = { id = "launcher:" .. index, label = launcher.description, hint = launcher.label, runnable = launcher.runs == true }
   end
   return rows
 end

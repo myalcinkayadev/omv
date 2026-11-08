@@ -52,9 +52,10 @@ end
 
 local launchers = {}
 
+-- Each key keeps its action, so the key list can run it too.
 local function bindKey(modifiers, key, label, description, action)
   hs.hotkey.bind(modifiers, key, action)
-  launchers[#launchers + 1] = { label = label, description = description }
+  launchers[#launchers + 1] = { label = label, description = description, run = action, runs = true }
 end
 
 local function openOnWorkspace(workspace, arguments)
@@ -248,13 +249,40 @@ end
 
 -- Key list (Option+/)
 
+-- Enter on a row runs that shortcut. The list closes and focus goes back first, because
+-- commands like "focus left" act on whichever window has focus.
+local KEY_LIST_DELAY = 0.15
+local keyListBindings = {}
+
+local function runSteps(steps, index)
+  local step = steps[index]
+  if not step then return end
+  local program = step.program == "aerospace" and AEROSPACE or step.program
+  hs.task.new(program, function() runSteps(steps, index + 1) end, step.args):start()
+end
+
+local function runKeyListRow(id)
+  local kind, index = id:match("^(%a+):(%d+)$")
+  index = tonumber(index)
+  if kind == "binding" and keyListBindings[index] then
+    local steps = keymap.steps(keyListBindings[index].commands)
+    return function() runSteps(steps, 1) end
+  end
+  local launcher = kind == "launcher" and launchers[index]
+  return launcher and launcher.runs and launcher.run or nil
+end
+
 local function onKeyListMessage(message)
-  if message.type == "close" or message.type == "back" or message.type == "choose" then closePanel() end
+  if message.type ~= "choose" then return closePanel() end
+  local action = runKeyListRow(message.id)
+  closePanel()
+  if action then hs.timer.doAfter(KEY_LIST_DELAY, action) end
 end
 
 local function toggleKeyList()
   if panel and panel.name == "keys" then return closePanel() end
   local bindings = keymap.read(AEROSPACE_CONFIG)
+  keyListBindings = bindings
   local rowsPerColumn = math.ceil(#keymap.rows(bindings, launchers) / 2)
   showPanel("keys", centered(1100, 28 + 46 + rowsPerColumn * 30 + 8), keymap.html(bindings, launchers), onKeyListMessage)
 end
@@ -704,6 +732,8 @@ launchers[#launchers + 1] = { label = "Option+`", description = "Drop-down termi
 
 -- 44 is the physical "/" key, so this stays the same key on the Turkish layout.
 bindKey(SUPER, 44, "Option+/", "Show or hide this list", toggleKeyList)
+-- Running it from the list would only open the list again.
+launchers[#launchers].runs = false
 
 -- Scripts open the cards with hs -c, for example the bar's clock: hs -c 'omvToggleCalendar()'.
 -- Each call waits for the next run-loop turn, because drawing a card inside the hs -c
