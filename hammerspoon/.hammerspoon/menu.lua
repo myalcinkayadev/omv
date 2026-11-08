@@ -13,7 +13,7 @@ local SCREENS = {
       { id = "logout", icon = "󰍃", label = "Log out" },
       { id = "restart", icon = "󰜉", label = "Restart" },
       { id = "shutdown", icon = "󰐥", label = "Shut down" },
-      { id = "sound", icon = "󰕾", label = "Sound", submenu = true },
+      { id = "sound", icon = "󰕾", label = "Sound" },
       { id = "reload", icon = "󰑐", label = "Reload", submenu = true },
     },
   },
@@ -36,43 +36,9 @@ function menu.screen(id)
   return SCREENS[id]
 end
 
--- Whether a picked id opens another screen, either fixed or built when it opens.
+-- Whether a picked id opens another screen of this menu.
 function menu.opens(id)
-  return SCREENS[id] ~= nil or id == "sound"
-end
-
-local HEADPHONE_NAMES = { "airpods", "headphone", "headset", "beats", "buds" }
-
--- Headphones by name first, since AirPods and a Bluetooth speaker share a transport.
-local function soundIcon(device)
-  local name = device.name:lower()
-  for _, word in ipairs(HEADPHONE_NAMES) do
-    if name:find(word, 1, true) then return "󰋋" end
-  end
-  local transport = device.transport or ""
-  if transport == "HDMI" or transport == "DisplayPort" or transport == "Thunderbolt" then return "󰍹" end
-  if transport == "AirPlay" then return "󰄘" end
-  if transport:find("Bluetooth", 1, true) then return "󰋋" end
-  return "󰓃"
-end
-
--- devices = { { uid, name, transport, current } }, as init.lua reads them from hs.audiodevice.
--- Virtual devices, such as the ones Zoom and Teams add, are left out unless in use.
-function menu.sound(devices)
-  local rows, selected = {}, 1
-  for _, device in ipairs(devices) do
-    if device.transport ~= "Virtual" or device.current then
-      rows[#rows + 1] = {
-        id = "sound." .. device.uid,
-        icon = soundIcon(device),
-        label = device.name,
-        hint = device.current and "current" or nil,
-      }
-      if device.current then selected = #rows end
-    end
-  end
-  -- Wider than the other menus, so a name like "MacBook Pro Speakers" fits beside "current".
-  return { prompt = "Sound…", rows = rows, selected = selected, hint = "No output devices", width = 420 }
+  return SCREENS[id] ~= nil
 end
 
 function menu.needsConfirm(id)
