@@ -13,6 +13,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**System menu**](#system-menu): lock, sleep, restart and reload the tools.
 - [**Sound**](#sound): volume, mute, output and input devices, and a live mic level.
 - [**Wi-Fi and Ethernet**](#wi-fi-and-ethernet): the network, signal, address and router, a click away.
+- [**Battery**](#battery): charge, time left, cycles and power draw.
 - [**Weather**](#weather): the temperature in the bar, and a three-day forecast for wherever the Mac is.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
@@ -67,7 +68,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
 | Wi-Fi | Connected or not | Open the [Wi-Fi card](#wi-fi-and-ethernet) | |
 | Volume | Level | Open the [Sound card](#sound), with either button | Change the volume by 5% |
-| Battery | Charge | Show or hide the percentage | |
+| Battery | Charge | Open the [Battery card](#battery) | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
 **Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's numbers (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, the reminder and the status icons always stay, and everything comes back once there's room.
@@ -130,6 +131,12 @@ The Ethernet item shows only while a cable is connected. Click it, or press Opti
 Left and Right move between the buttons, Enter presses one, and Escape or a click elsewhere closes.
 
 Since macOS 14, an app needs Location Services to read the Wi-Fi network's name. Hammerspoon asks for it once, for the weather, and without it the card shows `—` for the name.
+
+## Battery
+
+Click the battery item, or press Option+Shift+B, for the Battery card: the charge, whether it's draining, charging or charged, the battery's size in Wh, the time left (or to full), the charge cycles and the power going in or out.
+
+**Battery settings** opens System Settings, where Low Power Mode is. The card doesn't switch it itself: macOS lets only its own apps do that without an admin password.
 
 ## Weather
 
@@ -213,7 +220,7 @@ Option+Shift+S opens a card for screen captures.
 - **Copy URL (Option+Shift+U):** copies Helium's current URL. The first time, macOS asks to let Hammerspoon control Helium.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvToggleWindows()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 
@@ -255,6 +262,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+E | Ethernet card | |
 | Option+Shift+V | Sound card | |
 | Option+Shift+O | Weather card | |
+| Option+Shift+B | Battery card | |
 | Option+Escape | System menu | |
 | Option+/ | Show or hide the key list | |
 
@@ -329,7 +337,7 @@ Each folder is a GNU Stow package, linked into `$HOME`.
 |---|---|---|
 | `aerospace` | `~/.config/aerospace` | Tiling, workspaces and window keys |
 | `sketchybar` | `~/.config/sketchybar` | The top bar and its plugins |
-| `hammerspoon` | `~/.hammerspoon` | App keys and every card: menus, lists, calendar, reminders, capture, sound, network, weather |
+| `hammerspoon` | `~/.hammerspoon` | App keys and every card: menus, lists, calendar, reminders, capture, sound, network, battery, weather |
 | `ghostty` | `~/.config/ghostty` | Terminal config and window scripts |
 | `nvim` | `~/.config/nvim` | Neovim config |
 | `btop` | `~/.config/btop` | btop config |

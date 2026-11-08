@@ -2,7 +2,6 @@
 -- interfaces and passes plain tables in; this turns them into the card's HTML.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
-local card = require("card")
 local panel = require("panel")
 
 local network = {}
@@ -93,14 +92,7 @@ function network.ethernetModel(info)
   }
 end
 
-function network.html(model)
-  return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. panel.STYLE .. "</style><body>"
-    .. panel.head(model.icon, model.title, model.sub, model.big)
-    .. panel.track(model.percent)
-    .. panel.grid(model.grid)
-    .. panel.buttons(model.buttons)
-    .. "<script>" .. panel.SCRIPT .. "</script></body>"
-end
+network.html = panel.html
 
 -- Reads `ifconfig <port>`: whether the link is up, its speed and duplex.
 function network.parseMedia(text)

@@ -1,4 +1,4 @@
--- The status-card layout shared by the Wi-Fi and Ethernet cards: an icon, a title and a
+-- The status-card layout shared by the Wi-Fi, Ethernet and Battery cards: an icon, a title and a
 -- status line, a big number on the right, a bar, a grid of label/value pairs, then buttons.
 -- Left and Right move between the buttons, Enter or a click presses one, Escape closes.
 -- Presses reach init.lua through the "omv" message handler as { type = "choose", id }.
@@ -32,7 +32,7 @@ panel.STYLE = [[
 panel.SCRIPT = [[
   const buttons = Array.from(document.querySelectorAll(".btn"));
   const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
-  let selected = 0;
+  let selected = Math.max(0, buttons.findIndex((button) => button.classList.contains("selected")));
   const draw = () => buttons.forEach((button, index) => button.classList.toggle("selected", index === selected));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") return send("close");
@@ -70,14 +70,25 @@ function panel.grid(pairs)
   return "<div class=grid>" .. table.concat(cells) .. "</div>"
 end
 
--- buttons = { { id, icon, label } }
-function panel.buttons(buttons)
+-- buttons = { { id, icon, label, selected } }. The selected one starts highlighted, and
+-- the first one when none is.
+function panel.buttons(buttons, title)
   local parts = {}
   for _, button in ipairs(buttons) do
-    parts[#parts + 1] = '<div class=btn data-id="' .. card.escape(button.id) .. '">'
+    parts[#parts + 1] = '<div class="btn' .. (button.selected and " selected" or "") .. '" data-id="' .. card.escape(button.id) .. '">'
       .. card.escape(button.icon) .. "&nbsp; " .. card.escape(button.label) .. "</div>"
   end
-  return "<div class=sec>ACTIONS</div><div class=btns>" .. table.concat(parts) .. "</div>"
+  return "<div class=sec>" .. card.escape(title or "ACTIONS") .. "</div><div class=btns>" .. table.concat(parts) .. "</div>"
+end
+
+-- model = { icon, title, sub, big, percent, grid, buttons, section }
+function panel.html(model)
+  return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. panel.STYLE .. "</style><body>"
+    .. panel.head(model.icon, model.title, model.sub, model.big)
+    .. panel.track(model.percent)
+    .. panel.grid(model.grid)
+    .. panel.buttons(model.buttons, model.section)
+    .. "<script>" .. panel.SCRIPT .. "</script></body>"
 end
 
 return panel

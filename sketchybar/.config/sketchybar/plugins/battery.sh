@@ -1,5 +1,11 @@
 #!/bin/sh
+# Draws the battery icon, and opens the Battery card on a click.
 # Nerd Font glyphs are written as octal UTF-8 bytes so they survive any editor.
+
+if [ "${SENDER:-}" = mouse.clicked ]; then
+  hs -c 'omvToggleBattery()'
+  exit 0
+fi
 
 status=$(pmset -g batt)
 battery_line=$(printf '%s\n' "$status" | sed -n '/InternalBattery/p' | head -n 1)

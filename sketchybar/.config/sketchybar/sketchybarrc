@@ -62,10 +62,10 @@ sketchybar --add item clock right \
   --set clock icon.drawing=off update_freq=30 script="$PLUGIN_DIR/clock.sh" \
     click_script="hs -c 'omvToggleCalendar()'"
 
+# Clicking it opens the Battery card, which Hammerspoon draws.
 sketchybar --add item battery right \
   --set battery label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
-    click_script="sketchybar --set battery label.drawing=toggle" \
-  --subscribe battery system_woke power_source_change
+  --subscribe battery system_woke power_source_change mouse.clicked
 
 sketchybar --add item volume right \
   --set volume label.drawing=off script="$PLUGIN_DIR/volume.sh" \

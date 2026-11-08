@@ -15,6 +15,7 @@ local agenda = require("agenda")
 local network = require("network")
 local sound = require("sound")
 local weather = require("weather")
+local battery = require("battery")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -1022,6 +1023,27 @@ omvWeatherWakeWatcher = hs.caffeinate.watcher.new(function(event)
 end):start()
 readWeather()
 
+-- Battery card (click the battery icon, Option+Shift+B)
+
+local BATTERY_SETTINGS = "x-apple.systempreferences:com.apple.Battery-Settings.extension"
+
+local function onBatteryMessage(message)
+  closePanel()
+  if message.type == "choose" then open({ BATTERY_SETTINGS })() end
+end
+
+local function showBattery()
+  local status = battery.parseBatt(hs.execute("/usr/bin/pmset -g batt"))
+  if not status then return hs.alert.show("This Mac has no battery", ALERT_STYLE, 1.5) end
+  local health = battery.parseSmartBattery(hs.execute("/usr/sbin/ioreg -rn AppleSmartBattery"))
+  showPanel("battery", anchored(battery.WIDTH, battery.HEIGHT), battery.html(battery.model(status, health)), onBatteryMessage)
+end
+
+local function toggleBattery()
+  if panel and panel.name == "battery" then return closePanel() end
+  showBattery()
+end
+
 -- Copy URL (Option+Shift+U)
 
 local function copyUrl()
@@ -1044,6 +1066,7 @@ bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi card", toggleWifi)
 bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet card", toggleEthernet)
 bindKey(SUPER_SHIFT, "v", "Option+Shift+V", "Sound card", toggleSound)
 bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather card", toggleWeather)
+bindKey(SUPER_SHIFT, "b", "Option+Shift+B", "Battery card", toggleBattery)
 bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
 bindKey(SUPER, "space", "Option+Space", "Go to any window", toggleWindows)
 
@@ -1074,6 +1097,7 @@ omvToggleSound = later(toggleSound)
 omvToggleWifi = later(toggleWifi)
 omvToggleEthernet = later(toggleEthernet)
 omvToggleWeather = later(toggleWeather)
+omvToggleBattery = later(toggleBattery)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
 omvToggleWindows = later(toggleWindows)
