@@ -10,7 +10,7 @@ readonly ALL_PACKAGES='aerospace sketchybar claude swipeaerospace ghostty nvim b
 # process running, every macOS setting applied, and the Claude usage line in place.
 complete_setup() {
   local name
-  for name in borders luajit; do stub "$name"; done
+  for name in borders luajit gh; do stub "$name"; done
   cat > "$STUB_DIR/hs" <<STUB
 #!/bin/sh
 echo "hs \$*" >> "$CALL_LOG"
@@ -73,6 +73,20 @@ fails_on_problem() {
   complete_setup
   remove_stub borders
   assert_exit_nonzero doctor
+}
+
+reports_logged_out_gh() {
+  complete_setup
+  stub gh 1
+  expect_report 'gh is not logged in — fix: gh auth login'
+}
+
+skips_login_without_gh() {
+  complete_setup
+  remove_stub gh
+  local output
+  output=$(report)
+  if [[ $output == *'not logged in'* ]]; then fail "reported a login without gh:"$'\n'"$output"; fi
 }
 
 names_missing_tool() {
@@ -174,6 +188,8 @@ run_case 'should exit non-zero when a check fails' fails_on_problem
 run_case 'should name a missing tool and how to install it' names_missing_tool
 run_case 'should name a missing app' names_missing_app
 run_case 'should name a missing font' names_missing_font
+run_case "should report when gh is not logged in" reports_logged_out_gh
+run_case 'should skip the login check when gh is not installed' skips_login_without_gh
 run_case "should report a package file that isn't linked" reports_unlinked_file
 run_case 'should report a broken link' reports_broken_link
 run_case "should report a tool that isn't running" reports_stopped_process

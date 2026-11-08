@@ -5,7 +5,7 @@
 #   2. the meeting's time (its icon stays)
 #   3. the weather's temperature (its icon stays)
 #   4. the Claude logo
-# Keep-awake, the reminder and the status icons never give way.
+# Keep-awake, the pull request count, the reminder and the status icons never give way.
 
 PATH="$PATH:/opt/homebrew/bin"
 
@@ -29,7 +29,7 @@ rects() {
 need=0
 for display in $(sketchybar --query displays | jq -r '.[]."arrangement-id"'); do
   width=$(sketchybar --query displays | jq -r --argjson id "$display" '.[] | select(."arrangement-id" == $id) | .frame.w')
-  leftmost=$(for name in clock battery volume wifi ethernet weather claude_usage keep_awake reminder meeting; do rects "$name"; done |
+  leftmost=$(for name in clock battery volume wifi ethernet weather claude_usage github_prs keep_awake reminder meeting; do rects "$name"; done |
     awk -v d="$display" '$1 == d { if (min == "" || $2 < min) min = $2 } END { print min }')
   [ -n "$leftmost" ] || continue
   short=$(awk -v w="$width" -v n="$notch_width" -v l="$leftmost" 'BEGIN { printf "%d", w / 2 + n / 2 - l }')

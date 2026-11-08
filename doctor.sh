@@ -34,7 +34,7 @@ section() {
 check_tools() {
   section 'Tools'
   local tool fix
-  for tool in aerospace sketchybar borders stow jq swiftc luajit; do
+  for tool in aerospace sketchybar borders stow jq swiftc luajit gh; do
     case $tool in
       aerospace) fix='./install.sh' ;;
       sketchybar) fix='./install.sh' ;;
@@ -161,6 +161,13 @@ check_claude() {
   fi
 }
 
+# The bar's pull request count needs gh signed in. A missing gh is already named under Tools.
+check_github() {
+  command -v gh >/dev/null 2>&1 || return 0
+  section 'GitHub'
+  if gh auth status >/dev/null 2>&1; then ok 'gh is logged in'; else problem 'gh is not logged in' 'gh auth login'; fi
+}
+
 print_manual_checks() {
   cat <<'EOF'
 
@@ -187,6 +194,7 @@ check_running
 check_settings
 check_permissions
 check_claude
+check_github
 print_manual_checks
 
 echo

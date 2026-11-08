@@ -186,6 +186,9 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_shift_d_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-d", hammerspoon_keys())
 
+    def test_should_bind_option_shift_g_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-g", hammerspoon_keys())
+
     def test_should_bind_option_shift_u_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-u", hammerspoon_keys())
 
@@ -212,9 +215,9 @@ class ConfigContract(unittest.TestCase):
 
     def test_should_check_the_fit_when_a_right_side_item_changes(self) -> None:
         plugins = REPO / "sketchybar/.config/sketchybar/plugins"
-        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh")]
+        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh", "github_prs.sh")]
         triggers.append('"bar_fit"' in HAMMERSPOON.read_text(encoding="utf-8"))
-        self.assertEqual(triggers, [True, True, True])
+        self.assertEqual(triggers, [True, True, True, True])
 
     def test_should_bind_option_a_to_the_accordion_toggle(self) -> None:
         self.assertEqual(load_aerospace()["mode"]["main"]["binding"].get("alt-a"), "layout accordion tiles")
