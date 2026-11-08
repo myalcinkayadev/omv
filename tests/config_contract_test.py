@@ -30,6 +30,8 @@ APPROVED_FLOATING = {
     "com.apple.systempreferences",
     "com.apple.calculator",
 }
+# Finder names a Get Info window after the item, as in "report.txt Info".
+FINDER_INFO_TITLE = " Info$"
 HAMMERSPOON_MODIFIERS = {"SUPER": "alt", "SUPER_SHIFT": "alt-shift"}
 HAMMERSPOON_KEYS = {"return": "enter", "44": "slash"}
 
@@ -60,6 +62,18 @@ def hammerspoon_keys() -> list[str]:
     ]
 
 
+def floating_rules() -> list[dict]:
+    return [rule for rule in load_aerospace()["on-window-detected"] if "layout floating" in commands_for(rule)]
+
+
+def finder_title_filters() -> list[str]:
+    return [
+        rule["if"]["window-title-regex-substring"]
+        for rule in floating_rules()
+        if rule["if"]["app-id"] == "com.apple.finder" and "window-title-regex-substring" in rule["if"]
+    ]
+
+
 class ConfigContract(unittest.TestCase):
     def test_should_bind_each_key_only_once_when_aerospace_and_hammerspoon_are_compared(self) -> None:
         self.assertEqual(aerospace_keys() & set(hammerspoon_keys()), set())
@@ -76,10 +90,19 @@ class ConfigContract(unittest.TestCase):
     def test_should_float_system_settings_and_calculator(self) -> None:
         floating = {
             rule["if"]["app-id"]
-            for rule in load_aerospace()["on-window-detected"]
-            if "layout floating" in commands_for(rule)
+            for rule in floating_rules()
+            if "window-title-regex-substring" not in rule["if"]
         }
         self.assertEqual(floating, APPROVED_FLOATING)
+
+    def test_should_float_a_finder_window_when_its_title_ends_in_info(self) -> None:
+        self.assertIn(FINDER_INFO_TITLE, finder_title_filters())
+
+    def test_should_match_a_get_info_title_with_the_finder_filter(self) -> None:
+        self.assertRegex("report.txt Info", FINDER_INFO_TITLE)
+
+    def test_should_keep_a_finder_folder_window_tiled_when_info_is_in_its_name(self) -> None:
+        self.assertNotRegex("Info Docs", FINDER_INFO_TITLE)
 
     def test_should_run_start_btop_when_aerospace_starts(self) -> None:
         self.assertIn(
