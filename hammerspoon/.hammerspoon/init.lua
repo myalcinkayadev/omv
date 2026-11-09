@@ -18,6 +18,7 @@ local weather = require("weather")
 local battery = require("battery")
 local agents = require("agents")
 local quicknote = require("quicknote")
+local notepad = require("notepad")
 local prs = require("prs")
 local claudewait = require("claudewait")
 
@@ -1224,14 +1225,23 @@ local function focusClaude()
   end)
 end
 
--- Quick note (Option+Shift+D): one line, with the time, at the end of today's daily note.
+-- Quick note (Option+Shift+D): what was typed, with the time, at the end of today's daily note,
+-- or its own page in Inbox when it starts with "# Title". Escape with text first asks: a second
+-- Escape keeps the draft for next time, Cmd+Backspace throws it away.
 
 local NOTE_VAULT = os.getenv("HOME") .. "/Documents/vault/work"
+-- One table, not locals: init.lua's main chunk is near Lua's limit of 200 locals.
+local note = { width = 640, draft = "", armed = false }
 
-local function saveNote(line)
-  local path = quicknote.path(NOTE_VAULT, os.time())
+function note.exists(path)
+  local file = io.open(path, "r")
+  if not file then return false end
+  file:close()
+  return true
+end
+
+function note.write(path, content)
   os.execute("/bin/mkdir -p '" .. path:match("^(.*)/") .. "'")
-  local content = quicknote.appended(readText(path), line)
   local file = io.open(path, "w")
   if not file then return false end
   file:write(content)
@@ -1239,19 +1249,65 @@ local function saveNote(line)
   return true
 end
 
-local function onNoteInput(message)
-  if message.type == "close" then return closePanel() end
-  if message.type ~= "submit" then return end
-  local line = quicknote.line(message.id, os.time())
-  if not line then return closePanel() end
+-- A page is written first, so the daily note never links to one that failed.
+function note.save(text)
+  local now = os.time()
+  local entry = quicknote.entry(text, now)
+  local title = quicknote.title(text)
+  if title then
+    local page = quicknote.pagePath(NOTE_VAULT, title, note.exists)
+    if not note.write(page, text:gsub("%s+$", "") .. "\n") then return false end
+    entry = quicknote.link(page, now)
+  end
+  local daily = quicknote.path(NOTE_VAULT, now)
+  return note.write(daily, quicknote.appended(readText(daily), entry))
+end
+
+function note.submit(text)
+  if not quicknote.entry(text, os.time()) then return closePanel() end
   closePanel()
-  hs.alert.show(saveNote(line) and "Noted" or "Could not write today's note", ALERT_STYLE, 1.2)
+  if not note.save(text) then return hs.alert.show("Could not write the note", ALERT_STYLE, 1.2) end
+  note.draft = ""
+  hs.alert.show("Noted", ALERT_STYLE, 1.2)
+end
+
+-- Keeps the card's top where it is and lets it grow downward.
+function note.resize(height)
+  local frame = view:frame()
+  frame.h = tonumber(height) or frame.h
+  view:frame(frame)
+end
+
+function note.onMessage(message)
+  if message.type == "draft" then
+    note.draft, note.armed = message.id, false
+  elseif message.type == "resize" then
+    note.resize(message.id)
+  elseif message.type == "submit" then
+    note.submit(message.id)
+  elseif message.type == "discard" then
+    note.draft = ""
+    closePanel()
+  end
+end
+
+-- Without text, or on the second press, Escape closes and keeps any draft. Otherwise it asks first.
+function note.onEscape()
+  local hasText = note.draft:find("%S") ~= nil
+  if note.armed or not hasText then
+    closePanel()
+    if hasText then hs.alert.show("Draft kept", ALERT_STYLE, 1.2) end
+    return
+  end
+  note.armed = true
+  view:evaluateJavaScript("arm()")
 end
 
 local function newNote()
   if panel and panel.name == "note" then return closePanel() end
-  local screen = { prompt = "Note…", rows = {}, input = true, hint = "Adds a line to today's daily note" }
-  showPanel("note", centered(REMINDER_WIDTH, 28 + 46 + 44 + 4), card.html(screen), onNoteInput)
+  note.armed = false
+  showPanel("note", centered(note.width, 28 + 46 + 44 + 4), notepad.html(note.draft), note.onMessage,
+    { onEscape = note.onEscape })
 end
 
 -- Copy URL (Option+Shift+U)
