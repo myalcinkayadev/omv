@@ -1186,11 +1186,12 @@ local function toggleAgents()
   showAgents()
 end
 
--- Waiting Claude (Option+Shift+A, or a click on the bar's pill): focuses the terminal of
--- the session that has waited longest.
+-- Waiting Claude (Option+Shift+A, or a click on the bar's pill): focuses the session's
+-- terminal, or with several waiting, lists them with the one waiting longest first.
 
 -- Only focusClaude is a main-chunk local: init.lua is near Lua's limit of 200.
 local function focusClaude()
+  if panel and panel.name == "claude" then return closePanel() end
   local function alive(pid)
     return os.execute("/bin/kill -0 " .. math.floor(pid) .. " 2>/dev/null") == true
   end
@@ -1201,12 +1202,25 @@ local function focusClaude()
     local session = name:sub(1, 1) ~= "." and claudewait.parse(readText(claudewait.STATE_DIR .. "/" .. name) or "")
     if session then sessions[#sessions + 1] = session end
   end
-  local session = claudewait.oldest(sessions, alive)
-  if not session then return hs.alert.show("No Claude session is waiting", ALERT_STYLE, 1.2) end
-  local script = claudewait.focusScript(session.tty)
-  if not (script and hs.osascript.applescript(script)) then
-    hs.alert.show("Claude waits in " .. session.folder .. ", outside Ghostty", ALERT_STYLE, 2)
+  local rows = claudewait.rows(sessions, alive, os.time())
+  local function focus(row)
+    local script = claudewait.focusScript(row.id)
+    if not (script and hs.osascript.applescript(script)) then
+      hs.alert.show("Claude waits in " .. row.label .. ", outside Ghostty", ALERT_STYLE, 2)
+    end
   end
+  if #rows == 0 then return hs.alert.show("No Claude session is waiting", ALERT_STYLE, 1.2) end
+  if #rows == 1 then return focus(rows[1]) end
+  local height = 28 + 46 + #rows * 30 + 8
+  showPanel("claude", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Waiting…", rows = rows, compact = true }), function(message)
+    if message.type ~= "choose" then return closePanel() end
+    -- Leave focus to Ghostty, rather than handing it back to the app open before.
+    panel.previous = nil
+    closePanel()
+    for _, row in ipairs(rows) do
+      if row.id == message.id then return focus(row) end
+    end
+  end)
 end
 
 -- Quick note (Option+Shift+D): one line, with the time, at the end of today's daily note.

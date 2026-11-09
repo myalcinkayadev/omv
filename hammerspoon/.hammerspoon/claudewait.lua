@@ -1,6 +1,7 @@
--- Claude Code sessions waiting for you: reading what claude-waiting.sh saved, picking the
--- one waiting longest, and the AppleScript that focuses its Ghostty terminal. Ghostty runs
--- every window in one process, so the terminal is found by its tty, not by the app.
+-- Claude Code sessions waiting for you: reading what claude-waiting.sh saved, listing them
+-- with the one waiting longest first, and the AppleScript that focuses one's Ghostty
+-- terminal. Ghostty runs every window in one process, so the terminal is found by its tty,
+-- not by the app.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local claudewait = {}
@@ -14,12 +15,20 @@ function claudewait.parse(text)
   return { pid = tonumber(pid), tty = tty, folder = folder, since = tonumber(since) }
 end
 
-function claudewait.oldest(sessions, alive)
-  local found = nil
+-- Card rows for the live sessions, the one waiting longest first: the folder, how long it
+-- has waited, and its terminal as the row's id.
+function claudewait.rows(sessions, alive, now)
+  local live = {}
   for _, session in ipairs(sessions) do
-    if alive(session.pid) and (not found or session.since < found.since) then found = session end
+    if alive(session.pid) then live[#live + 1] = session end
   end
-  return found
+  table.sort(live, function(a, b) return a.since < b.since end)
+  local rows = {}
+  for _, session in ipairs(live) do
+    local minutes = math.floor((now - session.since) / 60)
+    rows[#rows + 1] = { id = session.tty, label = session.folder, hint = minutes < 1 and "now" or minutes .. " min" }
+  end
+  return rows
 end
 
 -- Only a plain device path reaches AppleScript, so a saved line can't add commands.

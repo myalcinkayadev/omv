@@ -16,10 +16,16 @@ local sessions = {
   { pid = 3, tty = "/dev/ttys003", folder = "web", since = 50 },
 }
 local function alive(pid) return pid ~= 3 end
-check.that("should pick the session waiting longest", claudewait.oldest(sessions, alive).folder == "omv")
-check.that("should skip a session whose Claude has ended", claudewait.oldest(sessions, alive).pid ~= 3)
-check.that("should pick nothing when every Claude has ended", claudewait.oldest(sessions, function() return false end) == nil)
-check.that("should pick nothing when no session waits", claudewait.oldest({}, alive) == nil)
+local rows = claudewait.rows(sessions, alive, 400)
+check.that("should list the session waiting longest first", rows[1].label == "omv")
+check.that("should list the others after it", rows[2].label == "api")
+check.that("should leave out a session whose Claude has ended", #rows == 2)
+check.that("should choose a row by its terminal", rows[1].id == "/dev/ttys002")
+check.that("should hint how long it has waited", rows[1].hint == "5 min")
+check.that("should hint now under a minute",
+  claudewait.rows({ { pid = 1, tty = "/dev/ttys001", folder = "api", since = 370 } }, alive, 400)[1].hint == "now")
+check.that("should list no rows when every Claude has ended", #claudewait.rows(sessions, function() return false end, 400) == 0)
+check.that("should list no rows when no session waits", #claudewait.rows({}, alive, 400) == 0)
 
 check.that("should focus the Ghostty terminal on that tty",
   claudewait.focusScript("/dev/ttys009") == 'tell application "Ghostty" to focus (first terminal whose tty is "/dev/ttys009")')
