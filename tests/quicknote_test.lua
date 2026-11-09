@@ -64,4 +64,29 @@ check.that("should start the note with the block when the note is empty",
 check.that("should not add a second blank line when the note already ends with one",
   quicknote.appended("- 09:00 a\n\n", "### 09:05\none\ntwo") == "- 09:00 a\n\n### 09:05\none\ntwo\n\n")
 
+local function at(day, hour, min) return os.time({ year = 2026, month = 11, day = day, hour = hour, min = min, sec = 0 }) end
+local today = { path = "/v/00 - Daily/2026-11-08.md", folder = "Daily", modified = at(8, 8, 0) }
+local page = { path = "/v/Inbox/Sprint plan.md", folder = "Inbox", modified = at(8, 9, 0) }
+local older = { path = "/v/00 - Daily/2026-11-07.md", folder = "Daily", modified = at(7, 18, 0) }
+local oldest = { path = "/v/Inbox/Q3 roadmap.md", folder = "Inbox", modified = at(3, 10, 0) }
+local rows = quicknote.rows({ oldest, page, older, today }, noon)
+
+check.that("should put today's daily note first when it is not the newest", rows[1].id == today.path)
+check.that("should order the other notes by last change, newest first",
+  rows[2].id == page.path and rows[3].id == older.path and rows[4].id == oldest.path)
+check.that("should label a note with its filename without .md", rows[2].label == "Sprint plan")
+check.that("should name the folder in the hint", rows[2].hint:match("Inbox$") ~= nil)
+check.that("should show today and the time when the note changed today", rows[2].hint:match("^today · 09:00") ~= nil)
+check.that("should show yesterday when the note changed the day before", rows[3].hint:match("^yesterday") ~= nil)
+check.that("should show the month and day when the note changed earlier", rows[4].hint:match("^Nov 3") ~= nil)
+check.that("should return no rows when there are no notes", #quicknote.rows({}, noon) == 0)
+check.that("should leave out files that are not Markdown",
+  #quicknote.rows({ { path = "/v/Inbox/photo.png", folder = "Inbox", modified = at(8, 9, 0) } }, noon) == 0)
+local many = {}
+for index = 1, 250 do many[index] = { path = "/v/Inbox/n" .. index .. ".md", folder = "Inbox", modified = at(1, 0, 0) + index } end
+check.that("should keep at most 200 rows when there are more notes", #quicknote.rows(many, noon) == 200)
+
+check.that("should allow saving when the file has not changed since it was opened", quicknote.canSave(100, 100))
+check.that("should refuse saving when the file changed since it was opened", not quicknote.canSave(100, 160))
+
 check.finish()
