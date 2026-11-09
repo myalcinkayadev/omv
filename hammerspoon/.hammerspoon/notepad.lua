@@ -1,9 +1,10 @@
 -- The quick note editor: a card that grows as you type, with Markdown marks shown dimmed.
--- Enter carries a list on, Tab indents it, Cmd+Enter saves. Escape is a hotkey, so init.lua
--- decides what it does and calls arm() here when the note has text.
+-- Enter carries a list on, Tab indents it, Cmd+Enter saves, Cmd+O opens the note list.
+-- It writes a new note, or edits an existing one when given its file name.
+-- Escape is a hotkey, so init.lua decides what it does and calls arm() here when text would be lost.
 -- Reaches init.lua through the "omv" message handler as { type, id }:
 --   draft (every edit, id = the text), resize (id = the height the card needs),
---   submit (id = the text) and discard.
+--   submit (id = the text), discard and open.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local card = require("card")
@@ -37,6 +38,7 @@ local SCRIPT = [[
   const hl = document.querySelector("pre");
   const foot = document.querySelector(".foot");
   const LIST = /^(\s*)(- \[[ xX]\] |[-*] |\d+\. )/;
+  const file = document.body.dataset.file;
   let armed = false;
 
   const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
@@ -61,10 +63,13 @@ local SCRIPT = [[
 
   function drawFoot() {
     foot.classList.toggle("armed", armed);
-    if (armed) foot.innerHTML = "<span><kbd>esc</kbd> keep draft</span><span><kbd>⌘↵</kbd> save</span><span><kbd>⌘⌫</kbd> discard</span>";
+    if (file !== undefined) foot.innerHTML = armed
+      ? "<span><kbd>esc</kbd> discard changes</span><span><kbd>⌘↵</kbd> save</span>"
+      : "<span>" + esc(file) + "</span><span>⌘↵ save</span><span>⌘O notes</span>";
+    else if (armed) foot.innerHTML = "<span><kbd>esc</kbd> keep draft</span><span><kbd>⌘↵</kbd> save</span><span><kbd>⌘⌫</kbd> discard</span>";
     else if (/^# \S/.test(ta.value)) foot.innerHTML = "<span>New page in Inbox, linked from today</span>";
     else if (ta.value) foot.innerHTML = "<span>⌘↵ save</span><span>esc close</span>";
-    else foot.innerHTML = "<span>Adds to today's daily note</span>";
+    else foot.innerHTML = "<span>Adds to today's daily note</span><span>⌘O notes</span>";
   }
 
   // The card grows with the text up to half the screen, then the text scrolls.
@@ -130,24 +135,28 @@ local SCRIPT = [[
 
   ta.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && event.metaKey) { event.preventDefault(); return send("submit", ta.value); }
-    if (event.key === "Backspace" && event.metaKey && armed) { event.preventDefault(); return send("discard"); }
+    if (event.key === "o" && event.metaKey) { event.preventDefault(); return send("open"); }
+    if (event.key === "Backspace" && event.metaKey && armed && file === undefined) { event.preventDefault(); return send("discard"); }
     if (event.key === "Enter" && !event.shiftKey) return carryList(event);
     if (event.key === "Tab") return indent(event);
   });
   ta.addEventListener("input", changed);
   ta.addEventListener("scroll", () => { hl.scrollTop = ta.scrollTop; });
 
+  // A new note continues where the draft ended; an opened note is read from the top.
   ta.focus();
-  ta.selectionStart = ta.selectionEnd = ta.value.length;
+  ta.selectionStart = ta.selectionEnd = file === undefined ? ta.value.length : 0;
   draw();
 ]]
 
--- draft is the text kept from the last time the card closed unsaved.
-function notepad.html(draft)
-  return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. STYLE .. "</style><body>"
+-- text is the draft kept from last time, or the opened note's content.
+-- file is the opened note's name, nil for a new note.
+function notepad.html(text, file)
+  local fileAttribute = file and (' data-file="' .. card.escape(file) .. '"') or ""
+  return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. STYLE .. "</style><body" .. fileAttribute .. ">"
     .. '<div class=editor><pre aria-hidden=true></pre><textarea rows=1 placeholder="Note…" spellcheck=false>'
     -- A newline right after <textarea> is dropped by the parser, so a draft that starts with one keeps it.
-    .. "\n" .. card.escape(draft or "") .. "</textarea></div>"
+    .. "\n" .. card.escape(text or "") .. "</textarea></div>"
     .. "<div class=foot></div>"
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
