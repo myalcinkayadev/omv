@@ -1205,10 +1205,14 @@ local function focusClaude()
     if session then sessions[#sessions + 1] = session end
   end
   local rows = claudewait.rows(sessions, alive, os.time())
+  local function running(bundle) return hs.application.get(bundle) ~= nil end
+  local function run(script)
+    local ok, found = hs.osascript.applescript(script)
+    return ok and found ~= false
+  end
   local function focus(row)
-    local script = claudewait.focusScript(row.id)
-    if not (script and hs.osascript.applescript(script)) then
-      hs.alert.show("Claude waits in " .. row.label .. ", outside Ghostty", ALERT_STYLE, 2)
+    if not claudewait.focus(row.id, running, run) then
+      hs.alert.show("Claude waits in " .. row.label .. ", outside Ghostty, iTerm2 or Terminal", ALERT_STYLE, 2)
     end
   end
   if #rows == 0 then return hs.alert.show("No Claude session is waiting", ALERT_STYLE, 1.2) end
@@ -1216,7 +1220,7 @@ local function focusClaude()
   local height = 28 + 46 + #rows * 30 + 8
   showPanel("claude", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Waiting…", rows = rows, compact = true }), function(message)
     if message.type ~= "choose" then return closePanel() end
-    -- Leave focus to Ghostty, rather than handing it back to the app open before.
+    -- Leave focus to the terminal, rather than handing it back to the app open before.
     panel.previous = nil
     closePanel()
     for _, row in ipairs(rows) do
