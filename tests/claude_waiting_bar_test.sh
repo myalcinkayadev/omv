@@ -24,14 +24,14 @@ run_plugin() {
 shows_the_folder() {
   save_session one $$ omv 100
   run_plugin
-  assert_called 'sketchybar --set claude_waiting drawing=on label=waiting · omv$'
+  assert_called 'sketchybar --set claude_waiting drawing=on label=omv$'
 }
 
 shows_the_oldest_and_a_count() {
   save_session one $$ api 200
   save_session two $$ omv 100
   run_plugin
-  assert_called 'label=waiting · omv \+1$'
+  assert_called 'label=omv \+1$'
 }
 
 hides_with_none() {
@@ -54,7 +54,7 @@ removes_an_ended_session() {
 cuts_a_long_folder() {
   save_session one $$ a-very-long-folder-name 100
   run_plugin
-  assert_called 'label=waiting · a-very-long…$'
+  assert_called 'label=a-very-long…$'
 }
 
 checks_the_fit() {

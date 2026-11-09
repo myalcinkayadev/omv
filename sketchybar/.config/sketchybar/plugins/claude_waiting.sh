@@ -1,6 +1,6 @@
 #!/bin/sh
-# Shows Claude Code sessions waiting for you, as "waiting · <folder>" for the one waiting
-# longest, then +N for the others. claude-waiting.sh, a Claude hook, saves them. A session
+# Shows Claude Code sessions waiting for you, as the folder of the one waiting longest,
+# then +N for the others. claude-waiting.sh, a Claude hook, saves them. A session
 # whose Claude has ended is dropped. A click focuses the session's terminal; see init.lua.
 
 state_dir="$HOME/.local/state/omv/claude-waiting"
@@ -37,7 +37,7 @@ if [ -z "$sessions" ]; then
 fi
 
 count=$(printf '%s\n' "$sessions" | wc -l | tr -d ' ')
-label="waiting · $(short "$(printf '%s\n' "$sessions" | head -n 1 | cut -f 2)")"
+label="$(short "$(printf '%s\n' "$sessions" | head -n 1 | cut -f 2)")"
 [ "$count" -gt 1 ] && label="$label +$((count - 1))"
 
 sketchybar --set "$NAME" drawing=on "label=$label"

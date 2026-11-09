@@ -214,10 +214,25 @@ class ConfigContract(unittest.TestCase):
         self.assertIn("borders ", commands)
         self.assertIn("hidpi=off", commands)
 
-    def test_should_place_the_weather_left_of_claudes_item(self) -> None:
+    def test_should_place_claudes_item_left_of_the_weather(self) -> None:
         # Right-side items are added from the right edge inward, so a later one sits further left.
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
-        self.assertLess(source.index("--add item claude_usage right"), source.index("--add item weather right"))
+        self.assertLess(source.index("--add item weather right"), source.index("--add item claude_waiting right"))
+
+    def test_should_place_claudes_item_left_of_keep_awake(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertLess(source.index("--add item keep_awake right"), source.index("--add item claude_waiting right"))
+
+    def test_should_place_the_waiting_pill_directly_right_of_claudes_usage(self) -> None:
+        # The pill is added just before the usage item, so nothing sits between them.
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        items = re.findall(r"--add item (\S+) right", source)
+        self.assertEqual(items[items.index("claude_waiting") + 1], "claude_usage")
+
+    def test_should_draw_the_waiting_pill_without_an_icon(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        settings = source[source.index("--set claude_waiting"):source.index("--subscribe claude_waiting")]
+        self.assertIn("icon.drawing=off", settings)
 
     def test_should_check_the_fit_when_a_right_side_item_changes(self) -> None:
         plugins = REPO / "sketchybar/.config/sketchybar/plugins"

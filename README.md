@@ -63,11 +63,11 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 |---|---|---|---|
 | Meeting | The next Calendar event's start time, from an hour before | Join its video call, or open the [calendar](#calendar-and-todays-events) | |
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
-| Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
-| Waiting Claude | A white pill, `waiting · omv`, while a Claude Code session waits for you, plus `+N` for others | Go to that session's terminal | |
 | Pull requests | How many open pull requests ask for your review, checked with `gh` every 5 minutes. Hidden when none wait, or when `gh` is missing, logged out or offline | List them; Enter opens one in Helium | |
-| Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
 | Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
+| Waiting Claude | A white pill right of Claude's limit, `omv`, while a Claude Code session waits for you, plus `+N` for others | Go to that session's terminal, or pick one when several wait | |
+| Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
+| Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
 | Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
 | Wi-Fi | Connected or not | Open the [Wi-Fi card](#wi-fi-and-ethernet) | |
 | Volume | Level | Open the [Sound card](#sound), with either button | Change the volume by 5% |
@@ -149,7 +149,7 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - The plan comes from `~/.claude.json`, and only its `organizationType` is read. The folders come from Claude Code's own session files in `~/.claude/projects`.
 - `claude` runs through your login shell, by `claude-in.sh`, so it's found on the PATH your shell sets up.
 
-**Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder. Click it, or press Option+Shift+A, to go to the terminal of the session that has waited longest, even in another tab or on another workspace. The pill goes when you answer, when a tool runs after your approval, or when the session ends.
+**Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder. It sits right next to Claude's logo and 5-hour limit, so the two read as one group, and the limit stays in view. Click it, or press Option+Shift+A, to go to the session's terminal, even in another tab or on another workspace. When several sessions wait, a list opens with the one waiting longest selected, and each row shows how long it has waited. The pill goes when you answer, when a tool runs after your approval, or when the session ends.
 
 - `install.sh` adds hooks to `~/.claude/settings.json` through `claude-hooks.sh`: `Stop` and `Notification` mark a session as waiting, and `UserPromptSubmit`, `PostToolUse` and `SessionEnd` clear it. Other hooks and settings stay as they are, and `uninstall.sh` removes only these.
 - Ghostty runs every window in one process, so the terminal is found by its tty through Ghostty's AppleScript. The first time, macOS asks to let Hammerspoon control Ghostty.
@@ -291,7 +291,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+M | Set a reminder | |
 | Option+Shift+D | Add a line to today's daily note | |
 | Option+Shift+C | Join the meeting that is starting | |
-| Option+Shift+A | Go to the Claude session waiting for you | |
+| Option+Shift+A | Go to the Claude session waiting for you, or pick one when several wait | |
 | Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |
