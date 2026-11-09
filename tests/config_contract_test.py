@@ -12,6 +12,13 @@ GHOSTTY = REPO / "ghostty/.config/ghostty/config"
 PACKAGES = ("aerospace", "sketchybar", "claude", "swipeaerospace", "ghostty", "nvim", "btop", "hammerspoon")
 SWIPE = REPO / "swipeaerospace/.config/swipeareospace/config.toml"
 
+
+def hammerspoon_source() -> str:
+    """init.lua and every feature module, since the cards live in features/."""
+    folder = HAMMERSPOON.parent
+    files = [HAMMERSPOON, *sorted((folder / "features").glob("*.lua"))]
+    return "\n".join(path.read_text(encoding="utf-8") for path in files)
+
 APPROVED_ROUTES = {
     "com.mitchellh.ghostty": "1",
     "dev.zed.Zed": "2",
@@ -247,7 +254,7 @@ class ConfigContract(unittest.TestCase):
     def test_should_check_the_fit_when_a_right_side_item_changes(self) -> None:
         plugins = REPO / "sketchybar/.config/sketchybar/plugins"
         triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh", "github_prs.sh", "claude_waiting.sh")]
-        triggers.append('"bar_fit"' in HAMMERSPOON.read_text(encoding="utf-8"))
+        triggers.append('"bar_fit"' in hammerspoon_source())
         self.assertEqual(triggers, [True, True, True, True, True])
 
     def test_should_bind_option_a_to_the_accordion_toggle(self) -> None:
