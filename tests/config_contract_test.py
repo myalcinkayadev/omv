@@ -223,6 +223,16 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertLess(source.index("--add item keep_awake right"), source.index("--add item claude_waiting right"))
 
+    def test_should_give_the_status_icons_one_fixed_width(self) -> None:
+        # Icons differ in width, so a fixed, centered slot keeps their centers evenly spaced.
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertRegex(source, r"STATUS_ICON=\([^)]*icon\.width=\d+[^)]*icon\.align=center")
+        slots = []
+        for name in ("battery", "volume", "wifi", "ethernet", "keep_awake"):
+            settings = source[source.index(f"--set {name} "):source.index("--subscribe " + name)]
+            slots.append('"${STATUS_ICON[@]}"' in settings)
+        self.assertEqual(slots, [True] * 5)
+
     def test_should_place_the_waiting_pill_directly_right_of_claudes_usage(self) -> None:
         # The pill is added just before the usage item, so nothing sits between them.
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
