@@ -152,9 +152,9 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 **Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder. It sits right next to Claude's logo and 5-hour limit, so the two read as one group, and the limit stays in view. Click it, or press Option+Shift+A, to go to the session's terminal, even in another tab or on another workspace. When several sessions wait, a list opens with the one waiting longest selected, and each row shows how long it has waited. The pill goes when you answer, when a tool runs after your approval, or when the session ends.
 
 - `install.sh` adds hooks to `~/.claude/settings.json` through `claude-hooks.sh`: `Stop` and `Notification` mark a session as waiting, and `UserPromptSubmit`, `PostToolUse` and `SessionEnd` clear it. Other hooks and settings stay as they are, and `uninstall.sh` removes only these.
-- Ghostty runs every window in one process, so the terminal is found by its tty through Ghostty's AppleScript. The first time, macOS asks to let Hammerspoon control Ghostty.
+- The session's terminal is found by its tty, in Ghostty, iTerm2 or Terminal, through each app's AppleScript, Ghostty first. A terminal app that isn't running is skipped, so it never opens on its own. The first time, macOS asks to let Hammerspoon control that app.
 - Only Claude's PID, its tty, the folder name and the time are saved, in `~/.local/state/omv/claude-waiting`. A session whose Claude has ended is dropped within 30 seconds.
-- A session outside Ghostty, such as in an editor's terminal, still shows, but can't be focused: you get its folder name instead. The drop-down terminal can't be focused either.
+- A session in any other app, such as an editor's terminal, still shows, but can't be focused: you get its folder name instead. The drop-down terminal can't be focused either.
 
 <img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, with session and weekly limits" width="400">
 
