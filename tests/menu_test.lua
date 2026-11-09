@@ -31,6 +31,15 @@ check.that("should select the row it is told to select",
 
 check.that("should lay rows out in columns when asked",
   check.contains(card.html({ prompt = "x", rows = { { id = "a", label = "a" } }, columns = 2 }), "column-count: 2"))
+local grouped = card.html({ prompt = "x", rows = {
+  { id = "a", label = "a", group = "Windows" }, { id = "b", label = "b", group = "Windows" }, { id = "c", label = "c", group = "Apps" } } })
+local _, headerCount = grouped:gsub("class=group", "")
+check.that("should render one header per group", headerCount == 2)
+check.that("should render headers in row order", grouped:find(">Windows<", 1, true) < grouped:find(">Apps<", 1, true))
+check.that("should keep a group's header together with its first row",
+  check.contains(grouped, '<div class=lead><div class=group data-name="Windows">Windows</div><div class="row" data-id="a"'))
+check.that("should not render a header for rows without a group", not check.contains(sample, "class=group"))
+check.that("should let a row's group match a search", check.contains(grouped, 'data-group="Windows"'))
 check.that("should keep a single column by default", not check.contains(sample, "column-count"))
 check.that("should list the system items in order",
   labels(menu.screen("system")) == "Lock,Screensaver,Sleep,Log out,Restart,Shut down,Sound,Reload")

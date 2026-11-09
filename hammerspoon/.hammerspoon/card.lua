@@ -1,6 +1,7 @@
 -- Renders the Omarchy-style card shared by the system menu and the key list: a search
 -- prompt on top, then rows to pick from. Typing filters the rows. Up and Down move,
 -- Enter or Right picks, Left or Backspace on an empty search goes back, Escape closes.
+-- In a card with columns, Left and Right move between columns instead, so only Enter picks.
 -- Picks reach init.lua through the "omv" message handler as { type, id }.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
@@ -19,7 +20,7 @@ card.STYLE = [[
   .row { display: flex; align-items: center; height: 44px; padding: 0 12px; border-radius: 4px; color: #d0d0d0; cursor: default; }
   .row .icon { width: 28px; font-size: 18px; }
   .row .label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row .hint { color: #7a7a7a; padding-left: 16px; white-space: nowrap; }
+  .row .hint { color: #9a9a9a; padding-left: 16px; white-space: nowrap; }
   .row.selected { background: #fff; color: #000; }
   .row.selected .hint { color: #3a3a3a; }
   .row.hidden { display: none; }
@@ -29,10 +30,17 @@ card.STYLE = [[
   .none { color: #7a7a7a; padding: 8px 12px; display: none; }
   .rows.columns { overflow: hidden; column-gap: 28px; column-fill: auto; }
   .rows.columns .row { break-inside: avoid; }
+  .group { height: 30px; line-height: 30px; padding: 0 12px; color: #8d8d8d; font-size: 12px;
+    text-transform: uppercase; letter-spacing: 1px; }
+  .lead { break-inside: avoid; }
+  .group.hidden { display: none; }
 ]]
 
 local SCRIPT = [[
   const rows = Array.from(document.querySelectorAll(".row"));
+  const groups = Array.from(document.querySelectorAll(".group"));
+  // Side by side columns: Left and Right move between columns, and only Enter picks.
+  const inColumns = document.querySelector(".rows.columns") !== null;
   const prompt = document.querySelector(".prompt");
   const text = document.querySelector(".text");
   const none = document.querySelector(".none");
@@ -47,8 +55,12 @@ local SCRIPT = [[
   function draw() {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     rows.forEach((row) => {
-      const haystack = row.textContent.toLowerCase();
+      const haystack = ((row.dataset.group || "") + " " + row.textContent).toLowerCase();
       row.classList.toggle("hidden", !words.every((word) => haystack.includes(word)));
+    });
+    groups.forEach((group) => {
+      const name = group.dataset.name;
+      group.classList.toggle("hidden", !rows.some((row) => row.dataset.group === name && !row.classList.contains("hidden")));
     });
     const shown = visible();
     selected = Math.min(selected, Math.max(0, shown.length - 1));
@@ -62,6 +74,23 @@ local SCRIPT = [[
     prompt.classList.toggle("empty", query === "");
   }
 
+  // The row in the next column over, level with the selected one.
+  function sideways(step) {
+    const shown = visible();
+    if (!shown[selected]) return;
+    const from = shown[selected].getBoundingClientRect();
+    const across = shown.filter((row) => {
+      const box = row.getBoundingClientRect();
+      return step > 0 ? box.left > from.right : box.right < from.left;
+    });
+    if (!across.length) return;
+    const lefts = across.map((row) => row.getBoundingClientRect().left);
+    const edge = step > 0 ? Math.min(...lefts) : Math.max(...lefts);
+    const column = across.filter((row) => row.getBoundingClientRect().left === edge);
+    const distance = (row) => Math.abs(row.getBoundingClientRect().top - from.top);
+    selected = shown.indexOf(column.reduce((best, row) => (distance(row) < distance(best) ? row : best)));
+  }
+
   function pick(row) {
     if (row) send("choose", row.dataset.id);
   }
@@ -72,6 +101,8 @@ local SCRIPT = [[
     if (event.key === "ArrowDown" || (event.ctrlKey && event.key === "n")) selected = (selected + 1) % Math.max(1, shown.length);
     else if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) selected = (selected - 1 + shown.length) % Math.max(1, shown.length);
     else if (event.key === "Enter" && takesInput) return send("submit", query);
+    else if (inColumns && event.key === "ArrowRight") sideways(1);
+    else if (inColumns && event.key === "ArrowLeft") sideways(-1);
     else if (event.key === "Enter" || event.key === "ArrowRight") return pick(shown[selected]);
     else if (event.key === "ArrowLeft" || (event.key === "Backspace" && query === "")) return send("back");
     else if (event.key === "Backspace") query = query.slice(0, -1);
@@ -106,6 +137,7 @@ local function rowHtml(row)
   local icon = row.icon and ("<span class=icon>" .. card.escape(row.icon) .. "</span>") or ""
   local hint = row.submenu and "›" or row.hint
   return '<div class="row" data-id="' .. card.escape(row.id) .. '"'
+    .. (row.group and (' data-group="' .. card.escape(row.group) .. '"') or "")
     .. (row.submenu and " data-submenu" or "") .. ">"
     .. icon
     .. "<span class=label>" .. card.escape(row.label) .. "</span>"
@@ -119,12 +151,28 @@ local function rowsOpen(columns)
   return '<div class="rows columns" style="column-count: ' .. columns .. '">'
 end
 
--- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu } },
+-- A header line above each run of rows that share a group. WebKit ignores break-after
+-- in columns, so the header and the group's first row share an unbreakable box, which
+-- keeps a header from sitting alone at the foot of a column.
+local function rowsWithHeaders(screenRows)
+  local lines, previous = {}, nil
+  for _, row in ipairs(screenRows) do
+    local line = rowHtml(row)
+    if row.group and row.group ~= previous then
+      line = '<div class=lead><div class=group data-name="' .. card.escape(row.group) .. '">'
+        .. card.escape(row.group) .. "</div>" .. line .. "</div>"
+    end
+    previous = row.group
+    lines[#lines + 1] = line
+  end
+  return lines
+end
+
+-- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group } },
 --            selected = 1, compact = false, columns = 1, input = false, hint = "" }
 -- An input card sends what was typed on Enter, and shows its hint under the prompt.
 function card.html(screen)
-  local rows = {}
-  for _, row in ipairs(screen.rows) do rows[#rows + 1] = rowHtml(row) end
+  local rows = rowsWithHeaders(screen.rows)
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
     .. (screen.input and " data-input" or "") .. ">"
