@@ -41,13 +41,16 @@ func oneLine(_ text: String) -> String {
 let callHosts = ["zoom.us", "meet.google.com", "teams.microsoft.com", "teams.live.com"]
 
 // The event's URL first, then its location and notes, so agenda.lua prefers the URL.
+// Each link once: Google puts a Meet link in the URL, the location and the notes.
 func callLinks(_ event: EKEvent) -> String {
   let text = [event.url?.absoluteString, event.location, event.notes].compactMap { $0 }.joined(separator: " ")
   guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return "" }
+  var seen = Set<String>()
   return detector.matches(in: text, range: NSRange(text.startIndex..., in: text))
     .compactMap { $0.url }
     .filter { url in callHosts.contains { url.host?.hasSuffix($0) == true } }
     .map { oneLine($0.absoluteString) }
+    .filter { seen.insert($0).inserted }
     .joined(separator: " ")
 }
 
