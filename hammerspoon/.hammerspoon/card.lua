@@ -1,6 +1,7 @@
 -- Renders the Omarchy-style card shared by the system menu and the key list: a search
 -- prompt on top, then rows to pick from. Typing filters the rows. Up and Down move,
 -- Enter or Right picks, Left or Backspace on an empty search goes back, Escape closes.
+-- In a card with columns, Left and Right move between columns instead, so only Enter picks.
 -- Picks reach init.lua through the "omv" message handler as { type, id }.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
@@ -33,6 +34,8 @@ card.STYLE = [[
 
 local SCRIPT = [[
   const rows = Array.from(document.querySelectorAll(".row"));
+  // Side by side columns: Left and Right move between columns, and only Enter picks.
+  const inColumns = document.querySelector(".rows.columns") !== null;
   const prompt = document.querySelector(".prompt");
   const text = document.querySelector(".text");
   const none = document.querySelector(".none");
@@ -62,6 +65,23 @@ local SCRIPT = [[
     prompt.classList.toggle("empty", query === "");
   }
 
+  // The row in the next column over, level with the selected one.
+  function sideways(step) {
+    const shown = visible();
+    if (!shown[selected]) return;
+    const from = shown[selected].getBoundingClientRect();
+    const across = shown.filter((row) => {
+      const box = row.getBoundingClientRect();
+      return step > 0 ? box.left > from.right : box.right < from.left;
+    });
+    if (!across.length) return;
+    const lefts = across.map((row) => row.getBoundingClientRect().left);
+    const edge = step > 0 ? Math.min(...lefts) : Math.max(...lefts);
+    const column = across.filter((row) => row.getBoundingClientRect().left === edge);
+    const distance = (row) => Math.abs(row.getBoundingClientRect().top - from.top);
+    selected = shown.indexOf(column.reduce((best, row) => (distance(row) < distance(best) ? row : best)));
+  }
+
   function pick(row) {
     if (row) send("choose", row.dataset.id);
   }
@@ -72,6 +92,8 @@ local SCRIPT = [[
     if (event.key === "ArrowDown" || (event.ctrlKey && event.key === "n")) selected = (selected + 1) % Math.max(1, shown.length);
     else if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) selected = (selected - 1 + shown.length) % Math.max(1, shown.length);
     else if (event.key === "Enter" && takesInput) return send("submit", query);
+    else if (inColumns && event.key === "ArrowRight") sideways(1);
+    else if (inColumns && event.key === "ArrowLeft") sideways(-1);
     else if (event.key === "Enter" || event.key === "ArrowRight") return pick(shown[selected]);
     else if (event.key === "ArrowLeft" || (event.key === "Backspace" && query === "")) return send("back");
     else if (event.key === "Backspace") query = query.slice(0, -1);
