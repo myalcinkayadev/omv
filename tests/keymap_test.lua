@@ -44,14 +44,14 @@ check("should show a readable label when a key has modifiers", keymap.label("alt
 
 check("should label tab as Tab when building the cheat sheet", keymap.label("alt-tab") == "Option+Tab")
 
-check("should describe a known command in words", keymap.describe("focus left") == "Focus the window left")
-check("should describe a numbered workspace command", keymap.describe("move-node-to-workspace 4") == "Send the window to workspace 4")
-check("should describe the accordion toggle in words", keymap.describe("layout accordion tiles") == "Toggle tabbed or tiled")
+check("should describe a known command in words", keymap.describe("focus left") == "Focus left")
+check("should describe a numbered workspace command", keymap.describe("move-node-to-workspace 4") == "Send window to 4")
+check("should describe the accordion toggle in words", keymap.describe("layout accordion tiles") == "Tabbed or tiled")
 check("should keep the command when it has no description", keymap.describe("flatten-workspace-tree") == "flatten-workspace-tree")
 
 local sheet = keymap.html(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"), { { label = "Option+/", description = "Show this list" } })
 check("should title the key list Keybindings", sheet:find('data-prompt="Keybindings…"', 1, true) ~= nil)
-check("should show a binding's description in its row", sheet:find(">Focus the window left<", 1, true) ~= nil)
+check("should show a binding's description in its row", sheet:find(">Focus left<", 1, true) ~= nil)
 check("should show a binding's key in its row", sheet:find(">Option+H<", 1, true) ~= nil)
 check("should show the key list in the columns it is given",
   keymap.html({}, { { label = "x", description = "y" } }, 3):find("column-count: 3", 1, true) ~= nil)
@@ -88,5 +88,25 @@ check("should keep panel height within the screen height when the list grows", k
 check("should cap panel width at the screen width", keymap.layout(60, SCREEN).w <= SCREEN.w)
 check("should return 1 column when there are no rows", keymap.layout(0, SCREEN).columns == 1)
 check("should handle a screen too short for even one row", keymap.layout(5, { w = 1512, h = 10 }).columns == 5)
+
+local function groupOf(toml)
+  return keymap.rows(keymap.parse(toml), {})[1].group
+end
+check("should group focus and move bindings under Windows when parsing aerospace.toml",
+  groupOf("[mode.main.binding]\nalt-h = 'focus left'\n") == "Windows" and groupOf("[mode.main.binding]\nalt-shift-h = 'move left'\n") == "Windows")
+check("should group workspace and send-to-workspace bindings under Workspaces",
+  groupOf("[mode.main.binding]\nalt-1 = 'workspace 1'\n") == "Workspaces" and groupOf("[mode.main.binding]\nalt-shift-1 = 'move-node-to-workspace 1'\n") == "Workspaces")
+check("should group resize mode bindings under Resize mode", groupOf("[mode.resize.binding]\nh = 'resize width -50'\n") == "Resize mode")
+check("should drop the mode suffix from a hint when its group names the mode",
+  keymap.rows(keymap.parse("[mode.resize.binding]\nh = 'resize width -50'\n"), {})[1].hint == "H")
+check("should put a binding with an unknown command in an Other group", groupOf("[mode.main.binding]\nalt-x = 'flatten-workspace-tree'\n") == "Other")
+check("should keep a launcher's group from bindKey", keymap.rows({}, { { label = "x", description = "y", group = "Tools" } })[1].group == "Tools")
+
+local ordered = keymap.rows(keymap.parse("[mode.main.binding]\nalt-1 = 'workspace 1'\nalt-h = 'focus left'\n"),
+  { { label = "x", description = "y", group = "Apps" } })
+check("should order rows by group", ordered[1].group == "Windows" and ordered[2].group == "Workspaces" and ordered[3].group == "Apps")
+check("should keep a binding row pointing at its binding after reordering", ordered[1].id == "binding:2")
+check("should count headers as rows when choosing columns", keymap.lines(ordered) == 6)
+check("should describe send-to-monitor in under 30 characters", #keymap.describe("move-node-to-monitor right") < 30)
 
 os.exit(failed == 0 and 0 or 1)

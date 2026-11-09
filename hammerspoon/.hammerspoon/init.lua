@@ -62,10 +62,11 @@ end
 
 local launchers = {}
 
--- Each key keeps its action, so the key list can run it too.
-local function bindKey(modifiers, key, label, description, action)
+-- Each key keeps its action, so the key list can run it too. The group is the key list
+-- section it shows under.
+local function bindKey(modifiers, key, label, description, group, action)
   hs.hotkey.bind(modifiers, key, action)
-  launchers[#launchers + 1] = { label = label, description = description, run = action, runs = true }
+  launchers[#launchers + 1] = { label = label, description = description, group = group, run = action, runs = true }
 end
 
 local function openOnWorkspace(workspace, arguments)
@@ -269,7 +270,7 @@ local function toggleKeyList()
   if panel and panel.name == "keys" then return closePanel() end
   local bindings = keymap.read(AEROSPACE_CONFIG)
   keyListBindings = bindings
-  local layout = keymap.layout(#keymap.rows(bindings, launchers), hs.screen.mainScreen():frame())
+  local layout = keymap.layout(keymap.lines(keymap.rows(bindings, launchers)), hs.screen.mainScreen():frame())
   showPanel("keys", centered(layout.w, layout.h), keymap.html(bindings, launchers, layout.columns), onKeyListMessage)
 end
 
@@ -1262,26 +1263,26 @@ local function copyUrl()
   end):start()
 end
 
-bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New Helium window", openOnWorkspace("3", { "-na", "Helium", "--args", "--new-window" }))
-bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open Zed", openOnWorkspace("2", { "-a", "Zed" }))
-bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", open({ os.getenv("HOME") }))
-bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", run(LAUNCH, { "1", GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
-bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", run(SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
-bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", copyUrl)
-bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", toggleCapture)
-bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", newReminder)
-bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", newNote)
-bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "Pull requests waiting for your review", togglePrs)
-bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Go to the Claude session waiting for you", focusClaude)
-bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting that is starting", joinMeeting)
-bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
-bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi card", toggleWifi)
-bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet card", toggleEthernet)
-bindKey(SUPER_SHIFT, "v", "Option+Shift+V", "Sound card", toggleSound)
-bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather card", toggleWeather)
-bindKey(SUPER_SHIFT, "b", "Option+Shift+B", "Battery card", toggleBattery)
-bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
-bindKey(SUPER, "space", "Option+Space", "Go to any window", toggleWindows)
+bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New Helium window", "Apps", openOnWorkspace("3", { "-na", "Helium", "--args", "--new-window" }))
+bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open Zed", "Apps", openOnWorkspace("2", { "-a", "Zed" }))
+bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", "Apps", open({ os.getenv("HOME") }))
+bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", "Apps", run(LAUNCH, { "1", GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
+bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", "Tools", run(SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
+bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", "Tools", copyUrl)
+bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", "Tools", toggleCapture)
+bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", "Tools", newReminder)
+bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", "Tools", newNote)
+bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "PRs waiting for your review", "Tools", togglePrs)
+bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", focusClaude)
+bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", joinMeeting)
+bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", "Cards", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
+bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi", "Cards", toggleWifi)
+bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet", "Cards", toggleEthernet)
+bindKey(SUPER_SHIFT, "v", "Option+Shift+V", "Sound", "Cards", toggleSound)
+bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather", "Cards", toggleWeather)
+bindKey(SUPER_SHIFT, "b", "Option+Shift+B", "Battery", "Cards", toggleBattery)
+bindKey(SUPER, "escape", "Option+Escape", "System menu", "Cards", toggleSystemMenu)
+bindKey(SUPER, "space", "Option+Space", "Go to any window", "Cards", toggleWindows)
 
 -- Now playing: Music and Spotify announce every track and play-state change, so the bar
 -- redraws only then. Global, so the watchers are never garbage-collected. Written out
@@ -1292,10 +1293,10 @@ omvMediaWatchers = {
 }
 
 -- Ghostty owns this key, so it is listed here rather than bound.
-launchers[#launchers + 1] = { label = "Option+`", description = "Drop-down terminal" }
+launchers[#launchers + 1] = { label = "Option+`", description = "Drop-down terminal", group = "Apps" }
 
 -- 44 is the physical "/" key, so this stays the same key on the Turkish layout.
-bindKey(SUPER, 44, "Option+/", "Show or hide this list", toggleKeyList)
+bindKey(SUPER, 44, "Option+/", "Show or hide this list", "Cards", toggleKeyList)
 -- Running it from the list would only open the list again.
 launchers[#launchers].runs = false
 

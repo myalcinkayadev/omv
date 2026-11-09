@@ -62,29 +62,66 @@ function keymap.label(key)
   return table.concat(parts, "+")
 end
 
--- Plain descriptions for AeroSpace commands. A command missing here shows as itself,
--- so a new binding still appears, just less readably.
+-- Plain descriptions for AeroSpace commands, short enough to fit a column. The group
+-- header gives the rest of the meaning. A command missing here shows as itself, so a new
+-- binding still appears, just less readably.
 local DESCRIPTIONS = {
-  { "^focus (%a+)$", "Focus the window %1" },
-  { "^move (%a+)$", "Move the window %1" },
-  { "^workspace%-back%-and%-forth$", "Go back to the previous workspace" },
-  { "^workspace (%w+)$", "Go to workspace %1" },
-  { "^move%-node%-to%-workspace (%w+)$", "Send the window to workspace %1" },
-  { "^focus%-monitor (%a+)$", "Focus the %1 monitor" },
-  { "^move%-node%-to%-monitor (%a+)$", "Send the window to the %1 monitor" },
-  { "^fullscreen$", "Toggle fullscreen" },
-  { "^layout floating tiling$", "Toggle floating or tiled" },
-  { "^layout tiles horizontal vertical$", "Toggle the split direction" },
-  { "^layout accordion tiles$", "Toggle tabbed or tiled" },
-  { "^balance%-sizes$", "Make window sizes even" },
+  { "^focus (%a+)$", "Focus %1" },
+  { "^move (%a+)$", "Move %1" },
+  { "^workspace%-back%-and%-forth$", "Previous workspace" },
+  { "^workspace (%w+)$", "Go to %1" },
+  { "^move%-node%-to%-workspace (%w+)$", "Send window to %1" },
+  { "^focus%-monitor (%a+)$", "Focus %1 monitor" },
+  { "^move%-node%-to%-monitor (%a+)$", "Send window to %1 monitor" },
+  { "^fullscreen$", "Fullscreen" },
+  { "^layout floating tiling$", "Floating or tiled" },
+  { "^layout tiles horizontal vertical$", "Split direction" },
+  { "^layout accordion tiles$", "Tabbed or tiled" },
+  { "^balance%-sizes$", "Even sizes" },
   { "^mode resize$", "Enter resize mode" },
   { "^mode main$", "Leave resize mode" },
-  { "^resize width %-%d+$", "Resize: narrower" },
-  { "^resize width %+%d+$", "Resize: wider" },
-  { "^resize height %-%d+$", "Resize: shorter" },
-  { "^resize height %+%d+$", "Resize: taller" },
+  { "^resize width %-%d+$", "Narrower" },
+  { "^resize width %+%d+$", "Wider" },
+  { "^resize height %-%d+$", "Shorter" },
+  { "^resize height %+%d+$", "Taller" },
   { "^workspace 1, exec%-and%-forget .*new%-window%.sh$", "New Ghostty window" },
 }
+
+-- Groups in the order the list shows them. Launchers name their group in init.lua.
+local GROUP_ORDER = { "Windows", "Workspaces", "Monitors", "Layout", "Resize mode", "Apps", "Tools", "Cards", "Other" }
+
+-- A group's mode, when its header already says which mode its keys work in.
+local GROUP_MODES = { ["Resize mode"] = "resize" }
+
+-- The first rule whose pattern matches the command picks the binding's group.
+local BINDING_GROUPS = {
+  { "^focus%-monitor ", "Monitors" },
+  { "^move%-node%-to%-monitor ", "Monitors" },
+  { "^focus ", "Windows" },
+  { "^move ", "Windows" },
+  { "^workspace 1, exec%-and%-forget", "Apps" },
+  { "^workspace", "Workspaces" },
+  { "^move%-node%-to%-workspace ", "Workspaces" },
+  { "^fullscreen$", "Layout" },
+  { "^layout ", "Layout" },
+  { "^balance%-sizes$", "Layout" },
+  { "^mode resize$", "Resize mode" },
+}
+
+local function bindingGroup(binding)
+  if binding.mode == "resize" then return "Resize mode" end
+  for _, rule in ipairs(BINDING_GROUPS) do
+    if binding.command:find(rule[1]) then return rule[2] end
+  end
+  return "Other"
+end
+
+local function groupRank(group)
+  for rank, name in ipairs(GROUP_ORDER) do
+    if name == group then return rank end
+  end
+  return #GROUP_ORDER + 1
+end
 
 function keymap.describe(command)
   for _, rule in ipairs(DESCRIPTIONS) do
@@ -111,23 +148,44 @@ function keymap.steps(commands)
   return steps
 end
 
-local function bindingRows(bindings)
-  local rows = {}
-  for index, binding in ipairs(bindings) do
-    local key = keymap.label(binding.key)
-    if binding.mode ~= "main" then key = key .. " (" .. binding.mode .. ")" end
-    rows[#rows + 1] = { id = "binding:" .. index, label = keymap.describe(binding.command), hint = key, runnable = true }
-  end
+local function bindingRow(binding, index)
+  local group = bindingGroup(binding)
+  local key = keymap.label(binding.key)
+  if binding.mode ~= "main" and GROUP_MODES[group] ~= binding.mode then key = key .. " (" .. binding.mode .. ")" end
+  return { id = "binding:" .. index, label = keymap.describe(binding.command), hint = key, group = group, runnable = true }
+end
+
+-- Sorted by group, keeping the written order inside each group.
+local function sortByGroup(rows)
+  for position, row in ipairs(rows) do row.position = position end
+  table.sort(rows, function(a, b)
+    local rankA, rankB = groupRank(a.group), groupRank(b.group)
+    if rankA ~= rankB then return rankA < rankB end
+    return a.position < b.position
+  end)
   return rows
 end
 
 function keymap.rows(bindings, launchers)
-  local rows = bindingRows(bindings)
+  local rows = {}
+  for index, binding in ipairs(bindings) do rows[#rows + 1] = bindingRow(binding, index) end
   -- A launcher runs only when init.lua gave it something to run.
   for index, launcher in ipairs(launchers) do
-    rows[#rows + 1] = { id = "launcher:" .. index, label = launcher.description, hint = launcher.label, runnable = launcher.runs == true }
+    rows[#rows + 1] = { id = "launcher:" .. index, label = launcher.description, hint = launcher.label,
+      group = launcher.group or "Other", runnable = launcher.runs == true }
   end
-  return rows
+  return sortByGroup(rows)
+end
+
+-- Lines the card draws: every row, plus a header wherever the group changes.
+function keymap.lines(rows)
+  local count, previous = 0, nil
+  for _, row in ipairs(rows) do
+    if row.group ~= previous then count = count + 1 end
+    previous = row.group
+    count = count + 1
+  end
+  return count
 end
 
 -- Card sizes in points: border, padding and prompt above the rows, one compact row,
@@ -137,17 +195,21 @@ local ROW_HEIGHT = 30
 local COLUMN_WIDTH = 550
 local SCREEN_MARGIN = 40
 
--- Enough columns to show every key at once on this screen, at least two, and a card
+-- A header is never left alone at the foot of a column, so a column can end up to one
+-- line short. Each column keeps one spare line for that.
+local SPARE_LINES = 1
+
+-- Enough columns to show every line at once on this screen, at least two, and a card
 -- size that stays on screen. Long labels shorten with "…" once the width is capped.
-function keymap.layout(rowCount, screen)
-  if rowCount == 0 then return { columns = 1, w = COLUMN_WIDTH, h = CARD_CHROME } end
-  local rowsThatFit = math.max(1, math.floor((screen.h - SCREEN_MARGIN - CARD_CHROME) / ROW_HEIGHT))
-  local columns = math.max(2, math.ceil(rowCount / rowsThatFit))
-  local rowsPerColumn = math.ceil(rowCount / columns)
+function keymap.layout(lineCount, screen)
+  if lineCount == 0 then return { columns = 1, w = COLUMN_WIDTH, h = CARD_CHROME } end
+  local linesThatFit = math.floor((screen.h - SCREEN_MARGIN - CARD_CHROME) / ROW_HEIGHT) - SPARE_LINES
+  local columns = math.max(2, math.ceil(lineCount / math.max(1, linesThatFit)))
+  local linesPerColumn = math.ceil(lineCount / columns) + SPARE_LINES
   return {
     columns = columns,
     w = math.min(columns * COLUMN_WIDTH, screen.w - SCREEN_MARGIN),
-    h = math.min(CARD_CHROME + rowsPerColumn * ROW_HEIGHT, screen.h - SCREEN_MARGIN),
+    h = math.min(CARD_CHROME + linesPerColumn * ROW_HEIGHT, screen.h - SCREEN_MARGIN),
   }
 end
 
