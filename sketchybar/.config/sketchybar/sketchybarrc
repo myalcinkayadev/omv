@@ -57,33 +57,64 @@ sketchybar --add event now_playing_change \
     script="$PLUGIN_DIR/now_playing.sh" \
   --subscribe now_playing now_playing_change mouse.clicked mouse.scrolled system_woke
 
+# The right side is tighter than the workspaces: about 16pt between items, as in macOS's own
+# menu bar. Icon-only items share one fixed, centered slot, so a narrow icon like the
+# battery doesn't leave its neighbours unevenly spaced.
+sketchybar --default icon.padding_left=8 icon.padding_right=8 label.padding_left=7 label.padding_right=7
+STATUS_ICON=(icon.width=32 icon.align=center icon.padding_left=0 icon.padding_right=0)
+
 # Added first, so the clock sits at the far right, as on macOS. Clicking it opens the calendar card, which Hammerspoon draws.
 sketchybar --add item clock right \
-  --set clock icon.drawing=off update_freq=30 script="$PLUGIN_DIR/clock.sh" \
+  --set clock icon.drawing=off label.padding_left=4 update_freq=30 script="$PLUGIN_DIR/clock.sh" \
     click_script="hs -c 'omvToggleCalendar()'"
 
 # Clicking it opens the Battery card, which Hammerspoon draws.
 sketchybar --add item battery right \
-  --set battery label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
+  --set battery "${STATUS_ICON[@]}" label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
   --subscribe battery system_woke power_source_change mouse.clicked
 
 sketchybar --add item volume right \
-  --set volume label.drawing=off script="$PLUGIN_DIR/volume.sh" \
+  --set volume "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/volume.sh" \
   --subscribe volume volume_change mouse.clicked mouse.scrolled
 
 # SketchyBar's wifi_change event has not worked since macOS Sonoma, hence the timer.
 # Clicking it opens the Wi-Fi card, which Hammerspoon draws.
 sketchybar --add item wifi right \
-  --set wifi label.drawing=off update_freq=60 script="$PLUGIN_DIR/wifi.sh" \
+  --set wifi "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/wifi.sh" \
   --subscribe wifi system_woke mouse.clicked
 
 # Hidden unless a cable is connected. Clicking it opens the Ethernet card.
 sketchybar --add item ethernet right \
-  --set ethernet drawing=off label.drawing=off update_freq=60 script="$PLUGIN_DIR/ethernet.sh" \
+  --set ethernet drawing=off "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/ethernet.sh" \
   --subscribe ethernet system_woke mouse.clicked
 
-# Claude's logo and 5-hour limit; clicking it opens the Agents card. Added after the status
-# icons, so it sits just to the left of them.
+# Added after the status icons, so it sits just to the left of them. Hidden until
+# Hammerspoon has a reading. It sets the icon and temperature, and the temperature gives way before
+# the notch; see bar_fit.sh. Clicking it opens the weather card.
+sketchybar --add item weather right \
+  --set weather drawing=off icon.padding_right=3 label.padding_left=3 label.padding_right=10 \
+    click_script="hs -c 'omvToggleWeather()'"
+
+# Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the weather.
+sketchybar --add event keep_awake_toggle \
+  --add item keep_awake right \
+  --set keep_awake drawing=off icon=󰒳 "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \
+  --subscribe keep_awake keep_awake_toggle mouse.clicked
+
+# A white pill while a Claude Code session waits for you, set by the claude_waiting_change
+# event from claude-waiting.sh. Every 30 seconds it drops sessions whose Claude has ended.
+# Added just before Claude's item, so it sits right next to it with no icon of its own: the
+# logo and the 5-hour limit read as one group. Clicking it focuses the session's terminal.
+sketchybar --add event claude_waiting_change \
+  --add item claude_waiting right \
+  --set claude_waiting drawing=off icon.drawing=off label.color=$BLACK padding_left=6 padding_right=8 \
+    label.padding_left=6 label.padding_right=6 background.drawing=on background.color=$WHITE \
+    background.corner_radius=5 background.height=24 update_freq=30 script="$PLUGIN_DIR/claude_waiting.sh" \
+  --subscribe claude_waiting claude_waiting_change mouse.clicked system_woke
+
+# Claude's logo and 5-hour limit; clicking it opens the Agents card. Added after the waiting
+# pill, so it sits just to the left of it. Claude sits left of keep-awake and the weather,
+# nearer the middle of the screen, since it changes most and is clicked most.
 sketchybar --add event claude_usage_change \
   --add item claude_usage right \
   --set claude_usage drawing=off icon.width=27 icon.padding_left=0 icon.padding_right=0 \
@@ -92,25 +123,12 @@ sketchybar --add event claude_usage_change \
     background.drawing=off background.color=$WHITE background.corner_radius=5 background.height=24 \
   --subscribe claude_usage claude_usage_change mouse.clicked system_woke
 
-# Added after Claude's item, so it sits just to the left of it. Hidden until Hammerspoon
-# has a reading. It sets the icon and temperature, and the temperature gives way before
-# the notch; see bar_fit.sh. Clicking it opens the weather card.
-sketchybar --add item weather right \
-  --set weather drawing=off icon.padding_right=3 label.padding_left=3 \
-    click_script="hs -c 'omvToggleWeather()'"
-
 # Pull requests waiting for your review, counted with gh every 5 minutes. Hidden when none
-# wait or GitHub can't be reached. Sits left of the weather; clicking it opens the card.
+# wait or GitHub can't be reached. Sits left of Claude's item; clicking it opens the card.
 sketchybar --add item github_prs right \
   --set github_prs drawing=off icon=󰊤 icon.padding_right=3 label.padding_left=3 update_freq=300 \
     script="$PLUGIN_DIR/github_prs.sh" \
   --subscribe github_prs mouse.clicked system_woke
-
-# Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the pull requests.
-sketchybar --add event keep_awake_toggle \
-  --add item keep_awake right \
-  --set keep_awake drawing=off icon=󰒳 label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \
-  --subscribe keep_awake keep_awake_toggle mouse.clicked
 
 # Hidden until a reminder is set. Hammerspoon sets its label every second, and turns it
 # into a white pill when one is due. Clicking it lists the reminders, to cancel one.
@@ -120,11 +138,12 @@ sketchybar --add item reminder right \
     background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleReminders()'"
 
 # Hidden until a meeting starts within the hour. Hammerspoon sets its label from
-# Calendar.app, and turns it into a white pill from 5 minutes before the start.
+# Calendar.app, and turns it into a white pill from 5 minutes before the start. Clicking
+# it joins the meeting's video call, or opens the calendar when there's none to join.
 sketchybar --add item meeting right \
   --set meeting drawing=off icon=󰃭 icon.padding_right=3 label.padding_left=3 \
     background.drawing=off background.color=$WHITE \
-    background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleCalendar()'"
+    background.corner_radius=5 background.height=24 click_script="hs -c 'omvJoinMeeting()'"
 
 # Hidden. Gives way on the right side of the bar before the notch; see bar_fit.sh.
 sketchybar --add event bar_fit \

@@ -189,6 +189,12 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_shift_g_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-g", hammerspoon_keys())
 
+    def test_should_bind_option_shift_a_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-a", hammerspoon_keys())
+
+    def test_should_bind_option_shift_c_in_hammerspoon(self) -> None:
+        self.assertIn("alt-shift-c", hammerspoon_keys())
+
     def test_should_bind_option_shift_u_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-u", hammerspoon_keys())
 
@@ -208,16 +214,41 @@ class ConfigContract(unittest.TestCase):
         self.assertIn("borders ", commands)
         self.assertIn("hidpi=off", commands)
 
-    def test_should_place_the_weather_left_of_claudes_item(self) -> None:
+    def test_should_place_claudes_item_left_of_the_weather(self) -> None:
         # Right-side items are added from the right edge inward, so a later one sits further left.
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
-        self.assertLess(source.index("--add item claude_usage right"), source.index("--add item weather right"))
+        self.assertLess(source.index("--add item weather right"), source.index("--add item claude_waiting right"))
+
+    def test_should_place_claudes_item_left_of_keep_awake(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertLess(source.index("--add item keep_awake right"), source.index("--add item claude_waiting right"))
+
+    def test_should_give_the_status_icons_one_fixed_width(self) -> None:
+        # Icons differ in width, so a fixed, centered slot keeps their centers evenly spaced.
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertRegex(source, r"STATUS_ICON=\([^)]*icon\.width=\d+[^)]*icon\.align=center")
+        slots = []
+        for name in ("battery", "volume", "wifi", "ethernet", "keep_awake"):
+            settings = source[source.index(f"--set {name} "):source.index("--subscribe " + name)]
+            slots.append('"${STATUS_ICON[@]}"' in settings)
+        self.assertEqual(slots, [True] * 5)
+
+    def test_should_place_the_waiting_pill_directly_right_of_claudes_usage(self) -> None:
+        # The pill is added just before the usage item, so nothing sits between them.
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        items = re.findall(r"--add item (\S+) right", source)
+        self.assertEqual(items[items.index("claude_waiting") + 1], "claude_usage")
+
+    def test_should_draw_the_waiting_pill_without_an_icon(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        settings = source[source.index("--set claude_waiting"):source.index("--subscribe claude_waiting")]
+        self.assertIn("icon.drawing=off", settings)
 
     def test_should_check_the_fit_when_a_right_side_item_changes(self) -> None:
         plugins = REPO / "sketchybar/.config/sketchybar/plugins"
-        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh", "github_prs.sh")]
+        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh", "github_prs.sh", "claude_waiting.sh")]
         triggers.append('"bar_fit"' in HAMMERSPOON.read_text(encoding="utf-8"))
-        self.assertEqual(triggers, [True, True, True, True])
+        self.assertEqual(triggers, [True, True, True, True, True])
 
     def test_should_bind_option_a_to_the_accordion_toggle(self) -> None:
         self.assertEqual(load_aerospace()["mode"]["main"]["binding"].get("alt-a"), "layout accordion tiles")
@@ -275,10 +306,10 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("omvToggleReminders()", source)
 
-    def test_should_open_the_calendar_card_when_the_meeting_item_is_clicked(self) -> None:
+    def test_should_join_the_meeting_when_the_meeting_item_is_clicked(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         meeting = re.search(r"--add item meeting right(.*?)\n\n", source, re.S)
-        self.assertIn("omvToggleCalendar()", meeting.group(1) if meeting else "")
+        self.assertIn("omvJoinMeeting()", meeting.group(1) if meeting else "")
 
     def test_should_subscribe_volume_to_clicks_for_the_sound_menu(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")

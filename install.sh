@@ -72,5 +72,6 @@ require_command stow
 install_tools
 link_configs
 "$REPO_DIR/claude-usage.sh" add
+"$REPO_DIR/claude-hooks.sh" add
 apply_macos_settings
 print_manual_steps

@@ -19,6 +19,7 @@ local battery = require("battery")
 local agents = require("agents")
 local quicknote = require("quicknote")
 local prs = require("prs")
+local claudewait = require("claudewait")
 
 hs.menuIcon(false)
 hs.dockIcon(false)
@@ -708,6 +709,24 @@ local function toggleCalendar()
   readAgenda(redrawOpenCalendar)
 end
 
+-- Join a meeting (Option+Shift+C, or a click on the meeting in the bar): one meeting with a
+-- call link opens it, several list them, and none opens the calendar card instead.
+local function joinMeeting()
+  if panel and panel.name == "join" then return closePanel() end
+  local meetings = agendaDay and agenda.joinable(agendaDay.events, os.time()) or {}
+  if #meetings == 0 then return toggleCalendar() end
+  if #meetings == 1 then return open({ meetings[1].link })() end
+  local rows = agenda.joinRows(meetings)
+  local height = 28 + 46 + #rows * 30 + 8
+  showPanel("join", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Join…", rows = rows, compact = true }), function(message)
+    if message.type ~= "choose" then return closePanel() end
+    -- Leave focus to the call app, rather than handing it back to the app open before.
+    panel.previous = nil
+    closePanel()
+    open({ message.id })()
+  end)
+end
+
 -- Wi-Fi and Ethernet cards (click the bar icons, Option+Shift+W / E)
 
 local WIFI_SETTINGS = "x-apple.systempreferences:com.apple.wifi-settings-extension"
@@ -1167,6 +1186,43 @@ local function toggleAgents()
   showAgents()
 end
 
+-- Waiting Claude (Option+Shift+A, or a click on the bar's pill): focuses the session's
+-- terminal, or with several waiting, lists them with the one waiting longest first.
+
+-- Only focusClaude is a main-chunk local: init.lua is near Lua's limit of 200.
+local function focusClaude()
+  if panel and panel.name == "claude" then return closePanel() end
+  local function alive(pid)
+    return os.execute("/bin/kill -0 " .. math.floor(pid) .. " 2>/dev/null") == true
+  end
+  local sessions = {}
+  -- hs.fs.dir gives an iterator and the folder it reads, and the loop needs both.
+  local ok, files, folder = pcall(hs.fs.dir, claudewait.STATE_DIR)
+  for name in (ok and files) and files or function() end, folder do
+    local session = name:sub(1, 1) ~= "." and claudewait.parse(readText(claudewait.STATE_DIR .. "/" .. name) or "")
+    if session then sessions[#sessions + 1] = session end
+  end
+  local rows = claudewait.rows(sessions, alive, os.time())
+  local function focus(row)
+    local script = claudewait.focusScript(row.id)
+    if not (script and hs.osascript.applescript(script)) then
+      hs.alert.show("Claude waits in " .. row.label .. ", outside Ghostty", ALERT_STYLE, 2)
+    end
+  end
+  if #rows == 0 then return hs.alert.show("No Claude session is waiting", ALERT_STYLE, 1.2) end
+  if #rows == 1 then return focus(rows[1]) end
+  local height = 28 + 46 + #rows * 30 + 8
+  showPanel("claude", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Waiting…", rows = rows, compact = true }), function(message)
+    if message.type ~= "choose" then return closePanel() end
+    -- Leave focus to Ghostty, rather than handing it back to the app open before.
+    panel.previous = nil
+    closePanel()
+    for _, row in ipairs(rows) do
+      if row.id == message.id then return focus(row) end
+    end
+  end)
+end
+
 -- Quick note (Option+Shift+D): one line, with the time, at the end of today's daily note.
 
 local NOTE_VAULT = os.getenv("HOME") .. "/Documents/vault/work"
@@ -1216,6 +1272,8 @@ bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", toggleCapture)
 bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", newReminder)
 bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", newNote)
 bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "Pull requests waiting for your review", togglePrs)
+bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Go to the Claude session waiting for you", focusClaude)
+bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting that is starting", joinMeeting)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", run(SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi card", toggleWifi)
 bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet card", toggleEthernet)
@@ -1226,11 +1284,12 @@ bindKey(SUPER, "escape", "Option+Escape", "System menu", toggleSystemMenu)
 bindKey(SUPER, "space", "Option+Space", "Go to any window", toggleWindows)
 
 -- Now playing: Music and Spotify announce every track and play-state change, so the bar
--- redraws only then. Global, so the watchers are never garbage-collected.
-omvMediaWatchers = {}
-for _, name in ipairs({ "com.apple.Music.playerInfo", "com.spotify.client.PlaybackStateChanged" }) do
-  omvMediaWatchers[#omvMediaWatchers + 1] = hs.distributednotifications.new(run(SKETCHYBAR, { "--trigger", "now_playing_change" }), name):start()
-end
+-- redraws only then. Global, so the watchers are never garbage-collected. Written out
+-- rather than looped: a loop's variables count toward Lua's 200 locals in this chunk.
+omvMediaWatchers = {
+  hs.distributednotifications.new(run(SKETCHYBAR, { "--trigger", "now_playing_change" }), "com.apple.Music.playerInfo"):start(),
+  hs.distributednotifications.new(run(SKETCHYBAR, { "--trigger", "now_playing_change" }), "com.spotify.client.PlaybackStateChanged"):start(),
+}
 
 -- Ghostty owns this key, so it is listed here rather than bound.
 launchers[#launchers + 1] = { label = "Option+`", description = "Drop-down terminal" }
@@ -1265,8 +1324,10 @@ omvRedrawBar = later(function()
 end)
 omvToggleKeyList = later(toggleKeyList)
 omvToggleCalendar = later(toggleCalendar)
+omvJoinMeeting = later(joinMeeting)
 omvToggleWindows = later(toggleWindows)
 omvTogglePrs = later(togglePrs)
+omvFocusClaude = later(focusClaude)
 omvToggleCapture = later(toggleCapture)
 omvToggleReminders = later(toggleReminders)
 omvNewReminder = later(newReminder)

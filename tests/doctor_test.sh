@@ -42,6 +42,7 @@ EOF
   # removing a file "in the sandbox" would then delete the real one.
   run_in_sandbox stow --no-folding --dir="$REPO_DIR" --target="$HOME_DIR" $ALL_PACKAGES
   printf 'input=$(cat)\nprintf x | "$HOME/.claude/bar-usage.sh" & # omv bar usage\n' > "$HOME_DIR/.claude/statusline-wrapper.sh"
+  printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"$HOME/.claude/claude-waiting.sh wait"}]}]}}' > "$HOME_DIR/.claude/settings.json"
   : > "$CALL_LOG"
 }
 
@@ -161,6 +162,12 @@ reports_missing_usage_line() {
   expect_report "✗ the Claude usage line isn't in ~/.claude/statusline-wrapper.sh — fix: ./claude-usage.sh add"
 }
 
+reports_missing_waiting_hooks() {
+  complete_setup
+  printf '{}\n' > "$HOME_DIR/.claude/settings.json"
+  expect_report "✗ the waiting hooks aren't in ~/.claude/settings.json — fix: ./claude-hooks.sh add"
+}
+
 lists_manual_checks() {
   complete_setup
   expect_report 'Check by hand'
@@ -197,6 +204,7 @@ run_case "should report when Hammerspoon hasn't loaded the config" reports_missi
 run_case "should report a macOS setting that's off" reports_setting_off
 run_case "should report when AeroSpace can't list windows" reports_missing_accessibility
 run_case 'should report a missing Claude usage line' reports_missing_usage_line
+run_case "should report missing waiting hooks in Claude's settings" reports_missing_waiting_hooks
 run_case 'should list the checks it cannot do as check by hand' lists_manual_checks
 run_case 'should list Location for Hammerspoon as a check by hand' lists_location_check
 run_case 'should list Microphone for the meter helper as a check by hand' lists_microphone_check

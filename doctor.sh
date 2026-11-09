@@ -159,6 +159,11 @@ check_claude() {
   else
     problem "the Claude usage line isn't in ~/.claude/statusline-wrapper.sh" './claude-usage.sh add'
   fi
+  if grep -qF 'claude-waiting.sh' "$HOME/.claude/settings.json" 2>/dev/null; then
+    ok 'waiting hooks in ~/.claude/settings.json'
+  else
+    problem "the waiting hooks aren't in ~/.claude/settings.json" './claude-hooks.sh add'
+  fi
 }
 
 # The bar's pull request count needs gh signed in. A missing gh is already named under Tools.
