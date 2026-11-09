@@ -269,8 +269,8 @@ local function toggleKeyList()
   if panel and panel.name == "keys" then return closePanel() end
   local bindings = keymap.read(AEROSPACE_CONFIG)
   keyListBindings = bindings
-  local rowsPerColumn = math.ceil(#keymap.rows(bindings, launchers) / 2)
-  showPanel("keys", centered(1100, 28 + 46 + rowsPerColumn * 30 + 8), keymap.html(bindings, launchers), onKeyListMessage)
+  local layout = keymap.layout(#keymap.rows(bindings, launchers), hs.screen.mainScreen():frame())
+  showPanel("keys", centered(layout.w, layout.h), keymap.html(bindings, launchers, layout.columns), onKeyListMessage)
 end
 
 -- Window summon (Option+Space)

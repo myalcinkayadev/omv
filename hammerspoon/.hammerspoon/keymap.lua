@@ -130,9 +130,29 @@ function keymap.rows(bindings, launchers)
   return rows
 end
 
--- Two columns fit every key on screen at once.
-function keymap.html(bindings, launchers)
-  return card.html({ prompt = "Keybindings…", rows = keymap.rows(bindings, launchers), compact = true, columns = 2 })
+-- Card sizes in points: border, padding and prompt above the rows, one compact row,
+-- and room left between the card and the screen edges.
+local CARD_CHROME = 28 + 46 + 8
+local ROW_HEIGHT = 30
+local COLUMN_WIDTH = 550
+local SCREEN_MARGIN = 40
+
+-- Enough columns to show every key at once on this screen, at least two, and a card
+-- size that stays on screen. Long labels shorten with "…" once the width is capped.
+function keymap.layout(rowCount, screen)
+  if rowCount == 0 then return { columns = 1, w = COLUMN_WIDTH, h = CARD_CHROME } end
+  local rowsThatFit = math.max(1, math.floor((screen.h - SCREEN_MARGIN - CARD_CHROME) / ROW_HEIGHT))
+  local columns = math.max(2, math.ceil(rowCount / rowsThatFit))
+  local rowsPerColumn = math.ceil(rowCount / columns)
+  return {
+    columns = columns,
+    w = math.min(columns * COLUMN_WIDTH, screen.w - SCREEN_MARGIN),
+    h = math.min(CARD_CHROME + rowsPerColumn * ROW_HEIGHT, screen.h - SCREEN_MARGIN),
+  }
+end
+
+function keymap.html(bindings, launchers, columns)
+  return card.html({ prompt = "Keybindings…", rows = keymap.rows(bindings, launchers), compact = true, columns = columns })
 end
 
 return keymap

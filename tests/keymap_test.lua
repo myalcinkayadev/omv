@@ -53,7 +53,8 @@ local sheet = keymap.html(keymap.parse("[mode.main.binding]\nalt-h = 'focus left
 check("should title the key list Keybindings", sheet:find('data-prompt="Keybindings…"', 1, true) ~= nil)
 check("should show a binding's description in its row", sheet:find(">Focus the window left<", 1, true) ~= nil)
 check("should show a binding's key in its row", sheet:find(">Option+H<", 1, true) ~= nil)
-check("should show the key list in two columns", sheet:find("column-count: 2", 1, true) ~= nil)
+check("should show the key list in the columns it is given",
+  keymap.html({}, { { label = "x", description = "y" } }, 3):find("column-count: 3", 1, true) ~= nil)
 check("should count one row per binding and launcher", #keymap.rows(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"), { { label = "x", description = "y" } }) == 2)
 check("should list launcher keys as rows", sheet:find(">Show this list<", 1, true) ~= nil)
 
@@ -79,5 +80,13 @@ check("should mark rows whose action can run", rows[1].runnable and rows[2].runn
 check("should leave the drop-down terminal row without an action", not rows[3].runnable)
 check("should point a binding row back to its binding", rows[1].id == "binding:1")
 check("should point a launcher row back to its launcher", rows[2].id == "launcher:1")
+
+local SCREEN = { w = 1512, h = 950 }
+check("should use 2 columns when all rows fit in the screen height", keymap.layout(40, SCREEN).columns == 2)
+check("should add a column when rows exceed the screen height", keymap.layout(60, SCREEN).columns == 3)
+check("should keep panel height within the screen height when the list grows", keymap.layout(200, SCREEN).h <= SCREEN.h)
+check("should cap panel width at the screen width", keymap.layout(60, SCREEN).w <= SCREEN.w)
+check("should return 1 column when there are no rows", keymap.layout(0, SCREEN).columns == 1)
+check("should handle a screen too short for even one row", keymap.layout(5, { w = 1512, h = 10 }).columns == 5)
 
 os.exit(failed == 0 and 0 or 1)
