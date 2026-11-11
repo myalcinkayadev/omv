@@ -22,6 +22,12 @@ simulate_already_removed() {
   stub killall 1
 }
 
+removes_theme_files() {
+  mkdir -p "$HOME_DIR/.local/state/omv/theme" "$HOME_DIR/.local/share/omv/themes/nord"
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  [ ! -e "$HOME_DIR/.local/state/omv/theme" ] && [ ! -e "$HOME_DIR/.local/share/omv/themes" ] || fail 'theme files left behind'
+}
+
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D aerospace sketchybar claude swipeaerospace$"
@@ -215,4 +221,5 @@ run_case 'should leave a real file in place when it sits at a stowed path' keeps
 run_case 'should not ask AeroSpace or SwipeAeroSpace to quit when they are not running' skips_quit_when_not_running
 run_case 'should stop keep-awake when uninstalling' stops_keep_awake
 run_case 'should remove the keep-awake pid file when uninstalling' removes_keep_awake_pid
+run_case "should remove the theme's files" removes_theme_files
 finish

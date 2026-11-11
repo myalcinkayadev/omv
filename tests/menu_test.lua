@@ -42,9 +42,11 @@ check.that("should not render a header for rows without a group", not check.cont
 check.that("should let a row's group match a search", check.contains(grouped, 'data-group="Windows"'))
 check.that("should keep a single column by default", not check.contains(sample, "column-count"))
 check.that("should list the system items in order",
-  labels(menu.screen("system")) == "Lock,Screensaver,Sleep,Log out,Restart,Shut down,Sound,Reload")
+  labels(menu.screen("system")) == "Lock,Screensaver,Sleep,Log out,Restart,Shut down,Sound,Theme,Reload")
 check.that("should list Sound without ›, since it opens its own card", not menu.screen("system").rows[7].submenu)
-check.that("should open Reload as a submenu", menu.screen("system").rows[8].submenu == true)
+local reloadRow
+for _, row in ipairs(menu.screen("system").rows) do if row.id == "reload" then reloadRow = row end end
+check.that("should open Reload as a submenu", reloadRow ~= nil and reloadRow.submenu == true)
 check.that("should list the tools under Reload",
   labels(menu.screen("reload")) == "AeroSpace,SketchyBar,Hammerspoon,Everything")
 
@@ -62,6 +64,10 @@ check.that("should offer the confirmed action second", confirm.rows[2].id == "co
 check.that("should return nothing for an unknown screen", menu.screen("nope") == nil)
 check.that("should treat Reload as a screen to open", menu.opens("reload"))
 check.that("should not treat Sound as a screen to open", not menu.opens("sound"))
+local themeRow
+for _, row in ipairs(menu.screen("system").rows) do if row.id == "theme" then themeRow = row end end
+check.that("should list Theme without ›, since it opens its own card", themeRow ~= nil and not themeRow.submenu)
+check.that("should not treat Theme as a screen of this menu", not menu.opens("theme"))
 check.that("should not treat an action as a screen", not menu.opens("lock"))
 
 check.that("should keep other menu screens at the standard width", menu.screen("system").width == nil)

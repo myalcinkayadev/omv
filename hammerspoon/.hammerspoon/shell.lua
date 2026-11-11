@@ -2,6 +2,7 @@
 -- the tools they run, and small helpers. Features require it; init.lua only wires them up.
 
 local placement = require("placement")
+local theme = require("theme")
 
 local shell = {}
 
@@ -156,8 +157,16 @@ end
 -- options.onEscape replaces closing on Escape, and options.keepOnBlur keeps the card open
 -- when focus moves away. The Pomodoro cards use both: a break shouldn't vanish on Cmd+Tab.
 -- options.onClose runs when the card closes or another card takes its place.
+-- The theme's colours for the cards, set by features/theme.lua; Vantablack until then.
+local themeTokens = nil
+
+function shell.setTheme(tokens)
+  themeTokens = tokens
+end
+
 function shell.show(name, frame, html, onMessage, options)
   options = options or {}
+  if themeTokens then html = theme.recolor(html, themeTokens) end
   if panel then
     if panel.name ~= name and panel.onClose then panel.onClose() end
     panel.name, panel.onMessage, panel.onClose = name, onMessage, options.onClose
