@@ -276,6 +276,9 @@ local STYLE = [[
   .session.asks .hint { color: #fff; }
   .session.selected { background: #fff; color: #000; }
   .session.selected .hint { color: #3a3a3a; }
+  .session .remove { visibility: hidden; width: 22px; margin-left: 8px; text-align: center; border-radius: 3px; }
+  .session:hover .remove, .session.selected .remove { visibility: visible; }
+  .session .remove:hover { background: #3a3a3a; color: #fff; }
 ]]
 
 local SCRIPT = [[
@@ -303,6 +306,11 @@ local SCRIPT = [[
     draw();
   });
   buttons.concat(sessions).forEach((element) => element.addEventListener("click", () => send("choose", element.dataset.id)));
+  // A background row's × asks to remove it, instead of opening it.
+  document.querySelectorAll(".session .remove").forEach((element) => element.addEventListener("click", (event) => {
+    event.stopPropagation();
+    send("remove", element.parentElement.dataset.id);
+  }));
   draw();
 ]]
 
@@ -322,7 +330,8 @@ local function sessionList(sessions, prefix, heading)
     rows[#rows + 1] = '<div class="session ' .. card.escape(session.state or "") .. '" data-id="'
       .. card.escape(prefix .. session.id) .. '"' .. (session.removable and " data-removable" or "")
       .. '><span class=name>' .. card.escape(session.label)
-      .. "</span><span class=hint>" .. card.escape(session.hint or "") .. "</span></div>"
+      .. "</span><span class=hint>" .. card.escape(session.hint or "") .. "</span>"
+      .. (session.removable and '<span class=remove title="Remove">×</span>' or "") .. "</div>"
   end
   if not heading then return "<div class=live>" .. table.concat(rows) .. "</div>" end
   return '<div class="live titled"><div class=heading>' .. card.escape(heading) .. "</div>" .. table.concat(rows) .. "</div>"
@@ -340,7 +349,7 @@ function agents.html(model)
     .. "<span class=plan>" .. card.escape(model.plan or "") .. "</span></div>"
     .. limit("Session", usage.five) .. limit("Weekly", usage.seven)
     .. sessionList(model.sessions, SESSION_ID)
-    .. sessionList(model.background, BACKGROUND_ID, "BACKGROUND · x remove")
+    .. sessionList(model.background, BACKGROUND_ID, "BACKGROUND")
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 
