@@ -73,4 +73,13 @@ run_case 'should mark a workspace as visible when it is shown on the unfocused m
 run_case 'should highlight workspace 6 when it is focused' highlights_workspace_6
 run_case 'should exit without error when aerospace returns nothing' survives_empty_aerospace_output
 run_case 'should leave items unchanged when the focused workspace is outside 1-6' ignores_unknown_workspace
+uses_the_theme_colors() {
+  stub_aerospace 2 '2'
+  mkdir -p "$HOME_DIR/.local/state/omv/theme"
+  printf 'WHITE=0xffc0caf5\nMUTED=0xff414868\nBLACK=0xff1a1b26\nGRAY=0xff3b3d4f\n' > "$HOME_DIR/.local/state/omv/theme/colors.sh"
+  run_in_sandbox "$PLUGIN"
+  assert_called '--set space\.2 background.color=0xffc0caf5 icon.color=0xff1a1b26'
+}
+
+run_case "should use the theme's colours when a theme was chosen" uses_the_theme_colors
 finish

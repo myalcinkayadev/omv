@@ -112,9 +112,20 @@ Option+Escape opens a menu modeled on Omarchy's.
 | Sleep | Puts the Mac to sleep |
 | Log out, Restart, Shut down | Ask first, with Cancel selected |
 | Sound | Opens the [Sound card](#sound) |
+| Theme | Opens the [theme picker](#themes) |
 | Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
 
 Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
+
+## Themes
+
+Option+Escape, then **Theme**, picks the colours for the cards, the bar, Ghostty and the focused window's outline. **Vantablack** is built in and stays the default. **Get Omarchy's themes** downloads the colours of [Omarchy's](https://github.com/basecamp/omarchy) themes (MIT), such as Tokyo Night, Gruvbox and Nord, and lists them; nothing else is fetched, and only when you pick it.
+
+- **Cards** take the new colours at once. Each gray keeps its place between the theme's background and foreground, so a theme recolors every card without changing its look.
+- **The bar** reloads with the theme's colours.
+- **Ghostty** takes them in new windows, or after its own config reload, Cmd+Shift+,.
+- **The focused window's outline** takes the theme's accent.
+- The choice is saved in `~/.local/state/omv/theme`, so it survives reloads and restarts. Neovim and btop keep their own colours.
 
 ## Sound
 

@@ -4,6 +4,10 @@
 # The number only updates while Claude Code runs, so a session past its reset shows 0%.
 
 state_file="$HOME/.local/state/omv/claude-usage"
+# Vantablack's colours, unless a theme was chosen in the system menu.
+WHITE=0xffffffff MUTED=0xff7a7a7a BLACK=0xff000000
+# shellcheck disable=SC1091
+[ -r "$HOME/.local/state/omv/theme/colors.sh" ] && . "$HOME/.local/state/omv/theme/colors.sh"
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
   hs -c 'omvToggleAgents()'
@@ -25,11 +29,11 @@ else
 fi
 
 if [ "$five" -ge 90 ]; then
-  style='label.color=0xff000000 background.drawing=on'
+  style="label.color=$BLACK background.drawing=on"
 elif [ "$five" -ge 70 ]; then
-  style='label.color=0xffffffff background.drawing=off'
+  style="label.color=$WHITE background.drawing=off"
 else
-  style='label.color=0xff7a7a7a background.drawing=off'
+  style="label.color=$MUTED background.drawing=off"
 fi
 
 # Word splitting is intended: style holds only space-separated properties.

@@ -54,6 +54,8 @@ remove_claude_usage() {
   "$REPO_DIR/codex-hooks.sh" remove
   rm -f "$HOME/.local/state/omv/claude-usage" "$HOME/.local/state/omv/claude-usage-resets-view"
   rm -rf "$HOME/.local/state/omv/claude-sessions" "$HOME/.local/state/omv/claude-waiting"
+  # The chosen theme's colours and the themes fetched from Omarchy.
+  rm -rf "$HOME/.local/state/omv/theme" "$HOME/.local/share/omv/themes"
 }
 
 unlink_configs() {

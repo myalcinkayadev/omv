@@ -37,6 +37,12 @@ unlinks_opencode_plugin() {
   [ ! -e "$HOME_DIR/.config/opencode/plugins/omv-agent-state.js" ] || fail 'plugin left linked'
 }
 
+removes_theme_files() {
+  mkdir -p "$HOME_DIR/.local/state/omv/theme" "$HOME_DIR/.local/share/omv/themes/nord"
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  [ ! -e "$HOME_DIR/.local/state/omv/theme" ] && [ ! -e "$HOME_DIR/.local/share/omv/themes" ] || fail 'theme files left behind'
+}
+
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D aerospace sketchybar claude swipeaerospace$"
@@ -232,4 +238,5 @@ run_case 'should stop keep-awake when uninstalling' stops_keep_awake
 run_case 'should remove the keep-awake pid file when uninstalling' removes_keep_awake_pid
 run_case 'should remove the Codex hooks' removes_codex_hooks
 run_case 'should unlink the OpenCode plugin' unlinks_opencode_plugin
+run_case "should remove the theme's files" removes_theme_files
 finish

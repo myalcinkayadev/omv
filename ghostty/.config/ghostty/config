@@ -1,4 +1,6 @@
 theme = Vantablack
+# A theme chosen in omv's system menu writes its colours here, over Vantablack's.
+config-file = ?~/.local/state/omv/theme/ghostty
 font-family = JetBrainsMono Nerd Font Mono
 font-size = 14
 cursor-style = block
