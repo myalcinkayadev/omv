@@ -56,6 +56,40 @@ check("should show a binding's description in its row", sheet:find(">Focus left<
 check("should show a binding's key in its row", sheet:find(">Option+H<", 1, true) ~= nil)
 check("should show the key list in the columns it is given",
   keymap.html({}, { { label = "x", description = "y" } }, 3):find("column-count: 3", 1, true) ~= nil)
+local merged = keymap.rows(keymap.parse(table.concat({
+  "[mode.main.binding]",
+  "alt-1 = 'workspace 1'",
+  "alt-shift-1 = 'move-node-to-workspace 1'",
+  "alt-keypad1 = 'workspace 1'",
+  "alt-shift-keypad1 = 'move-node-to-workspace 1'",
+  "alt-r = 'mode resize'",
+  "[mode.resize.binding]",
+  "esc = 'mode main'",
+  "[mode.main.binding]",
+  "alt-shift-z = 'balance-sizes'",
+  "ctrl-z = 'balance-sizes'",
+  "[mode.join.binding]",
+  "j = 'mode main'",
+}, "\n")), {})
+local function rowFor(label)
+  for _, row in ipairs(merged) do
+    if row.label == label then return row end
+  end
+end
+local function count(label)
+  local found = 0
+  for _, row in ipairs(merged) do
+    if row.label == label then found = found + 1 end
+  end
+  return found
+end
+check("should list bindings that run the same command as one row", count("Go to 1") == 1)
+check("should show the shared modifiers once, then each key", rowFor("Send window to 1").hint == "Option+Shift+1 / Num 1")
+check("should show each key in full when their modifiers differ", rowFor("Even sizes").hint == "Option+Shift+Z / Ctrl+Z")
+check("should keep a row's place where its first key was written", rowFor("Go to 1").id == "binding:1")
+check("should run the merged row's command from the key list", rowFor("Go to 1").runnable == true)
+check("should keep separate rows for the same command in different modes", count("Leave resize mode") == 2)
+
 check("should count one row per binding and launcher", #keymap.rows(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"), { { label = "x", description = "y" } }) == 2)
 check("should list launcher keys as rows", sheet:find(">Show this list<", 1, true) ~= nil)
 

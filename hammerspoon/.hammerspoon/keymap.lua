@@ -54,13 +54,37 @@ function keymap.read(path)
   return keymap.parse(text)
 end
 
+local function partLabel(part)
+  local numpad = part:match("^keypad(%d)$")
+  return MODIFIER_LABELS[part] or KEY_LABELS[part] or (numpad and "Num " .. numpad) or part:upper()
+end
+
 function keymap.label(key)
   local parts = {}
-  for part in key:gmatch("[^-]+") do
-    local numpad = part:match("^keypad(%d)$")
-    parts[#parts + 1] = MODIFIER_LABELS[part] or KEY_LABELS[part] or (numpad and "Num " .. numpad) or part:upper()
-  end
+  for part in key:gmatch("[^-]+") do parts[#parts + 1] = partLabel(part) end
   return table.concat(parts, "+")
+end
+
+-- Several keys for one command: "Option+1 / Num 1" when they share their modifiers,
+-- each written in full otherwise, "Option+Shift+Z / Ctrl+Z".
+local function modifiersAndKey(key)
+  return key:match("^(.-)%-?([^-]+)$")
+end
+
+function keymap.keysLabel(keys)
+  local modifiers = modifiersAndKey(keys[1])
+  local finals = {}
+  for _, key in ipairs(keys) do
+    local theseModifiers, final = modifiersAndKey(key)
+    if theseModifiers ~= modifiers then
+      local labels = {}
+      for index, each in ipairs(keys) do labels[index] = keymap.label(each) end
+      return table.concat(labels, " / ")
+    end
+    finals[#finals + 1] = partLabel(final)
+  end
+  local prefix = modifiers ~= "" and (keymap.label(modifiers) .. "+") or ""
+  return prefix .. table.concat(finals, " / ")
 end
 
 -- Plain descriptions for AeroSpace commands, short enough to fit a column. The group
@@ -149,11 +173,29 @@ function keymap.steps(commands)
   return steps
 end
 
-local function bindingRow(binding, index)
+-- One row for every binding that runs the same commands in the same mode, such as Option+1
+-- and Option+Num 1. It runs the first one's commands and sits where it was written.
+local function bindingRow(binding, index, keys)
   local group = bindingGroup(binding)
-  local key = keymap.label(binding.key)
+  local key = keymap.keysLabel(keys)
   if binding.mode ~= "main" and GROUP_MODES[group] ~= binding.mode then key = key .. " (" .. binding.mode .. ")" end
   return { id = "binding:" .. index, label = keymap.describe(binding.command), hint = key, group = group, runnable = true }
+end
+
+local function mergedBindings(bindings)
+  local merged, byCommands = {}, {}
+  for index, binding in ipairs(bindings) do
+    local same = binding.mode .. "\n" .. table.concat(binding.commands, "\n")
+    local entry = byCommands[same]
+    if entry then
+      entry.keys[#entry.keys + 1] = binding.key
+    else
+      entry = { binding = binding, index = index, keys = { binding.key } }
+      byCommands[same] = entry
+      merged[#merged + 1] = entry
+    end
+  end
+  return merged
 end
 
 -- Sorted by group, keeping the written order inside each group.
@@ -169,7 +211,7 @@ end
 
 function keymap.rows(bindings, launchers)
   local rows = {}
-  for index, binding in ipairs(bindings) do rows[#rows + 1] = bindingRow(binding, index) end
+  for _, entry in ipairs(mergedBindings(bindings)) do rows[#rows + 1] = bindingRow(entry.binding, entry.index, entry.keys) end
   -- A launcher runs only when init.lua gave it something to run.
   for index, launcher in ipairs(launchers) do
     rows[#rows + 1] = { id = "launcher:" .. index, label = launcher.description, hint = launcher.label,
