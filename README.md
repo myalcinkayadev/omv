@@ -145,7 +145,8 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 
 - **>_** continues your last Claude Code session, in the folder it ran in, with `claude --continue`.
 - **+** lists the folders you've used Claude Code in, most recent first. Type to filter, and Enter starts a new session there.
-- Both open a Ghostty window on workspace 1. Left and Right move between the two buttons, and Enter presses one.
+- **󰋚** lists your recent sessions, newest first, each named by the title Claude Code gave it, else by its folder, with the folder and its age, such as `omv · 2h ago`. Type to filter, and Enter resumes it with `claude --resume`.
+- All three open a Ghostty window on workspace 1. Left and Right move between the buttons, and Enter presses one. Folders that no longer exist are left out of all three.
 - **Sessions:** under the limits, a row for each live Claude Code session, with its folder, its state and how long it has been in it, such as `asks · 3 min`. Sessions asking for approval come first, then the ones done, then the ones working. Down and Up move through them, and Enter goes to that session's terminal. With no session running, the card looks as before.
 - The plan comes from `~/.claude.json`, and only its `organizationType` is read. The folders come from Claude Code's own session files in `~/.claude/projects`.
 - `claude` runs through your login shell, by `claude-in.sh`, so it's found on the PATH your shell sets up.
@@ -155,7 +156,7 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - `install.sh` adds hooks to `~/.claude/settings.json` through `claude-hooks.sh`: `UserPromptSubmit` and `PostToolUse` mark a session as working, `Stop` as done, a `Notification` that asks for you, such as one for approval, as asking, and `SessionEnd` removes it. Other notifications change nothing. Other hooks and settings stay as they are, and `uninstall.sh` removes only these.
 - The session's terminal is found by its tty, in Ghostty, iTerm2 or Terminal, through each app's AppleScript, Ghostty first. A terminal app that isn't running is skipped, so it never opens on its own. The first time, macOS asks to let Hammerspoon control that app.
 - Only Claude's PID, its tty, the folder name, the state and when the session entered it are saved, in `~/.local/state/omv/claude-sessions`. A session whose Claude has ended is dropped within 30 seconds.
-- A session in any other app, such as an editor's terminal, still shows, but can't be focused: you get its folder name instead. The drop-down terminal can't be focused either.
+- A session in any other app, such as Zed's terminal, still shows. Since no terminal app has its tty, the app it runs in comes forward instead, found among Claude's parent processes; macOS can't pick the exact window or pane. The drop-down terminal can't be focused.
 
 <img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, with session and weekly limits" width="400">
 

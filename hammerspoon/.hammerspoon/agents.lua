@@ -76,11 +76,22 @@ function agents.sessionCwd(text)
   return nil
 end
 
--- sessions = { { cwd, modified } }. Gives each folder once, the most recent first.
-function agents.projects(sessions)
-  local latest = {}
+-- The sessions whose folder still exists, newest first. exists(folder) checks the disk.
+local function living(sessions, exists)
+  local kept = {}
   for _, session in ipairs(sessions) do
-    if not latest[session.cwd] or session.modified > latest[session.cwd] then latest[session.cwd] = session.modified end
+    if exists(session.cwd) then kept[#kept + 1] = session end
+  end
+  table.sort(kept, function(a, b) return a.modified > b.modified end)
+  return kept
+end
+
+-- sessions = { { cwd, modified } }. Gives each folder that still exists once, the most
+-- recent first, so a deleted project never opens a window that closes at once.
+function agents.projects(sessions, exists)
+  local latest = {}
+  for _, session in ipairs(living(sessions, exists)) do
+    if not latest[session.cwd] then latest[session.cwd] = session.modified end
   end
   local folders = {}
   for folder in pairs(latest) do folders[#folders + 1] = folder end
@@ -88,12 +99,77 @@ function agents.projects(sessions)
   return folders
 end
 
+-- The session >_ continues: the newest one whose folder still exists.
+function agents.latest(sessions, exists)
+  return living(sessions, exists)[1]
+end
+
+local function folderName(path)
+  return path:match("([^/]+)/*$") or path
+end
+
+local function age(seconds)
+  if seconds < HOUR then return math.max(0, math.floor(seconds / MINUTE)) .. "m ago" end
+  if seconds < DAY then return math.floor(seconds / HOUR) .. "h ago" end
+  return math.floor(seconds / DAY) .. "d ago"
+end
+
+-- Rows for the resume list: each session whose folder still exists, newest first, named by
+-- its title when Claude Code gave it one, else by its folder. sessions = { { id, cwd, modified, title } }.
+function agents.resumeRows(sessions, exists, now)
+  local rows = {}
+  for _, session in ipairs(living(sessions, exists)) do
+    rows[#rows + 1] = { id = session.id, icon = "󰋚", label = session.title or folderName(session.cwd),
+      hint = folderName(session.cwd) .. " · " .. age(now - session.modified) }
+  end
+  return rows
+end
+
+-- Reads the JSON string that starts at position start, just after its opening quote, and
+-- gives its text with \" and \\ undone, or nil when it never closes.
+local function jsonString(text, start)
+  local parts, index = {}, start
+  while index <= #text do
+    local character = text:sub(index, index)
+    if character == '"' then return table.concat(parts) end
+    if character == "\\" then
+      local escaped = text:sub(index + 1, index + 1)
+      parts[#parts + 1] = (escaped == "n" or escaped == "t") and " " or escaped
+      index = index + 2
+    else
+      parts[#parts + 1] = character
+      index = index + 1
+    end
+  end
+  return nil
+end
+
+-- The title Claude Code gave a session, from its file: the last "aiTitle" in it, since a
+-- later one replaces an earlier one. nil when it has none.
+function agents.sessionTitle(text)
+  local title, from = nil, 1
+  text = tostring(text or "")
+  while true do
+    local _, finish = text:find('"aiTitle"%s*:%s*"', from)
+    if not finish then return title end
+    title = jsonString(text, finish + 1) or title
+    from = finish + 1
+  end
+end
+
+-- What claude needs to resume a session. Only a plain id, letters, digits and dashes as
+-- Claude Code names its files, ever reaches the shell.
+function agents.resumeArguments(id)
+  if not tostring(id or ""):match("^[%w%-]+$") then return nil end
+  return "--resume " .. id
+end
+
 -- Rows for card.html: each project by its folder name, with its path from home.
 function agents.projectRows(folders, home)
   local rows = {}
   for _, folder in ipairs(folders) do
     local short = folder:sub(1, #home) == home and ("~" .. folder:sub(#home + 1)) or folder
-    rows[#rows + 1] = { id = folder, icon = "󰉋", label = folder:match("([^/]+)/*$") or folder, hint = short }
+    rows[#rows + 1] = { id = folder, icon = "󰉋", label = folderName(folder), hint = short }
   end
   return rows
 end
@@ -186,7 +262,7 @@ function agents.html(model)
   local logo = model.logo and ('<img class=logo src="' .. card.escape(model.logo) .. '">') or "<span class='logo glyph'>✳</span>"
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. STYLE .. "</style><body>"
     .. "<div class=head><div class=icon>󰚩</div><div><div class=title>Agents</div><div class=sub>SUBSCRIPTIONS</div></div>"
-    .. '<div class=actions><div class=btn data-id="agents.new">+</div><div class=btn data-id="agents.continue">&gt;_</div></div></div>'
+    .. '<div class=actions><div class=btn data-id="agents.new">+</div><div class=btn data-id="agents.continue">&gt;_</div><div class=btn data-id="agents.resume">󰋚</div></div></div>'
     .. "<div class=agent>" .. logo .. "<span class=name>Claude Code</span>"
     .. "<span class=plan>" .. card.escape(model.plan or "") .. "</span></div>"
     .. limit("Session", usage.five) .. limit("Weekly", usage.seven)

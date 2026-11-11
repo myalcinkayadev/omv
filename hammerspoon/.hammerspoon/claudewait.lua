@@ -38,7 +38,7 @@ function claudewait.rows(sessions, alive, now)
   for _, session in ipairs(live) do
     local state = session.state or "done"
     local minutes = math.floor((now - session.since) / 60)
-    rows[#rows + 1] = { id = session.tty, label = session.folder, state = state, waiting = state ~= "working",
+    rows[#rows + 1] = { id = session.tty, pid = session.pid, label = session.folder, state = state, waiting = state ~= "working",
       hint = state .. " · " .. (minutes < 1 and "now" or minutes .. " min") }
   end
   return rows
@@ -99,6 +99,21 @@ function claudewait.focus(tty, running, run)
     if running(entry.bundle) and run(entry.script) then return true end
   end
   return false
+end
+
+-- The app a session runs in when no terminal app has its tty, such as Zed's terminal: the
+-- nearest of Claude's ancestors, Claude included, whose program is inside an app bundle.
+-- parent(pid) gives that process's parent PID and program path. Stops at PID 1, launchd.
+local MAX_HOPS = 20
+
+function claudewait.appPid(pid, parent)
+  for _ = 1, MAX_HOPS do
+    if not pid or pid <= 1 then return nil end
+    local parentPid, program = parent(pid)
+    if program and program:find("%.app/Contents/MacOS/") then return pid end
+    pid = parentPid
+  end
+  return nil
 end
 
 return claudewait
