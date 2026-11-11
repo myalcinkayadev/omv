@@ -95,14 +95,19 @@ local function closePanel()
   if previous then previous:activate() end
 end
 
+-- A card opens on the screen the pointer is on: the bar is on every screen, and a click on
+-- it doesn't move focus, so the focused screen could be the other one. For a key it is the
+-- same screen, since AeroSpace moves the pointer along when focus changes screen.
+-- The screen is looked up in place, not through a helper: this chunk is at Lua's limit of 200 locals.
+
 -- Right-aligned just below the 36pt bar, under the status items.
 local function anchored(width, height)
-  local screen = hs.screen.mainScreen():fullFrame()
+  local screen = (hs.mouse.getCurrentScreen() or hs.screen.mainScreen()):fullFrame()
   return hs.geometry.rect(screen.x + screen.w - width - 10, screen.y + 40, width, height)
 end
 
 local function centered(width, height)
-  local screen = hs.screen.mainScreen():frame()
+  local screen = (hs.mouse.getCurrentScreen() or hs.screen.mainScreen()):frame()
   return hs.geometry.rect(screen.x + (screen.w - width) / 2, screen.y + (screen.h - height) / 3, width, height)
 end
 
@@ -271,7 +276,7 @@ local function toggleKeyList()
   if panel and panel.name == "keys" then return closePanel() end
   local bindings = keymap.read(AEROSPACE_CONFIG)
   keyListBindings = bindings
-  local layout = keymap.layout(keymap.lines(keymap.rows(bindings, launchers)), hs.screen.mainScreen():frame())
+  local layout = keymap.layout(keymap.lines(keymap.rows(bindings, launchers)), (hs.mouse.getCurrentScreen() or hs.screen.mainScreen()):frame())
   showPanel("keys", centered(layout.w, layout.h), keymap.html(bindings, launchers, layout.columns), onKeyListMessage)
 end
 
