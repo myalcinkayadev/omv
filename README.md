@@ -153,6 +153,13 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - The plan comes from `~/.claude.json`, and only its `organizationType` is read. The folders come from Claude Code's own session files in `~/.claude/projects`.
 - `claude` runs through your login shell, by `claude-in.sh`, so it's found on the PATH your shell sets up.
 
+**Other agents.** Codex, OpenCode and pi sessions show in the same pill, list and Agents card as Claude's, with the agent's name in the card, such as `codex · asks · 3 min`. Each reports through the same hook script as Claude Code, and `install.sh` sets up only the agents it finds:
+
+- **Codex** (`~/.codex`): `codex-hooks.sh` adds hooks to `~/.codex/hooks.json` for when you send a prompt, a tool runs, Codex asks for approval, and it stops. Other hooks, such as herdr's, stay. Codex asks once to trust new hooks: run `/hooks` in Codex.
+- **OpenCode** (`~/.config/opencode`): a plugin, `omv-agent-state.js`, is linked into its `plugins` folder. Subagents' sessions are left out; their parent stands for them.
+- **pi** (`~/.pi/agent`): an extension, `omv-agent-state.ts`, is linked into its `extensions` folder. pi asks for no approvals, so its sessions are working or done.
+- `uninstall.sh` removes all three, and `doctor.sh` checks each agent that's set up.
+
 **Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder, as `? omv` when it asks for approval, since that one is blocked until you answer. It sits right next to Claude's logo and 5-hour limit, so the two read as one group, and the limit stays in view. Click it, or press Option+Shift+A, to go to the session's terminal, even in another tab or on another workspace. When several sessions wait, a list opens with the asking ones first, then the one waiting longest, and each row shows its state and how long it has waited. The pill goes when you answer, when a tool runs after your approval, or when the session ends. Working sessions never show in the pill, only in the Agents card.
 
 - **Seen sessions leave the pill.** While Ghostty is in front, the session in the terminal you're looking at is marked seen, so it leaves the pill until its state changes: a session that finishes, then asks, shows again. Ghostty is read every 2 seconds, and only while it's in front.

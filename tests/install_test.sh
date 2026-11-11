@@ -10,6 +10,39 @@ add_conflicting_file() {
   echo 'mine' > "$HOME_DIR/.config/aerospace/aerospace.toml"
 }
 
+adds_codex_hooks() {
+  use_real_stow
+  mkdir -p "$HOME_DIR/.codex"
+  run_in_sandbox PATH="$STUB_DIR:/usr/bin:/bin:/opt/homebrew/bin" "$INSTALL" >/dev/null
+  grep -q claude-waiting.sh "$HOME_DIR/.codex/hooks.json" || fail 'Codex hooks were not added'
+}
+
+leaves_codex_alone() {
+  use_real_stow
+  run_in_sandbox PATH="$STUB_DIR:/usr/bin:/bin:/opt/homebrew/bin" "$INSTALL" >/dev/null
+  [ ! -e "$HOME_DIR/.codex" ] || fail 'created ~/.codex'
+}
+
+links_opencode_plugin() {
+  use_real_stow
+  mkdir -p "$HOME_DIR/.config/opencode"
+  run_in_sandbox "$INSTALL" >/dev/null
+  [ -L "$HOME_DIR/.config/opencode/plugins/omv-agent-state.js" ] || fail 'plugin not linked'
+}
+
+links_pi_extension() {
+  use_real_stow
+  mkdir -p "$HOME_DIR/.pi/agent"
+  run_in_sandbox "$INSTALL" >/dev/null
+  [ -L "$HOME_DIR/.pi/agent/extensions/omv-agent-state.ts" ] || fail 'extension not linked'
+}
+
+links_no_agent_plugin() {
+  use_real_stow
+  run_in_sandbox "$INSTALL" >/dev/null
+  [ ! -e "$HOME_DIR/.config/opencode" ] && [ ! -e "$HOME_DIR/.pi" ] || fail "linked a plugin for an agent that isn't set up"
+}
+
 fails_without_brew() {
   remove_stub brew
   assert_exit_nonzero run_in_sandbox "$INSTALL"
@@ -152,4 +185,9 @@ run_case 'should succeed when executed twice' is_safe_to_rerun
 run_case 'should exit non-zero when stow finds a conflicting real file' fails_on_stow_conflict
 run_case 'should skip macOS and trackpad settings when stow finds a conflicting real file' stops_before_settings_on_stow_conflict
 run_case 'should report the failure when stow finds a conflicting real file' reports_stow_conflict
+run_case 'should add the Codex hooks when Codex is set up' adds_codex_hooks
+run_case "should leave Codex alone when it isn't set up" leaves_codex_alone
+run_case 'should link the OpenCode plugin when OpenCode is set up' links_opencode_plugin
+run_case 'should link the pi extension when pi is set up' links_pi_extension
+run_case "should link no agent plugin when no agent is set up" links_no_agent_plugin
 finish

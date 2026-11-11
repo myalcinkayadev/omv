@@ -60,6 +60,32 @@ expect_report() {
   [[ $output == *"$1"* ]] || fail "expected '$1' in:"$'\n'"$output"
 }
 
+reports_missing_codex_hooks() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.codex"
+  expect_report "✗ the Codex hooks aren't in ~/.codex/hooks.json — fix: ./codex-hooks.sh add"
+}
+
+reports_codex_hooks() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.codex"
+  printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"command":"$HOME/.claude/claude-waiting.sh wait codex"}]}]}}' > "$HOME_DIR/.codex/hooks.json"
+  expect_report 'Codex hooks in ~/.codex/hooks.json'
+}
+
+reports_missing_opencode_plugin() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/opencode"
+  expect_report "✗ the OpenCode plugin isn't linked — fix: ./install.sh"
+}
+
+skips_agents_not_set_up() {
+  complete_setup
+  local output
+  output=$(report)
+  [[ $output != *"Other agents"* ]] || fail "listed other agents in:"$'\n'"$output"
+}
+
 passes_complete_setup() {
   complete_setup
   assert_exit_zero doctor
@@ -209,4 +235,8 @@ run_case 'should list the checks it cannot do as check by hand' lists_manual_che
 run_case 'should list Location for Hammerspoon as a check by hand' lists_location_check
 run_case 'should list Microphone for the meter helper as a check by hand' lists_microphone_check
 run_case 'should change nothing on the system' changes_nothing
+run_case "should report the Codex hooks missing when Codex is set up" reports_missing_codex_hooks
+run_case 'should report the Codex hooks in place' reports_codex_hooks
+run_case "should report the OpenCode plugin missing when OpenCode is set up" reports_missing_opencode_plugin
+run_case 'should skip other agents when none is set up' skips_agents_not_set_up
 finish

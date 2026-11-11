@@ -22,6 +22,21 @@ simulate_already_removed() {
   stub killall 1
 }
 
+removes_codex_hooks() {
+  mkdir -p "$HOME_DIR/.codex"
+  printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"$HOME/.claude/claude-waiting.sh wait codex"}]}]}}' > "$HOME_DIR/.codex/hooks.json"
+  run_in_sandbox PATH="$STUB_DIR:/usr/bin:/bin:/opt/homebrew/bin" "$UNINSTALL" >/dev/null
+  if grep -q claude-waiting.sh "$HOME_DIR/.codex/hooks.json"; then fail 'Codex hooks left behind'; fi
+}
+
+unlinks_opencode_plugin() {
+  use_real_stow
+  mkdir -p "$HOME_DIR/.config/opencode/plugins"
+  run_in_sandbox stow --dir="$REPO_DIR" --target="$HOME_DIR" opencode
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  [ ! -e "$HOME_DIR/.config/opencode/plugins/omv-agent-state.js" ] || fail 'plugin left linked'
+}
+
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D aerospace sketchybar claude swipeaerospace$"
@@ -215,4 +230,6 @@ run_case 'should leave a real file in place when it sits at a stowed path' keeps
 run_case 'should not ask AeroSpace or SwipeAeroSpace to quit when they are not running' skips_quit_when_not_running
 run_case 'should stop keep-awake when uninstalling' stops_keep_awake
 run_case 'should remove the keep-awake pid file when uninstalling' removes_keep_awake_pid
+run_case 'should remove the Codex hooks' removes_codex_hooks
+run_case 'should unlink the OpenCode plugin' unlinks_opencode_plugin
 finish

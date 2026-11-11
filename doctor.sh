@@ -166,6 +166,27 @@ check_claude() {
   fi
 }
 
+# Codex, OpenCode and pi report their sessions to the bar, each only when it's set up here.
+check_agents() {
+  [ -d "$HOME/.codex" ] || [ -d "$HOME/.config/opencode" ] || [ -d "$HOME/.pi/agent" ] || return 0
+  section 'Other agents'
+  if [ -d "$HOME/.codex" ]; then
+    if grep -qF 'claude-waiting.sh' "$HOME/.codex/hooks.json" 2>/dev/null; then
+      ok 'Codex hooks in ~/.codex/hooks.json (Codex asks once to trust them: /hooks)'
+    else
+      problem "the Codex hooks aren't in ~/.codex/hooks.json" './codex-hooks.sh add'
+    fi
+  fi
+  if [ -d "$HOME/.config/opencode" ]; then
+    if [ -L "$HOME/.config/opencode/plugins/omv-agent-state.js" ]; then ok 'OpenCode plugin linked'
+    else problem "the OpenCode plugin isn't linked" './install.sh'; fi
+  fi
+  if [ -d "$HOME/.pi/agent" ]; then
+    if [ -L "$HOME/.pi/agent/extensions/omv-agent-state.ts" ]; then ok 'pi extension linked'
+    else problem "the pi extension isn't linked" './install.sh'; fi
+  fi
+}
+
 # The bar's pull request count needs gh signed in. A missing gh is already named under Tools.
 check_github() {
   command -v gh >/dev/null 2>&1 || return 0
@@ -199,6 +220,7 @@ check_running
 check_settings
 check_permissions
 check_claude
+check_agents
 check_github
 print_manual_checks
 

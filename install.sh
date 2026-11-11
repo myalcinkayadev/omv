@@ -35,6 +35,20 @@ link_configs() {
   exit 1
 }
 
+# Codex, OpenCode and pi report their sessions to the bar too, each only when it's set up
+# here. Their plugin folders are made first, so Stow links the file, not the folder.
+link_agents() {
+  if [ -d "$HOME/.codex" ]; then "$REPO_DIR/codex-hooks.sh" add; fi
+  if [ -d "$HOME/.config/opencode" ]; then
+    mkdir -p "$HOME/.config/opencode/plugins"
+    stow --dir="$REPO_DIR" --target="$HOME" opencode
+  fi
+  if [ -d "$HOME/.pi/agent" ]; then
+    mkdir -p "$HOME/.pi/agent/extensions"
+    stow --dir="$REPO_DIR" --target="$HOME" pi
+  fi
+}
+
 apply_macos_settings() {
   defaults write NSGlobalDomain _HIHideMenuBar -bool true
   defaults write com.apple.spaces spans-displays -bool true
@@ -73,5 +87,6 @@ install_tools
 link_configs
 "$REPO_DIR/claude-usage.sh" add
 "$REPO_DIR/claude-hooks.sh" add
+link_agents
 apply_macos_settings
 print_manual_steps

@@ -51,6 +51,7 @@ stop_keep_awake() {
 remove_claude_usage() {
   "$REPO_DIR/claude-usage.sh" remove
   "$REPO_DIR/claude-hooks.sh" remove
+  "$REPO_DIR/codex-hooks.sh" remove
   rm -f "$HOME/.local/state/omv/claude-usage" "$HOME/.local/state/omv/claude-usage-resets-view"
   rm -rf "$HOME/.local/state/omv/claude-sessions" "$HOME/.local/state/omv/claude-waiting"
 }
@@ -61,6 +62,9 @@ unlink_configs() {
     return 0
   fi
   stow --dir="$REPO_DIR" --target="$HOME" -D "${packages[@]}"
+  # The other agents' plugins, linked only when that agent was set up.
+  if [ -L "$HOME/.config/opencode/plugins/omv-agent-state.js" ]; then stow --dir="$REPO_DIR" --target="$HOME" -D opencode; fi
+  if [ -L "$HOME/.pi/agent/extensions/omv-agent-state.ts" ]; then stow --dir="$REPO_DIR" --target="$HOME" -D pi; fi
 }
 
 reset_macos_settings() {
