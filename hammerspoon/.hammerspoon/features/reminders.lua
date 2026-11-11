@@ -159,7 +159,7 @@ end
 
 function feature.new()
   if shell.isOpen("reminder") then return shell.close() end
-  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy · 14:30 call · pomo · b break · c cancel" }
+  local screen = { prompt = "Remind me…", rows = {}, input = true, hint = "25m · 14:30 call · pomo · b break · c cancel" }
   shell.show("reminder", shell.centered(REMINDER_WIDTH, 28 + 46 + 44 + 4), card.html(screen), onReminderInput)
 end
 

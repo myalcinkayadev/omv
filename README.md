@@ -198,7 +198,7 @@ Under the footer are today's events from Calendar.app, so every account added th
 
 Option+Shift+M asks "Remind me…". Type a time, then what to remember, and press Enter.
 
-<img src="docs/reminder.png" alt="The reminder card, with its hint: 25m check deploy, pomo, b break, c cancel" width="480">
+<img src="docs/reminder.png" alt="The reminder card, with its hint: 25m, 14:30 call, pomo, b break, c cancel" width="480">
 
 | Type | Does |
 |---|---|
