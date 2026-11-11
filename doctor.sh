@@ -206,6 +206,8 @@ Check by hand (macOS doesn't let a script read these)
     System Settings > Privacy & Security > Location Services
   - Microphone access for "omv meter", for the Sound card's level meter:
     System Settings > Privacy & Security > Microphone
+  - Bluetooth for Hammerspoon, for the Bluetooth card (it also needs: brew install blueutil):
+    System Settings > Privacy & Security > Bluetooth
   - Accessibility for SwipeAeroSpace, for three-finger swipes:
     System Settings > Privacy & Security > Accessibility
 EOF

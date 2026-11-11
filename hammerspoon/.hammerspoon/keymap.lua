@@ -137,6 +137,7 @@ local SEARCH_WORDS = {
   { "^Join the meeting", "zoom meet teams call video calendar" },
   { "^Show or hide the bar", "sketchybar menu bar" },
   { "^Wi%-Fi", "wifi network internet" },
+  { "^Bluetooth", "airpods headphones devices wireless" },
   { "^Ethernet", "network cable internet" },
   { "^Sound", "volume audio speaker microphone mic output input" },
   { "^Weather", "temperature forecast" },

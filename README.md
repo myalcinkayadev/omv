@@ -69,6 +69,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
 | Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
+| Bluetooth | On or off, only with `blueutil` installed | Open the [Bluetooth card](#bluetooth) | |
 | Wi-Fi | Connected or not | Open the [Wi-Fi card](#wi-fi-and-ethernet) | |
 | Volume | Level | Open the [Sound card](#sound), with either button | Change the volume by 5% |
 | Battery | Charge | Open the [Battery card](#battery) | |
@@ -139,6 +140,13 @@ Left and Right move between the buttons, Enter presses one, and Escape or a clic
 <img src="docs/wifi.png" alt="The Wi-Fi card: network name, signal, IP address, router and channel" width="420"> <img src="docs/ethernet.png" alt="The Ethernet card: link speed, IP address, router, port and duplex" width="420">
 
 Since macOS 14, an app needs Location Services to read the Wi-Fi network's name. Hammerspoon asks for it once, for the weather, and without it the card shows `—` for the name.
+
+## Bluetooth
+
+Click the Bluetooth icon, or press Option+Shift+Y, for the Bluetooth card under it: a switch that turns Bluetooth on or off, then your paired devices, connected ones first. Enter on a device connects or disconnects it, which takes a few seconds; the card redraws when it's done.
+
+- It reads and changes Bluetooth through [blueutil](https://github.com/toy/blueutil): `brew install blueutil`. Without it, the bar item stays hidden and the card says how to install it.
+- The first time, macOS asks to let Hammerspoon use Bluetooth.
 
 ## Agents
 
@@ -274,7 +282,7 @@ Option+Shift+S opens a card for screen captures.
 - **Clipboard history (Option+V):** the text you copied in the last day, newest first, at most 50. Type to filter, and Enter puts a copy back on the clipboard for you to paste with Cmd+V; pasting for you would need Accessibility, which omv doesn't grant. It's kept in memory only, so a reload forgets it. Secrets are never kept: copies password managers mark as concealed, copies made while 1Password, Bitwarden, Passwords or Keychain Access is in front, and text shaped like a key or token (`sk-…`, `ghp_…`, `AKIA…`, a JWT, a private key, or a `KEY=`, `TOKEN=`, `SECRET=` or `PASSWORD=` line). Only text is kept, never images or files. **Pause history** and **Clear history** are the card's first rows; while paused, the bar shows `paused`, and a click on it turns history back on. A secret with no recognizable shape is still kept, so pause the history for sensitive work.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 
@@ -319,6 +327,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+P | Hungry processes: quit the busiest ones | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |
+| Option+Shift+Y | Bluetooth card | |
 | Option+Shift+E | Ethernet card | |
 | Option+Shift+V | Sound card | |
 | Option+Shift+O | Weather card | |

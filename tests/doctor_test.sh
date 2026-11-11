@@ -86,6 +86,11 @@ skips_agents_not_set_up() {
   [[ $output != *"Other agents"* ]] || fail "listed other agents in:"$'\n'"$output"
 }
 
+lists_bluetooth_check() {
+  complete_setup
+  expect_report 'Bluetooth for Hammerspoon, for the Bluetooth card'
+}
+
 passes_complete_setup() {
   complete_setup
   assert_exit_zero doctor
@@ -239,4 +244,5 @@ run_case "should report the Codex hooks missing when Codex is set up" reports_mi
 run_case 'should report the Codex hooks in place' reports_codex_hooks
 run_case "should report the OpenCode plugin missing when OpenCode is set up" reports_missing_opencode_plugin
 run_case 'should skip other agents when none is set up' skips_agents_not_set_up
+run_case 'should list Bluetooth for Hammerspoon as a check by hand' lists_bluetooth_check
 finish
