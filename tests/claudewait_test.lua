@@ -39,6 +39,29 @@ check.that("should list asking sessions first, then done, then working", table.c
 check.that("should hint an asking session as asks", mixed[1].hint == "asks · 1 min")
 check.that("should mark an asking session as waiting", mixed[1].waiting == true)
 check.that("should mark a working session as not waiting", mixed[3].waiting == false)
+check.that("should keep each row's Claude PID", mixed[1].pid == 4)
+
+-- Claude (100) runs in a login shell in Zed's terminal, as ps reports them.
+local chain = {
+  [100] = { 90, "claude" },
+  [90] = { 80, "-zsh" },
+  [80] = { 70, "/usr/bin/login" },
+  [70] = { 1, "/Applications/Zed.app/Contents/MacOS/zed" },
+}
+local function parentIn(processes)
+  return function(pid)
+    assert(pid > 1, "walked past PID 1")
+    local entry = processes[pid]
+    if entry then return entry[1], entry[2] end
+  end
+end
+check.that("should pick the nearest ancestor inside an app bundle", claudewait.appPid(100, parentIn(chain)) == 70)
+local nested = { [100] = { 75, "claude" }, [75] = { 70, "/Applications/Zed.app/Contents/MacOS/cli" }, [70] = chain[70] }
+check.that("should pick the nearest of several app bundles", claudewait.appPid(100, parentIn(nested)) == 75)
+check.that("should give no app when no ancestor is inside an app bundle",
+  claudewait.appPid(100, parentIn({ [100] = { 90, "claude" }, [90] = { 1, "/bin/zsh" } })) == nil)
+check.that("should stop walking at the first process, PID 1",
+  pcall(claudewait.appPid, 100, parentIn({ [100] = { 1, "claude" } })))
 check.that("should list no rows when every Claude has ended", #claudewait.rows(sessions, function() return false end, 400) == 0)
 check.that("should list no rows when no session waits", #claudewait.rows({}, alive, 400) == 0)
 

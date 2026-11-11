@@ -19,6 +19,10 @@ local CLAUDE_LOGO = HOME .. "/.config/sketchybar/icons/claude.png"
 local RECENT_SESSIONS = 60
 -- A session's folder is near the start of its file, so only that much is read.
 local SESSION_HEAD_BYTES = 65536
+-- Claude Code writes a session's title again as it goes, so its end holds the latest one.
+-- Session files reach hundreds of megabytes together, too much to search while the card opens.
+local SESSION_TAIL_BYTES = 131072
+local RESUME_VISIBLE_ROWS = 10
 local PROJECTS_VISIBLE_ROWS = 10
 local claudeLogo = nil
 
@@ -37,15 +41,32 @@ local function logoUrl()
   return claudeLogo or nil
 end
 
--- The recent Claude Code sessions, newest first, as { cwd, modified }.
+-- The recent Claude Code sessions, newest first, as { id, path, cwd, modified }. The id is
+-- the file's name, which claude --resume takes.
 local function recentSessions()
   local listing = hs.execute("/bin/ls -t " .. HOME .. "/.claude/projects/*/*.jsonl 2>/dev/null | /usr/bin/head -n " .. RECENT_SESSIONS)
   local sessions = {}
   for path in listing:gmatch("[^\n]+") do
     local cwd = agents.sessionCwd(shell.readText(path, SESSION_HEAD_BYTES))
-    if cwd then sessions[#sessions + 1] = { cwd = cwd, modified = hs.fs.attributes(path, "modification") or 0 } end
+    if cwd then
+      sessions[#sessions + 1] = { id = path:match("([^/]+)%.jsonl$"), path = path, cwd = cwd,
+        modified = hs.fs.attributes(path, "modification") or 0 }
+    end
   end
   return sessions
+end
+
+local function readTail(path, bytes)
+  local file = io.open(path, "r")
+  if not file then return nil end
+  if not file:seek("end", -bytes) then file:seek("set") end
+  local text = file:read("*a")
+  file:close()
+  return text
+end
+
+local function folderExists(path)
+  return hs.fs.attributes(path, "mode") == "directory"
 end
 
 local function startClaude(folder, arguments)
@@ -83,18 +104,46 @@ local function onProjectMessage(message)
 end
 
 local function showProjects()
-  local rows = agents.projectRows(agents.projects(recentSessions()), HOME)
+  local rows = agents.projectRows(agents.projects(recentSessions(), folderExists), HOME)
   local screen = { prompt = "New Claude session in…", rows = rows, compact = true, hint = "No Claude Code projects yet" }
   local height = shell.listHeight(math.max(1, #rows), PROJECTS_VISIBLE_ROWS)
   shell.show("agents-projects", shell.centered(shell.LIST_WIDTH, height), card.html(screen), onProjectMessage)
 end
 
+-- Sessions picked from the resume list, by id, kept to find the chosen one's folder.
+local resumable = {}
+
+local function onResumeMessage(message)
+  if message.type == "back" then return showAgents() end
+  if message.type ~= "choose" then return shell.close() end
+  local session, arguments = resumable[message.id], agents.resumeArguments(message.id)
+  if not (session and arguments) then return shell.close() end
+  -- Leave focus to the new window, rather than handing it back to the app open before.
+  shell.leaveFocus()
+  shell.close()
+  startClaude(session.cwd, arguments)
+end
+
+local function showResume()
+  local sessions = recentSessions()
+  resumable = {}
+  for _, session in ipairs(sessions) do
+    session.title = agents.sessionTitle(readTail(session.path, SESSION_TAIL_BYTES))
+    resumable[session.id] = session
+  end
+  local rows = agents.resumeRows(sessions, folderExists, os.time())
+  local screen = { prompt = "Resume a Claude session…", rows = rows, compact = true, hint = "No Claude Code sessions yet" }
+  local height = shell.listHeight(math.max(1, #rows), RESUME_VISIBLE_ROWS)
+  shell.show("agents-resume", shell.centered(shell.LIST_WIDTH, height), card.html(screen), onResumeMessage)
+end
+
 onAgentsMessage = function(message)
   if message.type ~= "choose" then return shell.close() end
   if message.id == "agents.new" then return showProjects() end
+  if message.id == "agents.resume" then return showResume() end
   local tty = agents.sessionTty(message.id)
   if tty then return focusSession(tty) end
-  local latest = recentSessions()[1]
+  local latest = agents.latest(recentSessions(), folderExists)
   if not latest then return shell.alert("No Claude Code sessions yet", 1.5) end
   shell.leaveFocus()
   shell.close()
@@ -102,7 +151,7 @@ onAgentsMessage = function(message)
 end
 
 function feature.toggle()
-  if shell.isOpen("agents", "agents-projects") then return shell.close() end
+  if shell.isOpen("agents", "agents-projects", "agents-resume") then return shell.close() end
   showAgents()
 end
 

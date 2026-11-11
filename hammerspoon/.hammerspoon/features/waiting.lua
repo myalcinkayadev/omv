@@ -37,11 +37,25 @@ function feature.rows()
   return claudewait.rows(savedSessions(), alive, os.time())
 end
 
--- Goes to the session's terminal, or says where it runs when that can't be focused.
+-- A process's parent PID and program path, as ps reports them.
+local function parentOf(pid)
+  local output = hs.execute("/bin/ps -o ppid=,comm= -p " .. math.floor(pid))
+  local parentPid, program = output:match("^%s*(%d+)%s+(.-)%s*$")
+  return tonumber(parentPid), program
+end
+
+-- Brings forward the app Claude runs in, such as Zed, when no terminal app has its tty.
+-- macOS can't pick the window or pane, so the app comes forward as it was.
+local function activateApp(row)
+  local appPid = row.pid and claudewait.appPid(row.pid, parentOf)
+  local app = appPid and hs.application.applicationForPID(appPid)
+  return app ~= nil and app:activate()
+end
+
+-- Goes to the session's terminal, else the app it runs in, or says where it runs.
 function feature.focusRow(row)
-  if not claudewait.focus(row.id, running, runScript) then
-    shell.alert("Claude runs in " .. row.label .. ", outside Ghostty, iTerm2 or Terminal", 2)
-  end
+  if claudewait.focus(row.id, running, runScript) or activateApp(row) then return end
+  shell.alert("Claude runs in " .. row.label .. ", which can't be brought forward", 2)
 end
 
 local function waitingRows()

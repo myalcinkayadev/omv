@@ -65,13 +65,48 @@ local session = '{"type":"summary"}\nnot json\n{"cwd":"/Users/me/work/omv","type
 check.that("should read the first working folder from a session", agents.sessionCwd(session) == "/Users/me/work/omv")
 check.that("should read no folder from a session without one", agents.sessionCwd('{"type":"summary"}\n') == nil)
 
+local function everyFolder() return true end
+local function notGone(folder) return folder ~= "/a/gone" end
+
 local projects = agents.projects({
   { cwd = "/a/old", modified = 100 },
   { cwd = "/a/new", modified = 300 },
   { cwd = "/a/old", modified = 200 },
-})
+}, everyFolder)
 check.that("should list the most recent project first", projects[1] == "/a/new")
 check.that("should list each project once", #projects == 2)
+check.that("should leave out a project whose folder no longer exists",
+  #agents.projects({ { cwd = "/a/gone", modified = 300 }, { cwd = "/a/old", modified = 100 } }, notGone) == 1)
+
+local recent = {
+  { id = "s-gone", cwd = "/a/gone", modified = 300 },
+  { id = "s-old", cwd = "/a/old", modified = 100 },
+  { id = "s-new", cwd = "/a/new", modified = 200, title = "Fix the bar" },
+}
+check.that("should continue the latest session whose folder still exists", agents.latest(recent, notGone).id == "s-new")
+check.that("should continue nothing when every folder is gone", agents.latest(recent, function() return false end) == nil)
+
+local NOW = 1794150000
+local resume = agents.resumeRows({
+  { id = "s-gone", cwd = "/Users/me/gone", modified = NOW - 60 },
+  { id = "s-old", cwd = "/Users/me/work/api", modified = NOW - 3 * 86400 },
+  { id = "s-new", cwd = "/Users/me/work/omv", modified = NOW - 2 * 3600, title = "Fix the bar" },
+}, function(folder) return folder ~= "/Users/me/gone" end, NOW)
+check.that("should leave out sessions whose folder no longer exists from the resume list", #resume == 2)
+check.that("should list sessions newest first", resume[1].id == "s-new")
+check.that("should label a session by its title", resume[1].label == "Fix the bar")
+check.that("should hint a session's folder and age", resume[1].hint == "omv · 2h ago")
+check.that("should label a session without a title by its folder", resume[2].label == "api")
+check.that("should hint an age in days from a day up", resume[2].hint == "api · 3d ago")
+
+local file = '{"type":"user"}\n{"type":"ai-title","aiTitle":"First idea","sessionId":"s"}\n{"type":"ai-title","aiTitle":"Fix \\"the\\" bar","sessionId":"s"}\n'
+check.that("should read a session's title from its file", agents.sessionTitle('{"type":"ai-title","aiTitle":"Swipe sorunu"}') == "Swipe sorunu")
+check.that("should read the latest title when a session has several", agents.sessionTitle(file) == 'Fix "the" bar')
+check.that("should read no title from a session without one", agents.sessionTitle('{"type":"user"}\n') == nil)
+
+check.that("should resume a session by its id", agents.resumeArguments("7555d919-83ad-4e16") == "--resume 7555d919-83ad-4e16")
+check.that("should refuse a session id that isn't a plain id", agents.resumeArguments("x; rm -rf ~") == nil)
+check.that("should give the resume button its id", check.contains(agents.html({}), 'data-id="agents.resume"'))
 
 local rows = agents.projectRows({ "/Users/me/work/omv" }, "/Users/me")
 check.that("should label a project by its folder name", rows[1].label == "omv")
