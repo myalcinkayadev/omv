@@ -22,10 +22,18 @@ local SESSIONS_CHROME = 25
 local SESSION_ROW = 30
 local SESSIONS_SHOWN = 6
 
--- The card's height with sessionCount live sessions; the same as before with none.
-function agents.height(sessionCount)
-  if sessionCount <= 0 then return agents.HEIGHT end
-  return agents.HEIGHT + SESSIONS_CHROME + math.min(sessionCount, SESSIONS_SHOWN) * SESSION_ROW
+-- The background section has a title line above its rows.
+local SECTION_TITLE = 22
+
+local function sectionHeight(count, titled)
+  if count <= 0 then return 0 end
+  return SESSIONS_CHROME + (titled and SECTION_TITLE or 0) + math.min(count, SESSIONS_SHOWN) * SESSION_ROW
+end
+
+-- The card's height with sessionCount live sessions and backgroundCount background ones;
+-- the same as before with neither.
+function agents.height(sessionCount, backgroundCount)
+  return agents.HEIGHT + sectionHeight(sessionCount) + sectionHeight(backgroundCount or 0, true)
 end
 
 -- A session row's id names its terminal, so it can't be taken for a button's.
@@ -33,6 +41,46 @@ local SESSION_ID = "session:"
 
 function agents.sessionTty(id)
   return id:match("^" .. SESSION_ID .. "(.+)$")
+end
+
+-- A background session's row is named by its id in Claude Code's agent view.
+local BACKGROUND_ID = "background:"
+
+function agents.backgroundId(id)
+  return id:match("^" .. BACKGROUND_ID .. "(.+)$")
+end
+
+-- Agent view's states as omv names them; any other, such as failed, shows as it is.
+local BACKGROUND_STATES = { blocked = "asks", working = "working", done = "done" }
+local BACKGROUND_RANK = { asks = 1, working = 2, done = 3 }
+
+-- Rows for the background sessions in a decoded `claude agents --json` list: asking first,
+-- then working, done and the rest, newest first in each. Interactive sessions are left
+-- out, since the hooks already list them.
+function agents.background(list)
+  if type(list) ~= "table" then return {} end
+  local rows = {}
+  for _, session in ipairs(list) do
+    if type(session) == "table" and session.kind == "background" and session.id then
+      local folder = tostring(session.cwd or ""):match("([^/]+)/*$") or "?"
+      local state = BACKGROUND_STATES[session.state] or tostring(session.state or "unknown")
+      rows[#rows + 1] = { id = session.id, label = session.name or folder, state = state, cwd = session.cwd,
+        hint = folder .. " · " .. state, started = tonumber(session.startedAt) or 0 }
+    end
+  end
+  table.sort(rows, function(a, b)
+    local rankA, rankB = BACKGROUND_RANK[a.state] or 4, BACKGROUND_RANK[b.state] or 4
+    if rankA ~= rankB then return rankA < rankB end
+    return a.started > b.started
+  end)
+  return rows
+end
+
+-- What claude needs to open a background session in a terminal. Only a plain id, as
+-- agent view gives them, ever reaches the shell.
+function agents.attachArguments(id)
+  if not tostring(id or ""):match("^[%w%-]+$") then return nil end
+  return "attach " .. id
 end
 
 local PLANS = { claude_pro = "Pro", claude_max = "Max" }
@@ -200,6 +248,8 @@ local STYLE = [[
   .live { margin-top: 14px; border-top: 1px solid #2a2a2a; padding-top: 10px; max-height: 180px;
     overflow-y: auto; scrollbar-width: none; }
   .live::-webkit-scrollbar { display: none; }
+  .live.titled { max-height: 202px; }
+  .live .heading { height: 22px; line-height: 22px; padding: 0 10px; color: #7a7a7a; font-size: 12px; letter-spacing: 1px; }
   .session { display: flex; align-items: center; height: 30px; padding: 0 10px; border-radius: 4px;
     font-size: 14px; cursor: default; }
   .session .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -244,19 +294,21 @@ local function limit(name, usage)
 end
 
 -- A row per live session, as claudewait.rows gives them: { id = tty, label, hint, state }.
-local function sessionList(sessions)
+-- prefix marks where the rows come from; heading titles the section.
+local function sessionList(sessions, prefix, heading)
   if not sessions or #sessions == 0 then return "" end
   local rows = {}
   for _, session in ipairs(sessions) do
     rows[#rows + 1] = '<div class="session ' .. card.escape(session.state or "") .. '" data-id="'
-      .. card.escape(SESSION_ID .. session.id) .. '"><span class=name>' .. card.escape(session.label)
+      .. card.escape(prefix .. session.id) .. '"><span class=name>' .. card.escape(session.label)
       .. "</span><span class=hint>" .. card.escape(session.hint or "") .. "</span></div>"
   end
-  return "<div class=live>" .. table.concat(rows) .. "</div>"
+  if not heading then return "<div class=live>" .. table.concat(rows) .. "</div>" end
+  return '<div class="live titled"><div class=heading>' .. card.escape(heading) .. "</div>" .. table.concat(rows) .. "</div>"
 end
 
 -- model = { plan, usage = agents.parseUsage(...), logo = a data: URL of the Claude logo,
---   sessions = the live sessions' rows }
+--   sessions = the live sessions' rows, background = agents.background(...) }
 function agents.html(model)
   local usage = model.usage or {}
   local logo = model.logo and ('<img class=logo src="' .. card.escape(model.logo) .. '">') or "<span class='logo glyph'>✳</span>"
@@ -266,7 +318,8 @@ function agents.html(model)
     .. "<div class=agent>" .. logo .. "<span class=name>Claude Code</span>"
     .. "<span class=plan>" .. card.escape(model.plan or "") .. "</span></div>"
     .. limit("Session", usage.five) .. limit("Weekly", usage.seven)
-    .. sessionList(model.sessions)
+    .. sessionList(model.sessions, SESSION_ID)
+    .. sessionList(model.background, BACKGROUND_ID, "BACKGROUND")
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 

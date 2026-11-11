@@ -1,7 +1,8 @@
 -- Agents card (click the robot in the bar). >_ continues the last Claude Code session,
 -- in its folder; + lists the recent Claude Code projects, to start a new session in one.
 -- Both open a Ghostty window on workspace 1. Below them, every live session with its state;
--- picking one goes to its terminal.
+-- picking one goes to its terminal. Then Claude Code's background sessions, from its agent
+-- view; picking one opens it with claude attach in a Ghostty window.
 
 local shell = require("shell")
 local card = require("card")
@@ -15,6 +16,8 @@ local CLAUDE_IN = hs.configdir .. "/claude-in.sh"
 local CLAUDE_USAGE = HOME .. "/.local/state/omv/claude-usage"
 local CLAUDE_CONFIG = HOME .. "/.claude.json"
 local CLAUDE_LOGO = HOME .. "/.config/sketchybar/icons/claude.png"
+-- Where Claude Code's installer puts it. Without it, the card has no background section.
+local CLAUDE = HOME .. "/.local/bin/claude"
 -- Enough recent sessions to fill the project list, without reading every one.
 local RECENT_SESSIONS = 60
 -- A session's folder is near the start of its file, so only that much is read.
@@ -65,6 +68,14 @@ local function readTail(path, bytes)
   return text
 end
 
+-- Claude Code's background sessions, from `claude agents --json`, which answers in about 0.1s.
+local function backgroundSessions()
+  if not hs.fs.attributes(CLAUDE) then return {} end
+  local output = hs.execute(agents.shellQuote(CLAUDE) .. " agents --json 2>/dev/null")
+  local ok, list = pcall(hs.json.decode, output or "")
+  return agents.background(ok and list or nil)
+end
+
 local function folderExists(path)
   return hs.fs.attributes(path, "mode") == "directory"
 end
@@ -75,14 +86,17 @@ local function startClaude(folder, arguments)
 end
 
 local onAgentsMessage
--- The session rows the card shows, kept so a pick can be matched back to its row.
+-- The rows the card shows, kept so a pick can be matched back to its row.
 local sessionRows = {}
+local backgroundRows = {}
 
 local function showAgents()
   sessionRows = waiting.rows()
+  backgroundRows = backgroundSessions()
   local model = { plan = claudePlan(), usage = agents.parseUsage(shell.readText(CLAUDE_USAGE), os.time()),
-    logo = logoUrl(), sessions = sessionRows }
-  shell.show("agents", shell.anchored(agents.WIDTH, agents.height(#sessionRows)), agents.html(model), onAgentsMessage)
+    logo = logoUrl(), sessions = sessionRows, background = backgroundRows }
+  shell.show("agents", shell.anchored(agents.WIDTH, agents.height(#sessionRows, #backgroundRows)),
+    agents.html(model), onAgentsMessage)
 end
 
 local function focusSession(tty)
@@ -108,6 +122,19 @@ local function showProjects()
   local screen = { prompt = "New Claude session in…", rows = rows, compact = true, hint = "No Claude Code projects yet" }
   local height = shell.listHeight(math.max(1, #rows), PROJECTS_VISIBLE_ROWS)
   shell.show("agents-projects", shell.centered(shell.LIST_WIDTH, height), card.html(screen), onProjectMessage)
+end
+
+-- Opens a background session in a new Ghostty window, in its folder, with claude attach.
+local function attachBackground(id)
+  local arguments = agents.attachArguments(id)
+  for _, row in ipairs(backgroundRows) do
+    if row.id == id and arguments then
+      shell.leaveFocus()
+      shell.close()
+      return startClaude(row.cwd or HOME, arguments)
+    end
+  end
+  shell.close()
 end
 
 -- Sessions picked from the resume list, by id, kept to find the chosen one's folder.
@@ -143,6 +170,8 @@ onAgentsMessage = function(message)
   if message.id == "agents.resume" then return showResume() end
   local tty = agents.sessionTty(message.id)
   if tty then return focusSession(tty) end
+  local backgroundId = agents.backgroundId(message.id)
+  if backgroundId then return attachBackground(backgroundId) end
   local latest = agents.latest(recentSessions(), folderExists)
   if not latest then return shell.alert("No Claude Code sessions yet", 1.5) end
   shell.leaveFocus()

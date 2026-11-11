@@ -52,6 +52,38 @@ check.that("should give a session row its terminal as its id", check.contains(wi
 check.that("should show a session's state and wait", check.contains(check.visible(withSessions), "asks · 1 min"))
 check.that("should show no session rows when no session is live", not check.contains(agents.html({}), 'class="session'))
 check.that("should keep the card's height when no session is live", agents.height(0) == agents.HEIGHT)
+
+-- Background sessions, from `claude agents --json`, decoded as hs.json.decode gives it.
+local listed = agents.background({
+  { id = "cd3bc75e", cwd = "/Users/me/work/game", kind = "background", name = "Doodleshooter", state = "done", startedAt = 2 },
+  { id = nil, cwd = "/Users/me/work/omv", kind = "interactive", name = "omv-14", state = nil, startedAt = 3 },
+  { id = "edbc65df", cwd = "/Users/me/work/sila-v1", kind = "background", name = "clear-state", state = "blocked", startedAt = 1 },
+  { id = "aa11bb22", cwd = "/Users/me/work/api", kind = "background", state = "failed", startedAt = 4 },
+})
+check.that("should keep only background sessions", #listed == 3)
+check.that("should list asking background sessions first", listed[1].id == "edbc65df")
+check.that("should label a background session by its name", listed[1].label == "clear-state")
+check.that("should label a background session without a name by its folder", listed[3].label == "api")
+check.that("should map blocked to asks", listed[1].state == "asks")
+check.that("should map done to done", listed[2].state == "done")
+check.that("should show any other state as it is", listed[3].state == "failed")
+check.that("should hint a background session's folder and state", listed[1].hint == "sila-v1 · asks")
+check.that("should give no background sessions when the output isn't a list", #agents.background({ error = "x" }) == 0)
+check.that("should give no background sessions without output", #agents.background(nil) == 0)
+
+check.that("should attach to a background session by a plain id", agents.attachArguments("edbc65df") == "attach edbc65df")
+check.that("should refuse a background id that isn't plain", agents.attachArguments("x; rm -rf ~") == nil)
+check.that("should read a background row's id back", agents.backgroundId("background:edbc65df") == "edbc65df")
+check.that("should read no background id from a session id", agents.backgroundId("session:/dev/ttys004") == nil)
+
+local withBackground = agents.html({ sessions = sessions, background = listed })
+check.that("should show a BACKGROUND section when there are background sessions",
+  check.contains(check.visible(withBackground), "BACKGROUND"))
+check.that("should show no BACKGROUND section without background sessions",
+  not check.contains(check.visible(withSessions), "BACKGROUND"))
+check.that("should give a background row its id", check.contains(withBackground, 'data-id="background:edbc65df"'))
+check.that("should grow the card for the background section", agents.height(2, 1) > agents.height(2, 0))
+check.that("should keep the card's height with neither kind of session", agents.height(0, 0) == agents.HEIGHT)
 check.that("should grow the card by one row per session", agents.height(3) - agents.height(2) == agents.height(2) - agents.height(1))
 check.that("should stop growing the card at six sessions", agents.height(7) == agents.height(6))
 check.that("should read a session id back as its terminal", agents.sessionTty("session:/dev/ttys004") == "/dev/ttys004")
