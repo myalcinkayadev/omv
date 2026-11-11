@@ -43,6 +43,7 @@ check("should hide bar notifications when a binding also tells the bar", notifie
 check("should show a readable label when a key has modifiers", keymap.label("alt-shift-h") == "Option+Shift+H")
 
 check("should label tab as Tab when building the cheat sheet", keymap.label("alt-tab") == "Option+Tab")
+check("should label a numpad key as Num and its number", keymap.label("alt-shift-keypad3") == "Option+Shift+Num 3")
 
 check("should describe a known command in words", keymap.describe("focus left") == "Focus left")
 check("should describe a numbered workspace command", keymap.describe("move-node-to-workspace 4") == "Send window to 4")

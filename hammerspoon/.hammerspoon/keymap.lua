@@ -57,7 +57,8 @@ end
 function keymap.label(key)
   local parts = {}
   for part in key:gmatch("[^-]+") do
-    parts[#parts + 1] = MODIFIER_LABELS[part] or KEY_LABELS[part] or part:upper()
+    local numpad = part:match("^keypad(%d)$")
+    parts[#parts + 1] = MODIFIER_LABELS[part] or KEY_LABELS[part] or (numpad and "Num " .. numpad) or part:upper()
   end
   return table.concat(parts, "+")
 end

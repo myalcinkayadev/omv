@@ -85,6 +85,21 @@ alt-shift-4 = 'move-node-to-workspace 4'
 alt-shift-5 = 'move-node-to-workspace 5'
 alt-shift-6 = 'move-node-to-workspace 6'
 
+# The same on the numpad
+alt-keypad1 = 'workspace 1'
+alt-keypad2 = 'workspace 2'
+alt-keypad3 = 'workspace 3'
+alt-keypad4 = 'workspace 4'
+alt-keypad5 = 'workspace 5'
+alt-keypad6 = 'workspace 6'
+
+alt-shift-keypad1 = 'move-node-to-workspace 1'
+alt-shift-keypad2 = 'move-node-to-workspace 2'
+alt-shift-keypad3 = 'move-node-to-workspace 3'
+alt-shift-keypad4 = 'move-node-to-workspace 4'
+alt-shift-keypad5 = 'move-node-to-workspace 5'
+alt-shift-keypad6 = 'move-node-to-workspace 6'
+
 # Monitors
 alt-comma = 'focus-monitor left'
 alt-period = 'focus-monitor right'

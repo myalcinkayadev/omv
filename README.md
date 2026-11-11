@@ -276,8 +276,8 @@ Option+Shift+S opens a card for screen captures.
 | Option+A | Toggle tabbed or tiled |
 | Option+B | Make window sizes even |
 | Option+Shift+R | Enter resize mode |
-| Option+1-6 | Go to that workspace |
-| Option+Shift+1-6 | Send the window to that workspace, and stay where you are |
+| Option+1-6, or Option and the numpad's 1-6 | Go to that workspace |
+| Option+Shift+1-6, or with the numpad | Send the window to that workspace, and stay where you are |
 | Option+Tab | Go back to the previous workspace |
 | Option+, / Option+. | Focus the left / right monitor |
 | Option+Shift+, / Option+Shift+. | Send the window to the left / right monitor |
