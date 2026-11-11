@@ -1237,7 +1237,7 @@ end
 local NOTE_VAULT = os.getenv("HOME") .. "/Documents/vault/work"
 -- One table, not locals: init.lua's main chunk is near Lua's limit of 200 locals.
 -- file is the note opened for editing: { path, name, modified, original, text }, nil for a new note.
-local note = { width = 640, draft = "", armed = false, file = nil }
+local note = { width = 640, armed = false, file = nil, draftFile = STATE_DIR .. "/note-draft" }
 local NOTE_FOLDERS = { { name = "00 - Daily", label = "Daily" }, { name = "Inbox", label = "Inbox" } }
 local NOTE_LIST_ROWS = 10
 
@@ -1248,14 +1248,27 @@ function note.exists(path)
   return true
 end
 
+-- The folder is made only when the file can't be opened, since a draft is written on every edit.
 function note.write(path, content)
-  os.execute("/bin/mkdir -p '" .. path:match("^(.*)/") .. "'")
   local file = io.open(path, "w")
+  if not file then
+    os.execute("/bin/mkdir -p '" .. path:match("^(.*)/") .. "'")
+    file = io.open(path, "w")
+  end
   if not file then return false end
   file:write(content)
   file:close()
   return true
 end
+
+-- The draft is saved as it changes, so it survives a reload of this config, and its file
+-- goes once there is nothing left to keep.
+function note.setDraft(text)
+  note.draft = text
+  if text:find("%S") then note.write(note.draftFile, text) else os.remove(note.draftFile) end
+end
+
+note.draft = readText(note.draftFile) or ""
 
 -- A page is written first, so the daily note never links to one that failed.
 function note.save(text)
@@ -1275,7 +1288,7 @@ function note.submit(text)
   if not quicknote.entry(text, os.time()) then return closePanel() end
   closePanel()
   if not note.save(text) then return hs.alert.show("Could not write the note", ALERT_STYLE, 1.2) end
-  note.draft = ""
+  note.setDraft("")
   hs.alert.show("Noted", ALERT_STYLE, 1.2)
 end
 
@@ -1349,7 +1362,7 @@ end
 
 function note.onMessage(message)
   if message.type == "draft" then
-    if note.file then note.file.text = message.id else note.draft = message.id end
+    if note.file then note.file.text = message.id else note.setDraft(message.id) end
     note.armed = false
   elseif message.type == "resize" then
     note.resize(message.id)
@@ -1358,7 +1371,7 @@ function note.onMessage(message)
   elseif message.type == "open" then
     note.showList()
   elseif message.type == "discard" then
-    note.draft = ""
+    note.setDraft("")
     closePanel()
   end
 end
