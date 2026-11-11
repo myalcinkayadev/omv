@@ -26,6 +26,7 @@ local batteryCard = require("features.battery")
 local agentsCard = require("features.agents")
 local waitingClaude = require("features.waiting")
 local quickNote = require("features.note")
+local clipboardHistory = require("features.clipboard")
 local hungryProcesses = require("features.procs")
 
 local SUPER = { "alt" }
@@ -75,6 +76,7 @@ bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather", "Cards", weatherCard.togg
 bindKey(SUPER_SHIFT, "b", "Option+Shift+B", "Battery", "Cards", batteryCard.toggle)
 bindKey(SUPER, "escape", "Option+Escape", "System menu", "Cards", systemMenu.toggle)
 bindKey(SUPER, "space", "Option+Space", "Go to any window", "Cards", windowList.toggle)
+bindKey(SUPER, "v", "Option+V", "Clipboard history", "Cards", clipboardHistory.toggle)
 
 -- Now playing: Music and Spotify announce every track and play-state change, so the bar
 -- redraws only then. Global, so the watchers are never garbage-collected.
@@ -112,12 +114,15 @@ omvRedrawBar = later(function()
   weatherCard.redrawBar()
   calendarCard.redrawBar()
   reminderCards.redrawBar()
+  clipboardHistory.redrawBar()
 end)
 omvToggleKeyList = later(keys.toggle)
 omvToggleCalendar = later(calendarCard.toggle)
 omvJoinMeeting = later(calendarCard.join)
 omvToggleWindows = later(windowList.toggle)
 omvTogglePrs = later(pullRequests.toggle)
+omvToggleClipboard = later(clipboardHistory.toggle)
+omvResumeClipboard = later(clipboardHistory.resume)
 omvToggleProcesses = later(hungryProcesses.toggle)
 omvFocusClaude = later(waitingClaude.focus)
 omvToggleCapture = later(captureMenu.toggle)

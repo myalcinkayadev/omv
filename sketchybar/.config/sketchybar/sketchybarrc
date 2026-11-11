@@ -101,6 +101,12 @@ sketchybar --add event keep_awake_toggle \
   --set keep_awake drawing=off icon=󰒳 "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \
   --subscribe keep_awake keep_awake_toggle mouse.clicked
 
+# Shown only while clipboard history is paused, so a pause is never forgotten. Hammerspoon
+# sets it; clicking it turns history back on.
+sketchybar --add item clipboard_paused right \
+  --set clipboard_paused drawing=off icon=󰅍 icon.color=$MUTED icon.padding_right=3 label=paused \
+    label.color=$MUTED label.padding_left=3 click_script="hs -c 'omvResumeClipboard()'"
+
 # A white pill while a Claude Code session waits for you, set by the claude_waiting_change
 # event from claude-waiting.sh. Every 30 seconds it drops sessions whose Claude has ended.
 # Added just before Claude's item, so it sits right next to it with no icon of its own: the
