@@ -182,8 +182,10 @@ local function countFinishedPomo()
   file:close()
 end
 
+-- A break keeps its length, so its countdown is drawn right when it is reopened.
 local function addReminder(seconds, text, kind)
-  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text, kind = kind }
+  local length = kind == "break" and seconds or nil
+  reminderList[#reminderList + 1] = { due = os.time() + seconds, text = text, kind = kind, length = length }
   reminderList = reminders.sorted(reminderList)
   saveReminders()
   startReminders()
@@ -248,7 +250,7 @@ onPomoReminder = function(reminder)
   end
   if reminder.kind == "show-break" then
     local current = reminderList[1]
-    pomoStep = { step = "break", task = pomoStep and pomoStep.task, ends = current.due, seconds = pomo.breakSeconds(pomoCount()) }
+    pomoStep = { step = "break", task = pomoStep and pomoStep.task, ends = current.due, seconds = pomo.breakLength(current, pomoCount()) }
     return showPomo()
   end
   if reminder.kind == "break" then

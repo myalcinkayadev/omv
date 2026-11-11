@@ -45,7 +45,7 @@ function feature.toggle()
   if shell.isOpen("keys") then return shell.close() end
   local bindings = keymap.read(AEROSPACE_CONFIG)
   keyListBindings = bindings
-  local layout = keymap.layout(keymap.lines(keymap.rows(bindings, feature.launchers)), hs.screen.mainScreen():frame())
+  local layout = keymap.layout(keymap.lines(keymap.rows(bindings, feature.launchers)), shell.screen():frame())
   shell.show("keys", shell.centered(layout.w, layout.h), keymap.html(bindings, feature.launchers, layout.columns), onKeyListMessage)
 end
 

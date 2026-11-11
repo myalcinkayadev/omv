@@ -22,10 +22,18 @@ local function waitingSessions()
   return sessions
 end
 
+local function running(bundle)
+  return hs.application.get(bundle) ~= nil
+end
+
+local function runScript(script)
+  local ok, found = hs.osascript.applescript(script)
+  return ok and found ~= false
+end
+
 local function focus(row)
-  local script = claudewait.focusScript(row.id)
-  if not (script and hs.osascript.applescript(script)) then
-    shell.alert("Claude waits in " .. row.label .. ", outside Ghostty", 2)
+  if not claudewait.focus(row.id, running, runScript) then
+    shell.alert("Claude waits in " .. row.label .. ", outside Ghostty, iTerm2 or Terminal", 2)
   end
 end
 
@@ -37,7 +45,7 @@ function feature.focus()
   shell.show("claude", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows, #rows)),
     card.html({ prompt = "Waiting…", rows = rows, compact = true }), function(message)
       if message.type ~= "choose" then return shell.close() end
-      -- Leave focus to Ghostty, rather than handing it back to the app open before.
+      -- Leave focus to the terminal, rather than handing it back to the app open before.
       shell.leaveFocus()
       shell.close()
       for _, row in ipairs(rows) do

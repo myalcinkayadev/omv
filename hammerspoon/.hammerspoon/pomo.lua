@@ -16,6 +16,12 @@ function pomo.breakSeconds(count)
   return (count > 0 and count % GOAL == 0) and pomo.LONG_BREAK_SECONDS or pomo.BREAK_SECONDS
 end
 
+-- A running break's full length, for its progress line. A typed break is 5 minutes whatever
+-- the count, so its own length wins; one saved before lengths existed gets the count's.
+function pomo.breakLength(reminder, count)
+  return reminder.length or pomo.breakSeconds(count)
+end
+
 -- True in a pomo's last 30 seconds, when the bar gives a quiet heads-up.
 function pomo.warning(reminder, now)
   if reminder.kind ~= "pomo" and reminder.kind ~= "postponed" then return false end

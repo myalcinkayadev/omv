@@ -16,7 +16,8 @@ local NOTE_FOLDERS = { { name = "00 - Daily", label = "Daily" }, { name = "Inbox
 local NOTE_LIST_ROWS = 10
 
 -- file is the note opened for editing: { path, name, modified, original, text }, nil for a new note.
-local note = { draft = "", armed = false, file = nil }
+local note = { armed = false, file = nil }
+local DRAFT_FILE = shell.STATE_DIR .. "/note-draft"
 
 local function exists(path)
   local file = io.open(path, "r")
@@ -25,14 +26,27 @@ local function exists(path)
   return true
 end
 
+-- The folder is made only when the file can't be opened, since a draft is written on every edit.
 local function write(path, content)
-  os.execute("/bin/mkdir -p '" .. path:match("^(.*)/") .. "'")
   local file = io.open(path, "w")
+  if not file then
+    os.execute("/bin/mkdir -p '" .. path:match("^(.*)/") .. "'")
+    file = io.open(path, "w")
+  end
   if not file then return false end
   file:write(content)
   file:close()
   return true
 end
+
+-- The draft is saved as it changes, so it survives a reload of this config, and its file
+-- goes once there is nothing left to keep.
+local function setDraft(text)
+  note.draft = text
+  if text:find("%S") then write(DRAFT_FILE, text) else os.remove(DRAFT_FILE) end
+end
+
+note.draft = shell.readText(DRAFT_FILE) or ""
 
 local function modified(path)
   return hs.fs.attributes(path, "modification")
@@ -56,7 +70,7 @@ local function submit(text)
   if not quicknote.entry(text, os.time()) then return shell.close() end
   shell.close()
   if not save(text) then return shell.alert("Could not write the note", 1.2) end
-  note.draft = ""
+  setDraft("")
   shell.alert("Noted", 1.2)
 end
 
@@ -129,7 +143,7 @@ end
 
 onMessage = function(message)
   if message.type == "draft" then
-    if note.file then note.file.text = message.id else note.draft = message.id end
+    if note.file then note.file.text = message.id else setDraft(message.id) end
     note.armed = false
   elseif message.type == "resize" then
     resize(message.id)
@@ -138,7 +152,7 @@ onMessage = function(message)
   elseif message.type == "open" then
     showList()
   elseif message.type == "discard" then
-    note.draft = ""
+    setDraft("")
     shell.close()
   end
 end

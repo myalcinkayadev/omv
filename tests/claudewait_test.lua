@@ -27,10 +27,44 @@ check.that("should hint now under a minute",
 check.that("should list no rows when every Claude has ended", #claudewait.rows(sessions, function() return false end, 400) == 0)
 check.that("should list no rows when no session waits", #claudewait.rows({}, alive, 400) == 0)
 
+local GHOSTTY, ITERM, TERMINAL = "com.mitchellh.ghostty", "com.googlecode.iterm2", "com.apple.Terminal"
+local function everyTerminal() return true end
+local function scriptFor(bundle, tty)
+  for _, entry in ipairs(claudewait.focusScripts(tty)) do
+    if entry.bundle == bundle then return entry.script end
+  end
+end
+
+check.that("should try Ghostty first when several terminals run",
+  claudewait.focusScripts("/dev/ttys009")[1].bundle == GHOSTTY)
 check.that("should focus the Ghostty terminal on that tty",
-  claudewait.focusScript("/dev/ttys009") == 'tell application "Ghostty" to focus (first terminal whose tty is "/dev/ttys009")')
-check.that("should give no script for a session outside a terminal", claudewait.focusScript("-") == nil)
-check.that("should give no script for a tty that is not a plain device path",
-  claudewait.focusScript('/dev/ttys1" & do shell script "x') == nil)
+  check.contains(scriptFor(GHOSTTY, "/dev/ttys009"), 'first terminal whose tty is "/dev/ttys009"'))
+check.that("should focus the iTerm2 session on that tty",
+  check.contains(scriptFor(ITERM, "/dev/ttys009"), 'tty of aSession is "/dev/ttys009"'))
+check.that("should focus the Terminal tab on that tty",
+  check.contains(scriptFor(TERMINAL, "/dev/ttys009"), 'tty of aTab is "/dev/ttys009"'))
+check.that("should give no scripts for a session outside a terminal", #claudewait.focusScripts("-") == 0)
+check.that("should give no scripts for a tty that isn't a plain device path",
+  #claudewait.focusScripts('/dev/ttys1" & do shell script "x') == 0)
+
+local tried = {}
+local function recording(found)
+  tried = {}
+  return function(script)
+    tried[#tried + 1] = script
+    return script == found
+  end
+end
+claudewait.focus("/dev/ttys009", function(bundle) return bundle == TERMINAL end, recording(nil))
+check.that("should skip a terminal that isn't running",
+  #tried == 1 and tried[1] == scriptFor(TERMINAL, "/dev/ttys009"))
+claudewait.focus("/dev/ttys009", everyTerminal, recording(scriptFor(ITERM, "/dev/ttys009")))
+check.that("should stop at the first terminal that finds the tty", #tried == 2)
+check.that("should report success when a terminal finds the tty",
+  claudewait.focus("/dev/ttys009", everyTerminal, recording(scriptFor(TERMINAL, "/dev/ttys009"))) == true)
+check.that("should report failure when no terminal has the tty",
+  claudewait.focus("/dev/ttys009", everyTerminal, recording(nil)) == false)
+check.that("should report failure for a session outside a terminal",
+  claudewait.focus("-", everyTerminal, recording(nil)) == false)
 
 check.finish()

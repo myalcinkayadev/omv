@@ -85,12 +85,14 @@ function reminders.short(text)
   return (table.concat(characters, "", 1, SHORT_CHARACTERS - 1):gsub("%s+$", "")) .. "…"
 end
 
--- One reminder per line: due time, the text, then the kind when it has one, split by tabs.
+-- One reminder per line: due time, the text, then the kind when it has one, and after the
+-- kind a break's length in seconds, split by tabs.
 function reminders.encode(list)
   local lines = {}
   for _, reminder in ipairs(reminders.sorted(list)) do
     local line = reminder.due .. "\t" .. reminder.text:gsub("[\t\n]", " ")
     if reminder.kind then line = line .. "\t" .. reminder.kind end
+    if reminder.kind and reminder.length then line = line .. "\t" .. reminder.length end
     lines[#lines + 1] = line
   end
   return table.concat(lines, "\n")
@@ -100,8 +102,11 @@ end
 function reminders.decode(text, now)
   local list = {}
   for due, rest in text:gmatch("(%d+)\t([^\n]*)") do
-    local message, kind = rest:match("^([^\t]*)\t(%a+)$")
-    if tonumber(due) > now then list[#list + 1] = { due = tonumber(due), text = message or rest, kind = kind } end
+    local message, kind, length = rest:match("^([^\t]*)\t(%a+)\t(%d+)$")
+    if not message then message, kind = rest:match("^([^\t]*)\t(%a+)$") end
+    if tonumber(due) > now then
+      list[#list + 1] = { due = tonumber(due), text = message or rest, kind = kind, length = length and tonumber(length) }
+    end
   end
   return reminders.sorted(list)
 end

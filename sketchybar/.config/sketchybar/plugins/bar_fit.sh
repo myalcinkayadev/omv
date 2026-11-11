@@ -26,13 +26,18 @@ rects() {
 }
 
 # Each display needs room up to its notch's right edge, so the worst one decides.
+# An item's left edge is counted from the main display's corner, not its own display's, so
+# the display's own left edge is taken off: on a display placed to the left it is negative.
 need=0
 for display in $(sketchybar --query displays | jq -r '.[]."arrangement-id"'); do
-  width=$(sketchybar --query displays | jq -r --argjson id "$display" '.[] | select(."arrangement-id" == $id) | .frame.w')
+  # shellcheck disable=SC2046
+  set -- $(sketchybar --query displays | jq -r --argjson id "$display" '.[] | select(."arrangement-id" == $id) | "\(.frame.x) \(.frame.w)"')
+  display_left=$1
+  width=$2
   leftmost=$(for name in clock battery volume wifi ethernet weather claude_usage github_prs claude_waiting keep_awake reminder meeting; do rects "$name"; done |
     awk -v d="$display" '$1 == d { if (min == "" || $2 < min) min = $2 } END { print min }')
   [ -n "$leftmost" ] || continue
-  short=$(awk -v w="$width" -v n="$notch_width" -v l="$leftmost" 'BEGIN { printf "%d", w / 2 + n / 2 - l }')
+  short=$(awk -v w="$width" -v n="$notch_width" -v l="$leftmost" -v x="$display_left" 'BEGIN { printf "%d", w / 2 + n / 2 - (l - x) }')
   [ "$short" -gt "$need" ] && need=$short
 done
 [ "$need" -gt 0 ] || exit 0

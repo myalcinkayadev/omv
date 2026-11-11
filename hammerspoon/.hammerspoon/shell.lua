@@ -25,8 +25,16 @@ shell.ALERT_STYLE = {
   textSize = 15,
 }
 
+-- The screen a card or alert opens on: the one the pointer is on. The bar is on every
+-- screen, and a click on it doesn't move focus, so the focused screen could be the other
+-- one. For a key it is the same screen, since AeroSpace moves the pointer along when focus
+-- changes screen.
+function shell.screen()
+  return hs.mouse.getCurrentScreen() or hs.screen.mainScreen()
+end
+
 function shell.alert(text, seconds)
-  hs.alert.show(text, shell.ALERT_STYLE, seconds)
+  hs.alert.show(text, shell.ALERT_STYLE, shell.screen(), seconds)
 end
 
 function shell.run(command, arguments)
@@ -94,12 +102,12 @@ end
 
 -- Right-aligned just below the 36pt bar, under the status items.
 function shell.anchored(width, height)
-  local screen = hs.screen.mainScreen():fullFrame()
+  local screen = shell.screen():fullFrame()
   return hs.geometry.rect(screen.x + screen.w - width - 10, screen.y + 40, width, height)
 end
 
 function shell.centered(width, height)
-  local screen = hs.screen.mainScreen():frame()
+  local screen = shell.screen():frame()
   return hs.geometry.rect(screen.x + (screen.w - width) / 2, screen.y + (screen.h - height) / 3, width, height)
 end
 

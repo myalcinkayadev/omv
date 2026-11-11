@@ -1,8 +1,8 @@
 #!/bin/sh
-# Claude Code hook. "wait" marks the session as waiting for you (Stop, Notification), and
-# "clear" unmarks it (UserPromptSubmit, PostToolUse, SessionEnd). Saves only Claude's PID,
-# its terminal and the folder name, for the bar. Prints nothing, since Claude reads hook
-# output, and always exits 0.
+# Claude Code hook. "wait" marks the session as waiting for you (Stop, and a Notification
+# that asks for you), and "clear" unmarks it (UserPromptSubmit, PostToolUse, SessionEnd).
+# Saves only Claude's PID, its terminal and the folder name, for the bar. Prints nothing,
+# since Claude reads hook output, and always exits 0.
 
 PATH="$PATH:/opt/homebrew/bin"
 state_dir="$HOME/.local/state/omv/claude-waiting"
@@ -43,7 +43,20 @@ claude_terminal() {
   echo "$PPID -"
 }
 
+# Stop has no notification type, and neither does a notification from an older Claude Code.
+# Other notifications count only when they ask for you: one that an agent finished or
+# that sign-in worked would mark a session that is still working.
+asks_for_you() {
+  case $(printf '%s' "$input" | jq -r '.notification_type // empty' 2>/dev/null) in
+    '' | permission_prompt | elicitation_dialog | elicitation_url_dialog | agent_needs_input) return 0 ;;
+    # Sent a minute after Claude stops, so a session already recorded keeps its start time.
+    idle_prompt) [ ! -e "$file" ] ;;
+    *) return 1 ;;
+  esac
+}
+
 wait_session() {
+  asks_for_you || exit 0
   cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)
   folder=$(printf '%s' "${cwd##*/}" | tr '\t\n' '  ')
   # shellcheck disable=SC2046
