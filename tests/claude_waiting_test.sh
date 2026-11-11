@@ -209,7 +209,35 @@ survives_invalid_json() {
   printf 'not json' | assert_exit_zero run_hook wait
 }
 
+records_the_agent_given() {
+  stub_ps
+  event_json Stop | run_in_sandbox "$HOOK" wait codex
+  [ "$(cut -f6 "$(state_file)")" = codex ] || fail "saved: $(cat "$(state_file)")"
+}
+
+records_claude_without_a_name() {
+  stub_ps
+  event_json Stop | run_hook wait
+  [ "$(cut -f6 "$(state_file)")" = claude ] || fail "saved: $(cat "$(state_file)")"
+}
+
+records_asks_on_permission_request() {
+  stub_ps
+  event_json PermissionRequest | run_in_sandbox "$HOOK" wait codex
+  [ "$(state_of)" = asks ] || fail "saved: $(cat "$(state_file)")"
+}
+
+refuses_an_agent_name_that_isnt_plain() {
+  stub_ps
+  event_json Stop | run_in_sandbox "$HOOK" wait 'co/dex'
+  [ "$(cut -f6 "$(state_file)")" = claude ] || fail "saved: $(cat "$(state_file)")"
+}
+
 run_case 'should record a session as working when you send a prompt' records_working_on_prompt
+run_case 'should record the agent name it was given' records_the_agent_given
+run_case 'should record claude when no name is given' records_claude_without_a_name
+run_case 'should record a session as asking on PermissionRequest' records_asks_on_permission_request
+run_case "should record claude for an agent name that isn't plain" refuses_an_agent_name_that_isnt_plain
 run_case 'should record a session as done when Claude stops' records_done_on_stop
 run_case 'should record a session as asking when Claude asks for approval' records_asks_on_permission
 run_case 'should record a session as asking when the notification has no type' records_asks_without_a_type

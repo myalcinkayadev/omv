@@ -18,6 +18,12 @@ case $session in
   '' | *[!A-Za-z0-9-]*) exit 0 ;;
 esac
 file="$state_dir/$session"
+# The agent the session belongs to, such as codex, from the hook's second argument. Only
+# a plain name is kept, since it is written into the state file.
+case ${2:-} in
+  '' | *[!a-z0-9-]*) agent=claude ;;
+  *) agent=$2 ;;
+esac
 
 field() {
   printf '%s' "$input" | jq -r ".$1 // empty" 2>/dev/null
@@ -37,6 +43,8 @@ saved_state() {
 next_state() {
   case $(field hook_event_name) in
     UserPromptSubmit | PostToolUse) echo working ;;
+    # Codex asks for approval with PermissionRequest; Claude Code with a Notification.
+    PermissionRequest) echo asks ;;
     Stop) echo done ;;
     SessionEnd) echo end ;;
     Notification)
@@ -83,7 +91,7 @@ save() {
   # shellcheck disable=SC2046
   set -- $(claude_terminal)
   mkdir -p "$state_dir" 2>/dev/null
-  printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "${folder:-Claude}" "$(date +%s)" "$state" > "$file" 2>/dev/null
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "${folder:-Claude}" "$(date +%s)" "$state" "$agent" > "$file" 2>/dev/null
 }
 
 state=$(next_state)

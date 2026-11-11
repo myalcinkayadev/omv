@@ -12,13 +12,15 @@ claudewait.STATE_DIR = os.getenv("HOME") .. "/.local/state/omv/claude-sessions"
 -- working: busy, needs nothing from you. Listed in this order.
 local RANK = { asks = 1, done = 2, working = 3 }
 
--- One saved line: PID, tty ("-" outside a terminal), folder, since and state, split by
--- tabs. A line saved before states existed has no state, and was saved when Claude waited.
+-- One saved line: PID, tty ("-" outside a terminal), folder, since, state and agent, split
+-- by tabs. A line saved before states existed has no state, and was saved when Claude
+-- waited; one saved before agents existed is Claude's.
 function claudewait.parse(text)
   local pid, tty, folder, since, rest = text:match("^(%d+)\t([^\t]*)\t([^\t]*)\t(%d+)(.*)")
   if not pid then return nil end
-  local state = rest:match("^\t(%a+)")
-  return { pid = tonumber(pid), tty = tty, folder = folder, since = tonumber(since), state = RANK[state] and state or "done" }
+  local state, agent = rest:match("^\t(%a+)\t?([%w%-]*)")
+  return { pid = tonumber(pid), tty = tty, folder = folder, since = tonumber(since), state = RANK[state] and state or "done",
+    agent = (agent and agent ~= "") and agent or "claude" }
 end
 
 -- Card rows for the live sessions: asking first, then done, then working, and in each the
@@ -39,7 +41,8 @@ function claudewait.rows(sessions, alive, now)
     local state = session.state or "done"
     local minutes = math.floor((now - session.since) / 60)
     rows[#rows + 1] = { id = session.tty, pid = session.pid, label = session.folder, state = state, waiting = state ~= "working",
-      hint = state .. " · " .. (minutes < 1 and "now" or minutes .. " min") }
+      hint = ((session.agent and session.agent ~= "claude") and (session.agent .. " · ") or "")
+        .. state .. " · " .. (minutes < 1 and "now" or minutes .. " min") }
   end
   return rows
 end

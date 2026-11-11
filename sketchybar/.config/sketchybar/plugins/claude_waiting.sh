@@ -20,7 +20,7 @@ fi
 waiting() {
   for file in "$state_dir"/*; do
     [ -f "$file" ] || continue
-    IFS="$tab" read -r pid _ folder since state < "$file"
+    IFS="$tab" read -r pid _ folder since state _ < "$file"
     if ! kill -0 "$pid" 2>/dev/null; then
       rm -f "$file" "$state_dir/.seen-${file##*/}"
       continue

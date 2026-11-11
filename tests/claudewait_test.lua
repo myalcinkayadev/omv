@@ -131,4 +131,15 @@ check.that("should not notify again for a session that was already asking",
 check.that("should not notify for the session in view",
   #claudewait.newlyAsking({ session("a", "working", "/dev/ttys004") }, { session("a", "asks", "/dev/ttys004") }, "/dev/ttys004") == 0)
 
+-- Sessions of other agents, such as Codex, carry the agent's name.
+check.that("should read a line's agent", claudewait.parse("4242\t/dev/ttys009\tomv\t100\tasks\tcodex\n").agent == "codex")
+check.that("should read claude for a line without an agent", claudewait.parse("4242\t/dev/ttys009\tomv\t100\tasks\n").agent == "claude")
+check.that("should still read the state of a line with an agent", claudewait.parse("4242\t/dev/ttys009\tomv\t100\tasks\tcodex\n").state == "asks")
+local agentRows = claudewait.rows({
+  { pid = 1, tty = "/dev/ttys001", folder = "omv", since = 340, state = "asks", agent = "codex" },
+  { pid = 2, tty = "/dev/ttys002", folder = "api", since = 340, state = "done", agent = "claude" },
+}, function() return true end, 400)
+check.that("should hint the agent's name for agents other than Claude", agentRows[1].hint == "codex · asks · 1 min")
+check.that("should hint no agent name for Claude", agentRows[2].hint == "done · 1 min")
+
 check.finish()

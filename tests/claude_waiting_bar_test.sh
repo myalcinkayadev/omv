@@ -135,7 +135,15 @@ ignores_a_seen_file_of_an_ended_session() {
   assert_called 'sketchybar --set claude_waiting drawing=on label=omv$'
 }
 
+reads_a_line_with_an_agent() {
+  mkdir -p "$(state_dir)"
+  printf '%s\t/dev/ttys009\tomv\t100\tasks\tcodex\n' $$ > "$(state_dir)/one"
+  run_plugin
+  assert_called 'sketchybar --set claude_waiting drawing=on label=\? omv$'
+}
+
 run_case 'should show the folder when one session waits' shows_the_folder
+run_case "should read a session saved with its agent's name" reads_a_line_with_an_agent
 run_case 'should hide a session marked seen at its current state' hides_a_seen_session
 run_case 'should show a seen session again once its state changes' shows_a_seen_session_after_a_change
 run_case "should ignore a seen file whose session has ended" ignores_a_seen_file_of_an_ended_session
