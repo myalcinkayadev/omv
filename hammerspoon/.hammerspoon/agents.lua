@@ -65,7 +65,7 @@ function agents.background(list)
       local folder = tostring(session.cwd or ""):match("([^/]+)/*$") or "?"
       local state = BACKGROUND_STATES[session.state] or tostring(session.state or "unknown")
       rows[#rows + 1] = { id = session.id, label = session.name or folder, state = state, cwd = session.cwd,
-        hint = folder .. " · " .. state, started = tonumber(session.startedAt) or 0 }
+        hint = folder .. " · " .. state, started = tonumber(session.startedAt) or 0, removable = true }
     end
   end
   table.sort(rows, function(a, b)
@@ -74,6 +74,25 @@ function agents.background(list)
     return a.started > b.started
   end)
   return rows
+end
+
+-- What claude runs to drop a background session from agent view: stop it, in case it still
+-- works, then remove it. Its conversation stays on disk, for claude --resume.
+function agents.removeCommands(id)
+  if not tostring(id or ""):match("^[%w%-]+$") then return nil end
+  return { "stop " .. id, "rm " .. id }
+end
+
+-- The card that asks before removing, Cancel first. A working session is stopped too.
+function agents.confirmRemove(row)
+  return {
+    prompt = "Remove " .. row.label .. "?",
+    rows = {
+      { id = "cancel", icon = "󰜺", label = "Cancel" },
+      { id = "remove", icon = "󰆴", label = row.state == "working" and "Stop and remove" or "Remove" },
+    },
+    selected = 1,
+  }
 end
 
 -- What claude needs to open a background session in a terminal. Only a plain id, as
@@ -274,6 +293,7 @@ local SCRIPT = [[
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") return send("close");
     if (event.key === "Enter") return send("choose", (row < 0 ? buttons[button] : sessions[row]).dataset.id);
+    if (event.key === "x" && row >= 0 && sessions[row].dataset.removable !== undefined) return send("remove", sessions[row].dataset.id);
     if (event.key === "ArrowRight" && row < 0) button = (button + 1) % buttons.length;
     else if (event.key === "ArrowLeft" && row < 0) button = (button - 1 + buttons.length) % buttons.length;
     else if (event.key === "ArrowDown" && sessions.length) row = Math.min(row + 1, sessions.length - 1);
@@ -300,7 +320,8 @@ local function sessionList(sessions, prefix, heading)
   local rows = {}
   for _, session in ipairs(sessions) do
     rows[#rows + 1] = '<div class="session ' .. card.escape(session.state or "") .. '" data-id="'
-      .. card.escape(prefix .. session.id) .. '"><span class=name>' .. card.escape(session.label)
+      .. card.escape(prefix .. session.id) .. '"' .. (session.removable and " data-removable" or "")
+      .. '><span class=name>' .. card.escape(session.label)
       .. "</span><span class=hint>" .. card.escape(session.hint or "") .. "</span></div>"
   end
   if not heading then return "<div class=live>" .. table.concat(rows) .. "</div>" end
@@ -319,7 +340,7 @@ function agents.html(model)
     .. "<span class=plan>" .. card.escape(model.plan or "") .. "</span></div>"
     .. limit("Session", usage.five) .. limit("Weekly", usage.seven)
     .. sessionList(model.sessions, SESSION_ID)
-    .. sessionList(model.background, BACKGROUND_ID, "BACKGROUND")
+    .. sessionList(model.background, BACKGROUND_ID, "BACKGROUND · x remove")
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 

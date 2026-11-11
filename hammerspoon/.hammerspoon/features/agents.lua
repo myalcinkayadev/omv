@@ -125,6 +125,46 @@ local function showProjects()
 end
 
 -- Opens a background session in a new Ghostty window, in its folder, with claude attach.
+-- Claude's background service runs only while a client is connected, and claude rm needs it.
+local function serviceRunning()
+  return (hs.execute(agents.shellQuote(CLAUDE) .. " daemon status 2>/dev/null") or ""):find("pid:") ~= nil
+end
+
+-- Stops and removes the session, then stops the service when it was started for this,
+-- leaving any other background session running.
+local function runRemoval(id, startedService)
+  for _, command in ipairs(agents.removeCommands(id)) do
+    hs.execute(agents.shellQuote(CLAUDE) .. " " .. command .. " 2>&1")
+  end
+  if startedService then hs.execute(agents.shellQuote(CLAUDE) .. " daemon stop --any --keep-workers 2>&1") end
+  showAgents()
+end
+
+local function removeBackground(id)
+  if not agents.removeCommands(id) then return shell.close() end
+  if serviceRunning() then return runRemoval(id, false) end
+  shell.alert("Removing…", 1.5)
+  -- Kept on the feature, so it isn't garbage-collected while it runs.
+  feature.service = hs.task.new(CLAUDE, nil, { "daemon", "run" })
+  feature.service:start()
+  -- The service takes a moment before it answers.
+  hs.timer.doAfter(2, function() runRemoval(id, true) end)
+end
+
+-- x on a background row asks first, with Cancel selected.
+local function confirmBackgroundRemoval(id)
+  for _, row in ipairs(backgroundRows) do
+    if row.id == id then
+      local screen = agents.confirmRemove(row)
+      return shell.show("agents-remove", shell.anchored(agents.WIDTH, shell.menuHeight(screen)), card.html(screen), function(message)
+        if message.type == "choose" and message.id == "remove" then return removeBackground(id) end
+        if message.type == "close" then return shell.close() end
+        showAgents()
+      end)
+    end
+  end
+end
+
 local function attachBackground(id)
   local arguments = agents.attachArguments(id)
   for _, row in ipairs(backgroundRows) do
@@ -165,6 +205,11 @@ local function showResume()
 end
 
 onAgentsMessage = function(message)
+  if message.type == "remove" then
+    local id = agents.backgroundId(message.id)
+    if id then return confirmBackgroundRemoval(id) end
+    return
+  end
   if message.type ~= "choose" then return shell.close() end
   if message.id == "agents.new" then return showProjects() end
   if message.id == "agents.resume" then return showResume() end
@@ -180,7 +225,7 @@ onAgentsMessage = function(message)
 end
 
 function feature.toggle()
-  if shell.isOpen("agents", "agents-projects", "agents-resume") then return shell.close() end
+  if shell.isOpen("agents", "agents-projects", "agents-resume", "agents-remove") then return shell.close() end
   showAgents()
 end
 
