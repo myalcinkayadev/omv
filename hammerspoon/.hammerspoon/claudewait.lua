@@ -136,4 +136,19 @@ function claudewait.seenNow(sessions, viewedTty)
   return seen
 end
 
+-- The sessions that have just started asking for you, from the sessions before and after a
+-- change. A session that finishes isn't among them: the pill already shows it. The one in
+-- the terminal you're looking at isn't either.
+function claudewait.newlyAsking(before, after, viewedTty)
+  local wasAsking = {}
+  for _, session in ipairs(before) do
+    if session.state == "asks" then wasAsking[session.id] = true end
+  end
+  local asking = {}
+  for _, session in ipairs(after) do
+    if session.state == "asks" and not wasAsking[session.id] and session.tty ~= viewedTty then asking[#asking + 1] = session end
+  end
+  return asking
+end
+
 return claudewait

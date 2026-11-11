@@ -120,4 +120,15 @@ check.that("should leave a session unseen when another terminal is in view", #cl
 check.that("should not mark a working session seen", #claudewait.seenNow(saved, "/dev/ttys003") == 0)
 check.that("should mark nothing seen when no terminal is in view", #claudewait.seenNow(saved, nil) == 0)
 
+-- A notification when a session starts asking, never when it finishes.
+local function session(id, state, tty) return { id = id, pid = 1, tty = tty or ("/dev/" .. id), folder = id, since = 1, state = state } end
+local asking = claudewait.newlyAsking({ session("a", "working") }, { session("a", "asks") }, nil)
+check.that("should notify for a session that starts asking", #asking == 1 and asking[1].id == "a")
+check.that("should notify for a new session that starts out asking", #claudewait.newlyAsking({}, { session("a", "asks") }, nil) == 1)
+check.that("should not notify for a session that finishes", #claudewait.newlyAsking({ session("a", "working") }, { session("a", "done") }, nil) == 0)
+check.that("should not notify again for a session that was already asking",
+  #claudewait.newlyAsking({ session("a", "asks") }, { session("a", "asks") }, nil) == 0)
+check.that("should not notify for the session in view",
+  #claudewait.newlyAsking({ session("a", "working", "/dev/ttys004") }, { session("a", "asks", "/dev/ttys004") }, "/dev/ttys004") == 0)
+
 check.finish()

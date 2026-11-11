@@ -2,7 +2,8 @@
 -- terminal, or with several waiting, lists them with the asking ones first, then the one
 -- waiting longest. Working sessions are left out here; the Agents card lists them too.
 -- While Ghostty is in front, the session in the terminal you're looking at is marked seen,
--- so it leaves the pill until its state changes.
+-- so it leaves the pill until its state changes. A session that starts asking for approval
+-- elsewhere gets a notification.
 
 local shell = require("shell")
 local card = require("card")
@@ -122,6 +123,20 @@ feature.appWatcher = hs.application.watcher.new(function(_, event, app)
     viewedTty = nil
     feature.viewTimer:stop()
   end
+end):start()
+
+-- A notification when a session starts asking, unless its terminal is the one in view.
+-- Clicking it goes to that session.
+local known = savedSessions()
+
+feature.stateWatcher = hs.pathwatcher.new(claudewait.STATE_DIR, function()
+  local now = savedSessions()
+  for _, session in ipairs(claudewait.newlyAsking(known, now, viewedTty)) do
+    local row = { id = session.tty, pid = session.pid, label = session.folder }
+    hs.notify.new(function() feature.focusRow(row) end,
+      { title = "omv · needs your approval", informativeText = session.folder, withdrawAfter = 0 }):send()
+  end
+  known = now
 end):start()
 
 return feature
