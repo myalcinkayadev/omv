@@ -143,6 +143,7 @@ local SEARCH_WORDS = {
   { "^Battery", "power charge" },
   { "^System menu", "lock sleep restart shut down log out reload" },
   { "^Go to any window", "switch find windows" },
+  { "^Clipboard history", "paste copy copied clipboard history" },
   { "^Keep the Mac awake", "caffeinate sleep" },
   { "^Drop%-down terminal", "quake ghostty" },
   { "^Finder at home", "files folder" },
