@@ -346,26 +346,24 @@ These tools take the keys system-wide, so apps never receive them:
 
 ### Requirements
 
-- Homebrew and `stow`, which `install.sh` checks for.
-- `jq`, used by the bar.
-- Xcode's Command Line Tools, for `swiftc`, used by the capture menu's text and color items and by the calendar's events.
-- The JetBrainsMono Nerd Font, in both the Mono and Propo variants.
-- The apps the keys and workspaces expect: Ghostty, Hammerspoon, Zed, Helium, Neovim and btop.
-
-`install.sh` installs only AeroSpace, SketchyBar, borders and SwipeAeroSpace. Everything else on this list must already be there.
+- [Homebrew](https://brew.sh). `install.sh` installs everything else from the `Brewfile`.
+- Xcode's Command Line Tools, for `swiftc`, used by the capture menu's text and color items, the calendar's events and the Sound card's meter: `xcode-select --install`. Homebrew can't install them.
 
 ### Run it
 
 ```sh
-./install.sh
+./install.sh             # everything, including Helium and Zed
+./install.sh --no-apps   # without Helium and Zed, if you use other apps
+./install.sh --dry-run   # print each step, change nothing
 ```
 
 It's safe to run again. It:
 
-1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, then installs AeroSpace, SketchyBar, borders and SwipeAeroSpace from them.
-2. Links all eight packages with Stow.
-3. Adds the Claude usage line to your status line wrapper.
-4. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, lets Ctrl+Cmd drag a window from anywhere, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
+1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, which Homebrew requires before installing from them.
+2. Installs everything in the `Brewfile` with `brew bundle`: AeroSpace, SketchyBar, borders, SwipeAeroSpace, Hammerspoon, Ghostty, the JetBrainsMono Nerd Font, `stow`, `jq`, `gh`, `luajit`, `btop`, Neovim and `blueutil`. Then the apps the keys open, in `Brewfile.apps`: Helium and Zed.
+3. Links all eight packages with Stow.
+4. Adds the Claude usage line to your status line wrapper, and the hooks that tell the bar when a session waits.
+5. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, lets Ctrl+Cmd drag a window from anywhere, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
 
 Then, by hand:
 

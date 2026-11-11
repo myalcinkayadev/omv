@@ -1,0 +1,6 @@
+# The apps omv's keys open: Option+Shift+Enter opens the browser, Option+Shift+N the editor.
+# To use others, skip this file with ./install.sh --no-apps and name yours in
+# ~/.config/omv/apps (see the README).
+
+cask "helium-browser"
+cask "zed"

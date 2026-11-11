@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Installs AeroSpace, SketchyBar, borders and SwipeAeroSpace, links every config with Stow and applies the
-# macOS settings. Safe to run again. uninstall.sh reverses it.
+# Usage: install.sh [--dry-run] [--no-apps]
+# Installs everything in the Brewfile, and the apps in Brewfile.apps unless --no-apps, links
+# every config with Stow and applies the macOS settings. --dry-run prints each step instead
+# of running it. Safe to run again. uninstall.sh reverses it.
 
 set -euo pipefail
 
@@ -8,6 +10,29 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly REPO_DIR
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap)
 readonly PACKAGES=(aerospace sketchybar claude swipeaerospace ghostty nvim btop hammerspoon)
+
+DRY_RUN=false
+APPS=true
+for argument in "$@"; do
+  case $argument in
+    --dry-run) DRY_RUN=true ;;
+    --no-apps) APPS=false ;;
+    *)
+      echo "usage: install.sh [--dry-run] [--no-apps]" >&2
+      exit 2
+      ;;
+  esac
+done
+readonly DRY_RUN APPS
+
+# Runs a step, or with --dry-run only says what it would run.
+step() {
+  if $DRY_RUN; then
+    echo "would run: $*"
+    return 0
+  fi
+  "$@"
+}
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 && return 0
@@ -17,20 +42,19 @@ require_command() {
 
 install_tools() {
   local tap
+  # Homebrew refuses to install from a third-party tap until it's trusted.
   for tap in "${TAPS[@]}"; do
-    brew tap "$tap"
-    brew trust --tap "$tap"
+    step brew tap "$tap"
+    step brew trust --tap "$tap"
   done
-  brew install --cask nikitabobko/tap/aerospace
-  brew install felixkratz/formulae/sketchybar
-  brew install felixkratz/formulae/borders
-  brew install --cask mediosz/tap/swipeaerospace
+  step brew bundle --file="$REPO_DIR/Brewfile"
+  if $APPS; then step brew bundle --file="$REPO_DIR/Brewfile.apps"; fi
 }
 
 link_configs() {
   # Stow would otherwise replace a missing ~/.claude with a link into this repo.
-  mkdir -p "$HOME/.claude"
-  stow --dir="$REPO_DIR" --target="$HOME" "${PACKAGES[@]}" && return 0
+  step mkdir -p "$HOME/.claude"
+  step stow --dir="$REPO_DIR" --target="$HOME" "${PACKAGES[@]}" && return 0
   echo "install.sh: stow could not link the configs. Move the files it named, then run this again." >&2
   exit 1
 }
@@ -38,29 +62,29 @@ link_configs() {
 # Codex, OpenCode and pi report their sessions to the bar too, each only when it's set up
 # here. Their plugin folders are made first, so Stow links the file, not the folder.
 link_agents() {
-  if [ -d "$HOME/.codex" ]; then "$REPO_DIR/codex-hooks.sh" add; fi
+  if [ -d "$HOME/.codex" ]; then step "$REPO_DIR/codex-hooks.sh" add; fi
   if [ -d "$HOME/.config/opencode" ]; then
-    mkdir -p "$HOME/.config/opencode/plugins"
-    stow --dir="$REPO_DIR" --target="$HOME" opencode
+    step mkdir -p "$HOME/.config/opencode/plugins"
+    step stow --dir="$REPO_DIR" --target="$HOME" opencode
   fi
   if [ -d "$HOME/.pi/agent" ]; then
-    mkdir -p "$HOME/.pi/agent/extensions"
-    stow --dir="$REPO_DIR" --target="$HOME" pi
+    step mkdir -p "$HOME/.pi/agent/extensions"
+    step stow --dir="$REPO_DIR" --target="$HOME" pi
   fi
 }
 
 apply_macos_settings() {
-  defaults write NSGlobalDomain _HIHideMenuBar -bool true
-  defaults write com.apple.spaces spans-displays -bool true
+  step defaults write NSGlobalDomain _HIHideMenuBar -bool true
+  step defaults write com.apple.spaces spans-displays -bool true
   # New windows appear at once instead of zooming in.
-  defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false
+  step defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false
   # Ctrl+Cmd+drag moves a window by any part of it, which helps with floating windows.
-  defaults write NSGlobalDomain NSWindowShouldDragOnGesture -bool true
+  step defaults write NSGlobalDomain NSWindowShouldDragOnGesture -bool true
   # SwipeAeroSpace owns the three-finger swipe, so macOS's own would fire a second action.
-  defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 0
-  defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture -int 0
-  defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture -int 0
-  killall SystemUIServer || true
+  step defaults write com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture -int 0
+  step defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad TrackpadThreeFingerHorizSwipeGesture -int 0
+  step defaults -currentHost write NSGlobalDomain com.apple.trackpad.threeFingerHorizSwipeGesture -int 0
+  step killall SystemUIServer || true
 }
 
 print_manual_steps() {
@@ -82,11 +106,12 @@ EOF
 }
 
 require_command brew
-require_command stow
 install_tools
+# The Brewfile installs Stow, so it's only needed from here on.
+$DRY_RUN || require_command stow
 link_configs
-"$REPO_DIR/claude-usage.sh" add
-"$REPO_DIR/claude-hooks.sh" add
+step "$REPO_DIR/claude-usage.sh" add
+step "$REPO_DIR/claude-hooks.sh" add
 link_agents
 apply_macos_settings
-print_manual_steps
+$DRY_RUN || print_manual_steps

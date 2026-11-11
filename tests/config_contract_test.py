@@ -350,5 +350,18 @@ class ConfigContract(unittest.TestCase):
         self.assertEqual(stale, [])
 
 
+    def test_should_list_in_the_brewfiles_every_tool_and_app_doctor_checks(self) -> None:
+        doctor = (REPO / "doctor.sh").read_text(encoding="utf-8")
+        brewfiles = (REPO / "Brewfile").read_text(encoding="utf-8") + (REPO / "Brewfile.apps").read_text(encoding="utf-8")
+        tools = re.search(r"for tool in ([^;]+); do", doctor).group(1).split()
+        apps = re.search(r"for app in ([^;]+); do", doctor).group(1).split()
+        # swiftc comes with Xcode's Command Line Tools, which Homebrew doesn't install.
+        missing = [name for name in tools + apps if name != "swiftc" and name.lower() not in brewfiles.lower()]
+        self.assertEqual(missing, [])
+
+    def test_should_keep_the_helium_and_zed_apps_out_of_the_main_brewfile(self) -> None:
+        installs = re.findall(r'^(?:brew|cask) "([^"]+)"', (REPO / "Brewfile").read_text(encoding="utf-8"), re.M)
+        self.assertEqual([name for name in installs if name in ("helium-browser", "zed")], [])
+
 if __name__ == "__main__":
     unittest.main()

@@ -57,7 +57,7 @@ trusts_taps_before_installing() {
   run_in_sandbox "$INSTALL" >/dev/null
   local last_trust first_install
   last_trust=$(grep -n '^brew trust' "$CALL_LOG" | tail -n 1 | cut -d: -f1)
-  first_install=$(grep -n '^brew install' "$CALL_LOG" | head -n 1 | cut -d: -f1)
+  first_install=$(grep -n '^brew bundle' "$CALL_LOG" | head -n 1 | cut -d: -f1)
   assert_called '^brew trust --tap nikitabobko/tap$'
   assert_called '^brew trust --tap felixkratz/formulae$'
   [ "$last_trust" -lt "$first_install" ] || fail 'a tap was trusted after brew install ran'
@@ -103,14 +103,37 @@ trusts_swipe_tap() {
   assert_called '^brew trust --tap mediosz/tap$'
 }
 
-installs_borders() {
+installs_from_brewfile() {
   run_in_sandbox "$INSTALL" >/dev/null
-  assert_called '^brew install felixkratz/formulae/borders$'
+  assert_called "^brew bundle --file=$REPO_DIR/Brewfile$"
 }
 
-installs_swipe_cask() {
+installs_the_apps() {
   run_in_sandbox "$INSTALL" >/dev/null
-  assert_called '^brew install --cask mediosz/tap/swipeaerospace$'
+  assert_called "^brew bundle --file=$REPO_DIR/Brewfile.apps$"
+}
+
+skips_the_apps_when_asked() {
+  run_in_sandbox "$INSTALL" --no-apps >/dev/null
+  assert_not_called 'Brewfile\.apps'
+}
+
+changes_nothing_on_a_dry_run() {
+  run_in_sandbox "$INSTALL" --dry-run >/dev/null
+  assert_not_called '^(brew|stow|defaults|killall) '
+  [ -z "$(ls -A "$HOME_DIR")" ] || fail "created: $(ls -A "$HOME_DIR")"
+}
+
+lists_steps_on_a_dry_run() {
+  local output
+  output=$(run_in_sandbox "$INSTALL" --dry-run)
+  [[ $output == *"would run: brew bundle --file=$REPO_DIR/Brewfile"* ]] || fail "missing step in: $output"
+}
+
+rejects_an_unknown_option() {
+  local status=0
+  run_in_sandbox "$INSTALL" --bogus >/dev/null 2>&1 || status=$?
+  [ "$status" = 2 ] || fail "exit status $status"
 }
 
 turns_off_builtin_trackpad_swipe() {
@@ -174,8 +197,6 @@ run_case 'should add the usage line when installing' adds_usage_line
 run_case "should add the waiting hooks to Claude's settings when installing" adds_waiting_hooks
 run_case 'should apply both macOS settings when linking succeeds' applies_macos_settings
 run_case 'should trust mediosz/tap' trusts_swipe_tap
-run_case 'should install borders' installs_borders
-run_case 'should install the swipeaerospace cask' installs_swipe_cask
 run_case 'should turn off the three-finger swipe on the built-in trackpad' turns_off_builtin_trackpad_swipe
 run_case 'should turn off the three-finger swipe on the Magic Trackpad' turns_off_magic_trackpad_swipe
 run_case 'should turn off the three-finger swipe for the current host' turns_off_current_host_swipe
@@ -185,6 +206,12 @@ run_case 'should succeed when executed twice' is_safe_to_rerun
 run_case 'should exit non-zero when stow finds a conflicting real file' fails_on_stow_conflict
 run_case 'should skip macOS and trackpad settings when stow finds a conflicting real file' stops_before_settings_on_stow_conflict
 run_case 'should report the failure when stow finds a conflicting real file' reports_stow_conflict
+run_case 'should install the tools from the Brewfile' installs_from_brewfile
+run_case 'should install the apps from Brewfile.apps' installs_the_apps
+run_case 'should skip Brewfile.apps with --no-apps' skips_the_apps_when_asked
+run_case 'should change nothing with --dry-run' changes_nothing_on_a_dry_run
+run_case 'should list each step with --dry-run' lists_steps_on_a_dry_run
+run_case 'should exit 2 on an unknown option' rejects_an_unknown_option
 run_case 'should add the Codex hooks when Codex is set up' adds_codex_hooks
 run_case "should leave Codex alone when it isn't set up" leaves_codex_alone
 run_case 'should link the OpenCode plugin when OpenCode is set up' links_opencode_plugin
