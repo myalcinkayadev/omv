@@ -26,6 +26,7 @@ local batteryCard = require("features.battery")
 local agentsCard = require("features.agents")
 local waitingClaude = require("features.waiting")
 local quickNote = require("features.note")
+local bluetoothCard = require("features.bluetooth")
 local hungryProcesses = require("features.procs")
 
 local SUPER = { "alt" }
@@ -67,6 +68,7 @@ bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "T
 bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", "Cards", run(shell.SKETCHYBAR, { "--bar", "hidden=toggle" }))
 bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi", "Cards", networkCards.toggleWifi)
+bindKey(SUPER_SHIFT, "y", "Option+Shift+Y", "Bluetooth", "Cards", bluetoothCard.toggle)
 bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet", "Cards", networkCards.toggleEthernet)
 bindKey(SUPER_SHIFT, "v", "Option+Shift+V", "Sound", "Cards", soundCard.toggle)
 bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather", "Cards", weatherCard.toggle)
@@ -99,6 +101,7 @@ end
 omvToggleSystemMenu = later(systemMenu.toggle)
 omvToggleSound = later(soundCard.toggle)
 omvToggleWifi = later(networkCards.toggleWifi)
+omvToggleBluetooth = later(bluetoothCard.toggle)
 omvToggleEthernet = later(networkCards.toggleEthernet)
 omvToggleWeather = later(weatherCard.toggle)
 omvToggleBattery = later(batteryCard.toggle)

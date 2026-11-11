@@ -77,6 +77,13 @@ sketchybar --add item volume right \
   --set volume "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/volume.sh" \
   --subscribe volume volume_change mouse.clicked mouse.scrolled
 
+# Bluetooth, on or off, drawn only when blueutil is installed. The card redraws it with the
+# bluetooth_change event after a change; the timer catches changes made elsewhere.
+sketchybar --add event bluetooth_change \
+  --add item bluetooth right \
+  --set bluetooth "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/bluetooth.sh" \
+  --subscribe bluetooth bluetooth_change system_woke mouse.clicked
+
 # SketchyBar's wifi_change event has not worked since macOS Sonoma, hence the timer.
 # Clicking it opens the Wi-Fi card, which Hammerspoon draws.
 sketchybar --add item wifi right \

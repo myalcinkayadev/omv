@@ -60,6 +60,11 @@ expect_report() {
   [[ $output == *"$1"* ]] || fail "expected '$1' in:"$'\n'"$output"
 }
 
+lists_bluetooth_check() {
+  complete_setup
+  expect_report 'Bluetooth for Hammerspoon, for the Bluetooth card'
+}
+
 passes_complete_setup() {
   complete_setup
   assert_exit_zero doctor
@@ -209,4 +214,5 @@ run_case 'should list the checks it cannot do as check by hand' lists_manual_che
 run_case 'should list Location for Hammerspoon as a check by hand' lists_location_check
 run_case 'should list Microphone for the meter helper as a check by hand' lists_microphone_check
 run_case 'should change nothing on the system' changes_nothing
+run_case 'should list Bluetooth for Hammerspoon as a check by hand' lists_bluetooth_check
 finish
