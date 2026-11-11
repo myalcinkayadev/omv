@@ -166,4 +166,15 @@ check.that("should give a project row its path as its id", rows[1].id == "/Users
 check.that("should quote a path for the shell", agents.shellQuote("/a b/c") == "'/a b/c'")
 check.that("should quote a path with a single quote for the shell", agents.shellQuote("/it's") == [['/it'\''s']])
 
+-- A notice when the 5-hour limit resets, once the session went past 90%.
+local RESET = 1794159240
+local high = agents.parseUsage("92 " .. RESET .. " 40 1794394800", 1794150000)
+local notice = agents.resetNotice(high, 1794150000, nil)
+check.that("should plan a notice at the reset when the session limit is at 90% or more", notice and notice.at == RESET)
+check.that("should name the notice for what happened", notice and check.contains(notice.text, "5-hour limit has reset"))
+check.that("should plan nothing under 90%", agents.resetNotice(agents.parseUsage("89 " .. RESET .. " 40 1794394800", 1794150000), 1794150000, nil) == nil)
+check.that("should plan nothing twice for the same reset", agents.resetNotice(high, 1794150000, RESET) == nil)
+check.that("should plan nothing for a reset already past", agents.resetNotice(agents.parseUsage("95 1794140000 40 1794394800", 1794150000), 1794150000, nil) == nil)
+check.that("should plan nothing without usage", agents.resetNotice(nil, 1794150000, nil) == nil)
+
 check.finish()

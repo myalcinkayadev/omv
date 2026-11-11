@@ -121,6 +121,19 @@ function agents.parseUsage(text, now)
   return { five = window(values[1], values[2], now), seven = window(values[3], values[4], now) }
 end
 
+-- A reminder at the 5-hour limit's reset, once the session went past 90%: { at, text }, or
+-- nil when there's nothing to plan. lastPlanned is the reset time already planned, so each
+-- reset gets one notice.
+local NOTICE_PERCENT = 90
+
+function agents.resetNotice(usage, now, lastPlanned)
+  local five = usage and usage.five
+  if not (five and five.left and five.percent >= NOTICE_PERCENT) then return nil end
+  local at = now + five.left
+  if at == lastPlanned then return nil end
+  return { at = at, text = "Claude's 5-hour limit has reset" }
+end
+
 function agents.left(seconds)
   if not seconds then return DASH end
   if seconds >= DAY then

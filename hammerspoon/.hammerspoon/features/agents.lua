@@ -229,4 +229,24 @@ function feature.toggle()
   showAgents()
 end
 
+-- When the 5-hour limit is at 90% or more, a reminder at its reset says it's free again.
+-- The planned reset is saved, so a reload doesn't plan the same notice twice.
+local RESET_NOTICE = HOME .. "/.local/state/omv/claude-reset-notice"
+
+local function planResetNotice()
+  local now = os.time()
+  local notice = agents.resetNotice(agents.parseUsage(shell.readText(CLAUDE_USAGE), now), now,
+    tonumber(shell.readText(RESET_NOTICE)))
+  if not notice then return end
+  local file = io.open(RESET_NOTICE, "w")
+  if not file then return end
+  file:write(notice.at, "\n")
+  file:close()
+  require("features.reminders").add(notice.at - now, notice.text)
+end
+
+-- Kept on the feature, so it isn't garbage-collected.
+feature.usageWatcher = hs.pathwatcher.new(CLAUDE_USAGE, planResetNotice):start()
+planResetNotice()
+
 return feature

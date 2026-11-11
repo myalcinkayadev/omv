@@ -243,6 +243,11 @@ local function addReminder(seconds, text, kind)
   startReminders()
 end
 
+-- A plain reminder from another feature, such as the notice when Claude's limit resets.
+function feature.add(seconds, text)
+  addReminder(seconds, text, nil)
+end
+
 local function removeBreaks()
   local kept = {}
   for _, reminder in ipairs(reminderList) do

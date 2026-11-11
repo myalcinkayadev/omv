@@ -80,6 +80,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 
 - The numbers come from Claude Code's status line, so they only update while Claude Code runs. Usage from elsewhere, such as claude.ai, shows after your next response in Claude Code.
 - A window past its reset time shows 0%.
+- Once the 5-hour limit reaches 90%, a reminder is set for its reset, "Claude's 5-hour limit has reset", once per reset.
 - `install.sh` adds one line to `~/.claude/statusline-wrapper.sh` through `claude-usage.sh`. If that file doesn't exist, the item stays hidden.
 - Only the four numbers are stored, in `~/.local/state/omv/claude-usage`.
 
