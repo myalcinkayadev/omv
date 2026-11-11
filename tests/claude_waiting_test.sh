@@ -97,6 +97,14 @@ removes_on_session_end() {
   [ ! -e "$(state_file)" ] || fail 'state file left behind'
 }
 
+removes_the_seen_file_on_end() {
+  stub_ps
+  save_session done 100
+  printf '100\n' > "$(state_dir)/.seen-abc-123"
+  event_json SessionEnd | run_hook clear
+  [ ! -e "$(state_dir)/.seen-abc-123" ] || fail 'seen file left behind'
+}
+
 ignores_a_notification_that_asks_nothing() {
   stub_ps
   save_session working 100
@@ -208,6 +216,7 @@ run_case 'should record a session as asking when the notification has no type' r
 run_case 'should mark an asking session working when a tool finishes' marks_asking_working_after_a_tool
 run_case 'should keep the start time when a working session stays working' keeps_the_start_time_while_working
 run_case 'should remove a session when it ends' removes_on_session_end
+run_case 'should remove the seen file when the session ends' removes_the_seen_file_on_end
 run_case 'should change nothing when the notification asks nothing of you' ignores_a_notification_that_asks_nothing
 run_case 'should keep the start time when an idle notification follows a stop' keeps_the_start_time_on_idle
 run_case 'should record a session as done when an idle notification arrives and none was recorded' records_done_on_idle_when_none_was_recorded

@@ -109,7 +109,36 @@ reads_an_old_file_as_done() {
   assert_called 'sketchybar --set claude_waiting drawing=on label=omv$'
 }
 
+# Hammerspoon marks a session seen at the moment its state began.
+mark_seen() {
+  printf '%s\n' "$2" > "$(state_dir)/.seen-$1"
+}
+
+hides_a_seen_session() {
+  save_session one $$ omv 100 done
+  mark_seen one 100
+  run_plugin
+  assert_called 'sketchybar --set claude_waiting drawing=off'
+}
+
+shows_a_seen_session_after_a_change() {
+  save_session one $$ omv 200 asks
+  mark_seen one 100
+  run_plugin
+  assert_called 'sketchybar --set claude_waiting drawing=on label=\? omv$'
+}
+
+ignores_a_seen_file_of_an_ended_session() {
+  save_session one $$ omv 100 done
+  mark_seen gone 100
+  run_plugin
+  assert_called 'sketchybar --set claude_waiting drawing=on label=omv$'
+}
+
 run_case 'should show the folder when one session waits' shows_the_folder
+run_case 'should hide a session marked seen at its current state' hides_a_seen_session
+run_case 'should show a seen session again once its state changes' shows_a_seen_session_after_a_change
+run_case "should ignore a seen file whose session has ended" ignores_a_seen_file_of_an_ended_session
 run_case 'should hide the item when every session is working' hides_when_every_session_works
 run_case 'should show an asking session before a done one, whatever the wait' shows_asking_before_done
 run_case 'should mark an asking session with a question mark' marks_an_asking_session

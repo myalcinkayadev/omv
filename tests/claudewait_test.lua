@@ -105,4 +105,19 @@ check.that("should report failure when no terminal has the tty",
 check.that("should report failure for a session outside a terminal",
   claudewait.focus("-", everyTerminal, recording(nil)) == false)
 
+-- A session you've seen leaves the pill until its state changes.
+check.that("should build the AppleScript that reads Ghostty's focused tty",
+  check.contains(claudewait.viewedScript(), 'tty of focused terminal of selected tab of front window'))
+local saved = {
+  { id = "a", pid = 1, tty = "/dev/ttys001", folder = "omv", since = 100, state = "done" },
+  { id = "b", pid = 2, tty = "/dev/ttys002", folder = "api", since = 200, state = "asks" },
+  { id = "c", pid = 3, tty = "/dev/ttys003", folder = "web", since = 300, state = "working" },
+}
+local seen = claudewait.seenNow(saved, "/dev/ttys001")
+check.that("should mark a waiting session seen when its terminal is the one in view",
+  #seen == 1 and seen[1].id == "a" and seen[1].since == 100)
+check.that("should leave a session unseen when another terminal is in view", #claudewait.seenNow(saved, "/dev/ttys009") == 0)
+check.that("should not mark a working session seen", #claudewait.seenNow(saved, "/dev/ttys003") == 0)
+check.that("should mark nothing seen when no terminal is in view", #claudewait.seenNow(saved, nil) == 0)
+
 check.finish()

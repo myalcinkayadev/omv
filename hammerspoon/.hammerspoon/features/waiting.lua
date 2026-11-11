@@ -1,6 +1,8 @@
 -- Waiting Claude (Option+Shift+A, or a click on the bar's pill): focuses the session's
 -- terminal, or with several waiting, lists them with the asking ones first, then the one
 -- waiting longest. Working sessions are left out here; the Agents card lists them too.
+-- While Ghostty is in front, the session in the terminal you're looking at is marked seen,
+-- so it leaves the pill until its state changes.
 
 local shell = require("shell")
 local card = require("card")
@@ -18,7 +20,10 @@ local function savedSessions()
   local ok, files, folder = pcall(hs.fs.dir, claudewait.STATE_DIR)
   for name in (ok and files) and files or function() end, folder do
     local session = name:sub(1, 1) ~= "." and claudewait.parse(shell.readText(claudewait.STATE_DIR .. "/" .. name) or "")
-    if session then sessions[#sessions + 1] = session end
+    if session then
+      session.id = name
+      sessions[#sessions + 1] = session
+    end
   end
   return sessions
 end
@@ -82,5 +87,41 @@ function feature.focus()
       end
     end)
 end
+
+-- Seen sessions, read every 2 seconds while Ghostty is in front, and only then.
+local GHOSTTY = "com.mitchellh.ghostty"
+local VIEW_SECONDS = 2
+local viewedTty = nil
+
+local function readViewed()
+  local ok, tty = hs.osascript.applescript(claudewait.viewedScript())
+  viewedTty = ok and type(tty) == "string" and tty or nil
+  local marked = false
+  for _, seen in ipairs(claudewait.seenNow(savedSessions(), viewedTty)) do
+    local path = claudewait.STATE_DIR .. "/.seen-" .. seen.id
+    if tonumber(shell.readText(path)) ~= seen.since then
+      local file = io.open(path, "w")
+      if file then
+        file:write(seen.since, "\n")
+        file:close()
+        marked = true
+      end
+    end
+  end
+  if marked then hs.task.new(shell.SKETCHYBAR, nil, { "--trigger", "claude_waiting_change" }):start() end
+end
+
+-- Kept on the feature, so they aren't garbage-collected.
+feature.viewTimer = hs.timer.new(VIEW_SECONDS, readViewed)
+feature.appWatcher = hs.application.watcher.new(function(_, event, app)
+  if event ~= hs.application.watcher.activated then return end
+  if app and app:bundleID() == GHOSTTY then
+    readViewed()
+    feature.viewTimer:start()
+  else
+    viewedTty = nil
+    feature.viewTimer:stop()
+  end
+end):start()
 
 return feature

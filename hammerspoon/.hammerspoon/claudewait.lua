@@ -116,4 +116,24 @@ function claudewait.appPid(pid, parent)
   return nil
 end
 
+-- The terminal you're looking at in Ghostty, as a tty such as /dev/ttys004.
+function claudewait.viewedScript()
+  return 'tell application "Ghostty" to tty of focused terminal of selected tab of front window'
+end
+
+local function waits(session)
+  return session.state == "asks" or session.state == "done"
+end
+
+-- The waiting sessions in the terminal you're looking at, as { id, since }: once seen, a
+-- session leaves the pill until its state changes. Sessions need their id, the file's name.
+function claudewait.seenNow(sessions, viewedTty)
+  local seen = {}
+  if not viewedTty then return seen end
+  for _, session in ipairs(sessions) do
+    if session.tty == viewedTty and waits(session) then seen[#seen + 1] = { id = session.id, since = session.since } end
+  end
+  return seen
+end
+
 return claudewait

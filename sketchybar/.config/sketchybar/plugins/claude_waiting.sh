@@ -15,14 +15,17 @@ fi
 
 # "<rank><TAB><since><TAB><label>" per live waiting session: asking (rank 0) before done
 # (rank 1), then the longest waiting first. A file from before states existed is done.
+# A session you've already looked at is left out until its state changes: Hammerspoon
+# writes the state's start time in .seen-<session> when the session's terminal is in view.
 waiting() {
   for file in "$state_dir"/*; do
     [ -f "$file" ] || continue
     IFS="$tab" read -r pid _ folder since state < "$file"
     if ! kill -0 "$pid" 2>/dev/null; then
-      rm -f "$file"
+      rm -f "$file" "$state_dir/.seen-${file##*/}"
       continue
     fi
+    [ "$(cat "$state_dir/.seen-${file##*/}" 2>/dev/null)" = "$since" ] && continue
     case ${state:-done} in
       asks) printf '0\t%s\t? %s\n' "$since" "$(short "$folder")" ;;
       done) printf '1\t%s\t%s\n' "$since" "$(short "$folder")" ;;

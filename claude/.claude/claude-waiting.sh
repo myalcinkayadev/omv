@@ -94,7 +94,7 @@ before=$(saved_state)
 
 if [ "$state" = end ]; then
   [ -n "$before" ] || exit 0
-  rm -f "$file"
+  rm -f "$file" "$state_dir/.seen-$session"
 else
   save
 fi
