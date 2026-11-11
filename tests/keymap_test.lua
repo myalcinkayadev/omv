@@ -5,6 +5,10 @@ local keymap = dofile(arg[1] .. "/hammerspoon/.hammerspoon/keymap.lua")
 
 local failed = 0
 
+local function check_contains(text, piece)
+  return text:find(piece, 1, true) ~= nil
+end
+
 local function check(name, passed)
   print((passed and "ok   - " or "FAIL - ") .. name)
   if not passed then failed = failed + 1 end
@@ -89,6 +93,23 @@ check("should show each key in full when their modifiers differ", rowFor("Even s
 check("should keep a row's place where its first key was written", rowFor("Go to 1").id == "binding:1")
 check("should run the merged row's command from the key list", rowFor("Go to 1").runnable == true)
 check("should keep separate rows for the same command in different modes", count("Leave resize mode") == 2)
+
+-- Search words: hidden words a row is also found by, for what it does.
+local searchable = keymap.rows(keymap.parse("[mode.main.binding]\nalt-1 = 'workspace 1'\nalt-b = 'balance-sizes'\n"),
+  { { label = "Option+Shift+S", description = "Capture the screen", group = "Tools" } })
+local function find(label)
+  for _, row in ipairs(searchable) do
+    if row.label == label then return row end
+  end
+end
+check("should give a launcher its search words", check_contains(find("Capture the screen").keywords or "", "screenshot"))
+check("should give a binding its search words", check_contains(find("Go to 1").keywords or "", "desktop"))
+check("should list no search words for a row without any", find("Even sizes").keywords == nil)
+local searchPage = keymap.html(keymap.parse("[mode.main.binding]\nalt-b = 'balance-sizes'\n"),
+  { { label = "Option+Shift+S", description = "Capture the screen", group = "Tools" } })
+check("should put a row's search words where the search reads them", check_contains(searchPage, 'data-keywords="'))
+check("should search a row's words along with its label and key", check_contains(searchPage, "row.dataset.keywords"))
+check("should not show the search words in the row", not check_contains(searchPage:gsub("<[^>]*>", ""), "screenshot"))
 
 check("should count one row per binding and launcher", #keymap.rows(keymap.parse("[mode.main.binding]\nalt-h = 'focus left'\n"), { { label = "x", description = "y" } }) == 2)
 check("should list launcher keys as rows", sheet:find(">Show this list<", 1, true) ~= nil)

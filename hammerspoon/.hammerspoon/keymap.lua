@@ -112,6 +112,51 @@ local DESCRIPTIONS = {
   { "^workspace 1, exec%-and%-forget .*new%-window%.sh$", "New Ghostty window" },
 }
 
+-- Words a row is also found by, for what it does: "screenshot" finds "Capture the screen".
+-- The first rule whose pattern matches the row's description gives its words. They are
+-- searched, never shown. A row no rule matches has none.
+local SEARCH_WORDS = {
+  { "^Go to %d", "desktop space switch" },
+  { "^Send window to %d", "move desktop space" },
+  { "^Previous workspace", "back last desktop space" },
+  { "monitor$", "display screen" },
+  { "^Fullscreen", "maximize zoom" },
+  { "^Floating or tiled", "float tile layout" },
+  { "^Split direction", "tile horizontal vertical layout" },
+  { "^Tabbed or tiled", "accordion tabs layout" },
+  { "^Enter resize mode", "size width height" },
+  { "^New Ghostty window", "terminal shell" },
+  { "^btop", "terminal processes cpu memory" },
+  { "^Capture the screen", "screenshot grab ocr text color picker" },
+  { "^Copy Helium's current URL", "browser link" },
+  { "^Set a reminder", "timer alarm pomodoro" },
+  { "^Note in today's daily note", "obsidian write journal" },
+  { "^PRs waiting", "github pull request review" },
+  { "^Claude session waiting", "agent ai" },
+  { "^Join the meeting", "zoom meet teams call video calendar" },
+  { "^Show or hide the bar", "sketchybar menu bar" },
+  { "^Wi%-Fi", "wifi network internet" },
+  { "^Ethernet", "network cable internet" },
+  { "^Sound", "volume audio speaker microphone mic output input" },
+  { "^Weather", "temperature forecast" },
+  { "^Battery", "power charge" },
+  { "^System menu", "lock sleep restart shut down log out reload" },
+  { "^Go to any window", "switch find windows" },
+  { "^Keep the Mac awake", "caffeinate sleep" },
+  { "^Drop%-down terminal", "quake ghostty" },
+  { "^Finder at home", "files folder" },
+  { "^Open Zed", "editor code" },
+  { "^New Helium window", "browser" },
+  { "^Show or hide this list", "help keys shortcuts cheat sheet" },
+}
+
+local function searchWords(description)
+  for _, rule in ipairs(SEARCH_WORDS) do
+    if description:find(rule[1]) then return rule[2] end
+  end
+  return nil
+end
+
 -- Groups in the order the list shows them. Launchers name their group in init.lua.
 local GROUP_ORDER = { "Windows", "Workspaces", "Monitors", "Layout", "Resize mode", "Apps", "Tools", "Cards", "Other" }
 
@@ -179,7 +224,8 @@ local function bindingRow(binding, index, keys)
   local group = bindingGroup(binding)
   local key = keymap.keysLabel(keys)
   if binding.mode ~= "main" and GROUP_MODES[group] ~= binding.mode then key = key .. " (" .. binding.mode .. ")" end
-  return { id = "binding:" .. index, label = keymap.describe(binding.command), hint = key, group = group, runnable = true }
+  local label = keymap.describe(binding.command)
+  return { id = "binding:" .. index, label = label, hint = key, group = group, runnable = true, keywords = searchWords(label) }
 end
 
 local function mergedBindings(bindings)
@@ -215,7 +261,7 @@ function keymap.rows(bindings, launchers)
   -- A launcher runs only when init.lua gave it something to run.
   for index, launcher in ipairs(launchers) do
     rows[#rows + 1] = { id = "launcher:" .. index, label = launcher.description, hint = launcher.label,
-      group = launcher.group or "Other", runnable = launcher.runs == true }
+      group = launcher.group or "Other", runnable = launcher.runs == true, keywords = searchWords(launcher.description) }
   end
   return sortByGroup(rows)
 end

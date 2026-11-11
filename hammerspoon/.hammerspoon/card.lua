@@ -55,7 +55,7 @@ local SCRIPT = [[
   function draw() {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     rows.forEach((row) => {
-      const haystack = ((row.dataset.group || "") + " " + row.textContent).toLowerCase();
+      const haystack = ((row.dataset.group || "") + " " + (row.dataset.keywords || "") + " " + row.textContent).toLowerCase();
       row.classList.toggle("hidden", !words.every((word) => haystack.includes(word)));
     });
     groups.forEach((group) => {
@@ -138,6 +138,7 @@ local function rowHtml(row)
   local hint = row.submenu and "›" or row.hint
   return '<div class="row" data-id="' .. card.escape(row.id) .. '"'
     .. (row.group and (' data-group="' .. card.escape(row.group) .. '"') or "")
+    .. (row.keywords and (' data-keywords="' .. card.escape(row.keywords) .. '"') or "")
     .. (row.submenu and " data-submenu" or "") .. ">"
     .. icon
     .. "<span class=label>" .. card.escape(row.label) .. "</span>"
