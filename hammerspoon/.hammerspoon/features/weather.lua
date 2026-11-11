@@ -29,7 +29,7 @@ local function drawWeatherBar()
 end
 
 local function showWeather()
-  shell.show("weather", shell.anchored(weather.WIDTH, weather.height(weatherReading)),
+  shell.show("weather", shell.anchored(weather.WIDTH, weather.height(weatherReading), "weather"),
     weather.html(weatherReading, weatherCity, weatherProblem), function() shell.close() end)
 end
 

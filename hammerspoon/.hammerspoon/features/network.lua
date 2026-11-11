@@ -56,11 +56,11 @@ end
 local onNetworkMessage
 
 local function showWifi()
-  shell.show("wifi", shell.anchored(network.WIDTH, network.HEIGHT), network.html(network.wifiModel(wifiInfo())), onNetworkMessage)
+  shell.show("wifi", shell.anchored(network.WIDTH, network.HEIGHT, "wifi"), network.html(network.wifiModel(wifiInfo())), onNetworkMessage)
 end
 
 local function showEthernet(info)
-  shell.show("ethernet", shell.anchored(network.WIDTH, network.HEIGHT), network.html(network.ethernetModel(info)), onNetworkMessage)
+  shell.show("ethernet", shell.anchored(network.WIDTH, network.HEIGHT, "ethernet"), network.html(network.ethernetModel(info)), onNetworkMessage)
 end
 
 local function redrawWifi()

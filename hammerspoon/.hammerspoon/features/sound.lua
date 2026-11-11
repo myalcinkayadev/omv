@@ -117,7 +117,7 @@ local onSoundMessage
 
 local function showSound()
   local state = soundState()
-  shell.show("sound", shell.anchored(sound.WIDTH, sound.height(state)), sound.html(state), onSoundMessage,
+  shell.show("sound", shell.anchored(sound.WIDTH, sound.height(state), "volume"), sound.html(state), onSoundMessage,
     { keepOnBlur = not meterAnswered, onClose = stopMeter })
 end
 

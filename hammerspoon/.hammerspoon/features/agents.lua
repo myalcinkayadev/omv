@@ -95,7 +95,7 @@ local function showAgents()
   backgroundRows = backgroundSessions()
   local model = { plan = claudePlan(), usage = agents.parseUsage(shell.readText(CLAUDE_USAGE), os.time()),
     logo = logoUrl(), sessions = sessionRows, background = backgroundRows }
-  shell.show("agents", shell.anchored(agents.WIDTH, agents.height(#sessionRows, #backgroundRows)),
+  shell.show("agents", shell.anchored(agents.WIDTH, agents.height(#sessionRows, #backgroundRows), "claude_usage"),
     agents.html(model), onAgentsMessage)
 end
 
@@ -156,7 +156,7 @@ local function confirmBackgroundRemoval(id)
   for _, row in ipairs(backgroundRows) do
     if row.id == id then
       local screen = agents.confirmRemove(row)
-      return shell.show("agents-remove", shell.anchored(agents.WIDTH, shell.menuHeight(screen)), card.html(screen), function(message)
+      return shell.show("agents-remove", shell.anchored(agents.WIDTH, shell.menuHeight(screen), "claude_usage"), card.html(screen), function(message)
         if message.type == "choose" and message.id == "remove" then return removeBackground(id) end
         if message.type == "close" then return shell.close() end
         showAgents()

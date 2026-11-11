@@ -16,7 +16,7 @@ local function showBattery()
   local status = battery.parseBatt(hs.execute("/usr/bin/pmset -g batt"))
   if not status then return shell.alert("This Mac has no battery", 1.5) end
   local health = battery.parseSmartBattery(hs.execute("/usr/sbin/ioreg -rn AppleSmartBattery"))
-  shell.show("battery", shell.anchored(battery.WIDTH, battery.HEIGHT), battery.html(battery.model(status, health)), onBatteryMessage)
+  shell.show("battery", shell.anchored(battery.WIDTH, battery.HEIGHT, "battery"), battery.html(battery.model(status, health)), onBatteryMessage)
 end
 
 function feature.toggle()

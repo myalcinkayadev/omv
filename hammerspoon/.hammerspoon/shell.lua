@@ -1,6 +1,8 @@
 -- What every feature shares: the one floating card, where cards go on screen, the paths of
 -- the tools they run, and small helpers. Features require it; init.lua only wires them up.
 
+local placement = require("placement")
+
 local shell = {}
 
 shell.HOME = os.getenv("HOME")
@@ -100,10 +102,16 @@ function shell.view()
   return view
 end
 
--- Right-aligned just below the 36pt bar, under the status items.
-function shell.anchored(width, height)
-  local screen = shell.screen():fullFrame()
-  return hs.geometry.rect(screen.x + screen.w - width - 10, screen.y + 40, width, height)
+-- Just below the bar, under item, the SketchyBar item the card opens from; at the screen's
+-- right edge when the item isn't drawn there. Reading its place takes about 10ms.
+function shell.anchored(width, height, item)
+  local query = nil
+  if item then
+    local ok, decoded = pcall(hs.json.decode, hs.execute(shell.SKETCHYBAR .. " --query " .. item .. " 2>/dev/null") or "")
+    query = ok and decoded or nil
+  end
+  local frame = placement.under(query, width, height, shell.screen():fullFrame())
+  return hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)
 end
 
 function shell.centered(width, height)

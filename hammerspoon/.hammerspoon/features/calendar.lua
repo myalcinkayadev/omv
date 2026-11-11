@@ -29,7 +29,7 @@ local onCalendarMessage
 
 local function showCalendar()
   local now = os.time()
-  local frame = shell.anchored(CALENDAR_WIDTH, calendar.height(agendaDay, now))
+  local frame = shell.anchored(CALENDAR_WIDTH, calendar.height(agendaDay, now), "clock")
   local model = calendar.month(shown.year, shown.month, today())
   shell.show("calendar", frame, calendar.html(model, today(), agendaDay, now), onCalendarMessage)
 end
