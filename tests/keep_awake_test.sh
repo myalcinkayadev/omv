@@ -20,9 +20,10 @@ simulate_off() {
 }
 
 # caffeinate runs in the background, so its call can land just after the plugin exits.
+# It waits up to 5 seconds, since tests/run.sh runs every file at once and can slow it down.
 assert_eventually_called() {
   local attempt
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  for attempt in $(seq 50); do
     grep -qE -e "$1" "$CALL_LOG" && return 0
     sleep 0.1
   done
