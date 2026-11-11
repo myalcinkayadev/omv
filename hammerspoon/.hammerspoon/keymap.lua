@@ -132,6 +132,7 @@ local SEARCH_WORDS = {
   { "^Set a reminder", "timer alarm pomodoro" },
   { "^Note in today's daily note", "obsidian write journal" },
   { "^PRs waiting", "github pull request review" },
+  { "^Hungry processes", "kill quit cpu memory process activity monitor slow" },
   { "^Claude session waiting", "agent ai" },
   { "^Join the meeting", "zoom meet teams call video calendar" },
   { "^Show or hide the bar", "sketchybar menu bar" },

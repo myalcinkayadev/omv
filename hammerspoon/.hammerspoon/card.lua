@@ -98,6 +98,8 @@ local SCRIPT = [[
   document.addEventListener("keydown", (event) => {
     const shown = visible();
     if (event.key === "Escape") return send("close");
+    // A card that asks for Tab, such as the process card switching its sort, hears it.
+    if (event.key === "Tab" && document.body.dataset.tab !== undefined) { event.preventDefault(); return send("tab"); }
     if (event.key === "ArrowDown" || (event.ctrlKey && event.key === "n")) selected = (selected + 1) % Math.max(1, shown.length);
     else if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) selected = (selected - 1 + shown.length) % Math.max(1, shown.length);
     else if (event.key === "Enter" && takesInput) return send("submit", query);
@@ -176,7 +178,7 @@ function card.html(screen)
   local rows = rowsWithHeaders(screen.rows)
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
-    .. (screen.input and " data-input" or "") .. ">"
+    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. ">"
     .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span><span class=caret></span></div>'
     .. rowsOpen(screen.columns) .. table.concat(rows) .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
     .. "<script>" .. SCRIPT .. "</script></body>"
