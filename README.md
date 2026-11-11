@@ -65,7 +65,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
 | Pull requests | How many open pull requests ask for your review, checked with `gh` every 5 minutes. Hidden when none wait, or when `gh` is missing, logged out or offline | List them; Enter opens one in Helium | |
 | Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
-| Waiting Claude | A white pill right of Claude's limit, `omv`, while a Claude Code session waits for you, plus `+N` for others | Go to that session's terminal, or pick one when several wait | |
+| Waiting Claude | A white pill right of Claude's limit, `omv`, while a Claude Code session waits for you, or `? omv` while it asks for approval, plus `+N` for others | Go to that session's terminal, or pick one when several wait | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
 | Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
@@ -146,14 +146,15 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - **>_** continues your last Claude Code session, in the folder it ran in, with `claude --continue`.
 - **+** lists the folders you've used Claude Code in, most recent first. Type to filter, and Enter starts a new session there.
 - Both open a Ghostty window on workspace 1. Left and Right move between the two buttons, and Enter presses one.
+- **Sessions:** under the limits, a row for each live Claude Code session, with its folder, its state and how long it has been in it, such as `asks · 3 min`. Sessions asking for approval come first, then the ones done, then the ones working. Down and Up move through them, and Enter goes to that session's terminal. With no session running, the card looks as before.
 - The plan comes from `~/.claude.json`, and only its `organizationType` is read. The folders come from Claude Code's own session files in `~/.claude/projects`.
 - `claude` runs through your login shell, by `claude-in.sh`, so it's found on the PATH your shell sets up.
 
-**Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder. It sits right next to Claude's logo and 5-hour limit, so the two read as one group, and the limit stays in view. Click it, or press Option+Shift+A, to go to the session's terminal, even in another tab or on another workspace. When several sessions wait, a list opens with the one waiting longest selected, and each row shows how long it has waited. The pill goes when you answer, when a tool runs after your approval, or when the session ends.
+**Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder, as `? omv` when it asks for approval, since that one is blocked until you answer. It sits right next to Claude's logo and 5-hour limit, so the two read as one group, and the limit stays in view. Click it, or press Option+Shift+A, to go to the session's terminal, even in another tab or on another workspace. When several sessions wait, a list opens with the asking ones first, then the one waiting longest, and each row shows its state and how long it has waited. The pill goes when you answer, when a tool runs after your approval, or when the session ends. Working sessions never show in the pill, only in the Agents card.
 
-- `install.sh` adds hooks to `~/.claude/settings.json` through `claude-hooks.sh`: `Stop` and `Notification` mark a session as waiting, though only a notification that asks for you counts, such as one for approval, and `UserPromptSubmit`, `PostToolUse` and `SessionEnd` clear it. Other hooks and settings stay as they are, and `uninstall.sh` removes only these.
+- `install.sh` adds hooks to `~/.claude/settings.json` through `claude-hooks.sh`: `UserPromptSubmit` and `PostToolUse` mark a session as working, `Stop` as done, a `Notification` that asks for you, such as one for approval, as asking, and `SessionEnd` removes it. Other notifications change nothing. Other hooks and settings stay as they are, and `uninstall.sh` removes only these.
 - The session's terminal is found by its tty, in Ghostty, iTerm2 or Terminal, through each app's AppleScript, Ghostty first. A terminal app that isn't running is skipped, so it never opens on its own. The first time, macOS asks to let Hammerspoon control that app.
-- Only Claude's PID, its tty, the folder name and the time are saved, in `~/.local/state/omv/claude-waiting`. A session whose Claude has ended is dropped within 30 seconds.
+- Only Claude's PID, its tty, the folder name, the state and when the session entered it are saved, in `~/.local/state/omv/claude-sessions`. A session whose Claude has ended is dropped within 30 seconds.
 - A session in any other app, such as an editor's terminal, still shows, but can't be focused: you get its folder name instead. The drop-down terminal can't be focused either.
 
 <img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, with session and weekly limits" width="400">

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Behavior of the bar item that shows Claude Code sessions waiting for you.
+# Behavior of the bar item that shows Claude Code sessions waiting for you: asking for
+# approval, or done and waiting for the next prompt. Working sessions stay out of it.
 
 source "$(dirname "$0")/lib.sh"
 
@@ -8,11 +9,18 @@ readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/claude_waiting.s
 readonly DEAD_PID=999999
 
 state_dir() {
-  echo "$HOME_DIR/.local/state/omv/claude-waiting"
+  echo "$HOME_DIR/.local/state/omv/claude-sessions"
 }
 
-# A waiting session: name, Claude's PID, folder and when it started waiting.
+# A session: name, Claude's PID, folder, when it entered its state, and the state (done
+# unless given).
 save_session() {
+  mkdir -p "$(state_dir)"
+  printf '%s\t/dev/ttys009\t%s\t%s\t%s\n' "$2" "$3" "$4" "${5:-done}" > "$(state_dir)/$1"
+}
+
+# A file written before states existed: four fields, no state.
+save_old_session() {
   mkdir -p "$(state_dir)"
   printf '%s\t/dev/ttys009\t%s\t%s\n' "$2" "$3" "$4" > "$(state_dir)/$1"
 }
@@ -69,7 +77,44 @@ focuses_on_click() {
   assert_called "hs -c omvFocusClaude\(\)"
 }
 
+hides_when_every_session_works() {
+  save_session one $$ omv 100 working
+  run_plugin
+  assert_called 'sketchybar --set claude_waiting drawing=off'
+}
+
+shows_asking_before_done() {
+  save_session one $$ omv 100 done
+  save_session two $$ api 200 asks
+  run_plugin
+  assert_called 'label=\? api \+1$'
+}
+
+marks_an_asking_session() {
+  save_session one $$ omv 100 asks
+  run_plugin
+  assert_called 'sketchybar --set claude_waiting drawing=on label=\? omv$'
+}
+
+counts_only_waiting_sessions() {
+  save_session one $$ omv 100 done
+  save_session two $$ api 50 working
+  run_plugin
+  assert_called 'sketchybar --set claude_waiting drawing=on label=omv$'
+}
+
+reads_an_old_file_as_done() {
+  save_old_session one $$ omv 100
+  run_plugin
+  assert_called 'sketchybar --set claude_waiting drawing=on label=omv$'
+}
+
 run_case 'should show the folder when one session waits' shows_the_folder
+run_case 'should hide the item when every session is working' hides_when_every_session_works
+run_case 'should show an asking session before a done one, whatever the wait' shows_asking_before_done
+run_case 'should mark an asking session with a question mark' marks_an_asking_session
+run_case 'should count only waiting sessions in +N' counts_only_waiting_sessions
+run_case 'should read a file saved before states existed as done' reads_an_old_file_as_done
 run_case 'should show the oldest folder and +N when several wait' shows_the_oldest_and_a_count
 run_case 'should hide the item when no session waits' hides_with_none
 run_case 'should hide the item when the waiting Claude has ended' skips_an_ended_session

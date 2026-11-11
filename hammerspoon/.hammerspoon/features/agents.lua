@@ -1,10 +1,12 @@
 -- Agents card (click the robot in the bar). >_ continues the last Claude Code session,
 -- in its folder; + lists the recent Claude Code projects, to start a new session in one.
--- Both open a Ghostty window on workspace 1.
+-- Both open a Ghostty window on workspace 1. Below them, every live session with its state;
+-- picking one goes to its terminal.
 
 local shell = require("shell")
 local card = require("card")
 local agents = require("agents")
+local waiting = require("features.waiting")
 
 local feature = {}
 
@@ -52,10 +54,23 @@ local function startClaude(folder, arguments)
 end
 
 local onAgentsMessage
+-- The session rows the card shows, kept so a pick can be matched back to its row.
+local sessionRows = {}
 
 local function showAgents()
-  local model = { plan = claudePlan(), usage = agents.parseUsage(shell.readText(CLAUDE_USAGE), os.time()), logo = logoUrl() }
-  shell.show("agents", shell.anchored(agents.WIDTH, agents.HEIGHT), agents.html(model), onAgentsMessage)
+  sessionRows = waiting.rows()
+  local model = { plan = claudePlan(), usage = agents.parseUsage(shell.readText(CLAUDE_USAGE), os.time()),
+    logo = logoUrl(), sessions = sessionRows }
+  shell.show("agents", shell.anchored(agents.WIDTH, agents.height(#sessionRows)), agents.html(model), onAgentsMessage)
+end
+
+local function focusSession(tty)
+  -- Leave focus to the terminal, rather than handing it back to the app open before.
+  shell.leaveFocus()
+  shell.close()
+  for _, row in ipairs(sessionRows) do
+    if row.id == tty then return waiting.focusRow(row) end
+  end
 end
 
 local function onProjectMessage(message)
@@ -77,6 +92,8 @@ end
 onAgentsMessage = function(message)
   if message.type ~= "choose" then return shell.close() end
   if message.id == "agents.new" then return showProjects() end
+  local tty = agents.sessionTty(message.id)
+  if tty then return focusSession(tty) end
   local latest = recentSessions()[1]
   if not latest then return shell.alert("No Claude Code sessions yet", 1.5) end
   shell.leaveFocus()

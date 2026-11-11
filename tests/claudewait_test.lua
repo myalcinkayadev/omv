@@ -1,13 +1,16 @@
--- Behavior of focusing a waiting Claude session. Run through claudewait_test.sh with luajit.
+-- Behavior of listing Claude sessions and focusing one. Run through claudewait_test.sh with luajit.
 
 local check = dofile(arg[1] .. "/tests/check.lua")
 local claudewait = require("claudewait")
 
-local session = claudewait.parse("4242\t/dev/ttys009\tomv\t100\n")
+local session = claudewait.parse("4242\t/dev/ttys009\tomv\t100\tasks\n")
 check.that("should read Claude's PID", session.pid == 4242)
 check.that("should read the terminal", session.tty == "/dev/ttys009")
 check.that("should read the folder", session.folder == "omv")
-check.that("should read when it started waiting", session.since == 100)
+check.that("should read when it entered its state", session.since == 100)
+check.that("should read the state", session.state == "asks")
+check.that("should read a line saved before states existed as done",
+  claudewait.parse("4242\t/dev/ttys009\tomv\t100\n").state == "done")
 check.that("should refuse a line it cannot read", claudewait.parse("garbage") == nil)
 
 local sessions = {
@@ -21,9 +24,21 @@ check.that("should list the session waiting longest first", rows[1].label == "om
 check.that("should list the others after it", rows[2].label == "api")
 check.that("should leave out a session whose Claude has ended", #rows == 2)
 check.that("should choose a row by its terminal", rows[1].id == "/dev/ttys002")
-check.that("should hint how long it has waited", rows[1].hint == "5 min")
+check.that("should hint the state and how long it has been in it", rows[1].hint == "done · 5 min")
 check.that("should hint now under a minute",
-  claudewait.rows({ { pid = 1, tty = "/dev/ttys001", folder = "api", since = 370 } }, alive, 400)[1].hint == "now")
+  claudewait.rows({ { pid = 1, tty = "/dev/ttys001", folder = "api", since = 370 } }, alive, 400)[1].hint == "done · now")
+
+local mixed = claudewait.rows({
+  { pid = 1, tty = "/dev/ttys001", folder = "working", since = 10, state = "working" },
+  { pid = 2, tty = "/dev/ttys002", folder = "done", since = 20, state = "done" },
+  { pid = 4, tty = "/dev/ttys004", folder = "asks", since = 300, state = "asks" },
+}, alive, 400)
+local order = {}
+for index, row in ipairs(mixed) do order[index] = row.label end
+check.that("should list asking sessions first, then done, then working", table.concat(order, ",") == "asks,done,working")
+check.that("should hint an asking session as asks", mixed[1].hint == "asks · 1 min")
+check.that("should mark an asking session as waiting", mixed[1].waiting == true)
+check.that("should mark a working session as not waiting", mixed[3].waiting == false)
 check.that("should list no rows when every Claude has ended", #claudewait.rows(sessions, function() return false end, 400) == 0)
 check.that("should list no rows when no session waits", #claudewait.rows({}, alive, 400) == 0)
 

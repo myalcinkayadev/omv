@@ -1,9 +1,11 @@
 #!/bin/sh
-# Shows Claude Code sessions waiting for you, as the folder of the one waiting longest,
-# then +N for the others. claude-waiting.sh, a Claude hook, saves them. A session
-# whose Claude has ended is dropped. A click focuses the session's terminal; see init.lua.
+# Shows Claude Code sessions waiting for you, as the folder of the one to answer first, then
+# +N for the others. A session asking for approval comes first and is marked "? omv"; then
+# the ones done, the one waiting longest first. Working sessions stay out of it.
+# claude-waiting.sh, a Claude hook, saves them. A session whose Claude has ended is dropped.
+# A click focuses the session's terminal; see features/waiting.lua.
 
-state_dir="$HOME/.local/state/omv/claude-waiting"
+state_dir="$HOME/.local/state/omv/claude-sessions"
 tab=$(printf '\t')
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
@@ -11,17 +13,21 @@ if [ "${SENDER:-}" = mouse.clicked ]; then
   exit 0
 fi
 
-# "<since><TAB><folder>" per live session, the longest waiting first.
+# "<rank><TAB><since><TAB><label>" per live waiting session: asking (rank 0) before done
+# (rank 1), then the longest waiting first. A file from before states existed is done.
 waiting() {
   for file in "$state_dir"/*; do
     [ -f "$file" ] || continue
-    IFS="$tab" read -r pid _ folder since < "$file"
-    if kill -0 "$pid" 2>/dev/null; then
-      printf '%s\t%s\n' "$since" "$folder"
-    else
+    IFS="$tab" read -r pid _ folder since state < "$file"
+    if ! kill -0 "$pid" 2>/dev/null; then
       rm -f "$file"
+      continue
     fi
-  done | sort -n
+    case ${state:-done} in
+      asks) printf '0\t%s\t? %s\n' "$since" "$(short "$folder")" ;;
+      done) printf '1\t%s\t%s\n' "$since" "$(short "$folder")" ;;
+    esac
+  done | sort -t "$tab" -k1,1n -k2,2n
 }
 
 # Cut at 12 characters, counted in UTF-8 so a Turkish letter is never split.
@@ -37,7 +43,7 @@ if [ -z "$sessions" ]; then
 fi
 
 count=$(printf '%s\n' "$sessions" | wc -l | tr -d ' ')
-label="$(short "$(printf '%s\n' "$sessions" | head -n 1 | cut -f 2)")"
+label=$(printf '%s\n' "$sessions" | head -n 1 | cut -f 3)
 [ "$count" -gt 1 ] && label="$label +$((count - 1))"
 
 sketchybar --set "$NAME" drawing=on "label=$label"

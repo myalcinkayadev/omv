@@ -52,7 +52,7 @@ remove_claude_usage() {
   "$REPO_DIR/claude-usage.sh" remove
   "$REPO_DIR/claude-hooks.sh" remove
   rm -f "$HOME/.local/state/omv/claude-usage" "$HOME/.local/state/omv/claude-usage-resets-view"
-  rm -rf "$HOME/.local/state/omv/claude-waiting"
+  rm -rf "$HOME/.local/state/omv/claude-sessions" "$HOME/.local/state/omv/claude-waiting"
 }
 
 unlink_configs() {

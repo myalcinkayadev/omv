@@ -1,8 +1,10 @@
 -- The Agents card opened from the bar's robot: Claude Code's plan, and its session and
 -- weekly usage with the time until each resets. >_ continues the last Claude Code
--- session, + starts a new one in a project picked from a list. Left and Right move
--- between the two buttons, Enter or a click presses one, Escape closes.
--- init.lua reads the usage file, ~/.claude.json and the session files, and passes them in.
+-- session, + starts a new one in a project picked from a list. Under them, a row per live
+-- Claude Code session with its state, to go to its terminal.
+-- Left and Right move between the two buttons, Down and Up move through the sessions and
+-- back, Enter or a click presses one, Escape closes.
+-- features/agents.lua reads the usage file, ~/.claude.json and the session files, and passes them in.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local card = require("card")
@@ -14,6 +16,24 @@ local DAY, HOUR, MINUTE = 86400, 3600, 60
 
 agents.WIDTH = 400
 agents.HEIGHT = 218
+
+-- The session list: its rule and gap above, then one row per session, at most six shown.
+local SESSIONS_CHROME = 25
+local SESSION_ROW = 30
+local SESSIONS_SHOWN = 6
+
+-- The card's height with sessionCount live sessions; the same as before with none.
+function agents.height(sessionCount)
+  if sessionCount <= 0 then return agents.HEIGHT end
+  return agents.HEIGHT + SESSIONS_CHROME + math.min(sessionCount, SESSIONS_SHOWN) * SESSION_ROW
+end
+
+-- A session row's id names its terminal, so it can't be taken for a button's.
+local SESSION_ID = "session:"
+
+function agents.sessionTty(id)
+  return id:match("^" .. SESSION_ID .. "(.+)$")
+end
 
 local PLANS = { claude_pro = "Pro", claude_max = "Max" }
 
@@ -101,23 +121,42 @@ local STYLE = [[
   .limit .bar { height: 4px; background: #2a2a2a; border-radius: 2px; }
   .limit .fill { display: block; height: 4px; background: #fff; border-radius: 2px; }
   .limit .left { color: #7a7a7a; text-align: right; white-space: nowrap; }
+  .live { margin-top: 14px; border-top: 1px solid #2a2a2a; padding-top: 10px; max-height: 180px;
+    overflow-y: auto; scrollbar-width: none; }
+  .live::-webkit-scrollbar { display: none; }
+  .session { display: flex; align-items: center; height: 30px; padding: 0 10px; border-radius: 4px;
+    font-size: 14px; cursor: default; }
+  .session .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .session .hint { color: #7a7a7a; padding-left: 12px; white-space: nowrap; }
+  .session.asks .hint { color: #fff; }
+  .session.selected { background: #fff; color: #000; }
+  .session.selected .hint { color: #3a3a3a; }
 ]]
 
 local SCRIPT = [[
   const buttons = Array.from(document.querySelectorAll(".btn"));
+  const sessions = Array.from(document.querySelectorAll(".session"));
   const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
-  let selected = 0;
-  const draw = () => buttons.forEach((button, index) => button.classList.toggle("selected", index === selected));
+  // A button is selected while row is -1; Down moves into the sessions, Up back out.
+  let button = 0;
+  let row = -1;
+  const draw = () => {
+    buttons.forEach((element, index) => element.classList.toggle("selected", row < 0 && index === button));
+    sessions.forEach((element, index) => element.classList.toggle("selected", index === row));
+    if (row >= 0) sessions[row].scrollIntoView({ block: "nearest" });
+  };
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") return send("close");
-    if (event.key === "ArrowRight") selected = (selected + 1) % buttons.length;
-    else if (event.key === "ArrowLeft") selected = (selected - 1 + buttons.length) % buttons.length;
-    else if (event.key === "Enter") return send("choose", buttons[selected].dataset.id);
+    if (event.key === "Enter") return send("choose", (row < 0 ? buttons[button] : sessions[row]).dataset.id);
+    if (event.key === "ArrowRight" && row < 0) button = (button + 1) % buttons.length;
+    else if (event.key === "ArrowLeft" && row < 0) button = (button - 1 + buttons.length) % buttons.length;
+    else if (event.key === "ArrowDown" && sessions.length) row = Math.min(row + 1, sessions.length - 1);
+    else if (event.key === "ArrowUp" && row >= 0) row = row - 1;
     else return;
     event.preventDefault();
     draw();
   });
-  buttons.forEach((button) => button.addEventListener("click", () => send("choose", button.dataset.id)));
+  buttons.concat(sessions).forEach((element) => element.addEventListener("click", () => send("choose", element.dataset.id)));
   draw();
 ]]
 
@@ -128,7 +167,20 @@ local function limit(name, usage)
     .. "<span class=left>" .. agents.left(usage.left) .. "</span></div>"
 end
 
--- model = { plan, usage = agents.parseUsage(...), logo = a data: URL of the Claude logo }
+-- A row per live session, as claudewait.rows gives them: { id = tty, label, hint, state }.
+local function sessionList(sessions)
+  if not sessions or #sessions == 0 then return "" end
+  local rows = {}
+  for _, session in ipairs(sessions) do
+    rows[#rows + 1] = '<div class="session ' .. card.escape(session.state or "") .. '" data-id="'
+      .. card.escape(SESSION_ID .. session.id) .. '"><span class=name>' .. card.escape(session.label)
+      .. "</span><span class=hint>" .. card.escape(session.hint or "") .. "</span></div>"
+  end
+  return "<div class=live>" .. table.concat(rows) .. "</div>"
+end
+
+-- model = { plan, usage = agents.parseUsage(...), logo = a data: URL of the Claude logo,
+--   sessions = the live sessions' rows }
 function agents.html(model)
   local usage = model.usage or {}
   local logo = model.logo and ('<img class=logo src="' .. card.escape(model.logo) .. '">') or "<span class='logo glyph'>✳</span>"
@@ -138,6 +190,7 @@ function agents.html(model)
     .. "<div class=agent>" .. logo .. "<span class=name>Claude Code</span>"
     .. "<span class=plan>" .. card.escape(model.plan or "") .. "</span></div>"
     .. limit("Session", usage.five) .. limit("Weekly", usage.seven)
+    .. sessionList(model.sessions)
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 
