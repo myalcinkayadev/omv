@@ -41,15 +41,24 @@ local AEROSPACE = "/opt/homebrew/bin/aerospace"
 local SKETCHYBAR = "/opt/homebrew/bin/sketchybar"
 local GH = "/opt/homebrew/bin/gh"
 
-local ALERT_STYLE = {
-  fillColor = { white = 0, alpha = 1 },
-  strokeColor = { white = 0.55, alpha = 1 },
-  strokeWidth = 2,
-  radius = 0,
-  textColor = { white = 1, alpha = 1 },
-  textFont = "JetBrainsMono Nerd Font Mono",
-  textSize = 15,
-}
+-- A short message in the cards' look, on the screen the pointer is on: hs.alert's own
+-- choice is the focused screen, which a click on the other screen's bar doesn't change.
+-- The style stays inside the block, since this chunk is at Lua's limit of 200 locals.
+local alert
+do
+  local STYLE = {
+    fillColor = { white = 0, alpha = 1 },
+    strokeColor = { white = 0.55, alpha = 1 },
+    strokeWidth = 2,
+    radius = 0,
+    textColor = { white = 1, alpha = 1 },
+    textFont = "JetBrainsMono Nerd Font Mono",
+    textSize = 15,
+  }
+  alert = function(text, seconds)
+    hs.alert.show(text, STYLE, hs.mouse.getCurrentScreen() or hs.screen.mainScreen(), seconds)
+  end
+end
 
 local function run(command, arguments)
   return function()
@@ -324,7 +333,7 @@ end
 local function togglePrs()
   if panel and panel.name == "prs" then return closePanel() end
   hs.task.new(GH, function(code, output)
-    if code ~= 0 then return hs.alert.show("Could not reach GitHub", ALERT_STYLE, 1.2) end
+    if code ~= 0 then return alert("Could not reach GitHub", 1.2) end
     showPrs(output)
   end, { "search", "prs", "--review-requested=@me", "--state=open", "--json", prs.FIELDS }):start()
 end
@@ -345,7 +354,7 @@ local function runCapture(id)
   hs.task.new(program, function(code, output, errors)
     -- A cancelled selection exits non-zero with nothing to say, so it stays quiet.
     local message = code == 0 and (CAPTURE_DONE[id] or ("Copied " .. output:gsub("%s+$", ""))) or errors:gsub("%s+$", "")
-    if message ~= "" then hs.alert.show(message, ALERT_STYLE, 1.2) end
+    if message ~= "" then alert(message, 1.2) end
   end, arguments):start()
 end
 
@@ -418,7 +427,7 @@ end
 local function fireReminder(reminder)
   if reminder.kind then return onPomoReminder(reminder) end
   hs.notify.new({ title = "Reminder", informativeText = reminder.text, withdrawAfter = 0 }):send()
-  hs.alert.show("󰔛 " .. reminder.text, ALERT_STYLE, 4)
+  alert("󰔛 " .. reminder.text, 4)
   setReminderBar({ "drawing=on", "label=" .. reminders.short(reminder.text), "background.drawing=on", "icon.color=" .. BLACK, "label.color=" .. BLACK })
   flashUntil = os.time() + REMINDER_FLASH_SECONDS
 end
@@ -458,10 +467,10 @@ end
 local function cancelSoonestReminder()
   closePanel()
   local soonest = table.remove(reminderList, 1)
-  if not soonest then return hs.alert.show("No reminders", ALERT_STYLE, 1.5) end
+  if not soonest then return alert("No reminders", 1.5) end
   saveReminders()
   startReminders()
-  hs.alert.show("Cancelled: " .. soonest.text, ALERT_STYLE, 1.5)
+  alert("Cancelled: " .. soonest.text, 1.5)
 end
 
 local function onReminderInput(message)
@@ -470,7 +479,7 @@ local function onReminderInput(message)
   local seconds, text, kind = reminders.parse(message.id)
   if kind == "cancel" then return cancelSoonestReminder() end
   if not seconds then
-    hs.alert.show("Start with a time, like 25m", ALERT_STYLE, 1.5)
+    alert("Start with a time, like 25m", 1.5)
     return
   end
   -- A typed break goes straight to its countdown card.
@@ -823,7 +832,7 @@ end
 local function toggleEthernet()
   if panel and panel.name == "ethernet" then return closePanel() end
   local info = ethernetInfo()
-  if not info then return hs.alert.show("No cable connected", ALERT_STYLE, 1.5) end
+  if not info then return alert("No cable connected", 1.5) end
   showEthernet(info)
 end
 
@@ -1092,7 +1101,7 @@ end
 
 local function showBattery()
   local status = battery.parseBatt(hs.execute("/usr/bin/pmset -g batt"))
-  if not status then return hs.alert.show("This Mac has no battery", ALERT_STYLE, 1.5) end
+  if not status then return alert("This Mac has no battery", 1.5) end
   local health = battery.parseSmartBattery(hs.execute("/usr/sbin/ioreg -rn AppleSmartBattery"))
   showPanel("battery", anchored(battery.WIDTH, battery.HEIGHT), battery.html(battery.model(status, health)), onBatteryMessage)
 end
@@ -1184,7 +1193,7 @@ onAgentsMessage = function(message)
   if message.type ~= "choose" then return closePanel() end
   if message.id == "agents.new" then return showProjects() end
   local latest = recentSessions()[1]
-  if not latest then return hs.alert.show("No Claude Code sessions yet", ALERT_STYLE, 1.5) end
+  if not latest then return alert("No Claude Code sessions yet", 1.5) end
   panel.previous = nil
   closePanel()
   startClaude(latest.cwd, "--continue")
@@ -1219,10 +1228,10 @@ local function focusClaude()
   end
   local function focus(row)
     if not claudewait.focus(row.id, running, run) then
-      hs.alert.show("Claude waits in " .. row.label .. ", outside Ghostty, iTerm2 or Terminal", ALERT_STYLE, 2)
+      alert("Claude waits in " .. row.label .. ", outside Ghostty, iTerm2 or Terminal", 2)
     end
   end
-  if #rows == 0 then return hs.alert.show("No Claude session is waiting", ALERT_STYLE, 1.2) end
+  if #rows == 0 then return alert("No Claude session is waiting", 1.2) end
   if #rows == 1 then return focus(rows[1]) end
   local height = 28 + 46 + #rows * 30 + 8
   showPanel("claude", centered(WINDOWS_WIDTH, height), card.html({ prompt = "Waiting…", rows = rows, compact = true }), function(message)
@@ -1294,9 +1303,9 @@ end
 function note.submit(text)
   if not quicknote.entry(text, os.time()) then return closePanel() end
   closePanel()
-  if not note.save(text) then return hs.alert.show("Could not write the note", ALERT_STYLE, 1.2) end
+  if not note.save(text) then return alert("Could not write the note", 1.2) end
   note.setDraft("")
-  hs.alert.show("Noted", ALERT_STYLE, 1.2)
+  alert("Noted", 1.2)
 end
 
 -- Keeps the card's top where it is and lets it grow downward.
@@ -1341,7 +1350,7 @@ end
 
 function note.open(path)
   local text = readText(path)
-  if not text then return hs.alert.show("Could not read the note", ALERT_STYLE, 1.2) end
+  if not text then return alert("Could not read the note", 1.2) end
   local name = path:match("([^/]+)%.md$")
   note.file = { path = path, name = name, modified = note.modified(path), original = text, text = text }
   note.armed = false
@@ -1359,12 +1368,12 @@ end
 function note.saveFile(text)
   local file = note.file
   if not quicknote.canSave(file.modified, note.modified(file.path)) then
-    return hs.alert.show("Changed in Obsidian, not saved", ALERT_STYLE, 2)
+    return alert("Changed in Obsidian, not saved", 2)
   end
-  if not note.write(file.path, text) then return hs.alert.show("Could not write the note", ALERT_STYLE, 1.2) end
+  if not note.write(file.path, text) then return alert("Could not write the note", 1.2) end
   note.file = nil
   closePanel()
-  hs.alert.show("Saved", ALERT_STYLE, 1.2)
+  alert("Saved", 1.2)
 end
 
 function note.onMessage(message)
@@ -1396,7 +1405,7 @@ function note.onEscape()
   local hasText = note.draft:find("%S") ~= nil
   if note.armed or not hasText then
     closePanel()
-    if hasText then hs.alert.show("Draft kept", ALERT_STYLE, 1.2) end
+    if hasText then alert("Draft kept", 1.2) end
     return
   end
   note.armed = true
@@ -1413,7 +1422,7 @@ end
 local function copyUrl()
   hs.task.new(COPY_URL, function(code, _, errors)
     local message = code == 0 and "Copied URL" or (errors:gsub("%s+$", ""))
-    hs.alert.show(message, ALERT_STYLE, 1.2)
+    alert(message, 1.2)
   end):start()
 end
 
