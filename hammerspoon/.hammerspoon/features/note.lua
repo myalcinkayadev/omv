@@ -7,10 +7,12 @@ local shell = require("shell")
 local card = require("card")
 local quicknote = require("quicknote")
 local notepad = require("notepad")
+local notefile = require("notefile")
 
 local feature = {}
 
-local NOTE_VAULT = shell.HOME .. "/Documents/vault/work"
+-- One line naming the vault, such as ~/Notes/work. Read each time, so a change needs no reload.
+local VAULT_CONFIG = shell.HOME .. "/.config/omv/vault"
 local NOTE_WIDTH = 640
 local NOTE_FOLDERS = { { name = "00 - Daily", label = "Daily" }, { name = "Inbox", label = "Inbox" } }
 local NOTE_LIST_ROWS = 10
@@ -26,17 +28,20 @@ local function exists(path)
   return true
 end
 
--- The folder is made only when the file can't be opened, since a draft is written on every edit.
+local function vault()
+  return notefile.vault(shell.readText(VAULT_CONFIG), shell.HOME)
+end
+
+local DISK = {
+  open = io.open,
+  rename = os.rename,
+  remove = os.remove,
+  mkdir = function(folder) os.execute("/bin/mkdir -p '" .. folder:gsub("'", [['\'']]) .. "'") end,
+}
+
+-- Through a temporary file, so a failed write never leaves a note cut short.
 local function write(path, content)
-  local file = io.open(path, "w")
-  if not file then
-    os.execute("/bin/mkdir -p '" .. path:match("^(.*)/") .. "'")
-    file = io.open(path, "w")
-  end
-  if not file then return false end
-  file:write(content)
-  file:close()
-  return true
+  return notefile.write(path, content, DISK)
 end
 
 -- The draft is saved as it changes, so it survives a reload of this config, and its file
@@ -54,15 +59,15 @@ end
 
 -- A page is written first, so the daily note never links to one that failed.
 local function save(text)
-  local now = os.time()
+  local now, root = os.time(), vault()
   local entry = quicknote.entry(text, now)
   local title = quicknote.title(text)
   if title then
-    local page = quicknote.pagePath(NOTE_VAULT, title, exists)
+    local page = quicknote.pagePath(root, title, exists)
     if not write(page, text:gsub("%s+$", "") .. "\n") then return false end
     entry = quicknote.link(page, now)
   end
-  local daily = quicknote.path(NOTE_VAULT, now)
+  local daily = quicknote.path(root, now)
   return write(daily, quicknote.appended(shell.readText(daily), entry))
 end
 
@@ -83,9 +88,9 @@ local function resize(height)
 end
 
 local function files()
-  local found = {}
+  local found, root = {}, vault()
   for _, folder in ipairs(NOTE_FOLDERS) do
-    local dir = NOTE_VAULT .. "/" .. folder.name
+    local dir = root .. "/" .. folder.name
     if hs.fs.attributes(dir, "mode") == "directory" then
       for entry in hs.fs.dir(dir) do
         local path = dir .. "/" .. entry
