@@ -28,6 +28,8 @@ local waitingClaude = require("features.waiting")
 local quickNote = require("features.note")
 local clipboardHistory = require("features.clipboard")
 local bluetoothCard = require("features.bluetooth")
+-- Loaded now, not only from the system menu, so the chosen theme colours the cards from the start.
+require("features.theme")
 local hungryProcesses = require("features.procs")
 
 local SUPER = { "alt" }
