@@ -49,8 +49,8 @@ local saved = reminders.decode(reminders.encode(list), now)
 check.that("should save and reload reminders unchanged", #saved == 3 and saved[1].text == "soon" and saved[1].due == now + 90)
 check.that("should keep text with tabs and newlines on one line",
   reminders.decode(reminders.encode({ { due = now + 5, text = "a\tb\nc" } }), now)[1].text == "a b c")
-check.that("should drop reminders already past when reloading",
-  #reminders.decode(reminders.encode({ { due = now - 1, text = "gone" }, { due = now + 1, text = "kept" } }), now) == 1)
+check.that("should still drop a missed Pomodoro or break when reloading",
+  #reminders.decode(reminders.encode({ { due = now - 1, text = "write tests", kind = "pomo" }, { due = now - 1, text = "Break", kind = "break" } }), now) == 0)
 
 local input = card.html({ prompt = "Remind me…", rows = {}, input = true, hint = "25m check deploy" })
 check.that("should mark a card that takes typed input", check.contains(input, "data-input"))
@@ -79,5 +79,58 @@ check.that("should read c as cancel", select(3, reminders.parse("c")) == "cancel
 check.that("should still refuse an unknown single letter", parsed("x") == nil and select(3, reminders.parse("x")) == nil)
 
 check.that("should not leave a space before the ellipsis", reminders.short("Pomodoro done, take a break") == "Pomodoro…")
+
+-- A due reminder stays until it is dealt with, and one missed while Hammerspoon was off still fires.
+local missed = reminders.decode(reminders.encode({ { due = now - 60, text = "call the bank" } }), now)
+check.that("should keep a missed reminder as due when reloaded", missed[1] and reminders.isDue(missed[1]))
+check.that("should mark a missed reminder as late", missed[1].kind == "late")
+check.that("should say a missed reminder is new, so it is announced once", missed[1].missed == true)
+local again = reminders.decode(reminders.encode(missed), now + 600)
+check.that("should not announce a late reminder again on the next reload", again[1].kind == "late" and not again[1].missed)
+
+local fired = reminders.fire({ due = now, text = "stand up" })
+check.that("should keep a due reminder until it is dismissed", reminders.isDue(fired) and fired.text == "stand up")
+local saved = reminders.decode(reminders.encode({ fired }), now + 3600)
+check.that("should save and reload due reminders unchanged", saved[1].kind == "due" and saved[1].text == "stand up")
+check.that("should not count a waiting reminder as due", not reminders.isDue({ due = now + 60, text = "later" }))
+
+local mixed = {
+  { due = now - 300, text = "older due", kind = "due" },
+  { due = now - 100, text = "newer due", kind = "late" },
+  { due = now + 600, text = "waiting" },
+}
+check.that("should show the oldest due reminder's text in the bar", reminders.dueLabel(mixed) == "older due +1")
+check.that("should give no due label when nothing is due", reminders.dueLabel({ { due = now + 60, text = "later" } }) == nil)
+check.that("should leave due reminders out of the countdown", reminders.label(mixed, now) == "10:00")
+check.that("should list due reminders oldest first", reminders.dueList(mixed)[1].text == "older due")
+
+local snoozed = reminders.snooze(mixed[1], now, 5 * 60)
+check.that("should snooze a due reminder for 5 minutes", snoozed.due == now + 300 and not reminders.isDue(snoozed))
+check.that("should keep a snoozed reminder's text", snoozed.text == "older due")
+check.that("should snooze a due reminder for 15 minutes", reminders.snooze(mixed[1], now, 15 * 60).due == now + 900)
+
+local function at(hour, minute)
+  return os.time({ year = 2026, month = 11, day = 11, hour = hour, min = minute, sec = 0 })
+end
+local lateScreen = reminders.dueScreen({ due = at(14, 5), text = "call the bank", kind = "late" })
+check.that("should mark a missed reminder as late, with its time", check.contains(lateScreen.kicker, "LATE · WAS 14:05"))
+check.that("should title the due card with the reminder", lateScreen.title == "call the bank")
+check.that("should offer Dismiss first on the due card", lateScreen.rows[lateScreen.selected].id == "due.dismiss")
+check.that("should give Snooze 5 minutes the key S", lateScreen.rows[2].id == "due.snooze5" and lateScreen.rows[2].key == "s")
+check.that("should offer Snooze 15 minutes", lateScreen.rows[3].id == "due.snooze15")
+
+-- Clock times: "14:30 call" is the time until 14:30, tomorrow when already past.
+local noon = at(12, 0)
+local seconds, message = reminders.parse("14:30 call", noon)
+check.that("should read 14:30 as the time until 14:30 today", seconds == at(14, 30) - noon)
+check.that("should keep the text after the clock time", message == "call")
+check.that("should read a clock time already past as tomorrow",
+  (reminders.parse("09:00 stand up", noon)) == os.time({ year = 2026, month = 11, day = 12, hour = 9, min = 0, sec = 0 }) - noon)
+check.that("should read 9:05 with a single-digit hour", (reminders.parse("9:05 tea", at(8, 0))) == 65 * 60)
+check.that("should name a clock reminder without text Reminder", select(2, reminders.parse("14:30", noon)) == "Reminder")
+check.that("should refuse 25:00", reminders.parse("25:00 call", noon) == nil)
+check.that("should refuse 14:60", reminders.parse("14:60 call", noon) == nil)
+check.that("should read a clock time after r", (reminders.parse("r 14:30 call", noon)) == at(14, 30) - noon)
+check.that("should keep reading 25m with a clock passed in", (reminders.parse("25m check", noon)) == 25 * 60)
 
 check.finish()
