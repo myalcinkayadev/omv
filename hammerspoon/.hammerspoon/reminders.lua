@@ -14,13 +14,36 @@ local PRESETS = {
   b = { seconds = 5 * 60, text = "Break", kind = "break" },
 }
 
--- Returns seconds, text and kind (nil for a plain reminder) for "1h30m stand up" or
--- "pomo", or nil when it doesn't start with a time or a preset. Short forms: "r 25m ..."
--- is a reminder, "b" a break, and "c" alone returns nil, nil, "cancel".
-function reminders.parse(input)
+-- Seconds from now until the next hour:minute, today or else tomorrow, or nil for a time
+-- that doesn't exist, such as 25:00.
+local function untilClock(hour, minute, now)
+  hour, minute = tonumber(hour), tonumber(minute)
+  if hour > 23 or minute > 59 then return nil end
+  local target = os.date("*t", now)
+  target.hour, target.min, target.sec = hour, minute, 0
+  local at = os.time(target)
+  if at <= now then
+    target.day = target.day + 1
+    at = os.time(target)
+  end
+  return at - now
+end
+
+-- Returns seconds, text and kind (nil for a plain reminder) for "1h30m stand up", "14:30
+-- call" or "pomo", or nil when it doesn't start with a time or a preset. A clock time
+-- already past today means tomorrow; now is the current time, for clock times.
+-- Short forms: "r 25m ..." is a reminder, "b" a break, and "c" alone returns nil, nil, "cancel".
+function reminders.parse(input, now)
   if input:match("^%s*[cC]%s*$") then return nil, nil, "cancel" end
   local rest = input:match("^%s*[rR]%s+(.+)$")
   if rest then input = rest end
+  local hour, minute, after = input:match("^%s*(%d%d?):(%d%d)%s+(.-)%s*$")
+  if not hour then hour, minute = input:match("^%s*(%d%d?):(%d%d)%s*$") end
+  if hour then
+    local seconds = untilClock(hour, minute, now)
+    if not seconds then return nil end
+    return seconds, (after and after ~= "") and after or "Reminder"
+  end
   local word, after = input:match("^%s*(%a+)%s+(.-)%s*$")
   if not word then word, after = input:match("^%s*(%a+)%s*$"), "" end
   local preset = word and PRESETS[word:lower()]
@@ -46,6 +69,32 @@ function reminders.left(seconds)
   return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
+-- A reminder that came due stays until it is dismissed or snoozed: "due" when it fired
+-- on time, "late" when its time passed while Hammerspoon wasn't running.
+local DUE_KINDS = { due = true, late = true }
+
+function reminders.isDue(reminder)
+  return DUE_KINDS[reminder.kind] == true
+end
+
+local function waitingOnly(list)
+  local waiting = {}
+  for _, reminder in ipairs(list) do
+    if not reminders.isDue(reminder) then waiting[#waiting + 1] = reminder end
+  end
+  return waiting
+end
+
+-- A plain reminder whose time came: it now waits for you instead of for its time.
+function reminders.fire(reminder)
+  return { due = reminder.due, text = reminder.text, kind = "due" }
+end
+
+-- The same reminder, due again seconds from now.
+function reminders.snooze(reminder, now, seconds)
+  return { due = now + seconds, text = reminder.text }
+end
+
 function reminders.sorted(list)
   local copy = {}
   for index, reminder in ipairs(list) do copy[index] = reminder end
@@ -56,6 +105,7 @@ end
 -- The soonest reminder's time left, then +N for the others. The text stays out: the
 -- right side of the bar is full, and a longer label would run under the notch.
 function reminders.label(list, now)
+  list = waitingOnly(list)
   if #list == 0 then return "" end
   local label = reminders.left(reminders.sorted(list)[1].due - now)
   if #list > 1 then label = label .. " +" .. (#list - 1) end
@@ -68,7 +118,7 @@ local ICONS = { ["break"] = "󰅶", pomo = "󰣉", postponed = "󰣉" }
 local TIMER = "󰔛"
 
 function reminders.icon(list)
-  local soonest = reminders.sorted(list)[1]
+  local soonest = reminders.sorted(waitingOnly(list))[1]
   return soonest and ICONS[soonest.kind] or TIMER
 end
 
@@ -85,6 +135,39 @@ function reminders.short(text)
   return (table.concat(characters, "", 1, SHORT_CHARACTERS - 1):gsub("%s+$", "")) .. "…"
 end
 
+-- Due reminders, the one waiting longest first.
+function reminders.dueList(list)
+  local due = {}
+  for _, reminder in ipairs(reminders.sorted(list)) do
+    if reminders.isDue(reminder) then due[#due + 1] = reminder end
+  end
+  return due
+end
+
+-- The bar's pill while reminders are due: the oldest one's text, cut to fit, then +N.
+function reminders.dueLabel(list)
+  local due = reminders.dueList(list)
+  if #due == 0 then return nil end
+  local label = reminders.short(due[1].text)
+  if #due > 1 then label = label .. " +" .. (#due - 1) end
+  return label
+end
+
+-- The large card a due reminder opens, from a click on its pill. Dismiss is picked first.
+function reminders.dueScreen(reminder)
+  local when = (reminder.kind == "late" and "LATE · WAS " or "DUE ") .. os.date("%H:%M", reminder.due)
+  return {
+    kicker = "REMINDER · " .. when,
+    title = reminder.text,
+    rows = {
+      { id = "due.dismiss", icon = "󰄬", label = "Dismiss", hint = "↵" },
+      { id = "due.snooze5", icon = "󰔛", label = "Snooze 5 minutes", key = "s", hint = "s" },
+      { id = "due.snooze15", icon = "󰔛", label = "Snooze 15 minutes", key = "l", hint = "l" },
+    },
+    selected = 1,
+  }
+end
+
 -- One reminder per line: due time, the text, then the kind when it has one, and after the
 -- kind a break's length in seconds, split by tabs.
 function reminders.encode(list)
@@ -98,14 +181,20 @@ function reminders.encode(list)
   return table.concat(lines, "\n")
 end
 
--- Reminders already past are dropped, since their moment is gone.
+-- A plain reminder whose time passed while Hammerspoon wasn't running comes back late,
+-- marked missed so it is announced once. Pomodoros and breaks already past are dropped,
+-- since their moment is gone.
 function reminders.decode(text, now)
   local list = {}
   for due, rest in text:gmatch("(%d+)\t([^\n]*)") do
     local message, kind, length = rest:match("^([^\t]*)\t(%a+)\t(%d+)$")
     if not message then message, kind = rest:match("^([^\t]*)\t(%a+)$") end
-    if tonumber(due) > now then
-      list[#list + 1] = { due = tonumber(due), text = message or rest, kind = kind, length = length and tonumber(length) }
+    local reminder = { due = tonumber(due), text = message or rest, kind = kind, length = length and tonumber(length) }
+    if reminder.due > now or reminders.isDue(reminder) then
+      list[#list + 1] = reminder
+    elseif not kind then
+      reminder.kind, reminder.missed = "late", true
+      list[#list + 1] = reminder
     end
   end
   return reminders.sorted(list)

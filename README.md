@@ -203,15 +203,16 @@ Option+Shift+M asks "Remind me…". Type a time, then what to remember, and pres
 | Type | Does |
 |---|---|
 | `25m check deploy`, `1h30m stand up` | A reminder. Times use `h`, `m` and `s`, and can be combined |
+| `14:30 call`, `9:05 tea` | A reminder at that time, today, or tomorrow when it has already passed |
 | `r 25m check deploy` | The same, with an optional `r` |
 | `pomo`, `pomo write tests` | 25 minutes of focus, optionally named |
 | `b`, `break` | A 5-minute break, straight away |
 | `c` | Cancels the soonest reminder |
 
 - The bar shows the time left on the soonest reminder, with a target icon during a pomo and a coffee cup during a break.
-- When a plain reminder is due, you get a notification and an alert, and the bar item turns into a white pill with the start of its text for 10 seconds.
-- Click the bar item to list your reminders, and press Enter on one to cancel it.
-- Reminders are saved in `~/.local/state/omv/reminders`, so they survive a Hammerspoon reload. One whose time passed while Hammerspoon wasn't running is dropped.
+- When a plain reminder is due, you get a notification and an alert, and the bar item turns into a white pill with the start of its text, plus `+N` when several are due. It stays until you deal with it: click it for a large card with **Dismiss** (Enter), **Snooze 5 minutes** (`s`) and **Snooze 15 minutes** (`l`). Escape closes the card and leaves the reminder due.
+- With nothing due, click the bar item to list your reminders, and press Enter on one to cancel it.
+- Reminders are saved in `~/.local/state/omv/reminders`, so they survive a Hammerspoon reload, due ones included. One whose time passed while Hammerspoon wasn't running comes back due, marked late on its card (`LATE · WAS 14:05`), with a "Missed reminder" notification. A Pomodoro or break that passed then is dropped, since its moment is gone.
 
 **Pomodoro.** When a pomo's time is up, the screen dims and a large card takes over. Nothing after it starts on its own: you pick each step.
 
