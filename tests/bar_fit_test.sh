@@ -5,14 +5,18 @@ source "$(dirname "$0")/lib.sh"
 
 readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/bar_fit.sh
 
-# The stubbed bar is one 1512pt display, so the notch's right edge is 856pt. Each item's
-# --query answer is $SANDBOX/<item>.json, built from its left edge and width.
+readonly ONE_DISPLAY='[{"arrangement-id":1,"frame":{"x":0,"y":0,"w":1512,"h":982}}]'
+# A 2560pt main display with the 1512pt one placed to its left, so its frame starts at -1512.
+readonly TWO_DISPLAYS='[{"arrangement-id":1,"frame":{"x":0,"y":0,"w":2560,"h":1440}},{"arrangement-id":2,"frame":{"x":-1512,"y":458,"w":1512,"h":982}}]'
+
+# The stubbed bar is one 1512pt display unless told otherwise, so the notch's right edge
+# is 856pt. Each item's --query answer is $SANDBOX/<item>.json, built from its left edge and width.
 stub_bar() {
   cat > "$STUB_DIR/sketchybar" <<STUB
 #!/bin/sh
 echo "sketchybar \$*" >> "$CALL_LOG"
 case "\$1 \$2" in
-  "--query displays") echo '[{"arrangement-id":1,"frame":{"x":0,"y":0,"w":1512,"h":982}}]' ;;
+  "--query displays") echo '${1:-$ONE_DISPLAY}' ;;
   --query\ *) cat "$SANDBOX/\$2.json" 2>/dev/null || echo '{"geometry":{"drawing":"off"},"bounding_rects":{}}' ;;
 esac
 exit 0
@@ -22,6 +26,13 @@ STUB
 
 item() {
   printf '{"geometry":{"drawing":"on"},"bounding_rects":{"display-1":{"origin":[%s,0],"size":[%s,36]}}}' "$2" "$3" > "$SANDBOX/$1.json"
+}
+
+# An item on both of TWO_DISPLAYS, from its left edge on the 1512pt one. SketchyBar counts
+# every edge from the main display's corner, so on the display to the left it is negative.
+item_on_both() {
+  printf '{"geometry":{"drawing":"on"},"bounding_rects":{"display-1":{"origin":[%s,0],"size":[%s,36]},"display-2":{"origin":[%s,0],"size":[%s,36]}}}' \
+    "$(($2 + 1048))" "$3" "$(($2 - 1512))" "$3" > "$SANDBOX/$1.json"
 }
 
 # The fixed items on the right, ending at the clock.
@@ -135,7 +146,26 @@ ignores_hidden_items() {
   assert_not_called 'drawing=off'
 }
 
+fits_on_a_display_to_the_left() {
+  stub_bar "$TWO_DISPLAYS"
+  item_on_both clock 1370 132
+  item_on_both claude_usage 1210 90
+  fit
+  assert_not_called 'drawing=off'
+}
+
+gives_way_on_a_display_to_the_left() {
+  stub_bar "$TWO_DISPLAYS"
+  item_on_both clock 1370 132
+  item_on_both claude_usage 1150 90
+  item_on_both reminder 800 350
+  fit
+  assert_called '^sketchybar --set claude_usage label.drawing=off$'
+}
+
 run_case 'should change nothing when everything fits' fits_already
+run_case 'should keep every item when a display placed to the left has room before its notch' fits_on_a_display_to_the_left
+run_case 'should give way when a display placed to the left has items reaching its notch' gives_way_on_a_display_to_the_left
 run_case "should shrink Claude to its logo first" shrinks_claude_first
 run_case 'should keep the meeting time when shrinking Claude is enough' keeps_meeting_when_claude_is_enough
 run_case 'should then show the meeting as just its icon' shrinks_meeting_first

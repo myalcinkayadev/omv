@@ -61,6 +61,10 @@ check.that("should resume a break saved before a reload", kinds[1].kind == "brea
 check.that("should reload a plain reminder without a kind", kinds[2].kind == nil)
 check.that("should read reminders saved before kinds existed", reminders.decode("2000\tcall", 1000)[1].text == "call")
 
+local long = reminders.decode(reminders.encode({ { due = 2000, text = "Break", kind = "break", length = 900 } }), 1000)
+check.that("should keep a break's length when saved and read back", long[1].length == 900)
+check.that("should read a break saved before lengths existed", reminders.decode("2000\tBreak\tbreak", 1000)[1].kind == "break")
+
 check.that("should show a coffee cup in the bar during a break", reminders.icon({ { due = 1, text = "Break", kind = "break" } }) == "\u{F0176}")
 check.that("should show a target in the bar during a pomo", reminders.icon({ { due = 1, text = "write tests", kind = "pomo" } }) == "\u{F08C9}")
 check.that("should show a target for a postponed pomo", reminders.icon({ { due = 1, text = "write tests", kind = "postponed" } }) == "\u{F08C9}")

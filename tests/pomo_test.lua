@@ -61,6 +61,8 @@ check.that("should offer a 15-minute break after the 4th pomo", fourth.rows[1].l
 check.that("should offer a 5-minute break otherwise", done.rows[1].label == "Start 5-minute break")
 check.that("should count the long break for 15 minutes", pomo.breakSeconds(4) == 15 * 60 and pomo.breakSeconds(8) == 15 * 60)
 check.that("should count a short break for 5 minutes", pomo.breakSeconds(2) == 5 * 60 and pomo.breakSeconds(0) == 5 * 60)
+check.that("should give a break its own length when it has one", pomo.breakLength({ kind = "break", length = 300 }, 4) == 300)
+check.that("should fall back to the count's break length when a break has none", pomo.breakLength({ kind = "break" }, 4) == 15 * 60)
 check.that("should warn in a pomo's last 30 seconds", pomo.warning({ due = 1030, kind = "pomo" }, 1000))
 check.that("should warn for a postponed pomo too", pomo.warning({ due = 1030, kind = "postponed" }, 1000))
 check.that("should not warn before the last 30 seconds", not pomo.warning({ due = 1031, kind = "pomo" }, 1000))

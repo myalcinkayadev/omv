@@ -26,8 +26,20 @@ event_json() {
   printf '{"session_id":"%s","cwd":"/Users/me/workspace/omv","prompt":"secret prompt","transcript_path":"/secret/t.jsonl","hook_event_name":"Stop"}' "${1:-abc-123}"
 }
 
+# A Notification event of the given type, or one without a type when none is given.
+notification_json() {
+  local type=${1:+,\"notification_type\":\"$1\"}
+  printf '{"session_id":"abc-123","cwd":"/Users/me/workspace/omv","hook_event_name":"Notification","message":"secret message"%s}' "$type"
+}
+
 run_hook() {
   run_in_sandbox "$HOOK" "$@"
+}
+
+# A session that has waited since a fixed time, so no case depends on the clock.
+save_waiting_since() {
+  mkdir -p "$(state_dir)"
+  printf '4242\t/dev/ttys009\tomv\t%s\n' "$1" > "$(state_dir)/abc-123"
 }
 
 records_a_waiting_session() {
@@ -85,7 +97,51 @@ survives_invalid_json() {
   printf 'not json' | assert_exit_zero run_hook wait
 }
 
+records_a_permission_prompt() {
+  stub_ps
+  notification_json permission_prompt | run_hook wait
+  [ -f "$(state_dir)/abc-123" ] || fail 'no state file'
+}
+
+ignores_a_notification_that_asks_nothing() {
+  stub_ps
+  notification_json agent_completed | run_hook wait
+  [ ! -e "$(state_dir)/abc-123" ] || fail 'recorded a session that is not waiting'
+}
+
+records_a_notification_without_a_type() {
+  stub_ps
+  notification_json | run_hook wait
+  [ -f "$(state_dir)/abc-123" ] || fail 'no state file'
+}
+
+keeps_the_start_time_on_idle() {
+  stub_ps
+  save_waiting_since 100
+  notification_json idle_prompt | run_hook wait
+  [ "$(cut -f4 "$(state_dir)/abc-123")" = 100 ] || fail "saved: $(cat "$(state_dir)/abc-123")"
+}
+
+skips_the_bar_on_idle_that_changes_nothing() {
+  stub_ps
+  save_waiting_since 100
+  notification_json idle_prompt | run_hook wait
+  assert_not_called 'sketchybar'
+}
+
+records_an_idle_session_not_yet_recorded() {
+  stub_ps
+  notification_json idle_prompt | run_hook wait
+  [ -f "$(state_dir)/abc-123" ] || fail 'no state file'
+}
+
 run_case 'should record a session when Claude waits' records_a_waiting_session
+run_case 'should record a session when the notification is a permission prompt' records_a_permission_prompt
+run_case 'should record nothing when the notification asks nothing of you' ignores_a_notification_that_asks_nothing
+run_case 'should record a session when the notification has no type' records_a_notification_without_a_type
+run_case 'should keep the waiting start time when an idle notification follows a stop' keeps_the_start_time_on_idle
+run_case 'should leave the bar alone when an idle notification changes nothing' skips_the_bar_on_idle_that_changes_nothing
+run_case 'should record a session when an idle notification arrives and none was recorded' records_an_idle_session_not_yet_recorded
 run_case "should record Claude's PID, its terminal and the folder name" records_the_terminal_of_claude
 run_case 'should store nothing from the prompt or transcript' stores_nothing_else
 run_case 'should notify the bar when a session waits' notifies_the_bar
