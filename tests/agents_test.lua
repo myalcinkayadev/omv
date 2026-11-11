@@ -42,6 +42,21 @@ check.that("should leave out the make-something section", not check.contains(vis
 check.that("should show the Claude logo when given one",
   check.contains(agents.html({ logo = "data:image/png;base64,AAAA" }), 'src="data:image/png;base64,AAAA"'))
 
+local sessions = {
+  { id = "/dev/ttys004", label = "api", hint = "asks · 1 min", state = "asks" },
+  { id = "/dev/ttys002", label = "omv", hint = "working · 3 min", state = "working" },
+}
+local withSessions = agents.html({ sessions = sessions })
+check.that("should show a row per live session", select(2, withSessions:gsub('class="session', "")) == 2)
+check.that("should give a session row its terminal as its id", check.contains(withSessions, 'data-id="session:/dev/ttys004"'))
+check.that("should show a session's state and wait", check.contains(check.visible(withSessions), "asks · 1 min"))
+check.that("should show no session rows when no session is live", not check.contains(agents.html({}), 'class="session'))
+check.that("should keep the card's height when no session is live", agents.height(0) == agents.HEIGHT)
+check.that("should grow the card by one row per session", agents.height(3) - agents.height(2) == agents.height(2) - agents.height(1))
+check.that("should stop growing the card at six sessions", agents.height(7) == agents.height(6))
+check.that("should read a session id back as its terminal", agents.sessionTty("session:/dev/ttys004") == "/dev/ttys004")
+check.that("should read no terminal from a button id", agents.sessionTty("agents.new") == nil)
+
 local empty = agents.html({})
 check.that("should show empty bars when there is no usage", select(2, empty:gsub('style="width: 0%%"', "")) == 2)
 check.that("should show dashes for times when there is no usage", select(2, check.visible(empty):gsub(DASH, "")) == 2)
