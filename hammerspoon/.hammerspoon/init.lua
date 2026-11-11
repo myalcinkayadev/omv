@@ -32,6 +32,8 @@ local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
 local COPY_URL = hs.configdir .. "/copy-url.sh"
 local run, open = shell.run, shell.open
+-- The browser and editor the keys open, from ~/.config/omv/apps, read when this config loads.
+local chosen = require("apps").read(shell.readText(require("apps").PATH))
 
 -- Each key keeps its action, so the key list can run it too. The group is the key list
 -- section it shows under.
@@ -52,12 +54,12 @@ local function copyUrl()
   end):start()
 end
 
-bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New Helium window", "Apps", openOnWorkspace("3", { "-na", "Helium", "--args", "--new-window" }))
-bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open Zed", "Apps", openOnWorkspace("2", { "-a", "Zed" }))
+bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New " .. chosen.browser .. " window", "Apps", openOnWorkspace("3", { "-na", chosen.browser, "--args", "--new-window" }))
+bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open " .. chosen.editor, "Apps", openOnWorkspace("2", { "-a", chosen.editor }))
 bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", "Apps", open({ shell.HOME }))
 bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", "Apps", run(shell.LAUNCH, { "1", shell.GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
 bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", "Tools", run(shell.SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
-bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy Helium's current URL", "Tools", copyUrl)
+bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy " .. chosen.browser .. "'s current URL", "Tools", copyUrl)
 bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", "Tools", captureMenu.toggle)
 bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", "Tools", reminderCards.new)
 bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", "Tools", quickNote.toggle)

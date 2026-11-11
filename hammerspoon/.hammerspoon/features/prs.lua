@@ -3,6 +3,7 @@
 local shell = require("shell")
 local card = require("card")
 local prs = require("prs")
+local apps = require("apps")
 
 local feature = {}
 
@@ -10,16 +11,16 @@ local GH = "/opt/homebrew/bin/gh"
 
 local function onPrsMessage(message)
   if message.type ~= "choose" then return shell.close() end
-  -- Leave focus to Helium, which AeroSpace shows on workspace 3.
+  -- Leave focus to the browser, which AeroSpace shows on workspace 3.
   shell.leaveFocus()
   shell.close()
-  shell.open({ "-a", "Helium", message.id })()
+  shell.open({ "-a", apps.read(shell.readText(apps.PATH)).browser, message.id })()
 end
 
 local function showPrs(output)
   local readable, found = pcall(hs.json.decode, output)
   local rows = prs.rows(readable and found or nil)
-  if #rows == 0 then return shell.open({ "-a", "Helium", prs.REVIEW_REQUESTED_URL })() end
+  if #rows == 0 then return shell.open({ "-a", apps.read(shell.readText(apps.PATH)).browser, prs.REVIEW_REQUESTED_URL })() end
   shell.show("prs", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
     card.html({ prompt = "Pull requests…", rows = rows, compact = true }), onPrsMessage)
 end

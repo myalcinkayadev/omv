@@ -128,7 +128,7 @@ local SEARCH_WORDS = {
   { "^New Ghostty window", "terminal shell" },
   { "^btop", "terminal processes cpu memory" },
   { "^Capture the screen", "screenshot grab ocr text color picker" },
-  { "^Copy Helium's current URL", "browser link" },
+  { "^Copy .+'s current URL", "browser link" },
   { "^Set a reminder", "timer alarm pomodoro" },
   { "^Note in today's daily note", "obsidian write journal" },
   { "^PRs waiting", "github pull request review" },
@@ -146,8 +146,8 @@ local SEARCH_WORDS = {
   { "^Keep the Mac awake", "caffeinate sleep" },
   { "^Drop%-down terminal", "quake ghostty" },
   { "^Finder at home", "files folder" },
-  { "^Open Zed", "editor code" },
-  { "^New Helium window", "browser" },
+  { "^Open %S", "editor code" },
+  { "^New .+ window$", "browser" },
   { "^Show or hide this list", "help keys shortcuts cheat sheet" },
 }
 

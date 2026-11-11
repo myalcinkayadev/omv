@@ -365,6 +365,15 @@ It's safe to run again. It:
 4. Adds the Claude usage line to your status line wrapper, and the hooks that tell the bar when a session waits.
 5. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, lets Ctrl+Cmd drag a window from anywhere, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
 
+**Other browser or editor.** Name yours in `~/.config/omv/apps`, one per line:
+
+```
+browser = Google Chrome
+editor = Cursor
+```
+
+Option+Shift+Enter, Option+Shift+N, Option+Shift+U and the pull request card then open those, after a Hammerspoon reload. The key list shows their names. Option+Shift+U copies the URL from Safari or any Chromium browser, such as Chrome, Brave or Arc. AeroSpace's workspace rules stay as they are: to send your browser to workspace 3, change Helium's bundle ID, `net.imput.helium`, to yours in `aerospace.toml`.
+
 Then, by hand:
 
 1. Open AeroSpace from Finder and grant Accessibility in System Settings.

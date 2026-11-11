@@ -50,9 +50,38 @@ fails_without_window() {
   assert_exit_nonzero run_in_sandbox "$COPY_URL"
 }
 
+# The browser omv opens, from ~/.config/omv/apps.
+choose_browser() {
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf 'browser=%s\n' "$1" > "$HOME_DIR/.config/omv/apps"
+}
+
+asks_the_chosen_browser() {
+  stub_helium
+  choose_browser 'Google Chrome'
+  run_in_sandbox "$COPY_URL"
+  assert_called 'osascript -e tell application "Google Chrome" to get URL of active tab of front window'
+}
+
+asks_safari_for_its_current_tab() {
+  stub_helium
+  choose_browser Safari
+  run_in_sandbox "$COPY_URL"
+  assert_called 'osascript -e tell application "Safari" to get URL of current tab of front window'
+}
+
+asks_helium_without_a_choice() {
+  stub_helium
+  run_in_sandbox "$COPY_URL"
+  assert_called 'osascript -e tell application "Helium" to get URL of active tab of front window'
+}
+
 run_case "should copy Helium's active tab URL to the clipboard" copies_active_tab_url
 run_case 'should ask Helium for the URL of its active tab' asks_helium_for_active_tab
 run_case 'should exit non-zero when Helium is not running' fails_when_helium_closed
 run_case 'should not ask Helium when it is not running' skips_helium_when_closed
 run_case 'should exit non-zero when Helium has no window' fails_without_window
+run_case 'should ask the browser named in ~/.config/omv/apps' asks_the_chosen_browser
+run_case 'should ask Safari for its current tab' asks_safari_for_its_current_tab
+run_case 'should ask Helium when no browser is named' asks_helium_without_a_choice
 finish
