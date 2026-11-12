@@ -19,7 +19,8 @@ end
 
 local function state()
   if not hs.fs.attributes(BLUEUTIL) then return { installed = false } end
-  local power = blueutil("--power"):match("1") ~= nil
+  local power = bluetooth.readPower(blueutil("--power"))
+  if power == nil then return { installed = true, denied = true } end
   local devices = {}
   if power then
     local ok, list = pcall(hs.json.decode, blueutil("--paired --format json"))
@@ -47,8 +48,14 @@ local function toggleDevice(device)
   end, arguments):start()
 end
 
+local BLUETOOTH_PRIVACY = "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth"
+
 local function onMessage(message)
   if message.type ~= "choose" then return shell.close() end
+  if message.id == "settings" then
+    shell.close()
+    return shell.open({ BLUETOOTH_PRIVACY })()
+  end
   if message.id == "power.on" or message.id == "power.off" then
     blueutil("--power " .. (message.id == "power.on" and "1" or "0"))
     redrawIcon()
@@ -64,6 +71,15 @@ show = function()
   local rows = bluetooth.rows(state())
   local screen = { prompt = "Bluetooth…", rows = rows, compact = true }
   shell.show("bluetooth", shell.anchored(WIDTH, shell.listHeight(#rows, VISIBLE_ROWS), "bluetooth"), card.html(screen), onMessage)
+end
+
+-- For the bar's icon: "1" when on, "0" when off, "" when it can't be read. SketchyBar asks
+-- through hs -c, since only Hammerspoon has Bluetooth access.
+function feature.power()
+  if not hs.fs.attributes(BLUEUTIL) then return "" end
+  local power = bluetooth.readPower(blueutil("--power"))
+  if power == nil then return "" end
+  return power and "1" or "0"
 end
 
 function feature.toggle()

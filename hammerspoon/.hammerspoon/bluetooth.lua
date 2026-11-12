@@ -22,6 +22,15 @@ function bluetooth.devices(list)
   return devices
 end
 
+-- `blueutil --power`: true when on, false when off, nil when blueutil was refused, which
+-- happens when the app running it has no Bluetooth access.
+function bluetooth.readPower(output)
+  local first = tostring(output or ""):match("^%s*(%S)")
+  if first == "1" then return true end
+  if first == "0" then return false end
+  return nil
+end
+
 function bluetooth.action(device)
   return device.connected and "disconnect" or "connect"
 end
@@ -34,10 +43,13 @@ function bluetooth.command(action, address)
 end
 
 -- Card rows: the power switch, then each device while Bluetooth is on. Without blueutil,
--- one row says how to install it.
+-- or without Bluetooth access for Hammerspoon, one row says what's needed.
 function bluetooth.rows(state)
   if not state.installed then
     return { { id = "install", icon = "󰂲", label = "Bluetooth needs blueutil: brew install blueutil" } }
+  end
+  if state.denied then
+    return { { id = "settings", icon = "󰂲", label = "Allow Bluetooth for Hammerspoon in Privacy & Security" } }
   end
   if not state.power then return { { id = "power.on", icon = "󰂯", label = "Turn Bluetooth on" } } end
   local rows = { { id = "power.off", icon = "󰂲", label = "Turn Bluetooth off" } }

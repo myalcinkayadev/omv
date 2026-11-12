@@ -29,4 +29,13 @@ check.that("should show only the power switch while Bluetooth is off", #off == 1
 local missing = bluetooth.rows({ installed = false })
 check.that("should say to install blueutil when it's missing", #missing == 1 and missing[1].label:find("brew install blueutil", 1, true) ~= nil)
 
+-- blueutil aborts when the app running it has no Bluetooth access.
+local REFUSED = "Error: Received abort signal, it may be due to absence of access to Bluetooth API, check that current terminal application has access in System Settings > Privacy & Security > Bluetooth"
+check.that("should read power 1 as on", bluetooth.readPower("1\n") == true)
+check.that("should read power 0 as off", bluetooth.readPower("0\n") == false)
+check.that("should read a refusal as no access", bluetooth.readPower(REFUSED) == nil)
+local refused = bluetooth.rows({ installed = true, denied = true })
+check.that("should say to allow Bluetooth for Hammerspoon when blueutil is refused",
+  #refused == 1 and refused[1].label:find("Allow Bluetooth for Hammerspoon", 1, true) ~= nil)
+
 check.finish()

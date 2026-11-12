@@ -108,6 +108,8 @@ omvToggleSystemMenu = later(systemMenu.toggle)
 omvToggleSound = later(soundCard.toggle)
 omvToggleWifi = later(networkCards.toggleWifi)
 omvToggleBluetooth = later(bluetoothCard.toggle)
+-- Answers at once, not later: the bar's plugin reads the answer.
+omvBluetoothPower = bluetoothCard.power
 omvToggleEthernet = later(networkCards.toggleEthernet)
 omvToggleWeather = later(weatherCard.toggle)
 omvToggleBattery = later(batteryCard.toggle)
