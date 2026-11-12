@@ -19,6 +19,9 @@ local TASK_ENVIRONMENT = { HOME = shell.HOME, PATH = "/opt/homebrew/bin:/usr/bin
 local space = nil
 local previews = {}
 local running = {}
+-- A preview still running when its cleanup starts measured the disk before it, so its
+-- result is dropped rather than saved.
+local discarded = {}
 
 local function cachePath(id)
   return shell.STATE_DIR .. "/disk-" .. id
@@ -36,10 +39,18 @@ local function installed()
   return hs.fs.attributes(MO) ~= nil
 end
 
+local function forget(id)
+  os.remove(cachePath(id))
+  previews[id] = nil
+  if running[id] then discarded[id] = true end
+end
+
 local function onMessage(message)
   if message.type ~= "choose" then return shell.close() end
   local command = disk.command(message.id)
   if not command then return shell.close() end
+  local stale = disk.invalidates(message.id)
+  if stale then forget(stale) end
   shell.leaveFocus()
   shell.close()
   shell.run(shell.LAUNCH, { "1", shell.GHOSTTY_WINDOW, command })()
@@ -75,6 +86,11 @@ local function measure(id)
   previews[id] = { measuring = true, size = last and last.size }
   startTask(PREVIEWS[id], function(_, output)
     running[id] = false
+    if discarded[id] then
+      discarded[id] = false
+      previews[id] = nil
+      return
+    end
     local size = disk.previewSize(output)
     if size then saveCache(id, size) end
     previews[id] = (size or (last and last.size)) and { size = size or last.size } or nil

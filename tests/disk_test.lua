@@ -77,4 +77,9 @@ check.that("should never run a row's command unattended", not unattended)
 check.that("should run brew install mole for the install row", disk.command("install") == "/opt/homebrew/bin/brew install mole")
 check.that("should run nothing for the space row", disk.command("space") == nil)
 
+check.that("should re-measure the clean preview after Clean caches is chosen", disk.invalidates("clean") == "clean")
+check.that("should re-measure the purge preview after Purge is chosen", disk.invalidates("purge") == "purge")
+check.that("should keep the previews after Explore disk usage is chosen", disk.invalidates("analyze") == nil)
+check.that("should keep the previews after Remove old installers is chosen", disk.invalidates("installer") == nil)
+
 check.finish()

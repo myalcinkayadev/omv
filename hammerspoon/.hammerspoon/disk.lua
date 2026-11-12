@@ -110,6 +110,14 @@ function disk.rows(state)
   return rows
 end
 
+-- The preview a row's command makes out of date, so it's measured again next time: only
+-- the cleanups change what Mole would free.
+local INVALIDATES = { clean = "clean", purge = "purge" }
+
+function disk.invalidates(id)
+  return INVALIDATES[id]
+end
+
 -- The command a row runs in a new Ghostty window, or nil for a row that runs nothing.
 function disk.command(id)
   return COMMANDS[id]
