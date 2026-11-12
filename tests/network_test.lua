@@ -24,7 +24,7 @@ check.that("should show the IP address when connected", check.contains(visible, 
 check.that("should show the router when connected", check.contains(visible, "192.168.1.1"))
 check.that("should show the channel with its band when connected", check.contains(visible, "36 (5GHz)"))
 check.that("should offer to turn Wi-Fi off when it is on", check.contains(visible, "Turn off"))
-check.that("should offer Wi-Fi settings on the Wi-Fi card", check.contains(visible, "Wi-Fi settings"))
+check.that("should offer settings on the Wi-Fi card", check.contains(visible, "Settings"))
 check.that("should give the settings button its id on the Wi-Fi card", check.contains(connected, 'data-id="wifi.settings"'))
 check.that("should give the power button its id on the Wi-Fi card", check.contains(connected, 'data-id="wifi.power"'))
 
@@ -55,7 +55,8 @@ check.that("should show the link speed on the Ethernet card", check.contains(wir
 check.that("should show the port on the Ethernet card", check.contains(wiredText, "en5"))
 check.that("should show the duplex on the Ethernet card", check.contains(wiredText, "full"))
 check.that("should say connected on the Ethernet card", check.contains(wiredText, "CONNECTED"))
-check.that("should offer Network settings on the Ethernet card", check.contains(wiredText, "Network settings"))
+check.that("should offer settings on the Ethernet card", check.contains(wiredText, "Settings"))
+check.that("should keep each button on one line", check.contains(require("panel").STYLE, "white-space: nowrap; overflow: hidden"))
 check.that("should give the settings button its id on the Ethernet card", check.contains(wired, 'data-id="network.settings"'))
 
 check.that("should label 1000 Mb/s as 1 Gb/s", network.speedLabel(1000) == "1 Gb/s")
@@ -127,5 +128,31 @@ check.that("should update the buttons' labels too", check.contains(update, card.
 check.that("should keep the buttons' section outside the changing part", not check.contains(panel.data(liveModel), "class=btns"))
 check.that("should make a JavaScript string that survives quotes and new lines",
   card.jsString('a"b\\c\nd</script>') == '"a\\"b\\\\c\\nd<\\/script>"')
+
+-- Speed test, from macOS's networkQuality -c.
+local measured = network.parseSpeedTest({ dl_throughput = 659956736, ul_throughput = 57961924 })
+check.that("should read the download speed in Mb/s", measured and measured.down == 660)
+check.that("should read the upload speed in Mb/s", measured and measured.up == 58)
+check.that("should give no result when the test has no throughput", network.parseSpeedTest({ error_code = 1 }) == nil)
+check.that("should give no result for an answer that isn't a table", network.parseSpeedTest(nil) == nil)
+check.that("should show a speed under 1000 in Mb/s", network.rateLabel(58) == "58 Mb/s")
+check.that("should show a speed from 1000 in Gb/s", network.rateLabel(1234) == "1.2 Gb/s")
+local function gridValue(model, label)
+  for _, pair in ipairs(model.grid) do if pair[1] == label then return pair[2] end end
+end
+local function button(model, id)
+  for _, found in ipairs(model.buttons) do if found.id == id then return found end end
+end
+local online = { power = true, ssid = "Home", rssi = -50, ip = "10.0.0.2", router = "10.0.0.1" }
+check.that("should offer a speed test on the Wi-Fi card", button(network.wifiModel(online), "network.speedtest") ~= nil)
+check.that("should offer a speed test on the Ethernet card",
+  button(network.ethernetModel({ port = "en6", ip = "10.0.0.3" }), "network.speedtest") ~= nil)
+check.that("should show dashes before a speed test", gridValue(network.wifiModel(online), "Download") == "—")
+check.that("should say a speed test is running",
+  button(network.wifiModel(online, { running = true }), "network.speedtest").label == "Testing…")
+check.that("should show the measured download speed",
+  gridValue(network.wifiModel(online, { down = 660, up = 58 }), "Download") == "660 Mb/s")
+check.that("should show the measured upload speed",
+  gridValue(network.ethernetModel({ port = "en6" }, { down = 660, up = 58 }), "Upload") == "58 Mb/s")
 
 check.finish()

@@ -10,10 +10,39 @@ local DASH = "—"
 local WEAKEST, STRONGEST = -90, -30
 
 network.WIDTH = 420
-network.HEIGHT = 300
+network.HEIGHT = 324
 
-local WIFI_SETTINGS = { id = "wifi.settings", icon = "󰒓", label = "Wi-Fi settings" }
-local NETWORK_SETTINGS = { id = "network.settings", icon = "󰒓", label = "Network settings" }
+local WIFI_SETTINGS = { id = "wifi.settings", icon = "󰒓", label = "Settings" }
+local NETWORK_SETTINGS = { id = "network.settings", icon = "󰒓", label = "Settings" }
+
+-- A speed in Mb/s as the card shows it, in Gb/s from 1000.
+function network.rateLabel(mbps)
+  if mbps < 1000 then return string.format("%d Mb/s", mbps) end
+  return string.format("%.1f Gb/s", mbps / 1000)
+end
+
+-- networkQuality -c's answer: download and upload in whole Mb/s, or nil without them.
+function network.parseSpeedTest(data)
+  if type(data) ~= "table" then return nil end
+  local down, up = tonumber(data.dl_throughput), tonumber(data.ul_throughput)
+  if not down or not up then return nil end
+  return { down = math.floor(down / 1e6 + 0.5), up = math.floor(up / 1e6 + 0.5) }
+end
+
+-- The speed test's grid row and button. speed is nil before a test, { running = true }
+-- during one, and { down, up } after.
+local function speedRow(speed)
+  local function shown(mbps)
+    if speed and speed.running then return "…" end
+    return mbps and network.rateLabel(mbps) or "—"
+  end
+  return { "Download", shown(speed and speed.down) }, { "Upload", shown(speed and speed.up) }
+end
+
+local function speedButton(speed)
+  local running = speed and speed.running
+  return { id = "network.speedtest", icon = "󰓅", label = running and "Testing…" or "Speed test" }
+end
 
 local function orDash(value)
   if not value or value == "" then return DASH end
@@ -46,13 +75,14 @@ local function wifiStatus(info)
   return hasName(info) and info.ssid:upper() or DASH
 end
 
--- info = { power, ssid, rssi, ip, router, channel, band }
-function network.wifiModel(info)
+-- info = { power, ssid, rssi, ip, router, channel, band }; speed as for speedRow.
+function network.wifiModel(info, speed)
   local connected = isConnected(info)
   local percent = connected and network.signalPercent(info.rssi) or 0
   local signal = connected and info.rssi and info.rssi ~= 0 and (info.rssi .. " dBm") or nil
   local band = info.band and (BAND_NAMES[info.band] or info.band)
   local channel = connected and info.channel and (info.channel .. (band and (" (" .. band .. ")") or "")) or nil
+  local download, upload = speedRow(speed)
   local power = info.power and { id = "wifi.power", icon = "󰖪", label = "Turn off" }
     or { id = "wifi.power", icon = "󰖩", label = "Turn on" }
   return {
@@ -64,8 +94,9 @@ function network.wifiModel(info)
     grid = {
       { "IP address", orDash(connected and info.ip) }, { "Signal", orDash(signal) },
       { "Router", orDash(connected and info.router) }, { "Channel", orDash(channel) },
+      download, upload,
     },
-    buttons = { power, WIFI_SETTINGS },
+    buttons = { power, speedButton(speed), WIFI_SETTINGS },
   }
 end
 
@@ -76,8 +107,9 @@ function network.speedLabel(mbps)
   return (gigabits == math.floor(gigabits) and string.format("%d", gigabits) or tostring(gigabits)) .. " Gb/s"
 end
 
--- info = { port, ip, router, mbps, duplex }
-function network.ethernetModel(info)
+-- info = { port, ip, router, mbps, duplex }; speed as for speedRow.
+function network.ethernetModel(info, speed)
+  local download, upload = speedRow(speed)
   return {
     icon = "󰈀",
     title = "Ethernet",
@@ -87,8 +119,9 @@ function network.ethernetModel(info)
     grid = {
       { "IP address", orDash(info.ip) }, { "Port", orDash(info.port) },
       { "Router", orDash(info.router) }, { "Duplex", orDash(info.duplex) },
+      download, upload,
     },
-    buttons = { NETWORK_SETTINGS },
+    buttons = { speedButton(speed), NETWORK_SETTINGS },
   }
 end
 

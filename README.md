@@ -147,9 +147,11 @@ Click the volume item in the bar, or press Option+Shift+V, for the Sound card un
 
 ## Wi-Fi and Ethernet
 
-Click the Wi-Fi item, or press Option+Shift+W, for the Wi-Fi card: the network's name, the signal as a percentage and in dBm, the IP address, the router and the channel. **Turn off** (or **Turn on**) switches Wi-Fi, and **Wi-Fi settings** opens System Settings.
+Click the Wi-Fi item, or press Option+Shift+W, for the Wi-Fi card: the network's name, the signal as a percentage and in dBm, the IP address, the router and the channel. **Turn off** (or **Turn on**) switches Wi-Fi, and **Settings** opens Wi-Fi in System Settings.
 
-The Ethernet item shows only while a cable is connected. Click it, or press Option+Shift+E, for the Ethernet card: the link speed, the IP address, the router, the port and the duplex, and **Network settings**. With more than one cable, it shows the one the Mac's traffic goes out by.
+The Ethernet item shows only while a cable is connected. Click it, or press Option+Shift+E, for the Ethernet card: the link speed, the IP address, the router, the port and the duplex, and **Settings** for Network in System Settings. With more than one cable, it shows the one the Mac's traffic goes out by.
+
+Both cards have **Speed test**: macOS's own `networkQuality` measures the download and upload speed against Apple's servers in about 15 seconds, and the card shows them under Download and Upload until the next test.
 
 Left and Right move between the buttons, Enter presses one, and Escape or a click elsewhere closes.
 

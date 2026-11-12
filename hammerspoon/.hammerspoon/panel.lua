@@ -25,7 +25,9 @@ panel.STYLE = [[
   .sec { border-top: 1px solid #2a2a2a; margin-top: 18px; padding-top: 16px; color: #7a7a7a;
     letter-spacing: 1px; font-size: 13px; }
   .btns { display: flex; gap: 12px; margin-top: 12px; }
-  .btn { flex: 1; border: 1px solid #8d8d8d; padding: 10px; text-align: center; font-size: 14px; cursor: default; }
+  /* Buttons share the row equally and keep to one line, so a row of three stays even. */
+  .btn { flex: 1 1 0; min-width: 0; border: 1px solid #8d8d8d; padding: 10px 4px; text-align: center; font-size: 14px;
+    cursor: default; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .btn.selected { background: #333; }
 ]]
 
@@ -89,7 +91,7 @@ function panel.buttonsRow(buttons)
   local parts = {}
   for _, button in ipairs(buttons) do
     parts[#parts + 1] = '<div class="btn' .. (button.selected and " selected" or "") .. '" data-id="' .. card.escape(button.id) .. '">'
-      .. card.escape(button.icon) .. "&nbsp; " .. card.escape(button.label) .. "</div>"
+      .. card.escape(button.icon) .. "&nbsp;" .. card.escape(button.label) .. "</div>"
   end
   return table.concat(parts)
 end

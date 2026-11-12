@@ -1,4 +1,5 @@
--- Wi-Fi and Ethernet cards (click the bar icons, Option+Shift+W / E).
+-- Wi-Fi and Ethernet cards (click the bar icons, Option+Shift+W / E). Either runs macOS's
+-- own speed test, networkQuality, which talks to Apple's test servers for about 15 seconds.
 
 local shell = require("shell")
 local network = require("network")
@@ -9,6 +10,10 @@ local WIFI_SETTINGS = "x-apple.systempreferences:com.apple.wifi-settings-extensi
 local NETWORK_SETTINGS = "x-apple.systempreferences:com.apple.Network-Settings.extension"
 -- Joining a network takes a moment after Wi-Fi turns on, so the card redraws again then.
 local WIFI_JOIN_SECONDS = 4
+local NETWORK_QUALITY = "/usr/bin/networkQuality"
+
+-- The last speed test: nil before one, { running = true } during it, { down, up } after.
+local speed = nil
 
 local function ipv4(interface)
   for _, address in ipairs(hs.network.addresses(interface) or {}) do
@@ -56,13 +61,13 @@ end
 local onNetworkMessage
 
 local function showWifi()
-  shell.show("wifi", shell.anchored(network.WIDTH, network.HEIGHT, "wifi"), network.html(network.wifiModel(wifiInfo())), onNetworkMessage,
+  shell.show("wifi", shell.anchored(network.WIDTH, network.HEIGHT, "wifi"), network.html(network.wifiModel(wifiInfo(), speed)), onNetworkMessage,
     { onClose = function() feature.signalWatcher:stop() end })
   feature.signalWatcher:start()
 end
 
 local function showEthernet(info)
-  shell.show("ethernet", shell.anchored(network.WIDTH, network.HEIGHT, "ethernet"), network.html(network.ethernetModel(info)), onNetworkMessage)
+  shell.show("ethernet", shell.anchored(network.WIDTH, network.HEIGHT, "ethernet"), network.html(network.ethernetModel(info, speed)), onNetworkMessage)
 end
 
 local function redrawWifi()
@@ -70,8 +75,28 @@ local function redrawWifi()
   hs.task.new(shell.SKETCHYBAR, nil, { "--update" }):start()
 end
 
+local refreshCards
+
+-- Runs in the background; the open card shows "Testing…", then the result.
+local function speedTest()
+  if speed and speed.running then return end
+  local previous = speed
+  speed = { running = true }
+  refreshCards()
+  hs.task.new(NETWORK_QUALITY, function(_, output)
+    local ok, data = pcall(hs.json.decode, output or "")
+    speed = network.parseSpeedTest(ok and data or nil)
+    if not speed then
+      speed = previous
+      shell.alert("Speed test failed", 1.5)
+    end
+    refreshCards()
+  end, { "-c" }):start()
+end
+
 onNetworkMessage = function(message)
   if message.type ~= "choose" then return shell.close() end
+  if message.id == "network.speedtest" then return speedTest() end
   if message.id == "wifi.power" then
     hs.wifi.setPower(not wifiInfo().power)
     redrawWifi()
@@ -100,16 +125,21 @@ end
 -- changes often, so it's watched only while the Wi-Fi card is open. Bursts wait 0.2s.
 local networkChanged = hs.timer.delayed.new(0.2, function()
   hs.task.new(shell.SKETCHYBAR, nil, { "--trigger", "omv_network_change" }):start()
-  if shell.isOpen("wifi") then shell.view():evaluateJavaScript(network.update(network.wifiModel(wifiInfo()))) end
+  refreshCards()
+end)
+
+-- The open card in place, keeping its selected button.
+refreshCards = function()
+  if shell.isOpen("wifi") then shell.view():evaluateJavaScript(network.update(network.wifiModel(wifiInfo(), speed))) end
   if shell.isOpen("ethernet") then
     local info = ethernetInfo()
     if not info then
       shell.close()
       return shell.alert("Cable disconnected", 1.5)
     end
-    shell.view():evaluateJavaScript(network.update(network.ethernetModel(info)))
+    shell.view():evaluateJavaScript(network.update(network.ethernetModel(info, speed)))
   end
-end)
+end
 
 local function changed() networkChanged:start() end
 
