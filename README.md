@@ -8,7 +8,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 
 - [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app, Vim-style keys, Option+Tab back to the last workspace, a tabbed layout, a focus border, and three-finger swipes.
 - [**The bar**](#the-bar): workspaces, the playing track, reminders, meetings, Claude usage, and a macOS-style clock that stays clear of the notch.
-- [**Window list**](#window-list): Option+Space jumps to any window on any workspace.
+- [**Palette**](#palette): Option+Space finds any window, app or omv command as you type.
 - [**Key list**](#key-list): Option+/ shows every shortcut at once, and runs the one you pick.
 - [**System menu**](#system-menu): lock, sleep, restart and reload the tools.
 - [**Sound**](#sound): volume, mute, output and input devices, and a live mic level.
@@ -93,9 +93,9 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 
 Option+Shift+Space shows or hides the bar.
 
-## Window list
+## Palette
 
-Option+Space lists every open window with its app and workspace. Type to filter by title, app or workspace number, and press Enter to go there.
+Option+Space opens one list, like Omarchy's: every open window with its app and workspace, then every app in `/Applications`, `/System/Applications` and `~/Applications`, then every omv command the [key list](#key-list) can run, such as the Wi-Fi card or the capture menu. Type to filter by name, app, workspace number or key, and press Enter to go to the window, open the app or run the command.
 
 <img src="docs/windows.png" alt="The window list, with btop selected" width="720">
 
@@ -392,7 +392,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 | Option+Tab | Go back to the previous workspace |
 | Option+, / Option+. | Focus the left / right monitor |
 | Option+Shift+, / Option+Shift+. | Send the window to the left / right monitor |
-| Option+Space | Go to any window, on any workspace |
+| Option+Space | Windows, apps and omv commands, in one list |
 | Option+V | Clipboard history |
 
 ### Apps and tools

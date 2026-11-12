@@ -85,7 +85,7 @@ bindKey(SUPER_SHIFT, "v", "Option+Shift+V", "Sound", "Cards", soundCard.toggle)
 bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather", "Cards", weatherCard.toggle)
 bindKey(SUPER_SHIFT, "b", "Option+Shift+B", "Battery", "Cards", batteryCard.toggle)
 bindKey(SUPER, "escape", "Option+Escape", "System menu", "Cards", systemMenu.toggle)
-bindKey(SUPER, "space", "Option+Space", "Go to any window", "Cards", windowList.toggle)
+bindKey(SUPER, "space", "Option+Space", "Windows, apps and commands", "Cards", windowList.toggle)
 bindKey(SUPER, "v", "Option+V", "Clipboard history", "Cards", clipboardHistory.toggle)
 
 -- Now playing: Music and Spotify announce every track and play-state change, so the bar
