@@ -126,6 +126,12 @@ sketchybar --add item clipboard_paused right \
   --set clipboard_paused drawing=off icon=󰅍 icon.color=$MUTED icon.padding_right=3 label=paused \
     label.color=$MUTED label.padding_left=3 click_script="hs -c 'omvResumeClipboard()'"
 
+# Shown only while a screen recording runs, from the capture menu. Hammerspoon sets it;
+# clicking it stops the recording and saves it to the Desktop.
+sketchybar --add item recording right \
+  --set recording drawing=off icon=󰻃 icon.color=$WHITE icon.padding_right=3 label=rec \
+    label.color=$WHITE label.padding_left=3 click_script="hs -c 'omvStopRecording()'"
+
 # A white pill while a Claude Code session waits for you, set by the claude_waiting_change
 # event from claude-waiting.sh. Every 30 seconds it drops sessions whose Claude has ended.
 # Added just before Claude's item, so it sits right next to it with no icon of its own: the

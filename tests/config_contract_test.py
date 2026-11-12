@@ -229,6 +229,13 @@ class ConfigContract(unittest.TestCase):
     def test_should_define_the_disk_card_hook_in_hammerspoon(self) -> None:
         self.assertIn("omvToggleDisk = later(", HAMMERSPOON.read_text(encoding="utf-8"))
 
+    def test_should_define_the_stop_recording_hook_in_hammerspoon(self) -> None:
+        self.assertIn("omvStopRecording = later(", HAMMERSPOON.read_text(encoding="utf-8"))
+
+    def test_should_stop_a_recording_from_the_bar(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("click_script=\"hs -c 'omvStopRecording()'\"", source)
+
     def test_should_define_the_lyrics_window_hook_in_hammerspoon(self) -> None:
         self.assertIn("omvToggleLyrics = later(", HAMMERSPOON.read_text(encoding="utf-8"))
 

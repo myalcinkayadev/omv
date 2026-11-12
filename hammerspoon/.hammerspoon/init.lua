@@ -123,6 +123,7 @@ omvToggleWeather = later(weatherCard.toggle)
 omvToggleBattery = later(batteryCard.toggle)
 omvToggleAgents = later(agentsCard.toggle)
 omvToggleLyrics = later(lyricsWindow.toggle)
+omvStopRecording = later(captureMenu.stopRecording)
 
 -- SketchyBar's config calls this when it starts: a restarted bar has lost the items set
 -- here, and they are only sent again when they change.

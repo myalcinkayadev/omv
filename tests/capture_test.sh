@@ -85,6 +85,44 @@ copies_picked_color() {
   [ "$(cat "$SANDBOX/clipboard")" = '#8D8D8D' ] || fail "clipboard: $(cat "$SANDBOX/clipboard" 2>/dev/null)"
 }
 
+copies_qr_code() {
+  stub_capture_tools
+  helper_prints 'https://example.com/menu'
+  run_in_sandbox "$CAPTURE" qr > /dev/null
+  [ "$(cat "$SANDBOX/clipboard")" = 'https://example.com/menu' ] || fail "clipboard: $(cat "$SANDBOX/clipboard" 2>/dev/null)"
+}
+
+fails_when_no_qr_code_found() {
+  stub_capture_tools
+  helper_prints ''
+  assert_exit_nonzero run_in_sandbox "$CAPTURE" qr
+}
+
+fails_when_qr_region_cancelled() {
+  stub_capture_tools
+  touch "$SANDBOX/cancel"
+  assert_exit_nonzero run_in_sandbox "$CAPTURE" qr
+}
+
+records_the_selected_region() {
+  stub_capture_tools
+  helper_prints '10,20,300,200'
+  run_in_sandbox "$CAPTURE" record "$SANDBOX/out.mov"
+  assert_called "^screencapture -v -k -R10,20,300,200 $SANDBOX/out.mov$"
+}
+
+records_nothing_when_selection_cancelled() {
+  stub_capture_tools
+  printf '#!/bin/sh\nexit 1\n' > "$SANDBOX/helper"
+  assert_exit_nonzero run_in_sandbox "$CAPTURE" record "$SANDBOX/out.mov"
+  assert_not_called '^screencapture -v'
+}
+
+rejects_recording_without_a_file() {
+  stub_capture_tools
+  assert_exit_nonzero run_in_sandbox "$CAPTURE" record
+}
+
 rejects_unknown_mode() {
   stub_capture_tools
   assert_exit_nonzero run_in_sandbox "$CAPTURE" sideways
@@ -97,5 +135,11 @@ run_case 'should leave the clipboard alone when the region is cancelled' leaves_
 run_case 'should exit non-zero when the region is cancelled' fails_when_cancelled
 run_case 'should exit non-zero when no text is found' fails_when_no_text_found
 run_case 'should copy the picked color' copies_picked_color
+run_case 'should copy the QR code read from a region' copies_qr_code
+run_case 'should exit non-zero when no QR code is found' fails_when_no_qr_code_found
+run_case 'should exit non-zero when the QR region is cancelled' fails_when_qr_region_cancelled
+run_case 'should record the region selected' records_the_selected_region
+run_case 'should record nothing when the selection is cancelled' records_nothing_when_selection_cancelled
+run_case 'should exit non-zero when recording has no file to save to' rejects_recording_without_a_file
 run_case 'should exit non-zero when given an unknown mode' rejects_unknown_mode
 finish

@@ -20,7 +20,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
 - [**Disk**](#disk): free space in the bar once it runs low, and Mole's cleanups a key away.
 - [**Lyrics**](#lyrics): the playing song's lyrics in a window that tiles, the line being sung large in the middle.
-- [**Capture menu**](#capture-menu): screenshots, text from the screen, and a color picker.
+- [**Capture menu**](#capture-menu): screenshots, text and QR codes from the screen, a color picker, and screen recordings.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 - [**Doctor**](#doctor): `./doctor.sh` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
@@ -324,10 +324,15 @@ Option+Shift+S opens a card for screen captures.
 | Window to clipboard | Click a window, copy it |
 | Screen to clipboard | Copy the whole screen |
 | Text from screen | Select an area, copy the text in it, read by macOS's Vision framework |
+| QR code from screen | Select an area, copy what the QR code in it says |
 | Pick a color | Click anywhere, copy its color as `#RRGGBB` |
+| Record a region | Drag an area, then record it to the Desktop, named like macOS's own recordings |
+| Record the screen | Record the whole display the pointer is on to the Desktop |
+
+While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S again, to stop and save it. Recordings show clicks, and have no sound.
 
 - The first capture asks you to give Hammerspoon Screen Recording, in System Settings > Privacy & Security > Screen & System Audio Recording. Every item except Pick a color needs it.
-- Text and color use a small Swift helper, `capture.swift`, built with `swiftc` the first time and kept in `~/.cache/omv/capture`.
+- Text, QR codes, color and the region to record use a small Swift helper, `capture.swift`, built with `swiftc` the first time and kept in `~/.cache/omv/capture`.
 
 ## Smaller tools
 
@@ -343,7 +348,7 @@ Option+Shift+S opens a card for screen captures.
 - **Clipboard history (Option+V):** the text you copied in the last day, newest first, at most 50. Type to filter, and Enter puts a copy back on the clipboard for you to paste with Cmd+V; pasting for you would need Accessibility, which omv doesn't grant. It's kept in memory only, so a reload forgets it. Secrets are never kept: copies password managers mark as concealed, copies made while 1Password, Bitwarden, Passwords or Keychain Access is in front, and text shaped like a key or token (`sk-…`, `ghp_…`, `AKIA…`, a JWT, a private key, or a `KEY=`, `TOKEN=`, `SECRET=` or `PASSWORD=` line). Only text is kept, never images or files. **Pause history** and **Clear history** are the card's first rows; while paused, the bar shows `paused`, and a click on it turns history back on. A secret with no recognizable shape is still kept, so pause the history for sensitive work.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 

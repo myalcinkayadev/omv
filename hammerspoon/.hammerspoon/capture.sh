@@ -1,8 +1,10 @@
 #!/bin/sh
-# Usage: capture.sh text|color
+# Usage: capture.sh text|qr|color|record <file>
 # text: select a region, read its text with the Vision framework, and copy it.
+# qr: select a region, read the QR code in it with the Vision framework, and copy it.
 # color: pick a color with the macOS color sampler, and copy it as #RRGGBB.
-# Both need a small Swift helper, built from capture.swift the first time and cached.
+# record: select a region, then record it to <file> until interrupted (SIGINT), showing clicks.
+# All need a small Swift helper, built from capture.swift the first time and cached.
 
 PATH="$PATH:/usr/bin:/bin:/usr/sbin"
 
@@ -32,6 +34,34 @@ read_text() {
   printf '%s' "$text" | pbcopy
 }
 
+read_qr() {
+  image=$(mktemp -t omv-capture).png
+  screencapture -i "$image" || exit 1
+  [ -s "$image" ] || exit 1
+  build_helper
+  code=$("$helper" qr "$image")
+  rm -f "$image"
+  if [ -z "$code" ]; then
+    echo "No QR code found" >&2
+    exit 1
+  fi
+  printf '%s' "$code" | pbcopy
+  printf '%s\n' "$code"
+}
+
+# exec, so the interrupt that stops the recording reaches screencapture, which then saves.
+record_region() {
+  file=${1:-}
+  if [ -z "$file" ]; then
+    echo "usage: capture.sh record <file>" >&2
+    exit 2
+  fi
+  build_helper
+  rect=$("$helper" select) || exit 1
+  [ -n "$rect" ] || exit 1
+  exec screencapture -v -k -R"$rect" "$file"
+}
+
 pick_color() {
   build_helper
   color=$("$helper" color) || exit 1
@@ -42,9 +72,11 @@ pick_color() {
 
 case ${1:-} in
   text) read_text ;;
+  qr) read_qr ;;
   color) pick_color ;;
+  record) record_region "${2:-}" ;;
   *)
-    echo "usage: capture.sh text|color" >&2
+    echo "usage: capture.sh text|qr|color|record <file>" >&2
     exit 2
     ;;
 esac
