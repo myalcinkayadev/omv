@@ -16,7 +16,10 @@ local status = disk.parseStatus({ disks = {
   { mount = "/", used = 302768385864, total = 494384795648, purgeable = 9423282360 },
 } })
 check.that("should read the startup disk from Mole's status, not a simulator volume", status.total == 494384795648)
-check.that("should count free bytes as total less used", status.free == 494384795648 - 302768385864)
+check.that("should count free bytes as total less used and purgeable, as df does",
+  status.free == 494384795648 - 302768385864 - 9423282360)
+check.that("should count free bytes as total less used when Mole reports no purgeable space",
+  disk.parseStatus({ disks = { { mount = "/", used = 100, total = 300 } } }).free == 200)
 check.that("should read purgeable bytes from Mole's status", status.purgeable == 9423282360)
 check.that("should give no space when Mole's status has no startup disk", disk.parseStatus({ disks = {} }) == nil)
 check.that("should give no space when Mole's status isn't a table", disk.parseStatus(nil) == nil)
@@ -46,7 +49,7 @@ end
 local rows = disk.rows({ installed = true, space = status,
   previews = { clean = { size = "12.70 GB" }, purge = { measuring = true } } })
 check.that("should show free, total and purgeable space first",
-  rows[1].label == "192 GB free of 494 GB" and rows[1].hint == "9.4 GB purgeable")
+  rows[1].label == "182 GB free of 494 GB" and rows[1].hint == "9.4 GB purgeable")
 check.that("should show the clean preview's size beside its row", rowById(rows, "clean").hint == "12.70 GB")
 check.that("should show measuring… while a preview runs", rowById(rows, "purge").hint == "measuring…")
 check.that("should offer to explore disk usage", rowById(rows, "analyze") ~= nil)

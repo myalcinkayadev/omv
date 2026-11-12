@@ -27,11 +27,13 @@ function disk.parseDf(output)
 end
 
 -- Free, total and purgeable bytes of the startup disk from `mo status --json`, decoded, or nil.
+-- Mole's used leaves purgeable space out, as Finder's free space does, so it's taken off
+-- here: free is what can be written now, as df and the bar's item count it.
 function disk.parseStatus(status)
   if type(status) ~= "table" or type(status.disks) ~= "table" then return nil end
   for _, entry in ipairs(status.disks) do
     if entry.mount == "/" and entry.total and entry.used then
-      return { free = entry.total - entry.used, total = entry.total, purgeable = entry.purgeable }
+      return { free = entry.total - entry.used - (entry.purgeable or 0), total = entry.total, purgeable = entry.purgeable }
     end
   end
   return nil
