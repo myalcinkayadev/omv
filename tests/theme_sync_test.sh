@@ -16,9 +16,9 @@ stub_github() {
 #!/bin/sh
 echo "curl $*" >> "$CALL_LOG"
 case "$*" in
-  *api.github.com/repos/basecamp/omarchy) echo '{"default_branch":"quattro"}' ;;
+  *api.github.com/repos/omacom/omarchy) echo '{"default_branch":"quattro"}' ;;
   *api.github.com*) echo '[{"name":"nord","type":"dir"},{"name":"tokyo-night","type":"dir"},{"name":"README.md","type":"file"},{"name":"..%2Fx","type":"dir"}]' ;;
-  *raw.githubusercontent.com/basecamp/omarchy/quattro/themes/*/colors.toml*)
+  *raw.githubusercontent.com/omacom/omarchy/quattro/themes/*/colors.toml*)
     out=$(printf '%s\n' "$@" | sed -n '/^-o$/{n;p;}')
     printf 'accent = "#123456"\n' > "$out"
     ;;

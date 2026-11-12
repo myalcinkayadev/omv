@@ -22,6 +22,20 @@ check.that("should fall back to Vantablack for a missing colour", tokyo.palette[
 check.that("should read a theme's terminal red", tokyo.palette[2] == "#f7768e")
 check.that("should ignore lines it can't read", theme.parse("# comment\nnot a line\naccent = \"#123456\"\n").accent == "#123456")
 
+local currentSchema = theme.tokens(theme.parse([[
+accent = "#7aa2f7"
+foreground = "#a9b1d6"
+background = "#1a1b26"
+color0 = "#32344a"
+color1 = "#f7768e"
+color8 = "#444b6a"
+color15 = "#acb0d0"
+]]))
+check.that("should read foreground from current Omarchy themes", currentSchema.fg == "#a9b1d6")
+check.that("should read the indexed palette from current Omarchy themes",
+  currentSchema.palette[1] == "#32344a" and currentSchema.palette[2] == "#f7768e" and currentSchema.palette[16] == "#acb0d0")
+check.that("should use color8 as the muted colour when one is not named", currentSchema.muted == "#444b6a")
+
 local vanta = theme.tokens(nil)
 local css = '<style>body { background: #000; color: #fff; border: 2px solid #8d8d8d; } .hint { color: #7a7a7a; } .line { background: #2a2a2a; } .logo { color: #d97757; }</style>'
 check.that("should keep every colour as it is for Vantablack", theme.recolor(css, vanta) == css)

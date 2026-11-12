@@ -7,7 +7,7 @@
 
 PATH="$PATH:/opt/homebrew/bin"
 themes="$HOME/.local/share/omv/themes"
-api="https://api.github.com/repos/basecamp/omarchy"
+api="https://api.github.com/repos/omacom/omarchy"
 
 # The default branch is named after each release, so it's looked up, not assumed.
 branch=$(curl -fsS "$api" | jq -r '.default_branch // empty') || branch=
@@ -24,7 +24,7 @@ for name in $names; do
     '' | *[!a-z0-9-]*) continue ;;
   esac
   temporary=$(mktemp)
-  if curl -fsS "https://raw.githubusercontent.com/basecamp/omarchy/$branch/themes/$name/colors.toml" -o "$temporary"; then
+  if curl -fsS "https://raw.githubusercontent.com/omacom/omarchy/$branch/themes/$name/colors.toml" -o "$temporary"; then
     mkdir -p "$themes/$name"
     mv "$temporary" "$themes/$name/colors.toml"
     count=$((count + 1))

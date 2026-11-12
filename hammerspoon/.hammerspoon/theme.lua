@@ -36,13 +36,22 @@ end
 
 -- The colours omv uses, each from the theme, else from Vantablack.
 function theme.tokens(colors)
-  local function pick(key)
+  local function color(key)
     local value = colors and colors[key]
-    return (type(value) == "string" and value:match("^#%x%x%x%x%x%x$")) and value:lower() or VANTABLACK[key]
+    return (type(value) == "string" and value:match("^#%x%x%x%x%x%x$")) and value:lower() or nil
+  end
+  local function pick(key, fallback)
+    return color(key) or fallback or VANTABLACK[key]
   end
   local palette = {}
-  for index, key in ipairs(PALETTE) do palette[index] = pick(key) end
-  return { bg = pick("background"), fg = pick("bright_foreground"), accent = pick("accent"), muted = pick("muted"), palette = palette }
+  for index, key in ipairs(PALETTE) do palette[index] = pick("color" .. (index - 1), pick(key)) end
+  return {
+    bg = pick("background"),
+    fg = pick("bright_foreground", pick("foreground")),
+    accent = pick("accent"),
+    muted = pick("muted", color("color8")),
+    palette = palette,
+  }
 end
 
 local function channels(hex)
