@@ -40,8 +40,14 @@ hides_without_access() {
   assert_called '^sketchybar --set bluetooth drawing=off$'
 }
 
+# hs fails like this when Hammerspoon isn't running. A stub, so a real hs on this Mac never answers.
 hides_without_hammerspoon() {
-  remove_stub hs
+  cat > "$STUB_DIR/hs" <<'STUB'
+#!/bin/sh
+echo "error: can't access Hammerspoon message port Hammerspoon; is it running with the ipc module loaded?" >&2
+exit 69
+STUB
+  chmod +x "$STUB_DIR/hs"
   run_plugin SENDER=routine
   assert_called '^sketchybar --set bluetooth drawing=off$'
 }
