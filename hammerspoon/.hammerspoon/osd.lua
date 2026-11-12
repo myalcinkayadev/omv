@@ -12,9 +12,11 @@ osd.ICONS = { muted = "󰝟", low = "󰕿", medium = "󰖀", high = "󰕾", brig
 -- How close to a step counts as on it: macOS reports 43.75% as 43.749996.
 local ON_STEP = 1e-3
 
--- level moved one step up or down, snapped to the steps, kept between 0 and 100.
-function osd.step(level, direction)
+-- level moved one step up or down, snapped to the steps, kept between 0 and 100. A fine
+-- step, with Option held, moves 1% from where the level is.
+function osd.step(level, direction, fine)
   local current = level or 0
+  if fine then return math.max(0, math.min(100, math.floor((current + direction) * 1000 + 0.5) / 1000)) end
   local index = direction > 0 and math.floor(current / STEP + ON_STEP) + 1 or math.ceil(current / STEP - ON_STEP) - 1
   return math.max(0, math.min(100, index * STEP))
 end

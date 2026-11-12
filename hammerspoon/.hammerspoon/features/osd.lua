@@ -1,5 +1,5 @@
 -- Volume and brightness pop-ups: the volume, mute and brightness keys are caught, so omv's
--- pop-up shows in place of macOS's. The brightness keys dim the display under the pointer:
+-- pop-up shows in place of macOS's. With Option held, they move 1% at a time. The brightness keys dim the display under the pointer:
 -- the built-in one directly, an external one over DDC with m1ddc. Catching the keys needs
 -- Accessibility for Hammerspoon; without it, or for an output macOS can't set the volume
 -- of, the keys behave as macOS's own.
@@ -58,7 +58,7 @@ local function show(icon, level)
 end
 
 -- Returns false for an output macOS can't set the volume of, such as some HDMI ones.
-local function changeVolume(key)
+local function changeVolume(key, fine)
   local device = hs.audiodevice.defaultOutputDevice()
   local volume = device and device:outputVolume()
   if not volume then return false end
@@ -67,7 +67,7 @@ local function changeVolume(key)
     device:setOutputMuted(not device:outputMuted())
   else
     if device:outputMuted() then device:setOutputMuted(false) end
-    device:setOutputVolume(osd.step(volume, direction))
+    device:setOutputVolume(osd.step(volume, direction, fine))
   end
   local muted = device:outputMuted()
   show(osd.volumeIcon(device:outputVolume(), muted), muted and 0 or device:outputVolume())
@@ -82,19 +82,19 @@ local writeDdc = hs.timer.delayed.new(DDC_SETTLE_SECONDS, function()
 end)
 
 -- Returns false for a display neither macOS nor m1ddc can dim.
-local function changeBrightness(key)
+local function changeBrightness(key, fine)
   local screen = shell.screen()
   local direction = osd.direction(key)
   local index = osd.displayFor(ddc.displays, screen:name())
   if index then
-    local level = osd.step(ddc.levels[index] or 50, direction)
+    local level = osd.step(ddc.levels[index] or 50, direction, fine)
     ddc.levels[index], ddc.pending[index] = level, level
     writeDdc:start()
     show(osd.ICONS.brightness, level)
     return true
   end
   if not (screen:name() or ""):find("Built%-in") then return false end
-  local level = osd.step(hs.brightness.get(), direction)
+  local level = osd.step(hs.brightness.get(), direction, fine)
   hs.brightness.set(math.floor(level + 0.5))
   show(osd.ICONS.brightness, level)
   return true
@@ -125,7 +125,8 @@ local function onKey(event)
     if not key["repeat"] then swallowed[name] = nil end
     return handled or false
   end
-  local handled = osd.isVolumeKey(name) and changeVolume(name) or (osd.isBrightnessKey(name) and changeBrightness(name))
+  local fine = event:getFlags().alt == true
+  local handled = osd.isVolumeKey(name) and changeVolume(name, fine) or (osd.isBrightnessKey(name) and changeBrightness(name, fine))
   swallowed[name] = handled or nil
   return handled or false
 end
