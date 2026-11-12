@@ -113,6 +113,13 @@ sketchybar --add event keep_awake_toggle \
   --set keep_awake drawing=off icon=󰒳 "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \
   --subscribe keep_awake keep_awake_toggle mouse.clicked
 
+# Hidden while the startup disk has room; shows the free space once it's low. Sits left of
+# keep-awake. Clicking it opens the Disk card, which Hammerspoon draws.
+sketchybar --add item disk right \
+  --set disk drawing=off icon=󰋊 icon.padding_right=3 label.padding_left=3 update_freq=600 \
+    script="$PLUGIN_DIR/disk.sh" \
+  --subscribe disk system_woke mouse.clicked
+
 # Shown only while clipboard history is paused, so a pause is never forgotten. Hammerspoon
 # sets it; clicking it turns history back on.
 sketchybar --add item clipboard_paused right \

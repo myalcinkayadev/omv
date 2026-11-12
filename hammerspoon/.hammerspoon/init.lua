@@ -31,6 +31,7 @@ local bluetoothCard = require("features.bluetooth")
 -- Loaded now, not only from the system menu, so the chosen theme colours the cards from the start.
 require("features.theme")
 local hungryProcesses = require("features.procs")
+local diskCard = require("features.disk")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -69,6 +70,7 @@ bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", "Tools", reminderC
 bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", "Tools", quickNote.toggle)
 bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "PRs waiting for your review", "Tools", pullRequests.toggle)
 bindKey(SUPER_SHIFT, "p", "Option+Shift+P", "Hungry processes and ports", "Tools", hungryProcesses.toggle)
+bindKey(SUPER_SHIFT, "x", "Option+Shift+X", "Disk space and cleanup", "Tools", diskCard.toggle)
 bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus)
 bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", "Cards", run(shell.SKETCHYBAR, { "--bar", "hidden=toggle" }))
@@ -131,6 +133,7 @@ omvTogglePrs = later(pullRequests.toggle)
 omvToggleClipboard = later(clipboardHistory.toggle)
 omvResumeClipboard = later(clipboardHistory.resume)
 omvToggleProcesses = later(hungryProcesses.toggle)
+omvToggleDisk = later(diskCard.toggle)
 omvFocusClaude = later(waitingClaude.focus)
 omvToggleCapture = later(captureMenu.toggle)
 omvToggleReminders = later(reminderCards.toggle)
