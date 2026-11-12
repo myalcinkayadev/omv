@@ -126,6 +126,12 @@ sketchybar --add item clipboard_paused right \
   --set clipboard_paused drawing=off icon=󰅍 icon.color=$MUTED icon.padding_right=3 label=paused \
     label.color=$MUTED label.padding_left=3 click_script="hs -c 'omvResumeClipboard()'"
 
+# Shown only while a Focus such as Do Not Disturb is on, with its name. Hammerspoon sets it
+# from macOS's Focus files; clicking it switches Do Not Disturb.
+sketchybar --add item focus right \
+  --set focus drawing=off icon=󰽥 icon.color=$MUTED icon.padding_right=3 label.color=$MUTED \
+    label.padding_left=3 click_script="hs -c 'omvToggleFocus()'"
+
 # Shown only while a screen recording runs, from the capture menu. Hammerspoon sets it;
 # clicking it stops the recording and saves it to the Desktop.
 sketchybar --add item recording right \

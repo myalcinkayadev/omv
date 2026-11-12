@@ -22,6 +22,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**Lyrics**](#lyrics): the playing song's lyrics in a window that tiles, the line being sung large in the middle.
 - [**Capture menu**](#capture-menu): screenshots, text and QR codes from the screen, a color picker, and screen recordings.
 - [**Volume and brightness**](#volume-and-brightness): omv's own pop-ups, and the brightness keys dim an external display too.
+- [**Do Not Disturb**](#do-not-disturb): the Focus that's on, in the bar, and a switch in the system menu.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 - [**Doctor**](#doctor): `./doctor.sh` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
@@ -115,6 +116,7 @@ Option+Escape opens a menu modeled on Omarchy's.
 | Screensaver | Starts the screensaver |
 | Sleep | Puts the Mac to sleep |
 | Log out, Restart, Shut down | Ask first, with Cancel selected |
+| Do Not Disturb | Switches [Do Not Disturb](#do-not-disturb) on or off |
 | Sound | Opens the [Sound card](#sound) |
 | Theme | Opens the [theme picker](#themes) |
 | Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
@@ -320,6 +322,13 @@ The volume, mute and brightness keys show omv's own pop-up instead of macOS's: a
 - **Brightness** dims the display under the pointer: the built-in one directly, an external one over DDC with [m1ddc](https://github.com/waydabber/m1ddc). A held key changes the pop-up at once and the display once it settles, since DDC is slow. A display that doesn't answer DDC keeps macOS's behavior.
 - Catching the keys needs Accessibility for Hammerspoon, in System Settings > Privacy & Security > Accessibility. Without it, the keys work as macOS's own.
 
+## Do Not Disturb
+
+While a Focus such as Do Not Disturb is on, the bar shows a moon and its name. Option+Escape, then **Do Not Disturb**, or a click on the moon, switches Do Not Disturb.
+
+- The bar reads macOS's own Focus files, which needs Full Disk Access for Hammerspoon, in System Settings > Privacy & Security > Full Disk Access. A Focus on a schedule isn't in those files, so it doesn't show.
+- macOS lets nothing but Shortcuts switch a Focus, so omv runs a shortcut named `omv Do Not Disturb`. Make it once in Shortcuts, with the single action **Set Focus**: Do Not Disturb, Toggle. Until it exists, the menu says so and opens Shortcuts.
+
 ## Capture menu
 
 Option+Shift+S opens a card for screen captures.
@@ -357,7 +366,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 - **Clipboard history (Option+V):** the text you copied in the last day, newest first, at most 50. Type to filter, and Enter puts a copy back on the clipboard for you to paste with Cmd+V; pasting for you would need Accessibility, which omv doesn't grant. It's kept in memory only, so a reload forgets it. Secrets are never kept: copies password managers mark as concealed, copies made while 1Password, Bitwarden, Passwords or Keychain Access is in front, and text shaped like a key or token (`sk-…`, `ghp_…`, `AKIA…`, a JWT, a private key, or a `KEY=`, `TOKEN=`, `SECRET=` or `PASSWORD=` line). Only text is kept, never images or files. **Pause history** and **Clear history** are the card's first rows; while paused, the bar shows `paused`, and a click on it turns history back on. A secret with no recognizable shape is still kept, so pause the history for sensitive work.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 

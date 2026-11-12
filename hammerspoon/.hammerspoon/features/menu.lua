@@ -47,6 +47,7 @@ end
 local function menuChoose(id)
   if id == "cancel" then return menuBack() end
   -- Required when picked, so loading the menu doesn't load the Sound card ahead of its turn.
+  if id == "focus" then return require("features.focus").toggle() end
   if id == "sound" then return require("features.sound").open() end
   if id == "theme" then return require("features.theme").open() end
   if menu.opens(id) then

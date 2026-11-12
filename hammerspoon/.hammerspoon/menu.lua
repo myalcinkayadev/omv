@@ -13,6 +13,7 @@ local SCREENS = {
       { id = "logout", icon = "󰍃", label = "Log out" },
       { id = "restart", icon = "󰜉", label = "Restart" },
       { id = "shutdown", icon = "󰐥", label = "Shut down" },
+      { id = "focus", icon = "󰽥", label = "Do Not Disturb" },
       { id = "sound", icon = "󰕾", label = "Sound" },
       { id = "theme", icon = "󰏘", label = "Theme" },
       { id = "reload", icon = "󰑐", label = "Reload", submenu = true },
