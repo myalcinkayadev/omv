@@ -34,7 +34,7 @@ section() {
 check_tools() {
   section 'Tools'
   local tool fix
-  for tool in aerospace sketchybar borders stow jq swiftc luajit gh mo; do
+  for tool in aerospace sketchybar borders stow jq swiftc luajit gh mo m1ddc; do
     case $tool in
       aerospace) fix='./install.sh' ;;
       sketchybar) fix='./install.sh' ;;
@@ -209,7 +209,8 @@ Check by hand (macOS doesn't let a script read these)
     System Settings > Privacy & Security > Microphone
   - Bluetooth for Hammerspoon, for the Bluetooth card (it also needs: brew install blueutil):
     System Settings > Privacy & Security > Bluetooth
-  - Accessibility for SwipeAeroSpace, for three-finger swipes:
+  - Accessibility for SwipeAeroSpace, for three-finger swipes, and for Hammerspoon, for the
+    volume and brightness pop-ups:
     System Settings > Privacy & Security > Accessibility
 EOF
 }

@@ -25,3 +25,5 @@ brew "btop"
 brew "neovim"
 brew "blueutil"
 brew "mole"
+# The volume and brightness pop-ups dim an external display over DDC with it.
+brew "m1ddc"

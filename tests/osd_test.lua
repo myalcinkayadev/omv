@@ -1,0 +1,42 @@
+-- Behavior of the volume and brightness pop-ups and the external display's brightness.
+-- Run through osd_test.sh with luajit.
+
+local check = dofile(arg[1] .. "/tests/check.lua")
+local osd = require("osd")
+
+check.that("should raise a level by one of 16 steps", osd.step(50, 1) == 56.25)
+check.that("should lower a level by one of 16 steps", osd.step(50, -1) == 43.75)
+check.that("should snap a level between steps to the next step up", osd.step(52, 1) == 56.25)
+check.that("should snap a level between steps to the next step down", osd.step(52, -1) == 50)
+check.that("should stop at 100", osd.step(100, 1) == 100)
+check.that("should stop at 0", osd.step(0, -1) == 0)
+check.that("should treat an unknown level as 0", osd.step(nil, 1) == 6.25)
+check.that("should step up from a level macOS reports a hair under a step", osd.step(43.749996, 1) == 50)
+check.that("should step down from a level macOS reports a hair over a step", osd.step(43.750004, -1) == 37.5)
+
+check.that("should light no segment at 0", osd.segments(0) == 0)
+check.that("should light every segment at 100", osd.segments(100) == 16)
+check.that("should light half the segments at 50", osd.segments(50) == 8)
+check.that("should light a segment for any level above 0", osd.segments(1) == 1)
+
+check.that("should show a muted speaker when muted", osd.volumeIcon(80, true) == osd.ICONS.muted)
+check.that("should show a muted speaker at 0", osd.volumeIcon(0, false) == osd.ICONS.muted)
+check.that("should show a quiet speaker at a low volume", osd.volumeIcon(20, false) == osd.ICONS.low)
+check.that("should show a loud speaker at a high volume", osd.volumeIcon(90, false) == osd.ICONS.high)
+
+local listed = osd.parseDisplays("[1] DELL G2724D (0FBEB6ED-DD09)\n[2] Unknown Display (37D8832A-2D66)\n")
+check.that("should read every display m1ddc lists", #listed == 2)
+check.that("should read a display's number", listed[1].index == 1)
+check.that("should read a display's name", listed[1].name == "DELL G2724D")
+check.that("should read no displays from empty output", #osd.parseDisplays("") == 0)
+check.that("should find the DDC display for a screen's name", osd.displayFor(listed, "DELL G2724D") == 1)
+check.that("should find no DDC display for a screen it doesn't list", osd.displayFor(listed, "Built-in Retina Display") == nil)
+check.that("should read the brightness m1ddc prints", osd.parseLevel("32\n") == 32)
+check.that("should read no brightness from an error", osd.parseLevel("Could not find display") == nil)
+
+check.that("should catch the volume keys", osd.isVolumeKey("SOUND_UP") and osd.isVolumeKey("SOUND_DOWN") and osd.isVolumeKey("MUTE"))
+check.that("should catch the brightness keys", osd.isBrightnessKey("BRIGHTNESS_UP") and osd.isBrightnessKey("BRIGHTNESS_DOWN"))
+check.that("should leave the media keys alone", not osd.isVolumeKey("PLAY") and not osd.isBrightnessKey("PLAY"))
+check.that("should tell a key's direction", osd.direction("SOUND_UP") == 1 and osd.direction("BRIGHTNESS_DOWN") == -1)
+
+check.finish()

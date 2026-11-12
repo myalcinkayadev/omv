@@ -33,6 +33,7 @@ require("features.theme")
 local hungryProcesses = require("features.procs")
 local diskCard = require("features.disk")
 local lyricsWindow = require("features.lyrics")
+require("features.osd")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
