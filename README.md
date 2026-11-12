@@ -159,6 +159,9 @@ Since macOS 14, an app needs Location Services to read the Wi-Fi network's name.
 
 Click the Bluetooth icon, or press Option+Shift+Y, for the Bluetooth card under it: a switch that turns Bluetooth on or off, then your paired devices, connected ones first. Enter on a device connects or disconnects it, which takes a few seconds; the card redraws when it's done.
 
+- **Pair a new device…** searches for 10 seconds for devices in pairing mode and lists the ones not yet paired; Enter pairs one and connects it. The search finds classic Bluetooth devices, such as AirPods, speakers and most headphones. Bluetooth Low Energy devices, such as many newer keyboards and mice, don't show up, and a device that asks you to type a PIN can't be paired here: the card then says so.
+- **Bluetooth Settings**, the last row, opens System Settings for anything else, such as those devices or forgetting one.
+
 - It reads and changes Bluetooth through [blueutil](https://github.com/toy/blueutil): `brew install blueutil`. Without it, the bar item stays hidden and the card says how to install it.
 - Hammerspoon needs Bluetooth access: System Settings > Privacy & Security > Bluetooth, turn on Hammerspoon (add it with + if it's not listed). macOS may not ask by itself. Until then, the bar item stays hidden and the card's one row opens that setting. The bar reads Bluetooth's state through Hammerspoon, so SketchyBar needs no access of its own.
 

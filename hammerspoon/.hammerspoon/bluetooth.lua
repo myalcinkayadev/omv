@@ -31,6 +31,18 @@ function bluetooth.readPower(output)
   return nil
 end
 
+-- Devices from a decoded `blueutil --inquiry --format json`, left out when already paired.
+-- The search finds classic Bluetooth only: Bluetooth Low Energy devices pair in Settings.
+function bluetooth.found(list, paired)
+  local known = {}
+  for _, device in ipairs(paired or {}) do known[device.address] = true end
+  local found = {}
+  for _, device in ipairs(bluetooth.devices(list)) do
+    if not known[device.address] then found[#found + 1] = device end
+  end
+  return found
+end
+
 function bluetooth.action(device)
   return device.connected and "disconnect" or "connect"
 end
@@ -51,12 +63,28 @@ function bluetooth.rows(state)
   if state.denied then
     return { { id = "settings", icon = "󰂲", label = "Allow Bluetooth for Hammerspoon in Privacy & Security" } }
   end
-  if not state.power then return { { id = "power.on", icon = "󰂯", label = "Turn Bluetooth on" } } end
+  local settings = { id = "settings.bluetooth", icon = "󰒓", label = "Bluetooth Settings" }
+  if not state.power then return { { id = "power.on", icon = "󰂯", label = "Turn Bluetooth on" }, settings } end
   local rows = { { id = "power.off", icon = "󰂲", label = "Turn Bluetooth off" } }
+  if state.failed then
+    rows[#rows + 1] = { id = "settings.bluetooth", icon = "󰂲", label = "Couldn't pair " .. state.failed .. ": try Bluetooth Settings" }
+  end
   for _, device in ipairs(state.devices or {}) do
     rows[#rows + 1] = { id = "device:" .. device.address, icon = device.connected and "󰂱" or "󰂯", label = device.name,
       hint = device.connected and "connected" or "" }
   end
+  if state.searching then
+    rows[#rows + 1] = { id = "searching", icon = "󰑐", label = "Searching…", hint = "10s" }
+  elseif state.found and #state.found == 0 then
+    rows[#rows + 1] = { id = "search", icon = "󰂰", label = "Nothing new found · search again" }
+  elseif state.found then
+    for _, device in ipairs(state.found) do
+      rows[#rows + 1] = { id = "pair:" .. device.address, icon = "󰂰", label = device.name, hint = "Enter pairs" }
+    end
+  else
+    rows[#rows + 1] = { id = "search", icon = "󰂰", label = "Pair a new device…" }
+  end
+  rows[#rows + 1] = settings
   return rows
 end
 
