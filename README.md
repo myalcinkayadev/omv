@@ -19,6 +19,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
 - [**Disk**](#disk): free space in the bar once it runs low, and Mole's cleanups a key away.
+- [**Lyrics**](#lyrics): the playing song's lyrics in a window that tiles, the line being sung large in the middle.
 - [**Capture menu**](#capture-menu): screenshots, text from the screen, and a color picker.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 - [**Doctor**](#doctor): `./doctor.sh` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
@@ -56,7 +57,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 
 **On the left**, workspace numbers: the focused one is a white pill, and the one visible on the other monitor is a gray pill. Click a number to go there, or scroll over them to move one workspace at a time across all six, wrapping around. The binding mode shows next to them while it isn't the normal one.
 
-While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40 characters. Click it to play or pause, and scroll for the next or previous track. It hides when nothing plays and never opens a player that is closed.
+While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40 characters. Click it to play or pause, right-click it for the [lyrics](#lyrics), and scroll for the next or previous track. It hides when nothing plays and never opens a player that is closed.
 
 **On the right**, from left to right:
 
@@ -127,6 +128,7 @@ Option+Escape, then **Theme**, picks the colours for the cards, the bar, Ghostty
 - **The bar** reloads with the theme's colours.
 - **Ghostty** takes them in new windows, or after its own config reload, Cmd+Shift+,.
 - **The focused window's outline** takes the theme's accent.
+- **The lyrics window** redraws in the new colours at once.
 - The choice is saved in `~/.local/state/omv/theme`, so it survives reloads and restarts. Neovim and btop keep their own colours.
 
 ## Sound
@@ -285,6 +287,27 @@ Option+Shift+X, or a click on the bar's disk item, opens the Disk card. The bar 
 - `mo clean --dry-run` also writes its full list to `~/.config/mole/clean-list.txt`. System caches need sudo, so the background preview leaves them out; `mo clean` may ask for your password to clean them.
 - `mo purge` scans `~/workspace`, `~/.claude/worktrees` and `~/.codex/worktrees` among others; `mo purge --paths` changes them.
 - Without Mole, the card offers `brew install mole`. `./install.sh` installs it from the Brewfile.
+
+## Lyrics
+
+Right-click the playing track in the bar to open the lyrics in a window of their own; right-click again to close it. Like Ghostty's, the window has no title bar or buttons, only rounded corners. AeroSpace tiles it on the current workspace beside whatever else is there, such as a workout video, and it stays open when focus moves away.
+
+It is made to be read at a glance from across the room, in omv's own look:
+
+- **Line progress:** a bar in the cover's color fills under the line being sung until the next one starts.
+- **Lines:** the line being sung is large, a third of the way down. The next one is dimmer, so you can sing ahead, and older lines fade.
+- **One color from the cover:** its most vibrant color, moved toward the theme's text color until it reads on the theme's background. A grayscale cover gets the theme's accent instead. It colors the progress bars, the break countdown and a soft glow behind the cover.
+- **Theme:** the window takes the [theme's](#themes) colours, and redraws at once when you pick another.
+- **Breaks:** before the first line and in instrumental breaks, four squares light up one by one, the last just before singing starts.
+- **Cover and track:** a narrow tile shows a small cover above the words, with the title and artist in JetBrains Mono, a progress bar and the time left. A wide window puts a large cover beside them.
+- **Paused:** the lyrics dim, the title shows `❚❚`, and everything stops. With Reduce Motion on in System Settings, nothing animates.
+
+How it works:
+
+- It follows Music or Spotify, whichever plays: it counts the position on between reads, and reads the player again every 5 seconds and on every track change, pause or seek.
+- Songs with only plain lyrics scroll slowly with the song, still through the intro and outro; scroll by hand and it waits 10 seconds before following again. Instrumentals and unknown songs say so.
+- Lyrics come from [LRCLIB](https://lrclib.net), which is sent the track's artist, title, album and length. When that finds nothing, for example for a remaster or a live version, LRCLIB's search is sent the artist and the title without extras such as `(feat. …)` or `- Remastered`. Only an answer by the same artist, with the same title and at most 2 seconds off in length is used, and the window then says `found by search`. The cover comes from the player, or else from Apple's iTunes Search, which is sent the artist and album. Each song's lyrics and cover are fetched once, then read from `~/.local/state/omv/lyrics/`.
+- The window is a small helper app, built with `swiftc` into `~/.cache/omv/Lyrics.app` the first time it opens, so that first open takes a few seconds. While a song plays, it uses about 2% CPU: the background is drawn once and never moves.
 
 ## Capture menu
 
