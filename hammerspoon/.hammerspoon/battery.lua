@@ -88,5 +88,6 @@ function battery.model(status, health)
 end
 
 battery.html = panel.html
+battery.update = panel.update
 
 return battery

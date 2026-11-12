@@ -363,5 +363,14 @@ class ConfigContract(unittest.TestCase):
         installs = re.findall(r'^(?:brew|cask) "([^"]+)"', (REPO / "Brewfile").read_text(encoding="utf-8"), re.M)
         self.assertEqual([name for name in installs if name in ("helium-browser", "zed")], [])
 
+    def test_should_redraw_wifi_and_ethernet_on_hammerspoons_network_event(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        subscribed = [re.search(rf"--subscribe {name} ([^\n]*)", source).group(1).split() for name in ("wifi", "ethernet")]
+        self.assertEqual(["omv_network_change" in events for events in subscribed], [True, True])
+
+    def test_should_redraw_battery_on_hammerspoons_battery_event(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("omv_battery_change", re.search(r"--subscribe battery ([^\n]*)", source).group(1).split())
+
 if __name__ == "__main__":
     unittest.main()

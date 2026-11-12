@@ -59,4 +59,17 @@ check.that("should show a monitor for a display", sound.icon({ name = "DELL U272
 check.that("should show a speaker for built-in speakers", sound.icon({ name = "MacBook Pro Speakers", transport = "Built-in" }) == "󰓃")
 check.that("should show AirPlay for an AirPlay device", sound.icon({ name = "Living Room", transport = "AirPlay" }) == "󰄘")
 
+-- The open card follows the volume keys and mute without being redrawn.
+local live = sound.update(state({ outputVolume = 40, inputVolume = 25, muted = true }))
+check.that("should update the output volume in place", check.contains(live, '"output":40'))
+check.that("should update the input volume in place", check.contains(live, '"input":25'))
+check.that("should update the mute switch in place", check.contains(live, '"muted":true'))
+check.that("should send no volume for a device that takes none", check.contains(sound.update(state({ outputVolume = false })), '"output":null'))
+local before = state()
+local plugged = state({ outputs = { before.outputs[1], { uid = "airpods", name = "AirPods", transport = "Bluetooth" } } })
+check.that("should redraw the card when a device is added or removed", not sound.sameDevices(before, plugged))
+local switched = state()
+switched.outputs[1].current = false
+check.that("should keep the card when only the volume or the current device changes", sound.sameDevices(before, state()))
+
 check.finish()

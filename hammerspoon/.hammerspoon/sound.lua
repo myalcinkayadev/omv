@@ -113,6 +113,17 @@ local SCRIPT = [==[
   document.querySelector(".switch").addEventListener("click", () => send("mute"));
   const meter = document.querySelector(".meter i");
   window.omvLevel = (level) => { meter.style.width = Math.round(Math.max(0, Math.min(1, level)) * 100) + "%"; };
+  // Hammerspoon's update when the volume or mute changes elsewhere, such as from the keys.
+  // A slider being dragged keeps the value under the pointer.
+  window.omvSound = ({ output, input: inputLevel, muted }) => {
+    [[out, output], [input, inputLevel]].forEach(([slider, level]) => {
+      if (level === null || slider.disabled || document.activeElement === slider) return;
+      slider.value = level;
+      showLevel(slider, level);
+    });
+    document.querySelector(".switch").classList.toggle("on", !muted);
+    document.querySelector(".head .icon").textContent = muted ? "󰖁" : "󰕾";
+  };
 ]==]
 
 local function deviceRows(devices, kind, icon, empty)
@@ -157,6 +168,25 @@ function sound.html(state)
     .. "<div class=meter><i></i></div>"
     .. deviceRows(inputs, "input", "󰍬", "No input devices") .. "</div>"
     .. "<script>const STEP = " .. STEP .. ";" .. SCRIPT .. "</script></body>"
+end
+
+-- The JavaScript that brings an open card up to state's volumes and mute.
+function sound.update(state)
+  local function number(volume) return percent(volume) or "null" end
+  return string.format('omvSound({"output":%s,"input":%s,"muted":%s})', number(state.outputVolume),
+    number(state.inputVolume), state.muted and "true" or "false")
+end
+
+local function uids(devices)
+  local found = {}
+  for _, device in ipairs(shown(devices)) do found[#found + 1] = device.uid end
+  return table.concat(found, "\n")
+end
+
+-- Whether both states list the same devices, so the open card can be updated in place.
+-- Otherwise it's drawn again, with the new device listed.
+function sound.sameDevices(a, b)
+  return uids(a.outputs) == uids(b.outputs) and uids(a.inputs) == uids(b.inputs)
 end
 
 function sound.height(state)

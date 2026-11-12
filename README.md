@@ -136,6 +136,7 @@ Click the volume item in the bar, or press Option+Shift+V, for the Sound card un
 - **Input:** a volume slider for the mic, a live level meter, then every input device.
 - Virtual devices, such as the ones Zoom and Teams add, are left out unless they're in use.
 - **Keys:** Up and Down move through the devices, Enter picks one, Left and Right change the volume by 5%, M mutes, and Escape or a click elsewhere closes.
+- **Live:** while the card is open, it follows changes made elsewhere: the volume keys, mute, and devices connecting or switching. A slider you're dragging keeps its place.
 - **The level meter** comes from a small Swift helper, `meter.swift`, built the first time into `~/.cache/omv/Meter.app`. It listens only while the card is open, so macOS shows its orange microphone dot until the card closes. The first time, macOS asks to let "omv meter" use the microphone. If you refuse, the meter stays empty and the rest of the card still works.
 
 <img src="docs/sound.png" alt="The Sound card: the speakers in use, AirPods and a monitor listed, and the mic level meter" width="420">
@@ -147,6 +148,8 @@ Click the Wi-Fi item, or press Option+Shift+W, for the Wi-Fi card: the network's
 The Ethernet item shows only while a cable is connected. Click it, or press Option+Shift+E, for the Ethernet card: the link speed, the IP address, the router, the port and the duplex, and **Network settings**. With more than one cable, it shows the one the Mac's traffic goes out by.
 
 Left and Right move between the buttons, Enter presses one, and Escape or a click elsewhere closes.
+
+Both cards follow changes while they're open, such as Wi-Fi turning off, joining a network, the signal or a cable being unplugged, and keep the selected button. The bar's Wi-Fi and Ethernet icons change at once too: Hammerspoon watches for these changes rather than checking on a timer.
 
 <img src="docs/wifi.png" alt="The Wi-Fi card: network name, signal, IP address, router and channel" width="420"> <img src="docs/ethernet.png" alt="The Ethernet card: link speed, IP address, router, port and duplex" width="420">
 
@@ -194,6 +197,8 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 ## Battery
 
 Click the battery item, or press Option+Shift+B, for the Battery card: the charge, whether it's draining, charging or charged, the battery's size in Wh, the time left (or to full), the charge cycles and the power going in or out.
+
+While the card is open, it follows the charge and charging as they change, and the bar's battery icon changes with them.
 
 **Battery settings** opens System Settings, where Low Power Mode is. The card doesn't switch it itself: macOS lets only its own apps do that without an admin password.
 

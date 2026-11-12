@@ -30,21 +30,34 @@ panel.STYLE = [[
 ]]
 
 panel.SCRIPT = [[
-  const buttons = Array.from(document.querySelectorAll(".btn"));
+  const buttons = () => Array.from(document.querySelectorAll(".btn"));
   const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
-  let selected = Math.max(0, buttons.findIndex((button) => button.classList.contains("selected")));
-  const draw = () => buttons.forEach((button, index) => button.classList.toggle("selected", index === selected));
+  let selected = Math.max(0, buttons().findIndex((button) => button.classList.contains("selected")));
+  const draw = () => buttons().forEach((button, index) => button.classList.toggle("selected", index === selected));
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") return send("close");
-    if (!buttons.length) return;
-    if (event.key === "ArrowRight") selected = (selected + 1) % buttons.length;
-    else if (event.key === "ArrowLeft") selected = (selected - 1 + buttons.length) % buttons.length;
-    else if (event.key === "Enter") return send("choose", buttons[selected].dataset.id);
+    const all = buttons();
+    if (!all.length) return;
+    if (event.key === "ArrowRight") selected = (selected + 1) % all.length;
+    else if (event.key === "ArrowLeft") selected = (selected - 1 + all.length) % all.length;
+    else if (event.key === "Enter") return send("choose", all[selected].dataset.id);
     else return;
     event.preventDefault();
     draw();
   });
-  buttons.forEach((button) => button.addEventListener("click", () => send("choose", button.dataset.id)));
+  // One listener on the row, so buttons replaced by an update still answer clicks.
+  document.querySelector(".btns")?.addEventListener("click", (event) => {
+    const button = event.target.closest(".btn");
+    if (button) send("choose", button.dataset.id);
+  });
+  // Hammerspoon's update while the card is open: new values, the same selected button.
+  window.omvUpdate = (data, row) => {
+    document.querySelector(".data").innerHTML = data;
+    const btns = document.querySelector(".btns");
+    if (btns) btns.innerHTML = row;
+    selected = Math.min(selected, Math.max(0, buttons().length - 1));
+    draw();
+  };
   draw();
 ]]
 
@@ -72,23 +85,35 @@ end
 
 -- buttons = { { id, icon, label, selected } }. The selected one starts highlighted, and
 -- the first one when none is.
-function panel.buttons(buttons, title)
+function panel.buttonsRow(buttons)
   local parts = {}
   for _, button in ipairs(buttons) do
     parts[#parts + 1] = '<div class="btn' .. (button.selected and " selected" or "") .. '" data-id="' .. card.escape(button.id) .. '">'
       .. card.escape(button.icon) .. "&nbsp; " .. card.escape(button.label) .. "</div>"
   end
-  return "<div class=sec>" .. card.escape(title or "ACTIONS") .. "</div><div class=btns>" .. table.concat(parts) .. "</div>"
+  return table.concat(parts)
+end
+
+function panel.buttons(buttons, title)
+  return "<div class=sec>" .. card.escape(title or "ACTIONS") .. "</div><div class=btns>" .. panel.buttonsRow(buttons) .. "</div>"
+end
+
+-- The part of the card that changes: the head, the bar and the grid, without the buttons.
+function panel.data(model)
+  return panel.head(model.icon, model.title, model.sub, model.big) .. panel.track(model.percent) .. panel.grid(model.grid)
 end
 
 -- model = { icon, title, sub, big, percent, grid, buttons, section }
 function panel.html(model)
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. panel.STYLE .. "</style><body>"
-    .. panel.head(model.icon, model.title, model.sub, model.big)
-    .. panel.track(model.percent)
-    .. panel.grid(model.grid)
+    .. "<div class=data>" .. panel.data(model) .. "</div>"
     .. panel.buttons(model.buttons, model.section)
     .. "<script>" .. panel.SCRIPT .. "</script></body>"
+end
+
+-- The JavaScript that updates an open card to model, keeping its selected button.
+function panel.update(model)
+  return "omvUpdate(" .. card.jsString(panel.data(model)) .. "," .. card.jsString(panel.buttonsRow(model.buttons)) .. ")"
 end
 
 return panel

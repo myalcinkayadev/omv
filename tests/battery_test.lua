@@ -74,4 +74,6 @@ check.that("should label the power as charging when charging", check.contains(ch
 local bare = check.visible(battery.html(battery.model(battery.parseBatt(NO_ESTIMATE), {})))
 check.that("should show dashes for missing values", select(2, bare:gsub(DASH, "")) >= 4)
 
+check.that("should update the open Battery card in place", check.contains(battery.update(battery.model(status, health)), "omvUpdate("))
+
 check.finish()

@@ -114,11 +114,63 @@ local function redrawVolumeBar()
 end
 
 local onSoundMessage
+local stopWatching
+
+-- The state the open card shows, to tell a volume change from a new device.
+local shownState = nil
 
 local function showSound()
   local state = soundState()
+  shownState = state
   shell.show("sound", shell.anchored(sound.WIDTH, sound.height(state), "volume"), sound.html(state), onSoundMessage,
-    { keepOnBlur = not meterAnswered, onClose = stopMeter })
+    { keepOnBlur = not meterAnswered, onClose = function() stopMeter() stopWatching() end })
+end
+
+-- While the card is open, the volume keys, mute and devices coming and going update it.
+-- A burst of changes, such as a held volume key, waits 0.2s and updates once.
+local function current(devices)
+  for _, device in ipairs(devices) do
+    if device.current then return device.uid end
+  end
+end
+
+local watched = {}
+
+local function watchDevices(onChange)
+  for _, device in ipairs(watched) do device:watcherStop() end
+  watched = {}
+  for _, device in ipairs({ hs.audiodevice.defaultOutputDevice(), hs.audiodevice.defaultInputDevice() }) do
+    if device then
+      device:watcherCallback(onChange):watcherStart()
+      watched[#watched + 1] = device
+    end
+  end
+end
+
+local soundChanged
+soundChanged = hs.timer.delayed.new(0.2, function()
+  if not shell.isOpen("sound") then return end
+  local state = soundState()
+  local sameDevice = current(state.outputs) == current(shownState.outputs) and current(state.inputs) == current(shownState.inputs)
+  if sound.sameDevices(shownState, state) and sameDevice then
+    shownState = state
+    return shell.view():evaluateJavaScript(sound.update(state))
+  end
+  showSound()
+  watchDevices(function() soundChanged:start() end)
+end)
+
+local function startWatching()
+  hs.audiodevice.watcher.setCallback(function() soundChanged:start() end)
+  hs.audiodevice.watcher.start()
+  watchDevices(function() soundChanged:start() end)
+end
+
+stopWatching = function()
+  soundChanged:stop()
+  if hs.audiodevice.watcher.isRunning() then hs.audiodevice.watcher.stop() end
+  for _, device in ipairs(watched) do device:watcherStop() end
+  watched = {}
 end
 
 onSoundMessage = function(message)
@@ -149,6 +201,7 @@ end
 function feature.open()
   startMeter()
   showSound()
+  startWatching()
 end
 
 function feature.toggle()

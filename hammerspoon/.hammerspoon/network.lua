@@ -93,6 +93,7 @@ function network.ethernetModel(info)
 end
 
 network.html = panel.html
+network.update = panel.update
 
 -- Reads `ifconfig <port>`: whether the link is up, its speed and duplex.
 function network.parseMedia(text)

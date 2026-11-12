@@ -72,9 +72,10 @@ sketchybar --add item clock right \
     click_script="hs -c 'omvToggleCalendar()'"
 
 # Clicking it opens the Battery card, which Hammerspoon draws.
-sketchybar --add item battery right \
+sketchybar --add event omv_battery_change \
+  --add item battery right \
   --set battery "${STATUS_ICON[@]}" label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
-  --subscribe battery system_woke power_source_change mouse.clicked
+  --subscribe battery system_woke power_source_change omv_battery_change mouse.clicked
 
 sketchybar --add item volume right \
   --set volume "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/volume.sh" \
@@ -89,14 +90,15 @@ sketchybar --add event bluetooth_change \
 
 # SketchyBar's wifi_change event has not worked since macOS Sonoma, hence the timer.
 # Clicking it opens the Wi-Fi card, which Hammerspoon draws.
-sketchybar --add item wifi right \
+sketchybar --add event omv_network_change \
+  --add item wifi right \
   --set wifi "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/wifi.sh" \
-  --subscribe wifi system_woke mouse.clicked
+  --subscribe wifi system_woke omv_network_change mouse.clicked
 
 # Hidden unless a cable is connected. Clicking it opens the Ethernet card.
 sketchybar --add item ethernet right \
   --set ethernet drawing=off "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/ethernet.sh" \
-  --subscribe ethernet system_woke mouse.clicked
+  --subscribe ethernet system_woke omv_network_change mouse.clicked
 
 # Added after the status icons, so it sits just to the left of them. Hidden until
 # Hammerspoon has a reading. It sets the icon and temperature, and the temperature gives way before

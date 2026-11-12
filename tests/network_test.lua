@@ -114,4 +114,18 @@ check.that("should read the gateway from route", route.gateway == "192.168.1.1")
 check.that("should read the interface from route", route.interface == "en5")
 check.that("should read nothing when there is no default route", network.parseRoute("route: writing to routing socket: not in table\n").gateway == nil)
 
+-- The open card updates in place: only its changing part is sent, so the selected button stays.
+local panel = require("panel")
+local card = require("card")
+local liveModel = network.wifiModel({ power = true, ssid = "home", rssi = -58, ip = "192.168.1.24" })
+check.that("should mark the part of the card that changes", check.contains(network.html(liveModel), "<div class=data>"))
+check.that("should render the changing part on its own, as the full card shows it",
+  check.contains(network.html(liveModel), panel.data(liveModel)))
+local update = network.update(liveModel)
+check.that("should update the card from the same changing part", check.contains(update, card.jsString(panel.data(liveModel))))
+check.that("should update the buttons' labels too", check.contains(update, card.jsString(panel.buttonsRow(liveModel.buttons))))
+check.that("should keep the buttons' section outside the changing part", not check.contains(panel.data(liveModel), "class=btns"))
+check.that("should make a JavaScript string that survives quotes and new lines",
+  card.jsString('a"b\\c\nd</script>') == '"a\\"b\\\\c\\nd<\\/script>"')
+
 check.finish()

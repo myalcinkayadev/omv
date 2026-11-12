@@ -131,6 +131,13 @@ local SCRIPT = [[
   draw();
 ]]
 
+-- Text as a JavaScript string literal, for updating an open card in place. "</" is broken
+-- up, so the text can never close the page's script.
+function card.jsString(text)
+  local escaped = tostring(text or ""):gsub('[\\"\n\r\t]', { ["\\"] = "\\\\", ['"'] = '\\"', ["\n"] = "\\n", ["\r"] = "\\r", ["\t"] = "\\t" })
+  return '"' .. escaped:gsub("</", "<\\/") .. '"'
+end
+
 function card.escape(text)
   return (tostring(text or ""):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub('"', "&quot;"))
 end
