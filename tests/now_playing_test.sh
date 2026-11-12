@@ -32,7 +32,7 @@ playing() {
 }
 
 draw() {
-  run_in_sandbox NAME=now_playing SENDER="${1:-now_playing_change}" SCROLL_DELTA="${2:-0}" "$PLUGIN"
+  run_in_sandbox NAME=now_playing SENDER="${1:-now_playing_change}" SCROLL_DELTA="${2:-0}" BUTTON="${3:-left}" "$PLUGIN"
 }
 
 shows_music_track() {
@@ -77,6 +77,22 @@ toggles_on_click() {
   assert_called '^osascript -e tell application "Music" to playpause$'
 }
 
+opens_lyrics_on_right_click() {
+  stub_players
+  stub hs
+  playing Music 'Korn — Freak on a Leash'
+  draw mouse.clicked 0 right
+  assert_called '^hs -c omvToggleLyrics\(\)$'
+}
+
+keeps_playing_on_right_click() {
+  stub_players
+  stub hs
+  playing Music 'Korn — Freak on a Leash'
+  draw mouse.clicked 0 right
+  assert_not_called 'playpause'
+}
+
 skips_forward_on_scroll_up() {
   stub_players
   playing Spotify 'Tool — Schism'
@@ -97,6 +113,8 @@ run_case 'should hide the item when nothing is playing' hides_when_nothing_plays
 run_case 'should hide the item without asking when no player is running' never_asks_closed_players
 run_case 'should cut a long title at 40 characters' cuts_long_titles
 run_case 'should toggle play and pause when clicked' toggles_on_click
+run_case 'should open the lyrics window when right-clicked' opens_lyrics_on_right_click
+run_case 'should keep playing when right-clicked' keeps_playing_on_right_click
 run_case 'should skip to the next track when scrolled up' skips_forward_on_scroll_up
 run_case 'should go back a track when scrolled down' skips_back_on_scroll_down
 finish

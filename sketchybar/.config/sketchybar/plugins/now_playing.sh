@@ -1,10 +1,16 @@
 #!/bin/sh
 # Shows the track playing in Music or Spotify, hidden while nothing plays.
-# Click to play or pause, scroll up or down for the next or previous track.
+# Click to play or pause, right-click for the lyrics window, scroll up or down for the
+# next or previous track.
 # Only asks a player that is already running, so it never launches one.
 # Hammerspoon sends now_playing_change when either player changes track or state.
 
 max_characters=40
+
+if [ "${SENDER:-}" = mouse.clicked ] && [ "${BUTTON:-}" = right ]; then
+  hs -c 'omvToggleLyrics()'
+  exit 0
+fi
 
 # Prints "Artist — Title" while the player is playing, nothing otherwise.
 track_of() {
