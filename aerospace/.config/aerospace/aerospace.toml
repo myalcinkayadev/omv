@@ -196,3 +196,9 @@ run = 'layout floating'
 [[on-window-detected]]
 if.app-id = 'com.apple.calculator'
 run = 'layout floating'
+
+# Tiled, on whichever workspace is current
+# The lyrics window: AeroSpace would float it, since its buttons are hidden.
+[[on-window-detected]]
+if.app-id = 'dev.omv.lyrics'
+run = 'layout tiling'
