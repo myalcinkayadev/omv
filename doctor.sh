@@ -34,12 +34,13 @@ section() {
 check_tools() {
   section 'Tools'
   local tool fix
-  for tool in aerospace sketchybar borders stow jq swiftc luajit gh; do
+  for tool in aerospace sketchybar borders stow jq swiftc luajit gh mo; do
     case $tool in
       aerospace) fix='./install.sh' ;;
       sketchybar) fix='./install.sh' ;;
       borders) fix='brew install felixkratz/formulae/borders' ;;
       swiftc) fix='xcode-select --install' ;;
+      mo) fix='brew install mole' ;;
       *) fix="brew install $tool" ;;
     esac
     if command -v "$tool" >/dev/null 2>&1; then ok "$tool"; else problem "$tool is not installed" "$fix"; fi

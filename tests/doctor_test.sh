@@ -10,7 +10,7 @@ readonly ALL_PACKAGES='aerospace sketchybar claude swipeaerospace ghostty nvim b
 # process running, every macOS setting applied, and the Claude usage line in place.
 complete_setup() {
   local name
-  for name in borders luajit gh; do stub "$name"; done
+  for name in borders luajit gh mo; do stub "$name"; done
   cat > "$STUB_DIR/hs" <<STUB
 #!/bin/sh
 echo "hs \$*" >> "$CALL_LOG"
@@ -127,6 +127,12 @@ names_missing_tool() {
   expect_report '✗ borders is not installed — fix: brew install felixkratz/formulae/borders'
 }
 
+names_missing_mole() {
+  complete_setup
+  remove_stub mo
+  expect_report '✗ mo is not installed — fix: brew install mole'
+}
+
 names_missing_app() {
   complete_setup
   rm -rf "$SANDBOX/Applications/Helium.app"
@@ -224,6 +230,7 @@ run_case 'should pass every check on a complete setup' passes_complete_setup
 run_case 'should say there are no problems on a complete setup' reports_no_problems
 run_case 'should exit non-zero when a check fails' fails_on_problem
 run_case 'should name a missing tool and how to install it' names_missing_tool
+run_case 'should name a missing Mole and how to install it' names_missing_mole
 run_case 'should name a missing app' names_missing_app
 run_case 'should name a missing font' names_missing_font
 run_case "should report when gh is not logged in" reports_logged_out_gh
