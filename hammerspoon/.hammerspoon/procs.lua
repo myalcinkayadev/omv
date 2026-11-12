@@ -6,8 +6,9 @@
 local procs = {}
 
 local MAX_ROWS = 20
--- Never offered: quitting loginwindow logs you out, launchd is every process's parent.
-local KEPT = { loginwindow = true, launchd = true }
+-- Never offered: quitting loginwindow logs you out, launchd is every process's parent, and
+-- macOS restarts ControlCenter, which listens on 5000 and 7000 for AirPlay.
+local KEPT = { loginwindow = true, launchd = true, ControlCenter = true }
 
 -- Processes from `ps -U <you> -o pid=,pcpu=,rss=,comm=`, as { pid, cpu, memory in bytes,
 -- name }. selfPid is Hammerspoon's, left out with the processes in KEPT.
@@ -85,7 +86,7 @@ function procs.ports(output)
     if kind == "p" then pid, name = tonumber(value), nil end
     if kind == "c" then name = value end
     local port = kind == "n" and tonumber(value:match(":(%d+)$"))
-    if port and pid and not seen[pid .. ":" .. port] then
+    if port and pid and not KEPT[name] and not seen[pid .. ":" .. port] then
       seen[pid .. ":" .. port] = true
       list[#list + 1] = { pid = pid, port = port, name = name or tostring(pid) }
     end

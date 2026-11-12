@@ -10,6 +10,7 @@ local ps = table.concat({
   "98422   8.0 2682960 claude",
   "  401   0.5   90000 /System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow",
   "    1   0.1   12000 /sbin/launchd",
+  "  671   0.2   30000 /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter",
   " 5555   3.0  200000 /Applications/Hammerspoon.app/Contents/MacOS/Hammerspoon",
   "  777   0.0    4000 /Applications/Helium.app/Contents/Frameworks/Helium Framework.framework/Helpers/Helium Helper",
 }, "\n")
@@ -24,6 +25,7 @@ local names = {}
 for _, process in ipairs(list) do names[process.name] = true end
 check.that("should leave out loginwindow, launchd and Hammerspoon itself",
   not names.loginwindow and not names.launchd and not names.Hammerspoon)
+check.that("should leave out ControlCenter, which macOS restarts when quit", not names.ControlCenter)
 
 local byCpu = procs.sorted(list, "cpu")
 check.that("should sort by CPU, busiest first", byCpu[1].pid == 65076 and byCpu[2].pid == 667)
@@ -66,6 +68,8 @@ check.that("should read the port from a 127.0.0.1 address", ports[2].port == 517
 check.that("should read the port from an IPv6 address", ports[3].port == 11434)
 check.that("should sort ports lowest first", ports[1].port < ports[2].port and ports[2].port < ports[3].port)
 check.that("should give no ports for empty lsof output", #procs.ports("") == 0)
+check.that("should leave out ControlCenter's AirPlay ports",
+  #procs.ports("p671\ncControlCenter\nf10\nn*:7000\nf12\nn*:5000\n") == 0)
 
 local byPid = {}
 for _, process in ipairs(list) do byPid[process.pid] = process end
