@@ -159,7 +159,9 @@ Since macOS 14, an app needs Location Services to read the Wi-Fi network's name.
 
 Click the Bluetooth icon, or press Option+Shift+Y, for the Bluetooth card under it: a switch that turns Bluetooth on or off, then your paired devices, connected ones first. Enter on a device connects or disconnects it, which takes a few seconds; the card redraws when it's done.
 
-- **Pair a new device…** searches for 10 seconds for devices in pairing mode and lists the ones not yet paired; Enter pairs one and connects it. The search finds classic Bluetooth devices, such as AirPods, speakers and most headphones. Bluetooth Low Energy devices, such as many newer keyboards and mice, don't show up, and a device that asks you to type a PIN can't be paired here: the card then says so.
+- **Pair a new device…** searches for devices in pairing mode, in rounds of 10 seconds with a countdown, up to 30 seconds, since a device often enters pairing mode a little late. Devices not yet paired are listed as each round ends; Enter on the searching row stops it. Enter on a device pairs and connects it, and its row says pairing…, then connecting…, and it's selected among the paired devices when done. A failed pairing says so with Enter to retry; a second failure points to Bluetooth Settings. Pairing and connecting give up after 20 seconds.
+- The search finds classic Bluetooth devices, such as AirPods, speakers and most headphones. Bluetooth Low Energy devices, such as many newer keyboards and mice, don't show up, and a device that asks you to type a PIN can't be paired here: when nothing is found, the card points to Bluetooth Settings.
+- Connecting or disconnecting a paired device shows connecting… or disconnecting… on its row, and couldn't connect when it fails. The selection stays on the row you chose while the card redraws.
 - **Bluetooth Settings**, the last row, opens System Settings for anything else, such as those devices or forgetting one.
 
 - It reads and changes Bluetooth through [blueutil](https://github.com/toy/blueutil): `brew install blueutil`. Without it, the bar item stays hidden and the card says how to install it.

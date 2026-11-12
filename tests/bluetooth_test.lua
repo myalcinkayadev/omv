@@ -58,23 +58,70 @@ local function ids(rows)
   for _, row in ipairs(rows) do list[#list + 1] = row.id end
   return table.concat(list, ",")
 end
-local idle = bluetooth.rows({ installed = true, power = true, devices = devices })
+local function rowWith(rows, id)
+  for _, row in ipairs(rows) do if row.id == id then return row end end
+end
+local function onWith(extra)
+  local state = { installed = true, power = true, devices = devices }
+  for key, value in pairs(extra) do state[key] = value end
+  return bluetooth.rows(state)
+end
+local JBL, AIRPODS, KEYBOARD = "11-22-33-44-55-66", "aa-bb-cc-dd-ee-02", "aa-bb-cc-dd-ee-01"
+
+local idle = onWith({})
 check.that("should offer Pair a new device after the paired devices", idle[#idle - 1].id == "search")
 check.that("should offer Bluetooth Settings as the last row", idle[#idle].id == "settings.bluetooth")
 check.that("should offer Bluetooth Settings while Bluetooth is off",
   ids(bluetooth.rows({ installed = true, power = false })) == "power.on,settings.bluetooth")
-local searching = bluetooth.rows({ installed = true, power = true, devices = devices, searching = true })
-check.that("should show Searching while a search runs", searching[#searching - 1].id == "searching")
-local results = bluetooth.rows({ installed = true, power = true, devices = devices, found = found })
-local jbl
-for _, row in ipairs(results) do if row.id == "pair:11-22-33-44-55-66" then jbl = row end end
-check.that("should list the devices found, to pair", jbl ~= nil and jbl.label == "JBL Flip 6")
-local nothing = bluetooth.rows({ installed = true, power = true, devices = devices, found = {} })
-check.that("should say when the search found nothing new", nothing[#nothing - 1].label:find("Nothing new found", 1, true) ~= nil)
 check.that("should build the pair command only for a plain address",
-  bluetooth.command("pair", "11-22-33-44-55-66") == "--pair 11-22-33-44-55-66" and bluetooth.command("pair", "x y") == nil)
-local failed = bluetooth.rows({ installed = true, power = true, devices = devices, failed = "JBL Flip 6" })
-check.that("should say to use Bluetooth Settings when pairing fails",
-  failed[2].id == "settings.bluetooth" and failed[2].label:find("JBL Flip 6", 1, true) ~= nil)
+  bluetooth.command("pair", JBL) == "--pair " .. JBL and bluetooth.command("pair", "x y") == nil)
+
+-- The search: rounds of 10 seconds, at most three, driven here by fake events.
+local started = bluetooth.searchStep(nil, { type = "start" })
+local twoSecondsIn = bluetooth.searchStep(bluetooth.searchStep(started, { type = "tick" }), { type = "tick" })
+local searching = onWith({ search = twoSecondsIn })
+check.that("should show the seconds left while searching", rowWith(searching, "searching").label == "Searching… 8s")
+check.that("should hint to put the device in pairing mode while searching", rowWith(searching, "pairing-mode") ~= nil)
+check.that("should offer to stop the search on the searching row", rowWith(searching, "searching").hint == "Enter stops")
+check.that("should stop the search when asked", bluetooth.searchStep(started, { type = "stop" }).searching == false)
+check.that("should never count below zero seconds", bluetooth.searchStep({ searching = true, round = 1, left = 0, found = {} }, { type = "tick" }).left == 0)
+
+local firstRound = bluetooth.searchStep(started, { type = "round", list = inquiry, paired = devices })
+check.that("should start the next round after a round ends", firstRound.searching and firstRound.round == 2 and firstRound.left == 10)
+check.that("should list devices found while later rounds keep searching", rowWith(onWith({ search = firstRound }), "pair:" .. JBL) ~= nil)
+local secondRound = bluetooth.searchStep(firstRound, { type = "round", list = {}, paired = devices })
+check.that("should keep a device found in an earlier round", rowWith(onWith({ search = secondRound }), "pair:" .. JBL) ~= nil)
+local found = bluetooth.searchStep(firstRound, { type = "paired", address = JBL })
+check.that("should drop a device from the found list once it's paired", rowWith(onWith({ search = found }), "pair:" .. JBL) == nil)
+
+local empty = started
+for _ = 1, 3 do empty = bluetooth.searchStep(empty, { type = "round", list = {}, paired = devices }) end
+check.that("should stop searching after three rounds", empty.searching == false)
+local nothing = onWith({ search = empty })
+check.that("should say no devices were found after the last round", rowWith(nothing, "none").label == "No devices found")
+check.that("should offer Search again when nothing was found", rowWith(nothing, "search").label == "Search again")
+check.that("should point keyboards and mice to Bluetooth Settings when nothing was found", rowWith(nothing, "settings.le") ~= nil)
+
+-- Progress and failures, shown on the row they belong to.
+check.that("should show pairing… on the row being paired",
+  rowWith(onWith({ search = firstRound, busy = { [JBL] = "pairing" } }), "pair:" .. JBL).hint == "pairing…")
+check.that("should show connecting… on a device being connected",
+  rowWith(onWith({ busy = { [KEYBOARD] = "connecting" } }), "device:" .. KEYBOARD).hint == "connecting…")
+check.that("should show disconnecting… on a device being disconnected",
+  rowWith(onWith({ busy = { [AIRPODS] = "disconnecting" } }), "device:" .. AIRPODS).hint == "disconnecting…")
+check.that("should show connected once a device connects", rowWith(idle, "device:" .. AIRPODS).hint == "connected")
+check.that("should show couldn't connect on a device that failed to connect",
+  rowWith(onWith({ connectFailed = { [KEYBOARD] = true } }), "device:" .. KEYBOARD).hint == "couldn't connect")
+local failedOnce = onWith({ search = firstRound, pairFailures = { [JBL] = 1 } })
+check.that("should name the device that couldn't be paired", rowWith(failedOnce, "pair:" .. JBL).label == "Couldn't pair JBL Flip 6")
+check.that("should offer a retry after a failed pairing", rowWith(failedOnce, "pair:" .. JBL).hint == "Enter retries")
+check.that("should leave out the Settings hint after one failed pairing", rowWith(failedOnce, "settings.pair") == nil)
+check.that("should add the Settings row after a second failed pairing",
+  rowWith(onWith({ search = firstRound, pairFailures = { [JBL] = 2 } }), "settings.pair") ~= nil)
+
+-- The selection follows a row's id across redraws.
+check.that("should keep the selected row across a redraw", bluetooth.indexOf(idle, "search") == #idle - 1)
+check.that("should select the first row when the selected one is gone", bluetooth.indexOf(idle, "pair:" .. JBL) == 1)
+check.that("should select a newly paired device", bluetooth.indexOf(idle, "device:" .. KEYBOARD) == 3)
 
 check.finish()

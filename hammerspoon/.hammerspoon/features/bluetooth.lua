@@ -17,9 +17,12 @@ local function blueutil(arguments)
   return hs.execute(BLUEUTIL .. " " .. arguments .. " 2>/dev/null") or ""
 end
 
--- Pairing's progress while the card is open: a search running, the devices it found, or
--- the name of a device that couldn't be paired. Cleared when the card closes.
-local pairing = {}
+-- What the card shows while it's open: the search, a device's progress (busy), what failed,
+-- and the row last chosen, which every redraw keeps selected. Cleared when the card closes.
+local function freshSession()
+  return { search = nil, busy = {}, connectFailed = {}, pairFailures = {}, selected = nil }
+end
+local session = freshSession()
 
 local function paired()
   local ok, list = pcall(hs.json.decode, blueutil("--paired --format json"))
@@ -30,9 +33,8 @@ local function state()
   if not hs.fs.attributes(BLUEUTIL) then return { installed = false } end
   local power = bluetooth.readPower(blueutil("--power"))
   if power == nil then return { installed = true, denied = true } end
-  local devices = power and paired() or {}
-  return { installed = true, power = power, devices = devices,
-    searching = pairing.searching, found = pairing.found, failed = pairing.failed }
+  return { installed = true, power = power, devices = power and paired() or {}, search = session.search,
+    busy = session.busy, connectFailed = session.connectFailed, pairFailures = session.pairFailures }
 end
 
 -- The bar's icon redraws on this event.
@@ -40,82 +42,167 @@ local function redrawIcon()
   hs.task.new(shell.SKETCHYBAR, nil, { "--trigger", "bluetooth_change" }):start()
 end
 
-local show, search, pair
+local show
 
--- Connecting can take a few seconds, so it runs in the background and the card redraws after.
+local function redraw()
+  if shell.isOpen("bluetooth") then show() end
+end
+
+-- Pairing and connecting stop after LIMIT_SECONDS, so a device gone out of range never
+-- leaves a row saying pairing… for good. done gets whether blueutil succeeded.
+local LIMIT_SECONDS = 20
+local running = {}
+
+local function runLimited(arguments, done)
+  local task, limit
+  task = hs.task.new(BLUEUTIL, function(code)
+    if limit then limit:stop() end
+    running[task] = nil
+    done(code == 0)
+  end, arguments)
+  limit = hs.timer.doAfter(LIMIT_SECONDS, function()
+    if task:isRunning() then task:terminate() end
+  end)
+  running[task] = true
+  task:start()
+end
+
+-- Connecting can take a few seconds, so it runs in the background, and the device's row
+-- says connecting… or disconnecting… meanwhile.
 local function toggleDevice(device)
-  local command = bluetooth.command(bluetooth.action(device), device.address)
-  if not command then return end
-  shell.alert((device.connected and "Disconnecting " or "Connecting ") .. device.name, 1.5)
-  local arguments = {}
-  for word in command:gmatch("%S+") do arguments[#arguments + 1] = word end
-  hs.task.new(BLUEUTIL, function()
-    if shell.isOpen("bluetooth") then show() end
-  end, arguments):start()
+  local action = bluetooth.action(device)
+  if not bluetooth.command(action, device.address) or session.busy[device.address] then return end
+  local address = device.address
+  session.busy[address] = action == "connect" and "connecting" or "disconnecting"
+  session.connectFailed[address] = nil
+  redraw()
+  runLimited({ "--" .. action, address }, function(ok)
+    session.busy[address] = nil
+    if not ok and action == "connect" then session.connectFailed[address] = true end
+    redraw()
+  end)
+end
+
+-- The search runs blueutil's inquiry once per round. A stopped search's late answer is
+-- dropped: each search counts as a new generation.
+local searchTask, tickTimer = nil, nil
+local generation = 0
+
+local function stopSearch()
+  generation = generation + 1
+  if searchTask and searchTask:isRunning() then searchTask:terminate() end
+  searchTask = nil
+  if tickTimer then tickTimer:stop() end
+  tickTimer = nil
+end
+
+-- Counts the searching row down in place, rather than redrawing the card every second.
+local function tick()
+  session.search = bluetooth.searchStep(session.search, { type = "tick" })
+  if not (session.search and session.search.searching) or not shell.isOpen("bluetooth") then return end
+  shell.view():evaluateJavaScript("(function () { const label = document.querySelector('[data-id=\"searching\"] .label');"
+    .. " if (label) label.textContent = " .. card.jsString(bluetooth.searchingLabel(session.search)) .. "; })()")
+end
+
+local function searchRound()
+  local mine = generation
+  searchTask = hs.task.new(BLUEUTIL, function(_, output)
+    if mine ~= generation then return end
+    local ok, list = pcall(hs.json.decode, output or "")
+    session.search = bluetooth.searchStep(session.search, { type = "round", list = ok and list or nil, paired = paired() })
+    if session.search.searching then
+      searchRound()
+    else
+      stopSearch()
+    end
+    redraw()
+  end, { "--inquiry", tostring(bluetooth.SEARCH_SECONDS), "--format", "json" })
+  searchTask:start()
+end
+
+local function startSearch()
+  stopSearch()
+  session.search = bluetooth.searchStep(nil, { type = "start" })
+  session.pairFailures = {}
+  redraw()
+  searchRound()
+  tickTimer = hs.timer.doEvery(1, tick)
+end
+
+-- Pairs, then connects. The search stops first, since both use the radio. On success the
+-- device's row among the paired ones is selected; a device that wants a PIN typed fails
+-- here, and after a second failure the card points to Bluetooth Settings.
+local function pair(address)
+  if not bluetooth.command("pair", address) or session.busy[address] then return end
+  stopSearch()
+  session.search = bluetooth.searchStep(session.search, { type = "stop" })
+  session.busy[address] = "pairing"
+  redraw()
+  runLimited({ "--pair", address }, function(ok)
+    session.busy[address] = nil
+    if not ok then
+      session.pairFailures[address] = (session.pairFailures[address] or 0) + 1
+      return redraw()
+    end
+    session.search = bluetooth.searchStep(session.search, { type = "paired", address = address })
+    session.selected = "device:" .. address
+    session.busy[address] = "connecting"
+    redraw()
+    runLimited({ "--connect", address }, function(connected)
+      session.busy[address] = nil
+      if not connected then session.connectFailed[address] = true end
+      redraw()
+    end)
+  end)
 end
 
 local BLUETOOTH_PRIVACY = "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth"
 local BLUETOOTH_SETTINGS = "x-apple.systempreferences:com.apple.BluetoothSettings"
-local SEARCH_SECONDS = 10
-
--- A 10-second search for classic Bluetooth devices in range, in the background.
-search = function()
-  pairing = { searching = true }
-  show()
-  hs.task.new(BLUEUTIL, function(_, output)
-    local ok, list = pcall(hs.json.decode, output or "")
-    pairing = { found = bluetooth.found(ok and list or nil, paired()) }
-    if shell.isOpen("bluetooth") then show() end
-  end, { "--inquiry", tostring(SEARCH_SECONDS), "--format", "json" }):start()
-end
-
--- Pairs, then connects. A device that wants a PIN typed, or that's no longer in range,
--- fails here, and the card points to Bluetooth Settings.
-pair = function(address)
-  local name = address
-  for _, device in ipairs(pairing.found or {}) do
-    if device.address == address then name = device.name end
-  end
-  local command = bluetooth.command("pair", address)
-  if not command then return end
-  shell.alert("Pairing " .. name, 2)
-  hs.task.new(BLUEUTIL, function(code)
-    if code ~= 0 then
-      pairing = { failed = name }
-    else
-      pairing = {}
-      hs.task.new(BLUEUTIL, function() if shell.isOpen("bluetooth") then show() end end, { "--connect", address }):start()
-    end
-    if shell.isOpen("bluetooth") then show() end
-  end, { "--pair", address }):start()
-end
+local SETTINGS_LINKS = { settings = BLUETOOTH_PRIVACY, ["settings.bluetooth"] = BLUETOOTH_SETTINGS,
+  ["settings.le"] = BLUETOOTH_SETTINGS, ["settings.pair"] = BLUETOOTH_SETTINGS }
+-- Rows that only say something.
+local NOTES = { ["pairing-mode"] = true, none = true }
 
 local function onMessage(message)
   if message.type ~= "choose" then return shell.close() end
-  if message.id == "settings" or message.id == "settings.bluetooth" then
+  local id = message.id
+  if NOTES[id] then return end
+  session.selected = id
+  if SETTINGS_LINKS[id] then
     shell.close()
-    return shell.open({ message.id == "settings" and BLUETOOTH_PRIVACY or BLUETOOTH_SETTINGS })()
+    return shell.open({ SETTINGS_LINKS[id] })()
   end
-  if message.id == "search" then return search() end
-  if message.id == "searching" then return end
-  local found = message.id:match("^pair:(.+)$")
+  if id == "search" then return startSearch() end
+  if id == "searching" then
+    stopSearch()
+    session.search = bluetooth.searchStep(session.search, { type = "stop" })
+    return redraw()
+  end
+  local found = id:match("^pair:(.+)$")
   if found then return pair(found) end
-  if message.id == "power.on" or message.id == "power.off" then
-    blueutil("--power " .. (message.id == "power.on" and "1" or "0"))
+  if id == "power.on" or id == "power.off" then
+    stopSearch()
+    session = freshSession()
+    blueutil("--power " .. (id == "power.on" and "1" or "0"))
     redrawIcon()
     return show()
   end
-  local address = message.id:match("^device:(.+)$")
+  local address = id:match("^device:(.+)$")
   for _, device in ipairs(state().devices or {}) do
     if device.address == address then return toggleDevice(device) end
   end
 end
 
+local function onClose()
+  stopSearch()
+  session = freshSession()
+end
+
 show = function()
   local rows = bluetooth.rows(state())
-  local screen = { prompt = "Bluetooth…", rows = rows, compact = true }
+  local screen = { prompt = "Bluetooth…", rows = rows, compact = true, selected = bluetooth.indexOf(rows, session.selected) }
   shell.show("bluetooth", shell.anchored(WIDTH, shell.listHeight(#rows, VISIBLE_ROWS), "bluetooth"), card.html(screen), onMessage,
-    { onClose = function() pairing = {} end })
+    { onClose = onClose })
 end
 
 -- For the bar's icon: "1" when on, "0" when off, "" when it can't be read. SketchyBar asks
