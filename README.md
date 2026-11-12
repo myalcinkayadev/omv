@@ -25,6 +25,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**Do Not Disturb**](#do-not-disturb): the Focus that's on, in the bar, and a switch in the system menu.
 - [**Tailscale**](#tailscale): connect, disconnect, and copy any device's address.
 - [**Night light**](#night-light): macOS's Night Shift on a key, with a moon in the bar.
+- [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell, side by side on one workspace.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 - [**Doctor**](#doctor): `./doctor.sh` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
@@ -328,6 +329,10 @@ The volume, mute and brightness keys show omv's own pop-up instead of macOS's: a
 ## Night light
 
 Option+Shift+Z, or Option+Escape, then **Night light**, switches macOS's Night Shift on or off. While it's on, the bar shows a moon; click it to turn night light off. Night Shift's own schedule still applies, and the bar checks again every 5 minutes, so it follows a scheduled change too. macOS has no public way to switch Night Shift, so omv uses [nightlight](https://github.com/smudge/nightlight), which `./install.sh` installs.
+
+## Dev layout
+
+Option+Space, then **Dev layout**, lists your recent Claude Code projects, the most recent first. Pick one, and three windows open side by side on the current workspace: your editor on the project, Claude Code in it, and a shell in it. AeroSpace usually sends the editor and Ghostty to their own workspaces, so omv moves the new windows here afterwards; when the editor already has the project open, that window comes over instead of a new one.
 
 ## Do Not Disturb
 

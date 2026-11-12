@@ -117,6 +117,12 @@ local function onProjectMessage(message)
   startClaude(message.id)
 end
 
+-- The folders of recent Claude Code sessions that still exist, the most recent first. The
+-- dev layout lists them too.
+function feature.projects()
+  return agents.projects(recentSessions(), folderExists)
+end
+
 local function showProjects()
   local rows = agents.projectRows(agents.projects(recentSessions(), folderExists), HOME)
   local screen = { prompt = "New Claude session in…", rows = rows, compact = true, hint = "No Claude Code projects yet" }

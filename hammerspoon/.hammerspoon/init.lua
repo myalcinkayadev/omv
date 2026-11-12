@@ -37,6 +37,7 @@ require("features.osd")
 local focusMode = require("features.focus")
 local tailscalePanel = require("features.tailscale")
 local nightLight = require("features.nightshift")
+local devLayout = require("features.devlayout")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -67,6 +68,9 @@ end
 bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New " .. chosen.browser .. " window", "Apps", openOnWorkspace("3", { "-na", chosen.browser, "--args", "--new-window" }))
 bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open " .. chosen.editor, "Apps", openOnWorkspace("2", { "-a", chosen.editor }))
 bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", "Apps", open({ shell.HOME }))
+-- No key: it's run from the palette or the key list.
+keys.launchers[#keys.launchers + 1] = { description = "Dev layout: " .. chosen.editor .. ", Claude Code and a shell",
+  group = "Apps", run = function() devLayout.open(chosen.editor) end, runs = true }
 bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", "Apps", run(shell.LAUNCH, { "1", shell.GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
 bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", "Tools", run(shell.SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
 bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy " .. chosen.browser .. "'s current URL", "Tools", copyUrl)
