@@ -75,24 +75,34 @@ local function previewHint(preview)
   return preview.size
 end
 
-local function spaceRow(space)
+-- Each row's hint, by row id, from the same state disk.rows takes. false means no hint, so
+-- an open card can clear one.
+function disk.hints(state)
+  local previews = state.previews or {}
+  local space = state.space
+  return {
+    space = space and space.purgeable and (disk.size(space.purgeable) .. " purgeable") or false,
+    clean = previewHint(previews.clean) or false,
+    purge = previewHint(previews.purge) or false,
+  }
+end
+
+local function spaceRow(space, hint)
   if not space then return { id = "space", icon = "󰋊", label = "Free space unknown" } end
-  return { id = "space", icon = "󰋊",
-    label = disk.size(space.free) .. " free of " .. disk.size(space.total),
-    hint = space.purgeable and (disk.size(space.purgeable) .. " purgeable") or nil }
+  return { id = "space", icon = "󰋊", label = disk.size(space.free) .. " free of " .. disk.size(space.total), hint = hint or nil }
 end
 
 -- Card rows from { installed, space, previews = { clean, purge } }, where each preview is
 -- { size } or { measuring = true }.
 function disk.rows(state)
-  local rows = { spaceRow(state.space) }
+  local hints = disk.hints(state)
+  local rows = { spaceRow(state.space, hints.space) }
   if not state.installed then
     rows[2] = { id = "install", icon = "󰏗", label = "Install Mole to clean up", hint = "brew install mole" }
     return rows
   end
-  local previews = state.previews or {}
-  rows[#rows + 1] = { id = "clean", icon = "󰃢", label = "Clean caches and logs", hint = previewHint(previews.clean) }
-  rows[#rows + 1] = { id = "purge", icon = "󰆴", label = "Purge project build artifacts", hint = previewHint(previews.purge) }
+  rows[#rows + 1] = { id = "clean", icon = "󰃢", label = "Clean caches and logs", hint = hints.clean or nil }
+  rows[#rows + 1] = { id = "purge", icon = "󰆴", label = "Purge project build artifacts", hint = hints.purge or nil }
   rows[#rows + 1] = { id = "analyze", icon = "󰙅", label = "Explore disk usage" }
   rows[#rows + 1] = { id = "installer", icon = "󰏔", label = "Remove old installers" }
   return rows

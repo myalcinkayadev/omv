@@ -54,6 +54,13 @@ check.that("should offer old installers", rowById(rows, "installer") ~= nil)
 check.that("should leave out purgeable space before Mole answers",
   disk.rows({ installed = true, space = space, previews = {} })[1].hint == nil)
 
+local hints = disk.hints({ installed = true, space = status,
+  previews = { clean = { size = "12.70 GB" }, purge = { measuring = true } } })
+check.that("should give the clean preview's size as its hint", hints.clean == "12.70 GB")
+check.that("should give measuring… as the hint of a running preview", hints.purge == "measuring…")
+check.that("should give purgeable space as the space row's hint", hints.space == "9.4 GB purgeable")
+check.that("should clear the hint of a preview with no size yet", disk.hints({ space = space, previews = {} }).clean == false)
+
 local missing = disk.rows({ installed = false, space = space, previews = {} })
 check.that("should offer to install Mole when it's missing", missing[2].id == "install" and #missing == 2)
 

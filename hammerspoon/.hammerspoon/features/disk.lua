@@ -55,6 +55,12 @@ local function redrawIfOpen()
   if shell.isOpen("disk") then render() end
 end
 
+-- A finished preview only changes hints, so the open card keeps its selection and filter.
+local function updateHintsIfOpen()
+  if not shell.isOpen("disk") then return end
+  shell.view():evaluateJavaScript(card.setHints(disk.hints({ space = space, previews = previews })))
+end
+
 local function startTask(arguments, onDone)
   local task = hs.task.new(MO, onDone, arguments)
   task:setEnvironment(TASK_ENVIRONMENT)
@@ -72,7 +78,7 @@ local function measure(id)
     local size = disk.previewSize(output)
     if size then saveCache(id, size) end
     previews[id] = (size or (last and last.size)) and { size = size or last.size } or nil
-    redrawIfOpen()
+    updateHintsIfOpen()
   end)
 end
 
@@ -84,7 +90,8 @@ local function refreshPreviews()
   end
 end
 
--- df answers at once; Mole's status adds purgeable space about a second later.
+-- df answers at once; Mole's status adds purgeable space about a second later. It changes
+-- the first row's label too, so the card is drawn again, before you've likely moved.
 local function refreshSpace()
   space = disk.parseDf(hs.execute("/bin/df -k /"))
   startTask({ "status", "--json" }, function(code, output)

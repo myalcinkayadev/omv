@@ -86,4 +86,11 @@ local card = require("card")
 check.that("should let a card ask for Tab", check.contains(card.html({ prompt = "x", rows = {}, tab = true }), "data-tab"))
 check.that("should leave Tab alone in other cards", not check.contains(card.html({ prompt = "x", rows = {} }), "data-tab"))
 
+local hints = card.setHints({ clean = "12.70 GB" })
+check.that("should update a row's hint by its id", check.contains(hints, 'omvSetHint("clean","12.70 GB")'))
+check.that("should escape a hint as a JavaScript string",
+  check.contains(card.setHints({ x = 'a"b</script>' }), 'omvSetHint("x","a\\"b<\\/script>")'))
+check.that("should clear a hint given as false", check.contains(card.setHints({ purge = false }), 'omvSetHint("purge","")'))
+check.that("should define omvSetHint in every list card", check.contains(card.html({ prompt = "x", rows = {} }), "window.omvSetHint"))
+
 check.finish()

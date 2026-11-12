@@ -56,6 +56,16 @@ local SCRIPT = [[
   const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
   const visible = () => rows.filter((row) => !row.classList.contains("hidden"));
 
+  // Called from Hammerspoon to update a row's hint while the card stays open.
+  window.omvSetHint = (id, value) => {
+    const row = rows.find((candidate) => candidate.dataset.id === id);
+    if (!row) return;
+    let hint = row.querySelector(".hint");
+    if (!value) { if (hint) hint.remove(); return; }
+    if (!hint) { hint = document.createElement("span"); hint.className = "hint"; row.appendChild(hint); }
+    hint.textContent = value;
+  };
+
   function draw() {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     rows.forEach((row) => {
@@ -140,6 +150,16 @@ local SCRIPT = [[
 function card.jsString(text)
   local escaped = tostring(text or ""):gsub('[\\"\n\r\t]', { ["\\"] = "\\\\", ['"'] = '\\"', ["\n"] = "\\n", ["\r"] = "\\r", ["\t"] = "\\t" })
   return '"' .. escaped:gsub("</", "<\\/") .. '"'
+end
+
+-- The JavaScript that sets the hints of an open list card's rows in place, from
+-- { [row id] = text }, keeping its selection and what was typed. false clears a hint.
+function card.setHints(hints)
+  local calls = {}
+  for id, text in pairs(hints) do
+    calls[#calls + 1] = "omvSetHint(" .. card.jsString(id) .. "," .. card.jsString(text or "") .. ");"
+  end
+  return table.concat(calls)
 end
 
 function card.escape(text)
