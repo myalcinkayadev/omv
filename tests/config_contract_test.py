@@ -229,6 +229,9 @@ class ConfigContract(unittest.TestCase):
     def test_should_define_the_disk_card_hook_in_hammerspoon(self) -> None:
         self.assertIn("omvToggleDisk = later(", HAMMERSPOON.read_text(encoding="utf-8"))
 
+    def test_should_define_the_night_light_hook_in_hammerspoon(self) -> None:
+        self.assertIn("omvToggleNightLight = later(", HAMMERSPOON.read_text(encoding="utf-8"))
+
     def test_should_define_the_tailscale_hook_in_hammerspoon(self) -> None:
         self.assertIn("omvToggleTailscale = later(", HAMMERSPOON.read_text(encoding="utf-8"))
 

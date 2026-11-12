@@ -14,6 +14,7 @@ local SCREENS = {
       { id = "restart", icon = "󰜉", label = "Restart" },
       { id = "shutdown", icon = "󰐥", label = "Shut down" },
       { id = "focus", icon = "󰽥", label = "Do Not Disturb" },
+      { id = "nightlight", icon = "󰖔", label = "Night light" },
       { id = "sound", icon = "󰕾", label = "Sound" },
       { id = "theme", icon = "󰏘", label = "Theme" },
       { id = "reload", icon = "󰑐", label = "Reload", submenu = true },

@@ -50,7 +50,7 @@ check.that("should draw a note under its group header",
   check.contains(card.html({ prompt = "x", rows = { { id = "tip", label = "t", note = true, group = "Nearby" } } }),
     '<div class=group data-name="Nearby">Nearby</div><div class=note>'))
 check.that("should list the system items in order",
-  labels(menu.screen("system")) == "Lock,Screensaver,Sleep,Log out,Restart,Shut down,Do Not Disturb,Sound,Theme,Reload")
+  labels(menu.screen("system")) == "Lock,Screensaver,Sleep,Log out,Restart,Shut down,Do Not Disturb,Night light,Sound,Theme,Reload")
 check.that("should list Sound without ›, since it opens its own card", not menu.screen("system").rows[7].submenu)
 local reloadRow
 for _, row in ipairs(menu.screen("system").rows) do if row.id == "reload" then reloadRow = row end end

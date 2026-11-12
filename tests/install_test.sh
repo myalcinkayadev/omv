@@ -103,6 +103,11 @@ trusts_swipe_tap() {
   assert_called '^brew trust --tap mediosz/tap$'
 }
 
+trusts_nightlight_tap() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called '^brew trust --tap smudge/smudge$'
+}
+
 installs_from_brewfile() {
   run_in_sandbox "$INSTALL" >/dev/null
   assert_called "^brew bundle --file=$REPO_DIR/Brewfile$"
@@ -197,6 +202,7 @@ run_case 'should add the usage line when installing' adds_usage_line
 run_case "should add the waiting hooks to Claude's settings when installing" adds_waiting_hooks
 run_case 'should apply both macOS settings when linking succeeds' applies_macos_settings
 run_case 'should trust mediosz/tap' trusts_swipe_tap
+run_case 'should trust smudge/smudge, for night light' trusts_nightlight_tap
 run_case 'should turn off the three-finger swipe on the built-in trackpad' turns_off_builtin_trackpad_swipe
 run_case 'should turn off the three-finger swipe on the Magic Trackpad' turns_off_magic_trackpad_swipe
 run_case 'should turn off the three-finger swipe for the current host' turns_off_current_host_swipe

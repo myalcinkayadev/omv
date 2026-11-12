@@ -6,6 +6,7 @@
 tap "nikitabobko/tap"
 tap "felixkratz/formulae"
 tap "mediosz/tap"
+tap "smudge/smudge"
 
 # The desktop
 cask "nikitabobko/tap/aerospace"
@@ -27,3 +28,5 @@ brew "blueutil"
 brew "mole"
 # The volume and brightness pop-ups dim an external display over DDC with it.
 brew "m1ddc"
+# Night light switches macOS's Night Shift with it.
+brew "smudge/smudge/nightlight"

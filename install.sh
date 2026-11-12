@@ -8,7 +8,7 @@ set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly REPO_DIR
-readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap)
+readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap smudge/smudge)
 readonly PACKAGES=(aerospace sketchybar claude swipeaerospace ghostty nvim btop hammerspoon)
 
 DRY_RUN=false
