@@ -24,6 +24,10 @@ card.STYLE = [[
   .row.selected { background: #fff; color: #000; }
   .row.selected .hint { color: #3a3a3a; }
   .row.hidden { display: none; }
+  .note { display: flex; align-items: center; height: 44px; padding: 0 12px; color: #7a7a7a; }
+  .note .icon { width: 28px; font-size: 18px; }
+  .note .label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.compact .note { height: 30px; }
   body.compact .row { height: 30px; }
   body.compact .row .label { color: #fff; }
   body.compact .row.selected .label { color: #000; }
@@ -144,6 +148,10 @@ end
 
 local function rowHtml(row)
   local icon = row.icon and ("<span class=icon>" .. card.escape(row.icon) .. "</span>") or ""
+  -- A note is only text: without the row class, keys, the pointer and Enter pass it by.
+  if row.note then
+    return "<div class=note>" .. icon .. "<span class=label>" .. card.escape(row.label) .. "</span></div>"
+  end
   local hint = row.submenu and "›" or row.hint
   return '<div class="row" data-id="' .. card.escape(row.id) .. '"'
     .. (row.group and (' data-group="' .. card.escape(row.group) .. '"') or "")
@@ -178,7 +186,7 @@ local function rowsWithHeaders(screenRows)
   return lines
 end
 
--- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group } },
+-- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group, note } },
 --            selected = 1, compact = false, columns = 1, input = false, hint = "" }
 -- An input card sends what was typed on Enter, and shows its hint under the prompt.
 function card.html(screen)

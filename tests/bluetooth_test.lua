@@ -78,16 +78,15 @@ check.that("should build the pair command only for a plain address",
 
 -- The search: rounds of 10 seconds, at most three, driven here by fake events.
 local started = bluetooth.searchStep(nil, { type = "start" })
-local twoSecondsIn = bluetooth.searchStep(bluetooth.searchStep(started, { type = "tick" }), { type = "tick" })
-local searching = onWith({ search = twoSecondsIn })
-check.that("should show the seconds left while searching", rowWith(searching, "searching").label == "Searching… 8s")
+local searching = onWith({ search = started })
+check.that("should show a Searching row while searching", rowWith(searching, "searching").label == "Searching…")
 check.that("should hint to put the device in pairing mode while searching", rowWith(searching, "pairing-mode") ~= nil)
 check.that("should offer to stop the search on the searching row", rowWith(searching, "searching").hint == "Enter stops")
 check.that("should stop the search when asked", bluetooth.searchStep(started, { type = "stop" }).searching == false)
-check.that("should never count below zero seconds", bluetooth.searchStep({ searching = true, round = 1, left = 0, found = {} }, { type = "tick" }).left == 0)
+check.that("should mark the pairing-mode hint as a note", rowWith(searching, "pairing-mode").note == true)
 
 local firstRound = bluetooth.searchStep(started, { type = "round", list = inquiry, paired = devices })
-check.that("should start the next round after a round ends", firstRound.searching and firstRound.round == 2 and firstRound.left == 10)
+check.that("should keep searching after a round that found a device", firstRound.searching and firstRound.round == 2)
 check.that("should list devices found while later rounds keep searching", rowWith(onWith({ search = firstRound }), "pair:" .. JBL) ~= nil)
 local secondRound = bluetooth.searchStep(firstRound, { type = "round", list = {}, paired = devices })
 check.that("should keep a device found in an earlier round", rowWith(onWith({ search = secondRound }), "pair:" .. JBL) ~= nil)
@@ -95,10 +94,18 @@ local found = bluetooth.searchStep(firstRound, { type = "paired", address = JBL 
 check.that("should drop a device from the found list once it's paired", rowWith(onWith({ search = found }), "pair:" .. JBL) == nil)
 
 local empty = started
-for _ = 1, 3 do empty = bluetooth.searchStep(empty, { type = "round", list = {}, paired = devices }) end
-check.that("should stop searching after three rounds", empty.searching == false)
+empty = bluetooth.searchStep(empty, { type = "round", list = {}, paired = devices })
+check.that("should keep searching after a round without finds", empty.searching == true)
+for _ = 2, 9 do empty = bluetooth.searchStep(empty, { type = "round", list = {}, paired = devices }) end
+check.that("should still search after a minute and a half", empty.searching == true)
+for _ = 10, 12 do empty = bluetooth.searchStep(empty, { type = "round", list = {}, paired = devices }) end
+check.that("should stop searching after 2 minutes of 10-second rounds", empty.searching == false)
 local nothing = onWith({ search = empty })
 check.that("should say no devices were found after the last round", rowWith(nothing, "none").label == "No devices found")
+check.that("should mark No devices found as a note", rowWith(nothing, "none").note == true)
+check.that("should group paired devices under My devices", rowWith(idle, "device:" .. AIRPODS).group == "My devices")
+check.that("should group found devices under Nearby", rowWith(onWith({ search = firstRound }), "pair:" .. JBL).group == "Nearby")
+check.that("should group the search under Nearby", rowWith(searching, "searching").group == "Nearby")
 check.that("should offer Search again when nothing was found", rowWith(nothing, "search").label == "Search again")
 check.that("should point keyboards and mice to Bluetooth Settings when nothing was found", rowWith(nothing, "settings.le") ~= nil)
 
@@ -123,5 +130,7 @@ check.that("should add the Settings row after a second failed pairing",
 check.that("should keep the selected row across a redraw", bluetooth.indexOf(idle, "search") == #idle - 1)
 check.that("should select the first row when the selected one is gone", bluetooth.indexOf(idle, "pair:" .. JBL) == 1)
 check.that("should select a newly paired device", bluetooth.indexOf(idle, "device:" .. KEYBOARD) == 3)
+check.that("should count only rows that can be picked when finding the selected row",
+  bluetooth.indexOf({ { id = "a" }, { id = "tip", note = true }, { id = "b" } }, "b") == 2)
 
 check.finish()

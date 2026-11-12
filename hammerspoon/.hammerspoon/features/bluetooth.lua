@@ -11,7 +11,7 @@ local feature = {}
 
 local BLUEUTIL = "/opt/homebrew/bin/blueutil"
 local WIDTH = 420
-local VISIBLE_ROWS = 10
+local VISIBLE_ROWS = 14
 
 local function blueutil(arguments)
   return hs.execute(BLUEUTIL .. " " .. arguments .. " 2>/dev/null") or ""
@@ -85,23 +85,13 @@ end
 
 -- The search runs blueutil's inquiry once per round. A stopped search's late answer is
 -- dropped: each search counts as a new generation.
-local searchTask, tickTimer = nil, nil
+local searchTask = nil
 local generation = 0
 
 local function stopSearch()
   generation = generation + 1
   if searchTask and searchTask:isRunning() then searchTask:terminate() end
   searchTask = nil
-  if tickTimer then tickTimer:stop() end
-  tickTimer = nil
-end
-
--- Counts the searching row down in place, rather than redrawing the card every second.
-local function tick()
-  session.search = bluetooth.searchStep(session.search, { type = "tick" })
-  if not (session.search and session.search.searching) or not shell.isOpen("bluetooth") then return end
-  shell.view():evaluateJavaScript("(function () { const label = document.querySelector('[data-id=\"searching\"] .label');"
-    .. " if (label) label.textContent = " .. card.jsString(bluetooth.searchingLabel(session.search)) .. "; })()")
 end
 
 local function searchRound()
@@ -126,7 +116,6 @@ local function startSearch()
   session.pairFailures = {}
   redraw()
   searchRound()
-  tickTimer = hs.timer.doEvery(1, tick)
 end
 
 -- Pairs, then connects. The search stops first, since both use the radio. On success the
@@ -198,11 +187,21 @@ local function onClose()
   session = freshSession()
 end
 
+-- Each section's header takes a row's height too.
+local function linesOf(rows)
+  local lines, previous = #rows, nil
+  for _, row in ipairs(rows) do
+    if row.group and row.group ~= previous then lines = lines + 1 end
+    previous = row.group
+  end
+  return lines
+end
+
 show = function()
   local rows = bluetooth.rows(state())
   local screen = { prompt = "Bluetooth…", rows = rows, compact = true, selected = bluetooth.indexOf(rows, session.selected) }
-  shell.show("bluetooth", shell.anchored(WIDTH, shell.listHeight(#rows, VISIBLE_ROWS), "bluetooth"), card.html(screen), onMessage,
-    { onClose = onClose })
+  local height = shell.listHeight(linesOf(rows), VISIBLE_ROWS)
+  shell.show("bluetooth", shell.anchored(WIDTH, height, "bluetooth"), card.html(screen), onMessage, { onClose = onClose })
 end
 
 -- For the bar's icon: "1" when on, "0" when off, "" when it can't be read. SketchyBar asks

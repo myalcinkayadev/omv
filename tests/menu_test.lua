@@ -41,6 +41,14 @@ check.that("should keep a group's header together with its first row",
 check.that("should not render a header for rows without a group", not check.contains(sample, "class=group"))
 check.that("should let a row's group match a search", check.contains(grouped, 'data-group="Windows"'))
 check.that("should keep a single column by default", not check.contains(sample, "column-count"))
+-- A note is text between rows: the card's keys, pointer and Enter act only on rows.
+local noted = card.html({ prompt = "x", rows = { { id = "a", label = "a" }, { id = "tip", label = "Just text", note = true } } })
+check.that("should draw a note without the row class, so it can't be selected or picked",
+  not check.contains(noted, 'data-id="tip"') and check.contains(noted, "<div class=note>"))
+check.that("should draw a note's text", check.contains(noted, "<span class=label>Just text</span>"))
+check.that("should draw a note under its group header",
+  check.contains(card.html({ prompt = "x", rows = { { id = "tip", label = "t", note = true, group = "Nearby" } } }),
+    '<div class=group data-name="Nearby">Nearby</div><div class=note>'))
 check.that("should list the system items in order",
   labels(menu.screen("system")) == "Lock,Screensaver,Sleep,Log out,Restart,Shut down,Sound,Theme,Reload")
 check.that("should list Sound without ›, since it opens its own card", not menu.screen("system").rows[7].submenu)
