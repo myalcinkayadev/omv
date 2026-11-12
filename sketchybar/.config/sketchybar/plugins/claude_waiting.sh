@@ -7,11 +7,28 @@
 
 state_dir="$HOME/.local/state/omv/claude-sessions"
 tab=$(printf '\t')
+# lsof lives in /usr/sbin, which SketchyBar's scripts may not have on their PATH.
+PATH="$PATH:/usr/sbin"
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
   hs -c 'omvFocusClaude()'
   exit 0
 fi
+
+# Whether a session is still open, from its PID, agent and id. Codex runs its hooks from a
+# background daemon that outlives every session, so the PID saved for it says nothing, and
+# Codex sends no event when a session ends. A Codex session counts as open while some
+# process holds its log open, or while the log was written to in the last 30 minutes.
+live() {
+  if [ "$2" != codex ]; then
+    kill -0 "$1" 2>/dev/null
+    return
+  fi
+  log=$(find "$HOME/.codex/sessions" -name "rollout-*-$3.jsonl" 2>/dev/null | head -n 1)
+  [ -n "$log" ] || return 1
+  lsof -t -- "$log" >/dev/null 2>&1 && return 0
+  [ -n "$(find "$log" -mmin -30 2>/dev/null)" ]
+}
 
 # "<rank><TAB><since><TAB><label>" per live waiting session: asking (rank 0) before done
 # (rank 1), then the longest waiting first. A file from before states existed is done.
@@ -20,8 +37,8 @@ fi
 waiting() {
   for file in "$state_dir"/*; do
     [ -f "$file" ] || continue
-    IFS="$tab" read -r pid _ folder since state _ < "$file"
-    if ! kill -0 "$pid" 2>/dev/null; then
+    IFS="$tab" read -r pid _ folder since state agent < "$file"
+    if ! live "$pid" "${agent:-claude}" "${file##*/}"; then
       rm -f "$file" "$state_dir/.seen-${file##*/}"
       continue
     fi

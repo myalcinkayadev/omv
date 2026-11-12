@@ -25,6 +25,27 @@ save_old_session() {
   printf '%s\t/dev/ttys009\t%s\t%s\n' "$2" "$3" "$4" > "$(state_dir)/$1"
 }
 
+# A Codex session: its hooks run from Codex's background daemon, saved here as alive ($$)
+# or ended, and its log under ~/.codex/sessions, written $3 minutes ago unless no log is wanted.
+save_codex_session() {
+  mkdir -p "$(state_dir)"
+  printf '%s\t-\tomv\t100\tdone\tcodex\n' "$2" > "$(state_dir)/$1"
+  [ "${3:-}" = none ] && return
+  local logs=$HOME_DIR/.codex/sessions/2026/11/12
+  mkdir -p "$logs"
+  touch "$logs/rollout-2026-11-12T11-30-50-$1.jsonl"
+  touch -t "$(date -v-"${3:-0}"M +%Y%m%d%H%M.%S)" "$logs/rollout-2026-11-12T11-30-50-$1.jsonl"
+}
+
+# lsof answers 0 when some process holds the file open, 1 when none does.
+log_held_open() {
+  stub lsof 0
+}
+
+log_not_held() {
+  stub lsof 1
+}
+
 run_plugin() {
   run_in_sandbox NAME=claude_waiting "$@" "$PLUGIN"
 }
@@ -137,7 +158,7 @@ ignores_a_seen_file_of_an_ended_session() {
 
 reads_a_line_with_an_agent() {
   mkdir -p "$(state_dir)"
-  printf '%s\t/dev/ttys009\tomv\t100\tasks\tcodex\n' $$ > "$(state_dir)/one"
+  printf '%s\t/dev/ttys009\tomv\t100\tasks\topencode\n' $$ > "$(state_dir)/one"
   run_plugin
   assert_called 'sketchybar --set claude_waiting drawing=on label=\? omv$'
 }
@@ -159,4 +180,53 @@ run_case 'should remove a session whose Claude has ended' removes_an_ended_sessi
 run_case 'should cut a long folder name at 12 characters' cuts_a_long_folder
 run_case 'should check the fit when the item changes' checks_the_fit
 run_case 'should focus the waiting session on a click' focuses_on_click
+
+drops_a_quiet_closed_codex_session() {
+  log_not_held
+  save_codex_session abc-1 $$ 31
+  run_plugin
+  [ ! -e "$(state_dir)/abc-1" ] || fail 'kept a closed Codex session'
+}
+
+keeps_a_codex_session_held_open() {
+  log_held_open
+  save_codex_session abc-1 $$ 31
+  run_plugin
+  [ -e "$(state_dir)/abc-1" ] || fail 'dropped a Codex session in use'
+}
+
+keeps_a_recent_codex_session() {
+  log_not_held
+  save_codex_session abc-1 $$ 5
+  run_plugin
+  [ -e "$(state_dir)/abc-1" ] || fail 'dropped a Codex session written to 5 minutes ago'
+}
+
+drops_a_codex_session_without_a_log() {
+  log_held_open
+  save_codex_session abc-1 $$ none
+  run_plugin
+  [ ! -e "$(state_dir)/abc-1" ] || fail 'kept a Codex session without a log'
+}
+
+keeps_a_codex_session_whose_process_ended() {
+  log_held_open
+  save_codex_session abc-1 $DEAD_PID 31
+  run_plugin
+  [ -e "$(state_dir)/abc-1" ] || fail 'dropped a Codex session in use because of its process'
+}
+
+drops_a_claude_session_whose_process_ended() {
+  log_held_open
+  save_session one $DEAD_PID omv 100
+  run_plugin
+  [ ! -e "$(state_dir)/one" ] || fail 'kept an ended Claude session'
+}
+
+run_case "should drop a Codex session whose log nothing holds and that's been quiet for 30 minutes" drops_a_quiet_closed_codex_session
+run_case 'should keep a Codex session whose log is held open' keeps_a_codex_session_held_open
+run_case 'should keep a Codex session whose log was written to in the last 30 minutes' keeps_a_recent_codex_session
+run_case 'should drop a Codex session without a log' drops_a_codex_session_without_a_log
+run_case 'should keep a Codex session whose recorded process ended, while its log is held open' keeps_a_codex_session_whose_process_ended
+run_case 'should still drop a Claude session whose process has ended' drops_a_claude_session_whose_process_ended
 finish
