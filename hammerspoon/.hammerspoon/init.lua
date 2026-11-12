@@ -68,7 +68,7 @@ bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", "Tools", captu
 bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", "Tools", reminderCards.new)
 bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", "Tools", quickNote.toggle)
 bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "PRs waiting for your review", "Tools", pullRequests.toggle)
-bindKey(SUPER_SHIFT, "p", "Option+Shift+P", "Hungry processes", "Tools", hungryProcesses.toggle)
+bindKey(SUPER_SHIFT, "p", "Option+Shift+P", "Hungry processes and ports", "Tools", hungryProcesses.toggle)
 bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus)
 bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join)
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", "Cards", run(shell.SKETCHYBAR, { "--bar", "hidden=toggle" }))

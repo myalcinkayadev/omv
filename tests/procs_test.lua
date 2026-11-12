@@ -53,6 +53,31 @@ check.that("should offer Cancel first, then Quit", confirm.rows[1].id == "cancel
 local force = procs.confirm({ pid = 65076, name = "npm exec ccstatusline" }, true)
 check.that("should offer Force quit after a quit fails", force.rows[2].id == "force")
 
+local lsof = table.concat({
+  "p65076", "cnode", "f21", "n*:3000", "f22", "n[::1]:3000",
+  "p98422", "c2.1.322", "f5", "n127.0.0.1:5173",
+  "p2411", "collama", "f4", "n[::1]:11434",
+}, "\n")
+local ports = procs.ports(lsof)
+check.that("should read pid, name and port from lsof output",
+  ports[1].pid == 65076 and ports[1].name == "node" and ports[1].port == 3000)
+check.that("should list a port once when a process listens on IPv4 and IPv6", #ports == 3)
+check.that("should read the port from a 127.0.0.1 address", ports[2].port == 5173)
+check.that("should read the port from an IPv6 address", ports[3].port == 11434)
+check.that("should sort ports lowest first", ports[1].port < ports[2].port and ports[2].port < ports[3].port)
+check.that("should give no ports for empty lsof output", #procs.ports("") == 0)
+
+local byPid = {}
+for _, process in ipairs(list) do byPid[process.pid] = process end
+local portRows = procs.portRows(ports, byPid, folders)
+check.that("should label a port row with the port, name and folder", portRows[1].label == ":3000  npm exec ccstatusline  ~/workspace/omv")
+check.that("should name a port's process from lsof when ps doesn't list it", portRows[3].label == ":11434  ollama")
+check.that("should give each port row its own id", portRows[1].id ~= portRows[2].id and portRows[2].id ~= portRows[3].id)
+
+check.that("should go from CPU to memory on Tab", procs.nextSort("cpu") == "memory")
+check.that("should go from memory to ports on Tab", procs.nextSort("memory") == "ports")
+check.that("should go from ports back to CPU on Tab", procs.nextSort("ports") == "cpu")
+
 local card = require("card")
 check.that("should let a card ask for Tab", check.contains(card.html({ prompt = "x", rows = {}, tab = true }), "data-tab"))
 check.that("should leave Tab alone in other cards", not check.contains(card.html({ prompt = "x", rows = {} }), "data-tab"))

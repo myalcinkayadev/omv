@@ -299,7 +299,7 @@ Option+Shift+S opens a card for screen captures.
 
   <img src="docs/note-list.png" alt="The note list after Cmd+O: Notes… search, with Production note 1, changed today at 15:31, in Inbox" width="480">
 
-- **Hungry processes (Option+Shift+P):** your 20 busiest processes by CPU, or by memory after Tab, each with the folder it runs in, so a dev server or build an agent left behind is easy to spot. Type to filter, and Enter asks, then quits it. A process still running 3 seconds later is offered Force quit. Only your own processes are listed, never `loginwindow`, `launchd` or Hammerspoon.
+- **Hungry processes (Option+Shift+P):** your 20 busiest processes by CPU, by memory after Tab, or your listening TCP ports after a second Tab, as `:3000  node  ~/workspace/app`, each with the folder it runs in, so a dev server or build an agent left behind is easy to spot. Type to filter, and Enter asks, then quits it. A process still running 3 seconds later is offered Force quit. Only your own processes are listed, never `loginwindow`, `launchd` or Hammerspoon.
 - **Clipboard history (Option+V):** the text you copied in the last day, newest first, at most 50. Type to filter, and Enter puts a copy back on the clipboard for you to paste with Cmd+V; pasting for you would need Accessibility, which omv doesn't grant. It's kept in memory only, so a reload forgets it. Secrets are never kept: copies password managers mark as concealed, copies made while 1Password, Bitwarden, Passwords or Keychain Access is in front, and text shaped like a key or token (`sk-…`, `ghp_…`, `AKIA…`, a JWT, a private key, or a `KEY=`, `TOKEN=`, `SECRET=` or `PASSWORD=` line). Only text is kept, never images or files. **Pause history** and **Clear history** are the card's first rows; while paused, the bar shows `paused`, and a click on it turns history back on. A secret with no recognizable shape is still kept, so pause the history for sensitive work.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
@@ -345,7 +345,7 @@ Option+Shift+S opens a card for screen captures.
 | Option+Shift+C | Join the meeting that is starting | |
 | Option+Shift+A | Go to the Claude session waiting for you, or pick one when several wait | |
 | Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
-| Option+Shift+P | Hungry processes: quit the busiest ones | |
+| Option+Shift+P | Hungry processes and listening ports: quit the busiest ones | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |
 | Option+Shift+Y | Bluetooth card | |
