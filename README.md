@@ -277,7 +277,7 @@ Option+Shift+M asks "Remind me…". Type a time, then what to remember, and pres
 
 Option+Shift+X, or a click on the bar's disk item, opens the Disk card. The bar item stays hidden while there's room, and shows the free space once it drops under 20 GB, or under 10% of a larger disk. It's checked with `df` every 10 minutes.
 
-<img src="docs/disk.png" alt="The Disk card: 192 GB free of 494 GB with 9.5 GB purgeable, then Clean caches and logs at 12.52 GB, Purge project build artifacts at 24.26 GB, Explore disk usage and Remove old installers" width="480">
+<img src="docs/disk.png" alt="The Disk card: 211 GB free of 494 GB with 9.4 GB purgeable, then Clean caches and logs at 12.52 GB, Purge project build artifacts at 24.26 GB, Explore disk usage and Remove old installers" width="480">
 
 - **First row:** free and total space at once, then the space macOS can purge about a second later, from `mo status --json`.
 - **Clean caches and logs** opens `mo clean` in a new Ghostty window. **Purge project build artifacts** opens `mo purge`, **Explore disk usage** opens `mo analyze`, and **Remove old installers** opens `mo installer`. Each one is [Mole](https://github.com/tw93/Mole)'s own interactive command, so you pick what goes; the card itself never deletes anything, and never runs Mole with `--yes`.
