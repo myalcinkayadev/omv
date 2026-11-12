@@ -159,14 +159,32 @@ end
 -- options.onClose runs when the card closes or another card takes its place.
 -- The theme's colours for the cards, set by features/theme.lua; Vantablack until then.
 local themeTokens = nil
+local themeWatchers = {}
 
 function shell.setTheme(tokens)
   themeTokens = tokens
+  for _, watcher in ipairs(themeWatchers) do watcher() end
+end
+
+-- The chosen theme's colours, Vantablack's until one is chosen.
+function shell.themeTokens()
+  return themeTokens or theme.tokens(nil)
+end
+
+-- Windows other than the card redraw in a newly chosen theme through this.
+function shell.onThemeChange(watcher)
+  themeWatchers[#themeWatchers + 1] = watcher
+end
+
+-- A page in the chosen theme's colours, for windows other than the card too.
+function shell.themed(html)
+  if not themeTokens then return html end
+  return theme.recolor(html, themeTokens)
 end
 
 function shell.show(name, frame, html, onMessage, options)
   options = options or {}
-  if themeTokens then html = theme.recolor(html, themeTokens) end
+  html = shell.themed(html)
   if panel then
     if panel.name ~= name and panel.onClose then panel.onClose() end
     panel.name, panel.onMessage, panel.onClose = name, onMessage, options.onClose

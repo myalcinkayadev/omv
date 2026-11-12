@@ -32,6 +32,7 @@ local bluetoothCard = require("features.bluetooth")
 require("features.theme")
 local hungryProcesses = require("features.procs")
 local diskCard = require("features.disk")
+local lyricsWindow = require("features.lyrics")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -85,10 +86,15 @@ bindKey(SUPER, "space", "Option+Space", "Go to any window", "Cards", windowList.
 bindKey(SUPER, "v", "Option+V", "Clipboard history", "Cards", clipboardHistory.toggle)
 
 -- Now playing: Music and Spotify announce every track and play-state change, so the bar
--- redraws only then. Global, so the watchers are never garbage-collected.
+-- and the lyrics window update only then. Global, so the watchers are never garbage-collected.
+local redrawBarTrack = run(shell.SKETCHYBAR, { "--trigger", "now_playing_change" })
+local function playerChanged()
+  redrawBarTrack()
+  lyricsWindow.playerChanged()
+end
 omvMediaWatchers = {
-  hs.distributednotifications.new(run(shell.SKETCHYBAR, { "--trigger", "now_playing_change" }), "com.apple.Music.playerInfo"):start(),
-  hs.distributednotifications.new(run(shell.SKETCHYBAR, { "--trigger", "now_playing_change" }), "com.spotify.client.PlaybackStateChanged"):start(),
+  hs.distributednotifications.new(playerChanged, "com.apple.Music.playerInfo"):start(),
+  hs.distributednotifications.new(playerChanged, "com.spotify.client.PlaybackStateChanged"):start(),
 }
 
 -- Ghostty owns this key, so it is listed here rather than bound.
@@ -116,6 +122,7 @@ omvToggleEthernet = later(networkCards.toggleEthernet)
 omvToggleWeather = later(weatherCard.toggle)
 omvToggleBattery = later(batteryCard.toggle)
 omvToggleAgents = later(agentsCard.toggle)
+omvToggleLyrics = later(lyricsWindow.toggle)
 
 -- SketchyBar's config calls this when it starts: a restarted bar has lost the items set
 -- here, and they are only sent again when they change.

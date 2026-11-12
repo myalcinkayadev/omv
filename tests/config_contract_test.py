@@ -229,6 +229,9 @@ class ConfigContract(unittest.TestCase):
     def test_should_define_the_disk_card_hook_in_hammerspoon(self) -> None:
         self.assertIn("omvToggleDisk = later(", HAMMERSPOON.read_text(encoding="utf-8"))
 
+    def test_should_define_the_lyrics_window_hook_in_hammerspoon(self) -> None:
+        self.assertIn("omvToggleLyrics = later(", HAMMERSPOON.read_text(encoding="utf-8"))
+
     def test_should_run_the_fit_check_on_its_event(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("--subscribe bar_fit bar_fit system_woke display_change", source)
