@@ -23,6 +23,9 @@ local _, rowCount = sample:gsub("class=\"row", "")
 check.that("should render one row per item", rowCount == 3)
 check.that("should show each row's icon and label", check.contains(sample, ">A<") and check.contains(sample, ">First<"))
 check.that("should mark items that open a submenu with ›", check.contains(sample, "data-submenu"))
+check.that("should show a row's picture in place of its icon",
+  check.contains(card.html({ prompt = "x", rows = { { id = "a", label = "a", image = "data:image/png;base64,x" } } }),
+    '<img class=thumb src="data:image/png;base64,x"'))
 check.that("should escape HTML in labels", check.contains(sample, "&lt;b&gt;Bold&lt;/b&gt; &amp; co"))
 check.that("should show the menu title in the search prompt", check.contains(sample, "data-prompt=\"Pick…\""))
 check.that("should give each row its item id", check.contains(sample, "data-id=\"two\""))

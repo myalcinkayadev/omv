@@ -19,6 +19,7 @@ card.STYLE = [[
   .rows::-webkit-scrollbar { display: none; }
   .row { display: flex; align-items: center; height: 44px; padding: 0 12px; border-radius: 4px; color: #d0d0d0; cursor: default; }
   .row .icon { width: 28px; font-size: 18px; }
+  .thumb { width: 20px; height: 20px; object-fit: cover; vertical-align: middle; border: 1px solid #2a2a2a; }
   .row .label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .hint { color: #9a9a9a; padding-left: 16px; white-space: nowrap; }
   .row.selected { background: #fff; color: #000; }
@@ -168,6 +169,8 @@ end
 
 local function rowHtml(row)
   local icon = row.icon and ("<span class=icon>" .. card.escape(row.icon) .. "</span>") or ""
+  -- A picture, such as a copied image's preview, takes the icon's place.
+  if row.image then icon = '<span class=icon><img class=thumb src="' .. card.escape(row.image) .. '" alt=""></span>' end
   -- A note is only text: without the row class, keys, the pointer and Enter pass it by.
   if row.note then
     return "<div class=note>" .. icon .. "<span class=label>" .. card.escape(row.label) .. "</span></div>"

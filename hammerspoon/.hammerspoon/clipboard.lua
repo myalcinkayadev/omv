@@ -1,4 +1,5 @@
--- The clipboard history: the text you copied recently, newest first, kept in memory only.
+-- The clipboard history: the text and images you copied recently, newest first, kept in
+-- memory only.
 -- Secrets are never kept: copies password managers mark as concealed, copies made while a
 -- password manager is in front, and text shaped like a key or token.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
@@ -6,6 +7,8 @@
 local clipboard = {}
 
 local MAX_ITEMS = 50
+-- Images are kept apart from the text copies, and fewer, since each holds a picture.
+local MAX_IMAGES = 20
 local MAX_AGE = 24 * 3600
 local LABEL_CHARACTERS = 80
 
@@ -70,20 +73,38 @@ function clipboard.new()
 end
 
 local function prune(history, now)
-  local kept = {}
+  local kept, texts, images = {}, 0, 0
   for _, item in ipairs(history.items) do
-    if now - item.copied <= MAX_AGE and #kept < MAX_ITEMS then kept[#kept + 1] = item end
+    local fresh = now - item.copied <= MAX_AGE
+    if fresh and item.image and images < MAX_IMAGES then
+      images = images + 1
+      kept[#kept + 1] = item
+    elseif fresh and not item.image and texts < MAX_ITEMS then
+      texts = texts + 1
+      kept[#kept + 1] = item
+    end
   end
   history.items = kept
 end
 
--- Keeps a copy, { text, app, bundle, types }, unless it's paused, empty, the same as the
--- newest, or a secret. Says whether it was kept.
+-- copy.image = { fingerprint, width, height, preview }: the same fingerprint is the same
+-- picture, and preview is a small data: URL for the card.
+local function addImage(history, copy, now)
+  local newest = history.items[1]
+  if newest and newest.image and newest.image.fingerprint == copy.image.fingerprint then return false end
+  table.insert(history.items, 1, { image = copy.image, app = copy.app or "?", copied = now })
+  prune(history, now)
+  return true
+end
+
+-- Keeps a copy, { text or image, app, bundle, types }, unless it's paused, empty, the same
+-- as the newest, or a secret. Says whether it was kept.
 function clipboard.add(history, copy, now)
   prune(history, now)
+  if history.paused or marked(copy.types) or PASSWORD_MANAGERS[copy.bundle] then return false end
+  if type(copy.image) == "table" then return addImage(history, copy, now) end
   local text = copy.text
-  if history.paused or type(text) ~= "string" or not text:find("%S") then return false end
-  if marked(copy.types) or PASSWORD_MANAGERS[copy.bundle] or clipboard.isSecret(text) then return false end
+  if type(text) ~= "string" or not text:find("%S") or clipboard.isSecret(text) then return false end
   if history.items[1] and history.items[1].text == text then return false end
   table.insert(history.items, 1, { text = text, app = copy.app or "?", copied = now })
   prune(history, now)
@@ -115,7 +136,8 @@ function clipboard.rows(history, now)
     { id = "clear", icon = "󰆴", label = "Clear history" },
   }
   for index, item in ipairs(history.items) do
-    rows[#rows + 1] = { id = tostring(index), icon = "󰅍", label = firstLine(item.text),
+    local label = item.image and string.format("Image · %d×%d", item.image.width, item.image.height) or firstLine(item.text)
+    rows[#rows + 1] = { id = tostring(index), icon = "󰅍", image = item.image and item.image.preview, label = label,
       hint = item.app .. " · " .. age(now - item.copied) }
   end
   return rows

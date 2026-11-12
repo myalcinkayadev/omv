@@ -81,4 +81,35 @@ check.that("should offer Resume history while paused", (function()
 end)())
 check.that("should offer Clear history", rows[2].id == "clear")
 
+-- Images: the last 20, beside the text, in one newest-first list.
+local IMAGE = { "public.png" }
+local function picture(fingerprint, app, bundle)
+  return { image = { fingerprint = fingerprint, width = 1200, height = 800, preview = "data:image/png;base64,x" },
+    app = app or "Preview", bundle = bundle or "com.apple.Preview", types = IMAGE }
+end
+local pictures = clipboard.new()
+check.that("should keep a copied image", kept(pictures, picture("a")) and pictures.items[1].image.fingerprint == "a")
+kept(pictures, copy("caption"), NOW + 1)
+check.that("should keep text and images in one newest-first list",
+  pictures.items[1].text == "caption" and pictures.items[2].image ~= nil)
+kept(pictures, picture("b"), NOW + 2)
+check.that("should skip the same image copied twice in a row", not kept(pictures, picture("b"), NOW + 3))
+local manyPictures = clipboard.new()
+for index = 1, 21 do kept(manyPictures, picture("p" .. index), NOW + index) end
+local imageCount = 0
+for _, item in ipairs(manyPictures.items) do if item.image then imageCount = imageCount + 1 end end
+check.that("should keep at most 20 images", imageCount == 20 and manyPictures.items[20].image.fingerprint == "p2")
+local mixed = clipboard.new()
+for index = 1, 50 do kept(mixed, copy("text " .. index), NOW + index) end
+for index = 1, 20 do kept(mixed, picture("m" .. index), NOW + 50 + index) end
+check.that("should not count images toward the 50 text copies", #mixed.items == 70)
+check.that("should skip an image copied from a password manager",
+  not kept(clipboard.new(), picture("s", "1Password", "com.1password.1password")))
+local pausedPictures = clipboard.new()
+pausedPictures.paused = true
+check.that("should skip an image while history is paused", not kept(pausedPictures, picture("q")))
+local imageRow = clipboard.rows(pictures, NOW + 4)[3]
+check.that("should label an image with its size", imageRow.label == "Image · 1200×800")
+check.that("should show an image's preview in its row", imageRow.image == "data:image/png;base64,x")
+
 check.finish()
