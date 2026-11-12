@@ -35,6 +35,7 @@ local diskCard = require("features.disk")
 local lyricsWindow = require("features.lyrics")
 require("features.osd")
 local focusMode = require("features.focus")
+local tailscalePanel = require("features.tailscale")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -127,6 +128,7 @@ omvToggleAgents = later(agentsCard.toggle)
 omvToggleLyrics = later(lyricsWindow.toggle)
 omvStopRecording = later(captureMenu.stopRecording)
 omvToggleFocus = later(focusMode.toggle)
+omvToggleTailscale = later(tailscalePanel.toggle)
 
 -- SketchyBar's config calls this when it starts: a restarted bar has lost the items set
 -- here, and they are only sent again when they change.

@@ -126,6 +126,11 @@ sketchybar --add item clipboard_paused right \
   --set clipboard_paused drawing=off icon=󰅍 icon.color=$MUTED icon.padding_right=3 label=paused \
     label.color=$MUTED label.padding_left=3 click_script="hs -c 'omvResumeClipboard()'"
 
+# Tailscale, shown only once it's installed: white while connected, gray otherwise.
+# Hammerspoon sets it; clicking it opens the Tailscale card.
+sketchybar --add item tailscale right \
+  --set tailscale drawing=off icon=󰖂 label.drawing=off click_script="hs -c 'omvToggleTailscale()'"
+
 # Shown only while a Focus such as Do Not Disturb is on, with its name. Hammerspoon sets it
 # from macOS's Focus files; clicking it switches Do Not Disturb.
 sketchybar --add item focus right \
