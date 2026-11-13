@@ -55,11 +55,11 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 - **Resize mode:** Option+Shift+R, shown as `RESIZE` in the bar. H / L make the window narrower / wider, and K / J shorter / taller. Escape or Enter leaves, and other shortcuts stay off until you do. Height only changes when windows are stacked vertically.
 - **btop** opens on workspace 1 when AeroSpace starts, unless one is already running.
 
-![Tiles against tabbed: three code windows in thirds, where long lines wrap, and the same three tabbed, where the focused window gets the width and the others wait as strips at the edges](docs/tabbed.png)
+![Tiles against tabbed: btop, the README in Neovim and git log in thirds, where long lines wrap, and the same three tabbed, where the focused README gets the width and the others wait as strips at the edges](docs/tabbed.png)
 
 ## The bar
 
-![The bar: workspaces on the left; keep-awake, Claude's 5-hour limit, the weather, status icons and the clock on the right](docs/bar.png)
+![The bar: workspaces 1 to 7 and the playing track on the left; Claude's 5-hour limit, the weather, status icons and the clock on the right](docs/bar.png)
 
 **On the left**, workspace numbers: the focused one is a white pill, and the one visible on the other monitor is a gray pill. Click a number to go there, or scroll over them to move one workspace at a time across all seven, wrapping around. The binding mode shows next to them while it isn't the normal one.
 
@@ -100,7 +100,7 @@ Option+Shift+Space shows or hides the bar.
 
 Option+Space opens one list, like Omarchy's: every open window with its app and workspace, then every app in `/Applications`, `/System/Applications` and `~/Applications`, then every omv command the [key list](#key-list) can run, such as the Wi-Fi card or the capture menu. Type to filter by name, app, workspace number or key, and press Enter to go to the window, open the app or run the command.
 
-<img src="docs/windows.png" alt="The window list, with btop selected" width="720">
+<img src="docs/windows.png" alt="The palette: open windows with their app and workspace, then apps, then omv commands with their keys" width="720">
 
 ## Key list
 
@@ -164,7 +164,7 @@ Left and Right move between the buttons, Enter presses one, and Escape or a clic
 
 Both cards follow changes while they're open, such as Wi-Fi turning off, joining a network, the signal or a cable being unplugged, and keep the selected button. The bar's Wi-Fi and Ethernet icons change at once too: Hammerspoon watches for these changes rather than checking on a timer.
 
-<img src="docs/wifi.png" alt="The Wi-Fi card: network name, signal, IP address, router and channel" width="420"> <img src="docs/ethernet.png" alt="The Ethernet card: link speed, IP address, router, port and duplex" width="420">
+<img src="docs/wifi.png" alt="The Wi-Fi card: network name, signal, IP address, router, channel, and the last speed test" width="420"> <img src="docs/ethernet.png" alt="The Ethernet card: link speed, IP address, router, port, duplex, and the last speed test" width="420">
 
 Since macOS 14, an app needs Location Services to read the Wi-Fi network's name. Hammerspoon asks for it once, for the weather, and without it the card shows `—` for the name.
 
@@ -210,7 +210,7 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - Only Claude's PID, its tty, the folder name, the state and when the session entered it are saved, in `~/.local/state/omv/claude-sessions`. A session whose Claude has ended is dropped within 30 seconds.
 - A session in any other app, such as Zed's terminal, still shows. Since no terminal app has its tty, the app it runs in comes forward instead, found among Claude's parent processes; macOS can't pick the exact window or pane. The drop-down terminal can't be focused.
 
-<img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, with session and weekly limits" width="400">
+<img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, session and weekly limits, two live sessions and two background ones" width="400">
 
 ## Battery
 
@@ -288,7 +288,7 @@ Option+Shift+M asks "Remind me…". Type a time, then what to remember, and pres
 
 Option+Shift+X, or a click on the bar's disk item, opens the Disk card. The bar item stays hidden while there's room, and shows the free space once it drops under 20 GB, or under 10% of a larger disk. It's checked with `df` every 10 minutes.
 
-<img src="docs/disk.png" alt="The Disk card: 211 GB free of 494 GB with 9.4 GB purgeable, then Clean caches and logs at 12.52 GB, Purge project build artifacts at 24.26 GB, Explore disk usage and Remove old installers" width="480">
+<img src="docs/disk.png" alt="The Disk card: 182 GB free of 494 GB with 9.4 GB purgeable, then Clean caches and logs at 12.70 GB, Purge project build artifacts at 4.12 GB, Explore disk usage and Remove old installers" width="480">
 
 - **First row:** free and total space at once, then the space macOS can purge about a second later, from `mo status --json`.
 - **Clean caches and logs** opens `mo clean` in a new Ghostty window. **Purge project build artifacts** opens `mo purge`, **Explore disk usage** opens `mo analyze`, and **Remove old installers** opens `mo installer`. Each one is [Mole](https://github.com/tw93/Mole)'s own interactive command, so you pick what goes; the card itself never deletes anything, and never runs Mole with `--yes`.
@@ -393,7 +393,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 
   <img src="docs/note-editor.png" alt="A note open in the editor card: headings bold and their # marks dimmed, the file name and Cmd+Enter save, Cmd+O notes at the bottom" width="480">
 
-  <img src="docs/note-list.png" alt="The note list after Cmd+O: Notes… search, with Production note 1, changed today at 15:31, in Inbox" width="480">
+  <img src="docs/note-list.png" alt="The note list after Cmd+O: today's daily note first, then Sprint plan, yesterday's note and Q4 roadmap, each with when it changed and its folder" width="480">
 
 - **Hungry processes (Option+Shift+P):** your 20 busiest processes by CPU, by memory after Tab, or your listening TCP ports after a second Tab, as `:3000  node  ~/workspace/app`, each with the folder it runs in, so a dev server or build an agent left behind is easy to spot. Type to filter, and Enter asks, then quits it. A process still running 3 seconds later is offered Force quit. Only your own processes are listed, never `loginwindow`, `launchd` or Hammerspoon.
 - **Clipboard history (Option+V):** the text you copied in the last day, at most 50, and the last 20 images, newest first; an image shows as a small preview with its size. Type to filter, and Enter puts a copy back on the clipboard for you to paste with Cmd+V; pasting for you would need Accessibility, which omv doesn't grant. It's kept in memory only, so a reload forgets it. Secrets are never kept: copies password managers mark as concealed, copies made while 1Password, Bitwarden, Passwords or Keychain Access is in front, and text shaped like a key or token (`sk-…`, `ghp_…`, `AKIA…`, a JWT, a private key, or a `KEY=`, `TOKEN=`, `SECRET=` or `PASSWORD=` line). Text and images are kept, never files. **Pause history** and **Clear history** are the card's first rows; while paused, the bar shows `paused`, and a click on it turns history back on. A secret with no recognizable shape is still kept, so pause the history for sensitive work.
