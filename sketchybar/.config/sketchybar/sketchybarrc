@@ -131,6 +131,11 @@ sketchybar --add item clipboard_paused right \
 sketchybar --add item nightlight right \
   --set nightlight drawing=off icon=󰖔 icon.color=$MUTED label.drawing=off click_script="hs -c 'omvToggleNightLight()'"
 
+# Shown only while the mic is muted (Option+M), in red so a muted mic is never missed.
+# Hammerspoon sets it; clicking it unmutes.
+sketchybar --add item mic_muted right \
+  --set mic_muted drawing=off icon=󰍭 icon.color=0xffff5f5f label.drawing=off click_script="hs -c 'omvToggleMic()'"
+
 # Tailscale, shown only once it's installed: white while connected, gray otherwise.
 # Hammerspoon sets it; clicking it opens the Tailscale card.
 sketchybar --add item tailscale right \

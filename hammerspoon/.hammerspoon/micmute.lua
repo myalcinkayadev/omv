@@ -20,6 +20,22 @@ function micmute.unmuting(device, saved)
   return { volume = (saved and saved > 0) and saved or micmute.RESTORE_VOLUME }
 end
 
+-- What unmuting does across every input, as { { uid, mute = false } | { uid, volume } }: each
+-- muted input is unmuted, since one muted while switching mics would otherwise stay silent
+-- with nothing in the bar, and the input muted by volume gets its saved level back.
+-- devices = { { uid, muted, volume } }, saved = { uid, volume } or nil.
+function micmute.unmutingAll(devices, saved)
+  local steps = {}
+  for _, device in ipairs(devices) do
+    if device.muted then
+      steps[#steps + 1] = { uid = device.uid, mute = false }
+    elseif saved and saved.uid == device.uid then
+      steps[#steps + 1] = { uid = device.uid, volume = micmute.unmuting({ canMute = false }, saved.volume).volume }
+    end
+  end
+  return steps
+end
+
 -- device = { muted, volume }, where muted is nil for a device that can't mute. A device at 0
 -- with a saved level was muted by volume before a reload.
 function micmute.isMuted(device, savedState)

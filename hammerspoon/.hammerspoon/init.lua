@@ -37,6 +37,7 @@ require("features.osd")
 local focusMode = require("features.focus")
 local tailscalePanel = require("features.tailscale")
 local nightLight = require("features.nightshift")
+local mic = require("features.micmute")
 local devLayout = require("features.devlayout")
 local airDrop = require("features.share")
 
@@ -84,6 +85,7 @@ bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "PRs waiting for your review", "Tool
 bindKey(SUPER_SHIFT, "p", "Option+Shift+P", "Hungry processes and ports", "Tools", hungryProcesses.toggle)
 bindKey(SUPER_SHIFT, "x", "Option+Shift+X", "Disk space and cleanup", "Tools", diskCard.toggle)
 bindKey(SUPER_SHIFT, "z", "Option+Shift+Z", "Night light on or off", "Tools", nightLight.toggle)
+bindKey(SUPER, "m", "Option+M", "Mute or unmute the mic", "Tools", mic.toggle)
 bindKey(SUPER_SHIFT, "q", "Option+Shift+Q", "Share with AirDrop", "Tools", airDrop.share)
 bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus)
 bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join)
@@ -140,6 +142,7 @@ omvStopRecording = later(captureMenu.stopRecording)
 omvToggleFocus = later(focusMode.toggle)
 omvToggleTailscale = later(tailscalePanel.toggle)
 omvToggleNightLight = later(nightLight.toggle)
+omvToggleMic = later(mic.toggle)
 
 -- SketchyBar's config calls this when it starts: a restarted bar has lost the items set
 -- here, and they are only sent again when they change.

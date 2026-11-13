@@ -204,6 +204,16 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_shift_i_in_hammerspoon(self) -> None:
         self.assertIn("alt-shift-i", hammerspoon_keys())
 
+    def test_should_bind_option_m_in_hammerspoon(self) -> None:
+        self.assertIn("alt-m", hammerspoon_keys())
+
+    def test_should_unmute_the_mic_when_its_bar_item_is_clicked(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        item = re.search(r"--add item mic_muted right[^\n]*\n[^\n]*", source)
+        self.assertIsNotNone(item)
+        self.assertIn("drawing=off", item.group(0))
+        self.assertIn("omvToggleMic()", item.group(0))
+
     def test_should_subscribe_keep_awake_to_its_toggle_and_clicks(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("--subscribe keep_awake keep_awake_toggle mouse.clicked", source)

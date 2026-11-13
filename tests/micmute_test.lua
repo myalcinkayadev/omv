@@ -21,6 +21,21 @@ local saved = micmute.decode(micmute.encode({ uid = "BuiltInMicrophoneDevice", v
 check.that("should read back the saved device and level", saved and saved.uid == "BuiltInMicrophoneDevice" and saved.volume == 70)
 check.that("should read nothing from an empty file", micmute.decode("") == nil)
 
+local devices = {
+  { uid = "caldigit", muted = true, volume = 100 },
+  { uid = "rode", muted = nil, volume = 0 },
+  { uid = "builtin", muted = false, volume = 49 },
+}
+local plan = micmute.unmutingAll(devices, { uid = "rode", volume = 30.25 })
+local function stepFor(uid) for _, step in ipairs(plan) do if step.uid == uid then return step end end end
+check.that("should unmute every muted input when unmuting, so none is left silent", stepFor("caldigit") and stepFor("caldigit").mute == false)
+check.that("should restore the saved level of the input muted by volume", stepFor("rode") and stepFor("rode").volume == 30.25)
+check.that("should leave an input that isn't muted alone", stepFor("builtin") == nil)
+check.that("should restore 50% to an input at 0 by volume when its saved level is missing",
+  micmute.unmutingAll({ { uid = "rode", muted = nil, volume = 0 } }, { uid = "rode", volume = 0 })[1].volume == 50)
+check.that("should leave an input at 0 alone when nothing was saved for it",
+  #micmute.unmutingAll({ { uid = "zoom", muted = nil, volume = 0 } }, nil) == 0)
+
 check.that("should draw the bar item while muted", micmute.barProperties(true)[1] == "drawing=on")
 check.that("should hide the bar item when not muted", micmute.barProperties(false)[1] == "drawing=off")
 
