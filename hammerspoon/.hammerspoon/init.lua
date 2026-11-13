@@ -72,7 +72,7 @@ bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", "Apps", open({ she
 -- No key: it's run from the palette or the key list.
 keys.launchers[#keys.launchers + 1] = { description = "Dev layout: " .. chosen.editor .. ", Claude Code and a shell",
   group = "Apps", run = function() devLayout.open(chosen.editor) end, runs = true }
-keys.launchers[#keys.launchers + 1] = { description = "Agent grid: 2 to 4 Claude sessions, each in a worktree",
+keys.launchers[#keys.launchers + 1] = { description = "Agent grid: 2–4 Claude agents in worktrees",
   group = "Apps", run = devLayout.openGrid, runs = true }
 bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", "Apps", run(shell.LAUNCH, { "1", shell.GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
 bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", "Tools", run(shell.SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
