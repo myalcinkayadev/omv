@@ -11,7 +11,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**Palette**](#palette): Option+Space finds any window, app or omv command as you type.
 - [**Key list**](#key-list): Option+/ shows every shortcut at once, and runs the one you pick.
 - [**System menu**](#system-menu): lock, sleep, restart and reload the tools.
-- [**Sound**](#sound): volume, mute, output and input devices, and a live mic level.
+- [**Sound**](#sound): volume, mute, output and input devices, a live mic level, and Option+M to mute the mic from anywhere.
 - [**Wi-Fi and Ethernet**](#wi-fi-and-ethernet): the network, signal, address and router, a click away.
 - [**Agents**](#agents): Claude Code's session and weekly limits, one click to continue or start a session, and a pill when a session waits for you.
 - [**Battery**](#battery): charge, time left, cycles and power draw.
@@ -155,6 +155,12 @@ Click the volume item in the bar, or press Option+Shift+V, for the Sound card un
 - **The level meter** comes from a small Swift helper, `meter.swift`, built the first time into `~/.cache/omv/Meter.app`. It listens only while the card is open, so macOS shows its orange microphone dot until the card closes. The first time, macOS asks to let "omv meter" use the microphone. If you refuse, the meter stays empty and the rest of the card still works.
 
 <img src="docs/sound.png" alt="The Sound card: the speakers in use, AirPods and a monitor listed, and the mic level meter" width="420">
+
+**Mic mute.** Option+M mutes or unmutes the mic from any app, so a meeting never needs its own window in front to go quiet. While it's muted, a red mic shows in the bar; click it to unmute.
+
+- A mic that can be muted is muted. One that can't, such as some USB mics, is set to volume 0, and its level comes back when you unmute.
+- Switching mics while muted, such as AirPods connecting, mutes the new one too, so the red mic never shows while a mic is live. Unmuting unmutes every mic that's muted.
+- It survives a Hammerspoon reload: the red mic comes back. The level to restore is kept in `~/.local/state/omv/mic` until you unmute.
 
 ## Wi-Fi and Ethernet
 
@@ -426,7 +432,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
   <img src="docs/clipboard.png" alt="Clipboard history: Pause history and Clear history, then five copies newest first, each with its app and age" width="720">
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Keys
 
@@ -471,6 +477,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 | Option+Shift+P | Hungry processes and listening ports: quit the busiest ones | |
 | Option+Shift+X | Disk card: free space and Mole's cleanups | |
 | Option+Shift+Z | Night light on or off | |
+| Option+M | Mute or unmute the mic | |
 | Option+Shift+Q | Share the Finder selection, or what you copied, with AirDrop | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |
