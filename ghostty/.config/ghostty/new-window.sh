@@ -7,7 +7,8 @@
 
 command=${1:-}
 
-if ! pgrep -x ghostty >/dev/null; then
+# -a counts ancestors too: run from a Ghostty terminal, plain pgrep skips Ghostty itself.
+if ! pgrep -ax ghostty >/dev/null; then
   [ -n "$command" ] && exec open -a Ghostty --args -e "$command"
   exec open -a Ghostty
 fi

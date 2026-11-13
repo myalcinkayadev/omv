@@ -43,6 +43,11 @@ fails_when_osascript_fails() {
   assert_exit_nonzero run_in_sandbox "$NEW_WINDOW"
 }
 
+counts_ancestor_ghostty_for_new_window() {
+  run_in_sandbox "$NEW_WINDOW"
+  assert_called '^pgrep -ax ghostty$'
+}
+
 opens_btop_when_not_running() {
   stub pgrep 1
   run_in_sandbox "$START_BTOP"
@@ -61,6 +66,7 @@ run_case 'should not start a new process when Ghostty is running' starts_no_proc
 run_case 'should start Ghostty when it is not running' starts_ghostty_when_not_running
 run_case 'should start Ghostty with the command when it is not running and one is given' starts_ghostty_with_command_when_not_running
 run_case 'should exit non-zero when osascript fails' fails_when_osascript_fails
+run_case 'should count Ghostty as running when it is an ancestor of the script' counts_ancestor_ghostty_for_new_window
 run_case 'should open btop when it is not running' opens_btop_when_not_running
 run_case 'should open nothing when btop is already running' opens_nothing_when_btop_running
 finish
