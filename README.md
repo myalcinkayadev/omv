@@ -25,7 +25,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**Do Not Disturb**](#do-not-disturb): the Focus that's on, in the bar, and a switch in the system menu.
 - [**Tailscale**](#tailscale): connect, disconnect, and copy any device's address.
 - [**Night light**](#night-light): macOS's Night Shift on a key, with a moon in the bar.
-- [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell, side by side on one workspace.
+- [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell on a workspace of their own, a new task in a git worktree, or a grid of agents.
 - [**Share with AirDrop**](#share-with-airdrop): the files selected in Finder, or what you copied, in one key.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 - [**Doctor**](#doctor): `./doctor.sh` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
@@ -333,7 +333,19 @@ Option+Shift+Z, or Option+Escape, then **Night light**, switches macOS's Night S
 
 ## Dev layout
 
-Option+Space, then **Dev layout**, lists your recent Claude Code projects, the most recent first. Pick one, and three windows open side by side on the current workspace: your editor on the project, Claude Code in it, and a shell in it. AeroSpace usually sends the editor and Ghostty to their own workspaces, so omv moves the new windows here afterwards; when the editor already has the project open, that window comes over instead of a new one.
+Option+Space, then **Dev layout**, lists your recent Claude Code projects, the most recent first. Pick one, then:
+
+- **Open project:** your editor on the project on the left half of the dev workspace, 7, on the main monitor, and Claude Code above a shell, both in the project, on the right. When the editor already has the project open, that window comes over instead of a new one.
+- **New task in a worktree:** the same layout on a new git branch, `task-YYYYMMDD-HHMM`, in a folder of its own under `~/.local/share/omv/worktrees/<project>/`, so the task can't collide with other work in the repo and the repo's `git status` stays clean. The editor opens it in a new window. Offered only for a git repository.
+
+Option+Space, then **Agent grid**, starts 2, 3 or 4 Claude Code sessions on a project, each on its own branch and worktree, as panes of one tmux session, `omv-<project>`, in a window on the dev workspace: side by side, or two over two for four. The mouse scrolls each pane.
+
+- Closing the window leaves the agents running. The project then shows `running` in the list; pick it to **Reattach**, or to **End all agents**, which asks first and keeps the worktrees. `tmux attach -t omv-<project>` reattaches from any terminal too.
+- When an agent in the grid waits for you, the bar's pill and Option+Shift+A go to its pane.
+
+- No app is ever sent to workspace 7, so a layout has the screen to itself. Starting another sends what was there back to its usual workspace, Ghostty to 1 and the editor to 2, so nothing still running is closed.
+- A new worktree is a folder neither the editor nor Claude Code has seen, so both ask once whether to trust it. Zed can trust everything under `~/.local/share/omv/worktrees` with its checkbox.
+- Worktrees stay until you remove them, since they may hold work: `git worktree remove <folder>`, then `git branch -d <task>` once it's merged.
 
 ## Share with AirDrop
 

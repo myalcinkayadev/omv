@@ -10,7 +10,7 @@ readonly ALL_PACKAGES='aerospace sketchybar claude swipeaerospace ghostty nvim b
 # process running, every macOS setting applied, and the Claude usage line in place.
 complete_setup() {
   local name
-  for name in borders luajit gh mo m1ddc nightlight; do stub "$name"; done
+  for name in borders luajit gh mo m1ddc nightlight tmux; do stub "$name"; done
   cat > "$STUB_DIR/hs" <<STUB
 #!/bin/sh
 echo "hs \$*" >> "$CALL_LOG"

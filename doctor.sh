@@ -34,7 +34,7 @@ section() {
 check_tools() {
   section 'Tools'
   local tool fix
-  for tool in aerospace sketchybar borders stow jq swiftc luajit gh mo m1ddc nightlight; do
+  for tool in aerospace sketchybar borders stow jq swiftc luajit gh mo m1ddc nightlight tmux; do
     case $tool in
       aerospace) fix='./install.sh' ;;
       sketchybar) fix='./install.sh' ;;

@@ -30,3 +30,5 @@ brew "mole"
 brew "m1ddc"
 # Night light switches macOS's Night Shift with it.
 brew "smudge/smudge/nightlight"
+# The agent grid runs its Claude agents in a tmux session, so they outlive the window.
+brew "tmux"

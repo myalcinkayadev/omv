@@ -8,6 +8,7 @@
 local shell = require("shell")
 local card = require("card")
 local claudewait = require("claudewait")
+local agentgrid = require("agentgrid")
 
 local feature = {}
 
@@ -58,9 +59,23 @@ local function activateApp(row)
   return app ~= nil and app:activate()
 end
 
--- Goes to the session's terminal, else the app it runs in, or says where it runs.
+local TMUX = "/opt/homebrew/bin/tmux"
+
+-- A session in a tmux pane, such as an agent grid's: selects its pane, then brings forward
+-- the terminal attached to that tmux session. Only a plain target reaches the shell.
+local function focusTmux(row)
+  if not hs.fs.attributes(TMUX) then return false end
+  local panes = hs.execute(TMUX .. " list-panes -a -F '#{pane_tty} #{session_name}:#{window_index}.#{pane_index}' 2>/dev/null")
+  local target = agentgrid.paneFor(panes, row.id)
+  if not target or not target:match("^[%w_%-]+:%d+%.%d+$") then return false end
+  hs.execute(TMUX .. " select-window -t " .. target .. " && " .. TMUX .. " select-pane -t " .. target)
+  local client = agentgrid.clientFor(hs.execute(TMUX .. " list-clients -F '#{client_tty} #{session_name}' 2>/dev/null"), target)
+  return client ~= nil and claudewait.focus(client, running, runScript)
+end
+
+-- Goes to the session's terminal, its tmux pane, else the app it runs in, or says where it runs.
 function feature.focusRow(row)
-  if claudewait.focus(row.id, running, runScript) or activateApp(row) then return end
+  if claudewait.focus(row.id, running, runScript) or focusTmux(row) or activateApp(row) then return end
   shell.alert("Claude runs in " .. row.label .. ", which can't be brought forward", 2)
 end
 

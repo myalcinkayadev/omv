@@ -5,4 +5,7 @@
 
 cd "$1" || exit 1
 shift
+# The window was started by typing a command into it; clearing the screen and scrollback
+# hides that line.
+printf '\033[H\033[2J\033[3J'
 exec "${SHELL:-/bin/zsh}" -lic 'claude "$@"' claude "$@"

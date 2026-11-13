@@ -37,6 +37,12 @@ passes_continue_on() {
   assert_called '^shell .* -lic claude "\$@" claude --continue$'
 }
 
+clears_the_screen_first() {
+  stub_shell
+  claude_in "$SANDBOX" > "$SANDBOX/out"
+  [ "$(printf '\033[H\033[2J\033[3J')" = "$(head -c 11 "$SANDBOX/out")" ] || fail "no clear first: $(od -c "$SANDBOX/out" | head -2)"
+}
+
 fails_without_the_folder() {
   stub_shell
   assert_exit_nonzero claude_in "$SANDBOX/missing"
@@ -45,5 +51,6 @@ fails_without_the_folder() {
 run_case "should start in the given folder" runs_in_the_folder
 run_case "should run claude through a login shell, so its PATH is set" runs_claude_through_a_login_shell
 run_case "should pass --continue on to claude" passes_continue_on
+run_case "should clear the screen before Claude starts" clears_the_screen_first
 run_case "should fail when the folder doesn't exist" fails_without_the_folder
 finish
