@@ -1,5 +1,5 @@
 -- The Disk card: free space from df and Mole's status, and the sizes Mole's cleanup
--- previews found. Every row that frees space opens Mole's own interactive command, so you
+-- previews found, in panel.lua's layout. Every row that frees space opens Mole's own interactive command, so you
 -- choose what goes; nothing is ever deleted from the card itself.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
@@ -39,6 +39,13 @@ function disk.parseStatus(status)
   return nil
 end
 
+-- df's reading with the purgeable space Mole last reported, so the card keeps that line
+-- while Mole's new answer is on its way rather than growing a second after it opens.
+function disk.withPurgeable(dfSpace, previous)
+  if not dfSpace then return nil end
+  return { free = dfSpace.free, total = dfSpace.total, purgeable = previous and previous.purgeable }
+end
+
 -- Sizes in decimal units, as Finder and Mole show them.
 function disk.size(bytes)
   if bytes >= 10 * GB then return string.format("%d GB", math.floor(bytes / GB + 0.5)) end
@@ -71,43 +78,74 @@ function disk.isStale(saved, now)
   return saved == nil or now - saved.at > STALE_SECONDS
 end
 
-local function previewHint(preview)
-  if not preview then return nil end
-  if preview.measuring then return "measuring…" end
-  return preview.size
+local HOUR, DAY = 3600, 24 * 3600
+
+-- How long ago a preview was measured: nil under an hour, since the size is still fresh.
+local function age(at, now)
+  if not at or now - at < HOUR then return nil end
+  if now - at < DAY then return math.floor((now - at) / HOUR) .. "h ago" end
+  return math.floor((now - at) / DAY) .. "d ago"
 end
 
--- Each row's hint, by row id, from the same state disk.rows takes. false means no hint, so
--- an open card can clear one.
-function disk.hints(state)
-  local previews = state.previews or {}
-  local space = state.space
+local DASH = "—"
+-- The card's height: its head, bar, grid and section title, then one line per choice.
+local FRAME_HEIGHT, LINE_HEIGHT = 240, 40
+
+-- A cleanup's size and age, from its preview: measuring… while one runs.
+local function sized(item, preview, now)
+  if preview and preview.measuring then
+    item.size = "measuring…"
+  elseif preview then
+    item.size, item.age = preview.size, age(preview.at, now)
+  end
+  return item
+end
+
+local function cleanups(previews, now)
   return {
-    space = space and space.purgeable and (disk.size(space.purgeable) .. " purgeable") or false,
-    clean = previewHint(previews.clean) or false,
-    purge = previewHint(previews.purge) or false,
+    sized({ id = "clean", icon = "󰃢", label = "Caches and logs" }, previews.clean, now),
+    sized({ id = "purge", icon = "󰆴", label = "Build artifacts" }, previews.purge, now),
+    { id = "installer", icon = "󰏔", label = "Old installers" },
+    { id = "analyze", icon = "󰙅", label = "Explore disk usage" },
   }
 end
 
-local function spaceRow(space, hint)
-  if not space then return { id = "space", icon = "󰋊", label = "Free space unknown" } end
-  return { id = "space", icon = "󰋊", label = disk.size(space.free) .. " free of " .. disk.size(space.total), hint = hint or nil }
+-- Used, then purgeable, as shares of the total. Purgeable is macOS's to free, so it's
+-- neither free nor part of what the cleanups would free.
+local function segments(space)
+  if not space then return {} end
+  local purgeable = space.purgeable or 0
+  local used = space.total - space.free - purgeable
+  local shares = { { share = used / space.total * 100, kind = "used" } }
+  if space.purgeable then shares[2] = { share = purgeable / space.total * 100, kind = "purgeable" } end
+  return shares
 end
 
--- Card rows from { installed, space, previews = { clean, purge } }, where each preview is
--- { size } or { measuring = true }.
-function disk.rows(state)
-  local hints = disk.hints(state)
-  local rows = { spaceRow(state.space, hints.space) }
-  if not state.installed then
-    rows[2] = { id = "install", icon = "󰏗", label = "Install Mole to clean up", hint = "brew install mole" }
-    return rows
-  end
-  rows[#rows + 1] = { id = "clean", icon = "󰃢", label = "Clean caches and logs", hint = hints.clean or nil }
-  rows[#rows + 1] = { id = "purge", icon = "󰆴", label = "Purge project build artifacts", hint = hints.purge or nil }
-  rows[#rows + 1] = { id = "analyze", icon = "󰙅", label = "Explore disk usage" }
-  rows[#rows + 1] = { id = "installer", icon = "󰏔", label = "Remove old installers" }
-  return rows
+local function grid(space)
+  if not space then return { { "Used", DASH }, { "Purgeable", DASH, "purgeable" }, { "Total", DASH } } end
+  return {
+    { "Used", disk.size(space.total - space.free - (space.purgeable or 0)) },
+    { "Purgeable", space.purgeable and disk.size(space.purgeable) or DASH, "purgeable" },
+    { "Total", disk.size(space.total) },
+  }
+end
+
+-- The card, in panel.lua's layout, from { installed, space, previews = { clean, purge } }:
+-- each preview is { size, at } or { measuring = true }, and now dates their ages.
+function disk.model(state, now)
+  local space = state.space
+  local buttons = state.installed and cleanups(state.previews or {}, now)
+    or { { id = "install", icon = "󰏗", label = "Install Mole to clean up", size = "brew install mole" } }
+  return {
+    icon = "󰋊", title = "Disk", sub = "STARTUP DISK",
+    big = space and (disk.size(space.free) .. " free") or DASH,
+    segments = segments(space), grid = grid(space),
+    section = "CLEAN UP", list = true, buttons = buttons,
+  }
+end
+
+function disk.height(model)
+  return FRAME_HEIGHT + #model.buttons * LINE_HEIGHT
 end
 
 -- The preview a row's command makes out of date, so it's measured again next time: only
