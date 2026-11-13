@@ -1,5 +1,6 @@
 -- Wi-Fi and Ethernet cards (click the bar icons, Option+Shift+W / E). Either runs macOS's
--- own speed test, networkQuality, which talks to Apple's test servers for about 15 seconds.
+-- own speed test, networkQuality, which talks to Apple's test servers for about 15 seconds;
+-- the card shows its readings as they come in.
 
 local shell = require("shell")
 local network = require("network")
@@ -11,8 +12,13 @@ local NETWORK_SETTINGS = "x-apple.systempreferences:com.apple.Network-Settings.e
 -- Joining a network takes a moment after Wi-Fi turns on, so the card redraws again then.
 local WIFI_JOIN_SECONDS = 4
 local NETWORK_QUALITY = "/usr/bin/networkQuality"
+-- networkQuality prints its live readings only to a terminal; script gives it one.
+local SCRIPT = "/usr/bin/script"
+-- The card redraws at most this often while a test runs.
+local LIVE_SECONDS = 0.5
 
--- The last speed test: nil before one, { running = true } during it, { down, up } after.
+-- The last speed test: nil before one, { running = true } with live readings during it,
+-- { down, up } after.
 local speed = nil
 
 local function ipv4(interface)
@@ -83,15 +89,28 @@ local function speedTest()
   local previous = speed
   speed = { running = true }
   refreshCards()
-  hs.task.new(NETWORK_QUALITY, function(_, output)
-    local ok, data = pcall(hs.json.decode, output or "")
-    speed = network.parseSpeedTest(ok and data or nil)
+  local output, drawnAt = {}, 0
+  local function streamed(_, chunk)
+    output[#output + 1] = chunk
+    local live = network.parseProgress(chunk)
+    if live and hs.timer.secondsSinceEpoch() - drawnAt >= LIVE_SECONDS then
+      speed = { running = true, down = live.down, up = live.up }
+      drawnAt = hs.timer.secondsSinceEpoch()
+      refreshCards()
+    end
+    return true
+  end
+  local function finished(_, rest)
+    speed = network.parseSummary(table.concat(output) .. (rest or ""))
     if not speed then
       speed = previous
       shell.alert("Speed test failed", 1.5)
     end
     refreshCards()
-  end, { "-c" }):start()
+  end
+  -- Kept on the feature, so the running task isn't garbage-collected.
+  feature.speedTask = hs.task.new(SCRIPT, finished, streamed, { "-q", "/dev/null", NETWORK_QUALITY })
+  feature.speedTask:start()
 end
 
 onNetworkMessage = function(message)

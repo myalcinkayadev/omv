@@ -129,12 +129,7 @@ check.that("should keep the buttons' section outside the changing part", not che
 check.that("should make a JavaScript string that survives quotes and new lines",
   card.jsString('a"b\\c\nd</script>') == '"a\\"b\\\\c\\nd<\\/script>"')
 
--- Speed test, from macOS's networkQuality -c.
-local measured = network.parseSpeedTest({ dl_throughput = 659956736, ul_throughput = 57961924 })
-check.that("should read the download speed in Mb/s", measured and measured.down == 660)
-check.that("should read the upload speed in Mb/s", measured and measured.up == 58)
-check.that("should give no result when the test has no throughput", network.parseSpeedTest({ error_code = 1 }) == nil)
-check.that("should give no result for an answer that isn't a table", network.parseSpeedTest(nil) == nil)
+-- Speed test.
 check.that("should show a speed under 1000 in Mb/s", network.rateLabel(58) == "58 Mb/s")
 check.that("should show a speed from 1000 in Gb/s", network.rateLabel(1234) == "1.2 Gb/s")
 local function gridValue(model, label)
@@ -154,5 +149,25 @@ check.that("should show the measured download speed",
   gridValue(network.wifiModel(online, { down = 660, up = 58 }), "Download") == "660 Mb/s")
 check.that("should show the measured upload speed",
   gridValue(network.ethernetModel({ port = "en6" }, { down = 660, up = 58 }), "Upload") == "58 Mb/s")
+
+-- Live speed test: networkQuality's progress lines, read as they arrive.
+local liveLine = "Downlink: 317.991 Mbps, 599 RPM - Uplink: 40.812 Mbps, 407 RPM"
+local live = network.parseProgress(liveLine)
+check.that("should read live download and upload from a progress line", live and live.down == 318 and live.up == 41)
+local several = network.parseProgress("Downlink: 10.1 Mbps, 0 RPM - Uplink: 0.000 Mbps, 0 RPM\r"
+  .. "Downlink: 284.693 Mbps, 622 RPM - Uplink: 0.000 Mbps, 0 RPM\r")
+check.that("should take the latest reading from a chunk with several lines", several and several.down == 285)
+local escaped = network.parseProgress("\27[2K\27[1G" .. liveLine .. "\27[0m")
+check.that("should ignore the terminal's escape codes", escaped and escaped.down == 318 and escaped.up == 41)
+check.that("should leave upload waiting until its phase starts", several and several.up == nil)
+local summary = network.parseSummary("==== SUMMARY ====\nUplink capacity: 54.832 Mbps\nDownlink capacity: 753.772 Mbps\n")
+check.that("should read the final summary", summary and summary.down == 754 and summary.up == 55)
+check.that("should give no summary without one", network.parseSummary(liveLine) == nil)
+check.that("should give nothing for a chunk with no readings", network.parseProgress("Testing...") == nil)
+local testing = network.wifiModel(online, { running = true, down = 318 })
+check.that("should show the live download while testing", gridValue(testing, "Download") == "318 Mb/s")
+check.that("should show upload as waiting while its phase hasn't started", gridValue(testing, "Upload") == "…")
+check.that("should keep the button saying Testing while live values show",
+  button(testing, "network.speedtest").label == "Testing…")
 
 check.finish()

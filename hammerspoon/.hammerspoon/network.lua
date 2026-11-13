@@ -21,20 +21,38 @@ function network.rateLabel(mbps)
   return string.format("%.1f Gb/s", mbps / 1000)
 end
 
--- networkQuality -c's answer: download and upload in whole Mb/s, or nil without them.
-function network.parseSpeedTest(data)
-  if type(data) ~= "table" then return nil end
-  local down, up = tonumber(data.dl_throughput), tonumber(data.ul_throughput)
-  if not down or not up then return nil end
-  return { down = math.floor(down / 1e6 + 0.5), up = math.floor(up / 1e6 + 0.5) }
+local function mbps(text)
+  local value = tonumber(text)
+  return value and math.floor(value + 0.5) or nil
 end
 
--- The speed test's grid row and button. speed is nil before a test, { running = true }
--- during one, and { down, up } after.
+-- A chunk of networkQuality's live output, run in a terminal: the latest "Downlink: X Mbps,
+-- … - Uplink: Y Mbps, …" line in it, as whole Mb/s. Upload is nil until its phase starts.
+-- nil when the chunk holds no reading.
+function network.parseProgress(chunk)
+  local plain = tostring(chunk or ""):gsub("\27%[[%d;?]*%a", "")
+  local latest = nil
+  for down, up in plain:gmatch("Downlink:%s*([%d.]+)%s*Mbps.-Uplink:%s*([%d.]+)%s*Mbps") do
+    latest = { down = mbps(down), up = (tonumber(up) or 0) > 0 and mbps(up) or nil }
+  end
+  return latest
+end
+
+-- The summary networkQuality prints at the end; nil until it has.
+function network.parseSummary(text)
+  local plain = tostring(text or "")
+  local down = plain:match("Downlink capacity:%s*([%d.]+)%s*Mbps")
+  local up = plain:match("Uplink capacity:%s*([%d.]+)%s*Mbps")
+  if not down or not up then return nil end
+  return { down = mbps(down), up = mbps(up) }
+end
+
+-- The speed test's grid row and button. speed is nil before a test, { running = true } with
+-- any live down and up during one, and { down, up } after.
 local function speedRow(speed)
-  local function shown(mbps)
-    if speed and speed.running then return "…" end
-    return mbps and network.rateLabel(mbps) or "—"
+  local function shown(value)
+    if value then return network.rateLabel(value) end
+    return (speed and speed.running) and "…" or "—"
   end
   return { "Download", shown(speed and speed.down) }, { "Upload", shown(speed and speed.up) }
 end
