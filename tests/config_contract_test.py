@@ -207,6 +207,12 @@ class ConfigContract(unittest.TestCase):
     def test_should_bind_option_m_in_hammerspoon(self) -> None:
         self.assertIn("alt-m", hammerspoon_keys())
 
+    def test_should_redraw_the_mic_item_when_the_bar_restarts(self) -> None:
+        source = (REPO / "hammerspoon/.hammerspoon/init.lua").read_text(encoding="utf-8")
+        redraw = re.search(r"omvRedrawBar = later\(function\(\)(.*?)\nend\)", source, re.S)
+        self.assertIsNotNone(redraw)
+        self.assertIn("mic.redrawBar()", redraw.group(1))
+
     def test_should_unmute_the_mic_when_its_bar_item_is_clicked(self) -> None:
         source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         item = re.search(r"--add item mic_muted right[^\n]*\n[^\n]*", source)

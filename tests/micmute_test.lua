@@ -36,6 +36,29 @@ check.that("should restore 50% to an input at 0 by volume when its saved level i
 check.that("should leave an input at 0 alone when nothing was saved for it",
   #micmute.unmutingAll({ { uid = "zoom", muted = nil, volume = 0 } }, nil) == 0)
 
+-- Review findings.
+local twoByVolume = micmute.unmutingAll({ { uid = "a", muted = nil, volume = 0 }, { uid = "c", muted = nil, volume = 0 } },
+  { uid = "a", volume = 70 }, "c")
+local function stepIn(steps, uid) for _, step in ipairs(steps) do if step.uid == uid then return step end end end
+check.that("should restore the default input to 50% when it was muted by volume without a saved level",
+  stepIn(twoByVolume, "c") and stepIn(twoByVolume, "c").volume == 50)
+check.that("should still restore the saved input when the default was muted by volume too", stepIn(twoByVolume, "a").volume == 70)
+local _, keep = micmute.unmutingAll({ { uid = "builtin", muted = true, volume = 49 } }, { uid = "a", volume = 70 }, "builtin")
+check.that("should keep the saved level when its mic isn't connected", keep == true)
+local _, kept = micmute.unmutingAll({ { uid = "a", muted = nil, volume = 0 } }, { uid = "a", volume = 70 }, "a")
+check.that("should drop the saved level once it's restored", kept == false)
+
+local back = micmute.restoreSaved({ { uid = "a", muted = nil, volume = 0 } }, { uid = "a", volume = 70 })
+check.that("should restore a returning mic's saved level when it's back at 0", back and back.uid == "a" and back.volume == 70)
+local moved, drop = micmute.restoreSaved({ { uid = "a", muted = nil, volume = 40 } }, { uid = "a", volume = 70 })
+check.that("should drop the saved level when the returning mic isn't at 0", moved == nil and drop == true)
+local waiting, dropWaiting = micmute.restoreSaved({ { uid = "builtin", muted = false, volume = 49 } }, { uid = "a", volume = 70 })
+check.that("should wait when the saved mic is still missing", waiting == nil and dropWaiting == false)
+
+check.that("should count muting as done when the mic reads muted", micmute.worked({ muted = true, volume = 70 }))
+check.that("should count muting as done when the mic is at 0", micmute.worked({ muted = nil, volume = 0 }))
+check.that("should count muting as failed when the mic is neither muted nor at 0", not micmute.worked({ muted = nil, volume = nil }))
+
 check.that("should draw the bar item while muted", micmute.barProperties(true)[1] == "drawing=on")
 check.that("should hide the bar item when not muted", micmute.barProperties(false)[1] == "drawing=off")
 
