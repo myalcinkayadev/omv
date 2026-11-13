@@ -94,10 +94,29 @@ local function changeBrightness(key, fine)
     return true
   end
   if not (screen:name() or ""):find("Built%-in") then return false end
-  local level = osd.step(hs.brightness.get(), direction, fine)
+  -- Apple silicon Macs don't let Hammerspoon read the built-in screen's brightness; there
+  -- the key goes to macOS, which dims it with its own pop-up.
+  local current = hs.brightness.get()
+  if not current then return false end
+  local level = osd.step(current, direction, fine)
   hs.brightness.set(math.floor(level + 0.5))
   show(osd.ICONS.brightness, level)
   return true
+end
+
+-- A display's brightness, read 3 times one after another, since some answer DDC reads with
+-- junk; until a reading makes sense, a key starts from the middle.
+local READS = 3
+
+local function readLevel(index, readings)
+  if #readings >= READS then
+    ddc.levels[index] = osd.likelyLevel(readings)
+    return
+  end
+  hs.task.new(M1DDC, function(_, output)
+    readings[#readings + 1] = osd.parseLevel(output) or -1
+    readLevel(index, readings)
+  end, { "display", tostring(index), "get", "luminance" }):start()
 end
 
 -- What m1ddc can dim, read again whenever displays come and go.
@@ -106,9 +125,7 @@ local function readDisplays()
   hs.task.new(M1DDC, function(_, output)
     ddc.displays = osd.parseDisplays(output)
     for _, display in ipairs(ddc.displays) do
-      hs.task.new(M1DDC, function(_, level)
-        ddc.levels[display.index] = osd.parseLevel(level)
-      end, { "display", tostring(display.index), "get", "luminance" }):start()
+      readLevel(display.index, {})
     end
   end, { "display", "list" }):start()
 end

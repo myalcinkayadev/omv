@@ -50,9 +50,24 @@ function osd.displayFor(displays, name)
   return nil
 end
 
--- `m1ddc get luminance`: a number alone, or nil for an error.
+-- `m1ddc get luminance`: a number from 0 to 100, or nil for an error or an impossible value.
 function osd.parseLevel(text)
-  return tonumber((text or ""):match("^%s*(%d+)%s*$"))
+  local level = tonumber((text or ""):match("^%s*(%d+)%s*$"))
+  if not level or level > 100 then return nil end
+  return level
+end
+
+-- Some displays answer DDC reads unreliably, sometimes with junk like 48750, so a level is
+-- read several times and the value that comes back most often wins; ties go to the first.
+function osd.likelyLevel(readings)
+  local counts, best = {}, nil
+  for _, level in ipairs(readings) do
+    if type(level) == "number" and level >= 0 and level <= 100 then
+      counts[level] = (counts[level] or 0) + 1
+      if not best or counts[level] > counts[best] then best = level end
+    end
+  end
+  return best
 end
 
 local VOLUME_KEYS = { SOUND_UP = 1, SOUND_DOWN = -1, MUTE = 0 }

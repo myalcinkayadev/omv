@@ -40,6 +40,11 @@ check.that("should find the DDC display for a screen's name", osd.displayFor(lis
 check.that("should find no DDC display for a screen it doesn't list", osd.displayFor(listed, "Built-in Retina Display") == nil)
 check.that("should read the brightness m1ddc prints", osd.parseLevel("32\n") == 32)
 check.that("should read no brightness from an error", osd.parseLevel("Could not find display") == nil)
+check.that("should read no brightness above 100", osd.parseLevel("48750\n") == nil)
+check.that("should keep the reading that comes back most often", osd.likelyLevel({ 31, 48750, 31, 6 }) == 31)
+check.that("should drop impossible readings", osd.likelyLevel({ 48750, 31 }) == 31)
+check.that("should give no level when no reading is possible", osd.likelyLevel({ 48750, -1 }) == nil)
+check.that("should give no level without readings", osd.likelyLevel({}) == nil)
 
 check.that("should catch the volume keys", osd.isVolumeKey("SOUND_UP") and osd.isVolumeKey("SOUND_DOWN") and osd.isVolumeKey("MUTE"))
 check.that("should catch the brightness keys", osd.isBrightnessKey("BRIGHTNESS_UP") and osd.isBrightnessKey("BRIGHTNESS_DOWN"))
