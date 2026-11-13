@@ -5,6 +5,7 @@
 
 local shell = require("shell")
 local sound = require("sound")
+local audiowatch = require("features.audiowatch")
 
 local feature = {}
 
@@ -161,14 +162,13 @@ soundChanged = hs.timer.delayed.new(0.2, function()
 end)
 
 local function startWatching()
-  hs.audiodevice.watcher.setCallback(function() soundChanged:start() end)
-  hs.audiodevice.watcher.start()
+  audiowatch.watch("sound", function() soundChanged:start() end)
   watchDevices(function() soundChanged:start() end)
 end
 
 stopWatching = function()
   soundChanged:stop()
-  if hs.audiodevice.watcher.isRunning() then hs.audiodevice.watcher.stop() end
+  audiowatch.unwatch("sound")
   for _, device in ipairs(watched) do device:watcherStop() end
   watched = {}
 end
