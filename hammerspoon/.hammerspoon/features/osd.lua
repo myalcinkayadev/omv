@@ -32,7 +32,8 @@ local function placed()
   return { x = frame.x + (frame.w - WIDTH) / 2, y = frame.y + frame.h - HEIGHT - 120, w = WIDTH, h = HEIGHT }
 end
 
--- A card-styled bar of 16 segments under an icon, in the theme's colours.
+-- A card-styled bar of 16 segments under an icon, in the theme's colours. Gives the frame
+-- it's drawn in, which docs/shoot.lua captures for the README.
 local function show(icon, level)
   local tokens = shell.themeTokens()
   local off = theme.mix(tokens.bg, tokens.fg, 0x2a / 255)
@@ -52,10 +53,13 @@ local function show(icon, level)
   if not canvas then
     canvas = hs.canvas.new(placed()):level(hs.canvas.windowLevels.overlay):behavior({ "canJoinAllSpaces", "transient" })
   end
-  canvas:frame(placed()):replaceElements(elements):show()
+  local frame = placed()
+  canvas:frame(frame):replaceElements(elements):show()
   if hideTimer then hideTimer:stop() end
   hideTimer = hs.timer.doAfter(SHOW_SECONDS, function() canvas:hide() end)
+  return frame
 end
+feature.show = show
 
 -- Returns false for an output macOS can't set the volume of, such as some HDMI ones.
 local function changeVolume(key, fine)

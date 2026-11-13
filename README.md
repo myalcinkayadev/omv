@@ -614,6 +614,8 @@ tests/run.sh
 
 The tests use stubs and a temporary `HOME`, so they never change the real system. They need `stow`, `python3` and `luajit`.
 
+`docs/shoot.sh` retakes the card screenshots in `docs/`, or only the ones named, such as `docs/shoot.sh disk wifi`. Each card is drawn from the sample data in `docs/shots.lua`, so no real network, place, event or path ends up in an image, and opens on the built-in Retina screen to come out at 2x. It needs Hammerspoon and an unlocked screen. A test fails when the README shows a card image that `docs/shots.lua` doesn't make.
+
 ## Differences from the article
 
 - Trusts the taps first, because Homebrew refuses to load untrusted ones.
