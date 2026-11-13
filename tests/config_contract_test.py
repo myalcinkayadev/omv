@@ -161,6 +161,22 @@ class ConfigContract(unittest.TestCase):
     def test_should_keep_workspace_6_alive_when_empty(self) -> None:
         self.assertIn("6", load_aerospace()["persistent-workspaces"])
 
+    def test_should_keep_the_dev_workspace_alive_when_empty(self) -> None:
+        self.assertIn("7", load_aerospace()["persistent-workspaces"])
+
+    def test_should_show_the_dev_workspace_on_the_main_monitor(self) -> None:
+        self.assertEqual(load_aerospace()["workspace-to-monitor-force-assignment"]["7"], "main")
+
+    def test_should_bind_the_dev_workspace_keys(self) -> None:
+        self.assertEqual(
+            [aerospace_keys() >= {"alt-7"}, aerospace_keys() >= {"alt-shift-7"}],
+            [True, True],
+        )
+
+    def test_should_draw_seven_workspace_items_in_the_bar(self) -> None:
+        source = (REPO / "sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        self.assertIn("for number in 1 2 3 4 5 6 7; do", source)
+
     def test_should_bind_workspace_6_keys(self) -> None:
         self.assertEqual(
             [aerospace_keys() >= {"alt-6"}, aerospace_keys() >= {"alt-shift-6"}],
@@ -170,15 +186,15 @@ class ConfigContract(unittest.TestCase):
     def test_should_go_to_each_workspace_with_option_and_the_numpad(self) -> None:
         bindings = load_aerospace()["mode"]["main"]["binding"]
         self.assertEqual(
-            [bindings.get(f"alt-keypad{number}") for number in range(1, 7)],
-            [f"workspace {number}" for number in range(1, 7)],
+            [bindings.get(f"alt-keypad{number}") for number in range(1, 8)],
+            [f"workspace {number}" for number in range(1, 8)],
         )
 
     def test_should_send_the_window_to_each_workspace_with_option_shift_and_the_numpad(self) -> None:
         bindings = load_aerospace()["mode"]["main"]["binding"]
         self.assertEqual(
-            [bindings.get(f"alt-shift-keypad{number}") for number in range(1, 7)],
-            [f"move-node-to-workspace {number}" for number in range(1, 7)],
+            [bindings.get(f"alt-shift-keypad{number}") for number in range(1, 8)],
+            [f"move-node-to-workspace {number}" for number in range(1, 8)],
         )
 
     def test_should_bind_option_tab_to_workspace_back_and_forth(self) -> None:

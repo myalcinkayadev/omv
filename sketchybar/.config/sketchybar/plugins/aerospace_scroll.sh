@@ -3,7 +3,7 @@
 # number itself because workspaces are pinned to monitors, and this crosses between them.
 # A trackpad sends many events per swipe, so moves are limited to one per 300ms.
 
-workspace_count=6
+workspace_count=7
 minimum_gap_ms=300
 stamp_file="$HOME/.local/state/omv/scroll-stamp"
 
@@ -19,7 +19,7 @@ last=$(cat "$stamp_file" 2>/dev/null || echo 0)
 
 focused=$(aerospace list-workspaces --focused 2>/dev/null)
 case $focused in
-  1 | 2 | 3 | 4 | 5 | 6) ;;
+  1 | 2 | 3 | 4 | 5 | 6 | 7) ;;
   *) exit 0 ;;
 esac
 

@@ -36,16 +36,22 @@ goes_previous_when_down() {
   assert_called '^aerospace workspace 1$'
 }
 
-wraps_from_6_to_1() {
-  stub_focused 6
+wraps_from_7_to_1() {
+  stub_focused 7
   scroll 3
   assert_called '^aerospace workspace 1$'
 }
 
-wraps_from_1_to_6() {
+wraps_from_1_to_7() {
   stub_focused 1
   scroll -3
-  assert_called '^aerospace workspace 6$'
+  assert_called '^aerospace workspace 7$'
+}
+
+goes_from_6_to_7() {
+  stub_focused 6
+  scroll 3
+  assert_called '^aerospace workspace 7$'
 }
 
 ignores_zero_delta() {
@@ -83,8 +89,9 @@ ignores_unknown_focus() {
 
 run_case 'should go to the next workspace when scrolling up' goes_next_when_up
 run_case 'should go to the previous workspace when scrolling down' goes_previous_when_down
-run_case 'should wrap from 6 to 1 when scrolling up on 6' wraps_from_6_to_1
-run_case 'should wrap from 1 to 6 when scrolling down on 1' wraps_from_1_to_6
+run_case 'should wrap from 7 to 1 when scrolling up on 7' wraps_from_7_to_1
+run_case 'should wrap from 1 to 7 when scrolling down on 1' wraps_from_1_to_7
+run_case 'should go from 6 to the dev workspace 7 when scrolling up' goes_from_6_to_7
 run_case 'should do nothing when the scroll delta is zero' ignores_zero_delta
 run_case 'should do nothing when the scroll delta is a decimal zero' ignores_decimal_zero_delta
 run_case 'should ignore a second scroll within 300ms' ignores_second_scroll_within_limit

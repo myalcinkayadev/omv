@@ -60,6 +60,12 @@ highlights_workspace_6() {
   assert_called "--set space\.6 $FOCUSED_STYLE"
 }
 
+highlights_the_dev_workspace() {
+  stub_aerospace "" "7"
+  run_in_sandbox FOCUSED_WORKSPACE=7 "$PLUGIN"
+  assert_called "--set space\.7 $FOCUSED_STYLE"
+}
+
 ignores_unknown_workspace() {
   stub_aerospace "" ""
   run_in_sandbox FOCUSED_WORKSPACE=9 "$PLUGIN"
@@ -72,7 +78,8 @@ run_case 'should query aerospace for the focused workspace when the script runs 
 run_case 'should mark a workspace as visible when it is shown on the unfocused monitor' marks_visible_on_unfocused_monitor
 run_case 'should highlight workspace 6 when it is focused' highlights_workspace_6
 run_case 'should exit without error when aerospace returns nothing' survives_empty_aerospace_output
-run_case 'should leave items unchanged when the focused workspace is outside 1-6' ignores_unknown_workspace
+run_case 'should highlight the dev workspace 7 when it is focused' highlights_the_dev_workspace
+run_case 'should leave items unchanged when the focused workspace is outside 1-7' ignores_unknown_workspace
 uses_the_theme_colors() {
   stub_aerospace 2 '2'
   mkdir -p "$HOME_DIR/.local/state/omv/theme"

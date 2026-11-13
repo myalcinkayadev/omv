@@ -6,7 +6,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 
 ## Features
 
-- [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app, Vim-style keys, Option+Tab back to the last workspace, a tabbed layout, a focus border, and three-finger swipes.
+- [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app plus a dev workspace, Vim-style keys, Option+Tab back to the last workspace, a tabbed layout, a focus border, and three-finger swipes.
 - [**The bar**](#the-bar): workspaces, the playing track, reminders, meetings, Claude usage, and a macOS-style clock that stays clear of the notch.
 - [**Palette**](#palette): Option+Space finds any window, app or omv command as you type.
 - [**Key list**](#key-list): Option+/ shows every shortcut at once, and runs the one you pick.
@@ -46,7 +46,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 | 6 | Apple Music, Spotify | Secondary, or main if there is only one |
 
 - **Each app opens on its workspace.** Finder tiles on the current workspace instead, though its Get Info windows float, and System Settings and Calculator float there.
-- **Six workspaces in total,** not six per monitor, because AeroSpace workspaces are global. A pinned workspace always opens on its own monitor, so Option+4 from the main monitor moves focus to the secondary one. When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it's plugged back in.
+- **Seven workspaces in total,** not seven per monitor, because AeroSpace workspaces are global. The seventh is the [dev layout's](#dev-layout), on the main monitor. A pinned workspace always opens on its own monitor, so Option+4 from the main monitor moves focus to the secondary one. When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it's plugged back in.
 - **Focus border:** the focused window gets a 2pt gray outline, the same gray as the cards' border, drawn by [JankyBorders](https://github.com/FelixKratz/JankyBorders). It starts with AeroSpace. It's drawn at 1x (`hidpi=off`), which takes about 40 MB instead of up to 209 MB. For a sharper outline on Retina, change `hidpi=off` to `hidpi=on` in `aerospace.toml`, then run `pkill -x borders` and restart AeroSpace.
 - **Trackpad:** swipe three fingers left or right to move one workspace, wrapping around. A swipe stays on the focused monitor, so with two monitors it cycles 1-3 on the main one and 4-6 on the secondary.
 - **Option+Tab** goes back to the previous workspace.
@@ -61,7 +61,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 
 ![The bar: workspaces on the left; keep-awake, Claude's 5-hour limit, the weather, status icons and the clock on the right](docs/bar.png)
 
-**On the left**, workspace numbers: the focused one is a white pill, and the one visible on the other monitor is a gray pill. Click a number to go there, or scroll over them to move one workspace at a time across all six, wrapping around. The binding mode shows next to them while it isn't the normal one.
+**On the left**, workspace numbers: the focused one is a white pill, and the one visible on the other monitor is a gray pill. Click a number to go there, or scroll over them to move one workspace at a time across all seven, wrapping around. The binding mode shows next to them while it isn't the normal one.
 
 While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40 characters. Click it to play or pause, right-click it for the [lyrics](#lyrics), and scroll for the next or previous track. It hides when nothing plays and never opens a player that is closed.
 
@@ -403,8 +403,8 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 | Option+A | Toggle tabbed or tiled |
 | Option+B | Make window sizes even |
 | Option+Shift+R | Enter resize mode |
-| Option+1-6, or Option and the numpad's 1-6 | Go to that workspace |
-| Option+Shift+1-6, or with the numpad | Send the window to that workspace, and stay where you are |
+| Option+1-7, or Option and the numpad's 1-7 | Go to that workspace; 7 is the dev workspace |
+| Option+Shift+1-7, or with the numpad | Send the window to that workspace, and stay where you are |
 | Option+Tab | Go back to the previous workspace |
 | Option+, / Option+. | Focus the left / right monitor |
 | Option+Shift+, / Option+Shift+. | Send the window to the left / right monitor |

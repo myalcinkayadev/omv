@@ -30,7 +30,7 @@ default=(
 )
 sketchybar --default "${default[@]}"
 
-for number in 1 2 3 4 5 6; do
+for number in 1 2 3 4 5 6 7; do
   sketchybar --add item "space.$number" left \
     --set "space.$number" icon="$number" icon.font="$FONT:Regular:14.0" icon.color=$MUTED \
       label.drawing=off background.color=0x00000000 background.corner_radius=5 \
@@ -39,7 +39,7 @@ for number in 1 2 3 4 5 6; do
     --subscribe "space.$number" mouse.scrolled
 done
 
-# Hidden controller: one script updates all six items per event.
+# Hidden controller: one script updates all seven items per event.
 sketchybar --add event aerospace_workspace_change \
   --add item aerospace_listener left \
   --set aerospace_listener drawing=off script="$PLUGIN_DIR/aerospace.sh" \
