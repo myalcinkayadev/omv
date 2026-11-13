@@ -60,13 +60,22 @@ function reminders.parse(input, now)
   return seconds, rest ~= "" and rest or "Reminder"
 end
 
--- 24:13 under an hour, 2:05 (hours and minutes) from an hour up.
+local function hoursLeft(seconds)
+  return string.format("%dh%02d", math.floor(seconds / 3600), math.floor(seconds % 3600 / 60))
+end
+
+-- The bar's countdown: 24:13 under an hour, 2h05 from an hour up.
 function reminders.left(seconds)
   seconds = math.max(0, math.floor(seconds))
-  if seconds >= 3600 then
-    return string.format("%d:%02d", math.floor(seconds / 3600), math.floor(seconds % 3600 / 60))
-  end
+  if seconds >= 3600 then return hoursLeft(seconds) end
   return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
+end
+
+-- A list row's time left, in words, so 12 minutes can't be read as noon.
+function reminders.leftIn(seconds)
+  seconds = math.max(0, math.floor(seconds))
+  if seconds >= 3600 then return "in " .. hoursLeft(seconds) end
+  return "in " .. math.max(1, math.ceil(seconds / 60)) .. " min"
 end
 
 -- A reminder that came due stays until it is dismissed or snoozed: "due" when it fired

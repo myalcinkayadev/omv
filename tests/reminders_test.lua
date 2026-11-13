@@ -30,7 +30,12 @@ check.that("should refuse a word that is not a preset", parsed("pomodoro") == ni
 check.that("should refuse a preset glued to the text", parsed("pomo25") == nil)
 
 check.that("should format time left as m:ss under an hour", reminders.left(24 * 60 + 13) == "24:13")
-check.that("should format time left as h:mm from an hour up", reminders.left(2 * 3600 + 5 * 60 + 30) == "2:05")
+check.that("should format time left as 2h05 when an hour or more", reminders.left(2 * 3600 + 5 * 60 + 30) == "2h05")
+check.that("should pad the minutes when an hour or more", reminders.left(3600 + 5 * 60) == "1h05")
+check.that("should show 0:00 when the time has passed", reminders.left(-30) == "0:00")
+check.that("should phrase a list row's time left as in 12 min when under an hour", reminders.leftIn(12 * 60) == "in 12 min")
+check.that("should phrase a list row's time left as in 1h35 when an hour or more", reminders.leftIn(95 * 60) == "in 1h35")
+check.that("should say in 1 min rather than in 0 min when under a minute is left", reminders.leftIn(20) == "in 1 min")
 
 local now = 1000
 local list = {
@@ -40,6 +45,8 @@ local list = {
 }
 check.that("should show the soonest time left in the bar", reminders.label(list, now) == "1:30 +2")
 check.that("should leave out the count with one reminder", reminders.label({ list[2] }, now) == "1:30")
+check.that("should show the bar label with hours as 1h30 +2",
+  reminders.label({ { due = now + 5400 }, { due = now + 6000 }, { due = now + 7000 } }, now) == "1h30 +2")
 check.that("should keep the reminder text out of the bar", not check.contains(reminders.label(list, now), "soon"))
 check.that("should cut a due reminder's text at 10 characters", reminders.short("check the deploy pipeline") == "check the…")
 check.that("should keep a short text whole", reminders.short("stand up") == "stand up")

@@ -200,7 +200,7 @@ function feature.toggle()
   if not soonest then return feature.new() end
   local now, rows = os.time(), {}
   for index, reminder in ipairs(reminderList) do
-    rows[#rows + 1] = { id = tostring(index), icon = "󰔛", label = reminder.text, hint = reminders.left(reminder.due - now) }
+    rows[#rows + 1] = { id = tostring(index), icon = "󰔛", label = reminder.text, hint = reminders.leftIn(reminder.due - now) }
   end
   local screen = { prompt = "Cancel a reminder…", rows = rows }
   shell.show("reminders", shell.centered(REMINDER_WIDTH, shell.menuHeight(screen)), card.html(screen), onReminderList)
