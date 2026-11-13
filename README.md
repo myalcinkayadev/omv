@@ -94,6 +94,8 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 - `install.sh` adds one line to `~/.claude/statusline-wrapper.sh` through `claude-usage.sh`. If that file doesn't exist, the item stays hidden.
 - Only the four numbers are stored, in `~/.local/state/omv/claude-usage`.
 
+<img src="docs/prs.png" alt="The pull request list: three pull requests waiting for review, each with its repository and number" width="720">
+
 Option+Shift+Space shows or hides the bar.
 
 ## Palette
@@ -138,6 +140,8 @@ Option+Escape, then **Theme**, picks the colours for the cards, the bar, Ghostty
 - **The lyrics window** redraws in the new colours at once.
 - The choice is saved in `~/.local/state/omv/theme`, so it survives reloads and restarts. Neovim and btop keep their own colours.
 
+<img src="docs/themes.png" alt="The theme picker: Vantablack, the current one, then Omarchy's themes and Get Omarchy's themes" width="420">
+
 ## Sound
 
 Click the volume item in the bar, or press Option+Shift+V, for the Sound card under it.
@@ -166,6 +170,8 @@ Both cards follow changes while they're open, such as Wi-Fi turning off, joining
 
 <img src="docs/wifi.png" alt="The Wi-Fi card: network name, signal, IP address, router, channel, and the last speed test" width="420"> <img src="docs/ethernet.png" alt="The Ethernet card: link speed, IP address, router, port, duplex, and the last speed test" width="420">
 
+<img src="docs/wifi-speedtest.png" alt="The Wi-Fi card during a speed test: the download speed counting live, upload waiting, and the button saying Testing…" width="420">
+
 Since macOS 14, an app needs Location Services to read the Wi-Fi network's name. Hammerspoon asks for it once, for the weather, and without it the card shows `—` for the name.
 
 ## Bluetooth
@@ -179,6 +185,8 @@ Click the Bluetooth icon, or press Option+Shift+Y, for the Bluetooth card under 
 
 - It reads and changes Bluetooth through [blueutil](https://github.com/toy/blueutil): `brew install blueutil`. Without it, the bar item stays hidden and the card says how to install it.
 - Hammerspoon needs Bluetooth access: System Settings > Privacy & Security > Bluetooth, turn on Hammerspoon (add it with + if it's not listed). macOS may not ask by itself. Until then, the bar item stays hidden and the card's one row opens that setting. The bar reads Bluetooth's state through Hammerspoon, so SketchyBar needs no access of its own.
+
+<img src="docs/bluetooth.png" alt="The Bluetooth card: Turn Bluetooth off, AirPods Pro and Magic Keyboard connected, MX Master 3S, then Pair a new device and Bluetooth Settings" width="420">
 
 ## Agents
 
@@ -209,6 +217,8 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - The session's terminal is found by its tty, in Ghostty, iTerm2 or Terminal, through each app's AppleScript, Ghostty first. A terminal app that isn't running is skipped, so it never opens on its own. The first time, macOS asks to let Hammerspoon control that app.
 - Only Claude's PID, its tty, the folder name, the state and when the session entered it are saved, in `~/.local/state/omv/claude-sessions`. A session whose Claude has ended is dropped within 30 seconds.
 - A session in any other app, such as Zed's terminal, still shows. Since no terminal app has its tty, the app it runs in comes forward instead, found among Claude's parent processes; macOS can't pick the exact window or pane. The drop-down terminal can't be focused.
+
+<img src="docs/waiting.png" alt="The waiting list: api asking for approval for 1 min, then omv done for 4 min" width="720">
 
 <img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, session and weekly limits, two live sessions and two background ones" width="400">
 
@@ -266,6 +276,9 @@ Option+Shift+M asks "Remind me…". Type a time, then what to remember, and pres
 - The bar shows the time left on the soonest reminder, with a target icon during a pomo and a coffee cup during a break.
 - When a plain reminder is due, you get a notification and an alert, and the bar item turns into a white pill with the start of its text, plus `+N` when several are due. It stays until you deal with it: click it for a large card with **Dismiss** (Enter), **Snooze 5 minutes** (`s`) and **Snooze 15 minutes** (`l`). Escape closes the card and leaves the reminder due.
 - With nothing due, click the bar item to list your reminders, and press Enter on one to cancel it.
+
+<img src="docs/reminder-due.png" alt="A due reminder: Call the dentist, with Dismiss, Snooze 5 minutes and Snooze 15 minutes" width="560">
+<img src="docs/reminder-list.png" alt="The reminder list: Stretch in 12 minutes and Call the dentist in 1 hour 35, Enter cancels one" width="480">
 - Reminders are saved in `~/.local/state/omv/reminders`, so they survive a Hammerspoon reload, due ones included. One whose time passed while Hammerspoon wasn't running comes back due, marked late on its card (`LATE · WAS 14:05`), with a "Missed reminder" notification. A Pomodoro or break that passed then is dropped, since its moment is gone.
 
 **Pomodoro.** When a pomo's time is up, the screen dims and a large card takes over. Nothing after it starts on its own: you pick each step.
@@ -327,6 +340,9 @@ The volume, mute and brightness keys show omv's own pop-up instead of macOS's: a
 - **Brightness** dims the display under the pointer: the built-in one directly, an external one over DDC with [m1ddc](https://github.com/waydabber/m1ddc). A held key changes the pop-up at once and the display once it settles, since DDC is slow. A display that doesn't answer DDC keeps macOS's behavior.
 - Catching the keys needs Accessibility for Hammerspoon, in System Settings > Privacy & Security > Accessibility. Without it, the keys work as macOS's own.
 
+<img src="docs/osd-volume.png" alt="The volume pop-up: a speaker icon and 10 of 16 segments lit" width="320">
+<img src="docs/osd-brightness.png" alt="The brightness pop-up: a sun icon and 8 of 16 segments lit" width="320">
+
 ## Night light
 
 Option+Shift+Z, or Option+Escape, then **Night light**, switches macOS's Night Shift on or off. While it's on, the bar shows a moon; click it to turn night light off. Night Shift's own schedule still applies, and the bar checks again every 5 minutes, so it follows a scheduled change too. macOS has no public way to switch Night Shift, so omv uses [nightlight](https://github.com/smudge/nightlight), which `./install.sh` installs.
@@ -337,6 +353,8 @@ Option+Space, then **Dev layout**, lists your recent Claude Code projects, the m
 
 - **Open project:** your editor on the project on the left half of the dev workspace, 7, on the main monitor, and Claude Code above a shell, both in the project, on the right. When the editor already has the project open, that window comes over instead of a new one.
 - **New task in a worktree:** the same layout on a new git branch, `task-YYYYMMDD-HHMM`, in a folder of its own under `~/.local/share/omv/worktrees/<project>/`, so the task can't collide with other work in the repo and the repo's `git status` stays clean. The editor opens it in a new window. Offered only for a git repository.
+
+<img src="docs/devlayout.png" alt="Dev layout for…: the recent Claude Code projects omv, api and site, with their folders" width="720">
 
 Option+Space, then **Agent grid**, starts 2, 3 or 4 Claude Code sessions on a project, each on its own branch and worktree, as panes of one tmux session, `omv-<project>`, in a window on the dev workspace: side by side, or two over two for four. The mouse scrolls each pane.
 
@@ -361,6 +379,8 @@ While a Focus such as Do Not Disturb is on, the bar shows a moon and its name. O
 ## Tailscale
 
 Once [Tailscale](https://tailscale.com) is installed, the bar shows its icon, white while connected. Click it for a card: **Connect** or **Disconnect**, then each of your devices with its Tailscale address, online ones first; Enter copies a device's address. While Tailscale needs a login, the first row opens the Tailscale app. omv reads Tailscale's state with its own CLI every 30 seconds, and doesn't install it.
+
+<img src="docs/tailscale.png" alt="The Tailscale card: Disconnect with this Mac's address, then homelab and nas online and iphone offline, each with its address" width="480">
 
 ## Capture menu
 
@@ -396,7 +416,11 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
   <img src="docs/note-list.png" alt="The note list after Cmd+O: today's daily note first, then Sprint plan, yesterday's note and Q4 roadmap, each with when it changed and its folder" width="480">
 
 - **Hungry processes (Option+Shift+P):** your 20 busiest processes by CPU, by memory after Tab, or your listening TCP ports after a second Tab, as `:3000  node  ~/workspace/app`, each with the folder it runs in, so a dev server or build an agent left behind is easy to spot. Type to filter, and Enter asks, then quits it. A process still running 3 seconds later is offered Force quit. Only your own processes are listed, never `loginwindow`, `launchd` or Hammerspoon.
+
+  <img src="docs/procs.png" alt="Hungry processes: vite in ~/work/site at 85.7% CPU first, then Music, claude in ~/work/omv, Zed, Helium and btop, each with CPU and memory" width="720">
 - **Clipboard history (Option+V):** the text you copied in the last day, at most 50, and the last 20 images, newest first; an image shows as a small preview with its size. Type to filter, and Enter puts a copy back on the clipboard for you to paste with Cmd+V; pasting for you would need Accessibility, which omv doesn't grant. It's kept in memory only, so a reload forgets it. Secrets are never kept: copies password managers mark as concealed, copies made while 1Password, Bitwarden, Passwords or Keychain Access is in front, and text shaped like a key or token (`sk-…`, `ghp_…`, `AKIA…`, a JWT, a private key, or a `KEY=`, `TOKEN=`, `SECRET=` or `PASSWORD=` line). Text and images are kept, never files. **Pause history** and **Clear history** are the card's first rows; while paused, the bar shows `paused`, and a click on it turns history back on. A secret with no recognizable shape is still kept, so pause the history for sensitive work.
+
+  <img src="docs/clipboard.png" alt="Clipboard history: Pause history and Clear history, then five copies newest first, each with its app and age" width="720">
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
 - **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvNewReminder()` and `omvToggleReminders()`.
