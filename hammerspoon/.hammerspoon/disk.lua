@@ -11,12 +11,18 @@ local BREW = "/opt/homebrew/bin/brew"
 local STALE_SECONDS = 6 * 3600
 local GB, MB = 1000 * 1000 * 1000, 1000 * 1000
 
+-- Ghostty's window closes when its command exits, so each one waits for Enter after it,
+-- and Mole's summary of what it removed, skipped or failed on stays readable.
+local function keptOpen(command)
+  return "/bin/sh -c '" .. command .. "; printf \"\\nPress Enter to close\"; read -r _'"
+end
+
 local COMMANDS = {
-  clean = MO .. " clean",
-  purge = MO .. " purge",
-  analyze = MO .. " analyze",
-  installer = MO .. " installer",
-  install = BREW .. " install mole",
+  clean = keptOpen(MO .. " clean"),
+  purge = keptOpen(MO .. " purge"),
+  analyze = keptOpen(MO .. " analyze"),
+  installer = keptOpen(MO .. " installer"),
+  install = keptOpen(BREW .. " install mole"),
 }
 
 -- Free and total bytes of / from `df -k /`, or nil.

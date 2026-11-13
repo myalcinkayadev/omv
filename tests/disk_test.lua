@@ -98,12 +98,16 @@ check.that("should give no space without a df reading", disk.withPurgeable(nil, 
 
 local commands = { clean = "mo clean", purge = "mo purge", analyze = "mo analyze", installer = "mo installer" }
 for id, expected in pairs(commands) do
-  check.that("should run " .. expected .. " for the " .. id .. " row", disk.command(id) == "/opt/homebrew/bin/" .. expected)
+  check.that("should run " .. expected .. " for the " .. id .. " item", check.contains(disk.command(id), "/opt/homebrew/bin/" .. expected .. ";"))
+  check.that("should keep the window open after " .. expected .. " finishes, so its summary can be read",
+    check.contains(disk.command(id), "Press Enter to close"))
 end
 local unattended = false
 for id in pairs(commands) do unattended = unattended or check.contains(disk.command(id), "--yes") end
-check.that("should never run a row's command unattended", not unattended)
-check.that("should run brew install mole for the install row", disk.command("install") == "/opt/homebrew/bin/brew install mole")
+check.that("should never run an item's command unattended", not unattended)
+check.that("should run brew install mole for the install item", check.contains(disk.command("install"), "/opt/homebrew/bin/brew install mole;"))
+check.that("should keep the window open after brew install mole finishes", check.contains(disk.command("install"), "Press Enter to close"))
+check.that("should run nothing for an unknown item", disk.command("space") == nil)
 
 check.that("should re-measure the clean preview after Clean caches is chosen", disk.invalidates("clean") == "clean")
 check.that("should re-measure the purge preview after Purge is chosen", disk.invalidates("purge") == "purge")
