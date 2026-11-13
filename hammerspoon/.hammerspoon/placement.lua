@@ -24,11 +24,20 @@ local function itemLeft(query, screen)
   return nil
 end
 
--- The card's frame on screen, { x, y, w, h }, under the item in query.
+-- The card's frame on screen, { x, y, w, h }, under the item in query. A card taller than
+-- the room under the bar shrinks to it; its rows scroll.
 function placement.under(query, width, height, screen)
   local right = screen.x + screen.w - width - MARGIN
   local x = itemLeft(query, screen) or right
-  return { x = math.max(screen.x + MARGIN, math.min(x, right)), y = screen.y + BAR + GAP, w = width, h = height }
+  local room = screen.h - BAR - GAP - MARGIN
+  return { x = math.max(screen.x + MARGIN, math.min(x, right)), y = screen.y + BAR + GAP, w = width, h = math.min(height, room) }
+end
+
+-- A card in the middle of the screen, a third of the way down. One taller than the screen
+-- shrinks to it, less a margin at the top and bottom.
+function placement.centered(width, height, screen)
+  local fitted = math.min(height, screen.h - 2 * MARGIN)
+  return { x = screen.x + (screen.w - width) / 2, y = screen.y + math.max(MARGIN, (screen.h - fitted) / 3), w = width, h = fitted }
 end
 
 return placement

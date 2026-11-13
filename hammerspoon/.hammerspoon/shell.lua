@@ -116,8 +116,8 @@ function shell.anchored(width, height, item)
 end
 
 function shell.centered(width, height)
-  local screen = shell.screen():frame()
-  return hs.geometry.rect(screen.x + (screen.w - width) / 2, screen.y + (screen.h - height) / 3, width, height)
+  local frame = placement.centered(width, height, shell.screen():frame())
+  return hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)
 end
 
 function shell.menuHeight(screen)

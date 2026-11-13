@@ -32,4 +32,18 @@ local hidden = item({ ["display-1"] = { -9999, -9999, 1 } }, "off")
 check.that("should fall back to the right edge when the item isn't drawn", placement.under(hidden, 400, 218, MAIN).x == 2560 - 400 - 10)
 check.that("should fall back to the right edge without a query", placement.under(nil, 400, 218, MAIN).x == 2560 - 400 - 10)
 
+-- Cards taller than the screen shrink to fit; their rows scroll.
+local TALL = 2000
+check.that("should keep a card's height when it fits under the bar", placement.under(claude, 400, 218, LEFT).h == 218)
+check.that("should shrink a card to the room under the bar when it is taller",
+  placement.under(claude, 400, TALL, LEFT).h == 982 - 36 - 4 - 10)
+
+local centered = placement.centered(420, 300, LEFT)
+check.that("should center a card horizontally when it opens centered", centered.x == -1512 + (1512 - 420) / 2)
+check.that("should open a centered card a third of the way down when it fits", centered.y == 458 + (982 - 300) / 3)
+check.that("should keep a centered card's size when it fits", centered.w == 420 and centered.h == 300)
+check.that("should shrink a centered card to the screen less its margins when it is taller",
+  placement.centered(420, TALL, LEFT).h == 982 - 2 * 10)
+check.that("should keep a shrunk centered card inside the screen's top edge", placement.centered(420, TALL, LEFT).y == 458 + 10)
+
 check.finish()
