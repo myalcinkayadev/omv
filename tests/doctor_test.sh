@@ -35,9 +35,19 @@ STUB
 #!/bin/sh
 echo "pgrep \$*" >> "$CALL_LOG"
 [ "\$*" = "-x sketchybar" ] && cat "$SANDBOX/bars"
+[ "\$*" = "-x Hammerspoon" ] && [ -f "$SANDBOX/no-hammerspoon" ] && exit 1
 exit 0
 STUB
   echo 500 > "$SANDBOX/bars"
+  # pkill stops what it names: the bars are gone, and Hammerspoon is.
+  cat > "$STUB_DIR/pkill" <<STUB
+#!/bin/sh
+echo "pkill \$*" >> "$CALL_LOG"
+[ "\$*" = "-x sketchybar" ] && : > "$SANDBOX/bars"
+[ "\$*" = "-x Hammerspoon" ] && touch "$SANDBOX/no-hammerspoon"
+exit 0
+STUB
+  chmod +x "$STUB_DIR/pkill"
   stub kill
   stub nohup
   chmod +x "$STUB_DIR/hs" "$STUB_DIR/defaults" "$STUB_DIR/ps" "$STUB_DIR/pgrep"
@@ -62,9 +72,13 @@ EOF
   : > "$CALL_LOG"
 }
 
-# Hammerspoon gets 1 second here, so a test of a hanging hs is quick.
+# The stub hs answers at once, but in the suite's first seconds a busy machine can keep it
+# from starting within the real 5, so tests give it 60. hang_hammerspoon sets 1, so a hang
+# test is quick.
+HS_LIMIT=60
+
 doctor() {
-  run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" OMV_HS_SECONDS=1 "$DOCTOR" "$@"
+  run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" OMV_HS_SECONDS="$HS_LIMIT" "$DOCTOR" "$@"
 }
 
 report() {
@@ -84,7 +98,8 @@ expect_no_report() {
 }
 
 hang_hammerspoon() {
-  printf '#!/bin/sh\necho "hs $*" >> "%s"\nexec sleep 30\n' "$CALL_LOG" > "$STUB_DIR/hs"
+  printf '#!/bin/sh\necho "hs $*" >> "%s"\nexec sleep 120\n' "$CALL_LOG" > "$STUB_DIR/hs"
+  HS_LIMIT=1
 }
 
 stuck_call() {
@@ -96,7 +111,8 @@ reports_hanging_hammerspoon() {
   hang_hammerspoon
   local started=$SECONDS
   expect_report "✗ Hammerspoon isn't answering — fix: ./doctor.sh --fix"
-  [ $((SECONDS - started)) -le 15 ] || fail "took $((SECONDS - started))s"
+  # Well under the stub's 120s, with room for a doctor run slowed by a busy machine.
+  [ $((SECONDS - started)) -le 90 ] || fail "took $((SECONDS - started))s"
 }
 
 reports_stuck_call() {
@@ -133,6 +149,76 @@ reports_two_bars() {
   complete_setup
   printf '500\n501\n' > "$SANDBOX/bars"
   expect_report '✗ 2 SketchyBars are running — fix: ./doctor.sh --fix'
+}
+
+fix_kills_stuck_calls() {
+  complete_setup
+  stuck_call '4242 01:01 hs -c x'
+  report --fix >/dev/null
+  assert_called '^kill 4242$'
+}
+
+fix_says_killed() {
+  complete_setup
+  stuck_call '4242 01:01 hs -c x'
+  [[ $(report --fix) == *'→ killed 1 stuck hs call'* ]] || fail 'no killed line'
+}
+
+fix_stops_bars() {
+  complete_setup
+  printf '500\n501\n' > "$SANDBOX/bars"
+  report --fix >/dev/null
+  assert_called '^pkill -x sketchybar$'
+}
+
+fix_starts_one_bar() {
+  complete_setup
+  printf '500\n501\n' > "$SANDBOX/bars"
+  [[ $(report --fix) == *'→ restarted SketchyBar'* ]] || fail 'no restarted line'
+  [ "$(grep -c '^nohup sketchybar$' "$CALL_LOG")" = 1 ] || fail 'expected one nohup sketchybar'
+}
+
+fix_reopens_hammerspoon() {
+  complete_setup
+  hang_hammerspoon
+  [[ $(report --fix) == *'→ reopened Hammerspoon'* ]] || fail 'no reopened line'
+  assert_called '^pkill -x Hammerspoon$'
+  assert_called '^open -a Hammerspoon$'
+}
+
+fix_leaves_hammerspoon() {
+  complete_setup
+  report --fix >/dev/null
+  assert_not_called '^(pkill|open).*Hammerspoon'
+}
+
+fix_changes_nothing() {
+  complete_setup
+  doctor --fix >/dev/null 2>&1 || fail 'expected exit 0'
+  assert_not_called '^(kill|pkill|nohup|open)'
+}
+
+fix_starts_no_bar() {
+  complete_setup
+  : > "$SANDBOX/bars"
+  report --fix >/dev/null
+  assert_not_called '^nohup'
+}
+
+fix_opens_no_hammerspoon() {
+  complete_setup
+  hang_hammerspoon
+  touch "$SANDBOX/no-hammerspoon"
+  report --fix >/dev/null
+  assert_not_called '^open -a Hammerspoon'
+}
+
+refuses_unknown_argument() {
+  complete_setup
+  local status=0 errors
+  errors=$(doctor --fxi 2>&1 >/dev/null) || status=$?
+  [ "$status" = 2 ] || fail "expected exit 2, got $status"
+  [[ $errors == *'usage: ./doctor.sh [--fix]'* ]] || fail "expected usage, got: $errors"
 }
 
 kills_nothing_without_fix() {
@@ -176,7 +262,7 @@ lists_bluetooth_check() {
 
 passes_complete_setup() {
   complete_setup
-  assert_exit_zero doctor
+  doctor > "$SANDBOX/report" 2>&1 || fail "$(grep '✗' "$SANDBOX/report")"
 }
 
 reports_no_problems() {
@@ -318,6 +404,16 @@ run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
+run_case 'should kill stuck hs calls with --fix' fix_kills_stuck_calls
+run_case 'should say it killed the stuck calls with --fix' fix_says_killed
+run_case 'should stop every bar with --fix when two run' fix_stops_bars
+run_case 'should start one bar with --fix when two ran' fix_starts_one_bar
+run_case "should reopen Hammerspoon with --fix when it doesn't answer" fix_reopens_hammerspoon
+run_case 'should leave Hammerspoon alone with --fix when it answers' fix_leaves_hammerspoon
+run_case 'should change nothing with --fix on a healthy setup' fix_changes_nothing
+run_case 'should start no bar with --fix when none runs' fix_starts_no_bar
+run_case "should not open Hammerspoon with --fix when it isn't running" fix_opens_no_hammerspoon
+run_case 'should refuse an unknown argument' refuses_unknown_argument
 run_case 'should say there are no problems on a complete setup' reports_no_problems
 run_case 'should exit non-zero when a check fails' fails_on_problem
 run_case 'should name a missing tool and how to install it' names_missing_tool

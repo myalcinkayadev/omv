@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Checks that the omv setup is healthy and says how to fix what isn't. Only reads: it
-# changes no setting, link or process. Exits non-zero when a check fails.
+# Checks that the omv setup is healthy and says how to fix what isn't. Exits non-zero when a
+# check fails. Without --fix it only reads: it changes no setting, link or process.
+# --fix first clears a jam: it kills stuck hs calls, restarts SketchyBar when more than one
+# runs, and reopens Hammerspoon when it doesn't answer. Then it checks as usual.
+# Usage: ./doctor.sh [--fix]
 # OMV_APPLICATIONS and OMV_FONT_DIRS replace /Applications and the font folders, for tests.
 
 set -uo pipefail
@@ -135,6 +138,11 @@ etime_seconds() {
   echo $((((10#$days * 24 + hours) * 60 + minutes) * 60 + seconds))
 }
 
+# "1 stuck hs call" or "3 stuck hs calls".
+stuck_calls() {
+  if [ "$1" -eq 1 ]; then echo '1 stuck hs call'; else echo "$1 stuck hs calls"; fi
+}
+
 # One pid per hs -c call that has run longer than STUCK_SECONDS. An hs run by hand, as a
 # REPL, isn't a -c call, so it's left alone.
 stuck_hs_pids() {
@@ -158,8 +166,7 @@ check_running() {
   # Stuck calls are counted before the doctor asks Hammerspoon anything, so its own call never counts.
   stuck=$(stuck_hs_pids | wc -l | tr -d ' ')
   if [ "$stuck" -eq 0 ]; then ok 'no stuck hs calls'
-  elif [ "$stuck" -eq 1 ]; then problem '1 stuck hs call' './doctor.sh --fix'
-  else problem "$stuck stuck hs calls" './doctor.sh --fix'; fi
+  else problem "$(stuck_calls "$stuck")" './doctor.sh --fix'; fi
   bars=$(bar_count)
   if [ "$bars" -gt 1 ]; then problem "$bars SketchyBars are running" './doctor.sh --fix'
   elif [ "$bars" -eq 1 ]; then ok 'one SketchyBar'; fi
@@ -242,6 +249,49 @@ check_github() {
   if gh auth status >/dev/null 2>&1; then ok 'gh is logged in'; else problem 'gh is not logged in' 'gh auth login'; fi
 }
 
+# Waits up to $1 seconds for the command after it to fail.
+wait_until_not() {
+  local limit=$((SECONDS + $1))
+  shift
+  while "$@" && [ "$SECONDS" -lt "$limit" ]; do sleep 0.2; done
+}
+
+has_bars() {
+  [ "$(bar_count)" -gt 0 ]
+}
+
+hammerspoon_running() {
+  pgrep -x Hammerspoon >/dev/null 2>&1
+}
+
+hammerspoon_silent() {
+  [ -z "$(hs_answer 'return 1')" ]
+}
+
+fix_running() {
+  section 'Fixing'
+  local stuck
+  stuck=$(stuck_hs_pids)
+  if [ -n "$stuck" ]; then
+    printf '%s\n' "$stuck" | xargs kill 2>/dev/null
+    echo "  → killed $(stuck_calls "$(printf '%s\n' "$stuck" | wc -l | tr -d ' ')")"
+  fi
+  if [ "$(bar_count)" -gt 1 ]; then
+    pkill -x sketchybar
+    wait_until_not 5 has_bars
+    nohup sketchybar >/dev/null 2>&1 &
+    echo '  → restarted SketchyBar'
+  fi
+  # Only a Hammerspoon that's running but silent: one that isn't running is reported, not opened.
+  if hammerspoon_running && hammerspoon_silent; then
+    pkill -x Hammerspoon
+    wait_until_not 5 hammerspoon_running
+    open -a Hammerspoon
+    wait_until_not 10 hammerspoon_silent
+    echo '  → reopened Hammerspoon'
+  fi
+}
+
 print_manual_checks() {
   cat <<'EOF'
 
@@ -266,7 +316,17 @@ Check by hand (macOS doesn't let a script read these)
 EOF
 }
 
+case ${1:-} in
+  '') fix=0 ;;
+  --fix) fix=1 ;;
+  *)
+    echo 'usage: ./doctor.sh [--fix]' >&2
+    exit 2
+    ;;
+esac
+
 echo 'omv doctor'
+[ "$fix" -eq 1 ] && fix_running
 check_tools
 check_apps
 check_fonts

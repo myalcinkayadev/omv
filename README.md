@@ -557,7 +557,9 @@ When you pull new files later, run `./install.sh` again. Stow links files one by
 ./doctor.sh
 ```
 
-Checks that everything is in place, and says how to fix what isn't: the tools, apps and font, that every package is linked with no broken links left behind, that AeroSpace, SketchyBar, borders, Hammerspoon and SwipeAeroSpace are running with the omv config loaded, the macOS settings, AeroSpace's Accessibility, and the Claude usage line. It only reads, and exits non-zero when something fails.
+Checks that everything is in place, and says how to fix what isn't: the tools, apps and font, that every package is linked with no broken links left behind, that AeroSpace, SketchyBar, borders, Hammerspoon and SwipeAeroSpace are running with the omv config loaded, the macOS settings, AeroSpace's Accessibility, and the Claude usage line. It also finds a jam: `hs` calls stuck for more than a minute, more than one SketchyBar, or a Hammerspoon that doesn't answer in 5 seconds. Without `--fix` it only reads, and exits non-zero when something fails.
+
+`./doctor.sh --fix` first clears a jam, saying each step: it kills stuck `hs` calls, restarts SketchyBar when more than one runs, and reopens Hammerspoon when it's running but doesn't answer. Then it checks as usual. It starts nothing that wasn't running, and leaves the other problems to their printed fixes.
 
 It also lists what macOS doesn't let a script read, to check by hand: Screen Recording for Hammerspoon, Calendar access for "omv agenda", Location Services for Hammerspoon, Microphone access for "omv meter", and Accessibility for SwipeAeroSpace.
 
