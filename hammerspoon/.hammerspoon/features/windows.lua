@@ -40,6 +40,11 @@ local function onPaletteMessage(message)
     shell.close()
     return shell.run(shell.AEROSPACE, { "focus", "--window-id", value })()
   end
+  if kind == "calc" then
+    hs.pasteboard.setContents(value)
+    shell.close()
+    return shell.alert("Copied " .. value, 1)
+  end
   if kind == "app" then
     shell.leaveFocus()
     shell.close()
@@ -55,7 +60,7 @@ function feature.toggle()
   hs.task.new(shell.AEROSPACE, function(code, output)
     local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY)
     shell.show("windows", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
-      card.html({ prompt = "Windows, apps, commands…", rows = rows, compact = true }), onPaletteMessage)
+      card.html({ prompt = "Windows, apps, commands…", rows = rows, compact = true, calc = true }), onPaletteMessage)
   end, { "list-windows", "--all", "--format", windows.FORMAT }):start()
 end
 

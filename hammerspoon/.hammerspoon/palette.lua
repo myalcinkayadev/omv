@@ -1,6 +1,6 @@
 -- The Option+Space palette: open windows, installed apps and omv's own commands in one
 -- list, filtered as you type. Rows carry what to do as their id: window:<id>, app:<path> or
--- command:<index in the key list>.
+-- command:<index in the key list>. A typed sum adds calc:<result> on top.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local windows = require("windows")
@@ -58,10 +58,11 @@ function palette.rows(windowsOutput, apps, launchers, ownKey)
   return rows
 end
 
--- What a row does: "window", id; "app", path; or "command", index. nil for an unknown row.
+-- What a row does: "window", id; "app", path; "calc", the result to copy; or "command",
+-- index. nil for an unknown row.
 function palette.parse(id)
   local kind, value = id:match("^(%a+):(.+)$")
-  if kind == "window" or kind == "app" then return kind, value end
+  if kind == "window" or kind == "app" or kind == "calc" then return kind, value end
   if kind == "command" then return kind, tonumber(value) end
   return nil
 end

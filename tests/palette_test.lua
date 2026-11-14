@@ -45,4 +45,13 @@ check.that("should read an app to open from a row", palette.parse("app:/Applicat
 check.that("should read a command to run from a row", select(2, palette.parse("command:2")) == 2)
 check.that("should read nothing from an unknown row", palette.parse("nope") == nil)
 
+
+local card = require("card")
+check.that("should read a calculator row's result", select(2, palette.parse("calc:70")) == "70")
+check.that("should read a calculator row as calc", palette.parse("calc:70") == "calc")
+check.that("should keep a decimal result as typed", select(2, palette.parse("calc:0.3333333333")) == "0.3333333333")
+check.that("should mark a card that asks for the calculator", card.html({ prompt = "x", rows = {}, calc = true }):find("data-calc", 1, true) ~= nil)
+check.that("should add the calculator to a card that asks for it", card.html({ prompt = "x", rows = {}, calc = true }):find("function omvCalc", 1, true) ~= nil)
+check.that("should leave the calculator out of other cards", card.html({ prompt = "x", rows = {} }):find("function omvCalc", 1, true) == nil)
+
 check.finish()

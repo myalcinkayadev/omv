@@ -172,7 +172,7 @@ local function paletteShot()
     { description = "Dev layout: Zed, Claude Code and a shell", group = "Apps", runs = true },
     { description = "Agent grid: 2–4 Claude agents in worktrees", group = "Apps", runs = true },
   }
-  return listShot("windows.png", LIST_WIDTH, { prompt = "Windows, apps, commands…", rows = palette.rows(windows, apps, launchers, "Option+Space") })
+  return listShot("windows.png", LIST_WIDTH, { prompt = "Windows, apps, commands…", rows = palette.rows(windows, apps, launchers, "Option+Space"), calc = true })
 end
 
 local function bluetoothShot()

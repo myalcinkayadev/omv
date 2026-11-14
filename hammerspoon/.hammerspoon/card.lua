@@ -7,6 +7,19 @@
 
 local card = {}
 
+-- The palette's calculator, read from beside this file. Empty when calc.js is missing, such
+-- as before stow links it: the palette then filters as before, with no calculator row.
+local function readCalc()
+  local folder = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
+  local file = io.open(folder .. "calc.js", "r")
+  if not file then return "" end
+  local text = file:read("*a")
+  file:close()
+  return text
+end
+
+local CALC = readCalc()
+
 card.STYLE = [[
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden;
@@ -56,6 +69,8 @@ local SCRIPT = [[
 
   const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
   const visible = () => rows.filter((row) => !row.classList.contains("hidden"));
+  // The calculator row, first in the list: shown while the search is a whole sum.
+  const calc = typeof omvCalc === "function" ? document.querySelector(".row.calc") : null;
 
   // Called from Hammerspoon to update a row's hint while the card stays open.
   window.omvSetHint = (id, value) => {
@@ -70,9 +85,16 @@ local SCRIPT = [[
   function draw() {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     rows.forEach((row) => {
+      if (row === calc) return;
       const haystack = ((row.dataset.group || "") + " " + (row.dataset.keywords || "") + " " + row.textContent).toLowerCase();
       row.classList.toggle("hidden", !words.every((word) => haystack.includes(word)));
     });
+    if (calc) {
+      const result = omvCalc(query);
+      calc.classList.toggle("hidden", result === null);
+      calc.dataset.id = "calc:" + (result || "");
+      calc.querySelector(".label").textContent = "= " + (result || "");
+    }
     groups.forEach((group) => {
       const name = group.dataset.name;
       group.classList.toggle("hidden", !rows.some((row) => row.dataset.group === name && !row.classList.contains("hidden")));
@@ -212,13 +234,20 @@ end
 -- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group, note } },
 --            selected = 1, compact = false, columns = 1, input = false, hint = "" }
 -- An input card sends what was typed on Enter, and shows its hint under the prompt.
+-- A card with calc = true, such as the palette, works out a typed sum in its first row.
 function card.html(screen)
   local rows = rowsWithHeaders(screen.rows)
+  local calc = screen.calc and CALC ~= ""
+  if calc then
+    table.insert(rows, 1, '<div class="row calc hidden" data-id="calc:"><span class=icon>󰃬</span>'
+      .. "<span class=label></span><span class=hint>Enter copies</span></div>")
+  end
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
-    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. ">"
+    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (calc and " data-calc" or "") .. ">"
     .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span><span class=caret></span></div>'
     .. rowsOpen(screen.columns) .. table.concat(rows) .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
+    .. (calc and ("<script>" .. CALC .. "</script>") or "")
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 
