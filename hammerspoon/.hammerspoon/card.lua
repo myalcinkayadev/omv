@@ -166,7 +166,11 @@ local SCRIPT = [[
     if (files.innerHTML !== "") { files.innerHTML = ""; collect(); }
     if (query.trim().length < FILES_MIN_LENGTH) return;
     const asked = query;
-    filesTimer = setTimeout(() => send("files", asked), FILES_PAUSE_MS);
+    filesTimer = setTimeout(() => {
+      // Shown until the answer replaces it; the next keystroke clears it like old results.
+      files.innerHTML = '<div class=note><span class=label>Searching files…</span></div>';
+      send("files", asked);
+    }, FILES_PAUSE_MS);
   }
 
   // Called from Hammerspoon with the rows found for text. An answer for text that's no longer
@@ -292,9 +296,12 @@ function card.html(screen)
 end
 
 -- The JavaScript that hands an open palette the file rows found for text. The page drops
--- them when other text is typed by then.
+-- them when other text is typed by then. With none found it says so, so a search that ran
+-- and found nothing doesn't look like one that never ran.
 function card.filesCall(text, fileRows)
-  return "omvFiles(" .. card.jsString(text) .. "," .. card.jsString(table.concat(rowsWithHeaders(fileRows))) .. ");"
+  local html = #fileRows > 0 and table.concat(rowsWithHeaders(fileRows))
+    or rowHtml({ note = true, icon = "󰈔", label = "No recent files" })
+  return "omvFiles(" .. card.jsString(text) .. "," .. card.jsString(html) .. ");"
 end
 
 -- The large card for Pomodoro breaks: the whole screen dims, and a wider card sits in

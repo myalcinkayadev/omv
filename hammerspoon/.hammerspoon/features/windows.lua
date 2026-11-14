@@ -95,7 +95,7 @@ function feature.toggle()
   hs.task.new(shell.AEROSPACE, function(code, output)
     local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY)
     shell.show("windows", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
-      card.html({ prompt = "Windows, apps, commands…", rows = rows, compact = true, calc = true, files = fileSearch }), onPaletteMessage)
+      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = true, files = fileSearch }), onPaletteMessage)
   end, { "list-windows", "--all", "--format", windows.FORMAT }):start()
 end
 

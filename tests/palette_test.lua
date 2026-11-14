@@ -61,5 +61,9 @@ local fileRow = { id = "file:/x/a<b&\"c.md", icon = "f", label = 'a<b&"c.md', hi
 check.that("should hand the page rows for the text they were found for", card.filesCall("rea", { fileRow }):find('omvFiles("rea",', 1, true) == 1)
 check.that("should escape a file name in the rows it hands over", card.filesCall("rea", { fileRow }):find("a&lt;b&amp;&quot;c.md", 1, true) ~= nil)
 check.that("should hand over no raw markup from a file name", card.filesCall("rea", { fileRow }):find("a<b", 1, true) == nil)
+check.that("should mention files in the prompt when file search is on", palette.prompt(true) == "Windows, apps, commands, files…")
+check.that("should keep the prompt when file search is off", palette.prompt(false) == "Windows, apps, commands…")
+check.that("should hand the page a no-files line when nothing was found", card.filesCall("abc", {}):find("No recent files", 1, true) ~= nil)
+check.that("should hand the page no no-files line when files were found", card.filesCall("rea", { fileRow }):find("No recent files", 1, true) == nil)
 
 check.finish()

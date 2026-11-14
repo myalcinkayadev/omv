@@ -59,6 +59,11 @@ function palette.rows(windowsOutput, apps, launchers, ownKey)
   return rows
 end
 
+-- The prompt names what can be found: files too while file search is on.
+function palette.prompt(fileSearch)
+  return fileSearch and "Windows, apps, commands, files…" or "Windows, apps, commands…"
+end
+
 -- What a row does: "window", id; "app", path; "file", path; "calc", the result to copy; or
 -- "command", index. nil for an unknown row.
 function palette.parse(id)
