@@ -12,7 +12,12 @@ if [ "${SENDER:-}" = mouse.clicked ]; then
 fi
 
 # hs -c prints any extension Hammerspoon loads before the answer, so only the last line counts.
-power=$(hs -c 'return omvBluetoothPower()' 2>/dev/null | tail -n 1)
+# hs can wait for Hammerspoon forever, as during a reload, and -t doesn't stop it: one left
+# behind on each tick piles up until Hammerspoon stops answering every hs. So it gets
+# OMV_HS_SECONDS, 10 unless a test sets it; perl's alarm outlives exec, and macOS has no
+# timeout command.
+seconds=${OMV_HS_SECONDS:-10}
+power=$(perl -e "alarm $seconds; exec @ARGV" hs -c 'return omvBluetoothPower()' 2>/dev/null | tail -n 1)
 
 case $power in
   1) glyph='\363\260\202\257' ;;
