@@ -117,6 +117,12 @@ class ConfigContract(unittest.TestCase):
             load_aerospace()["after-startup-command"],
         )
 
+    def test_should_start_the_bar_only_when_none_is_running(self) -> None:
+        self.assertIn(
+            "exec-and-forget pgrep -x sketchybar >/dev/null || /opt/homebrew/bin/sketchybar",
+            load_aerospace()["after-startup-command"],
+        )
+
     def test_should_use_new_window_script_for_option_enter(self) -> None:
         self.assertIn(
             "exec-and-forget $HOME/.config/ghostty/new-window.sh",
