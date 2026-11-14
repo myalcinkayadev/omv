@@ -236,7 +236,7 @@ counts_only_bars() {
 reports_missing_hs() {
   complete_setup
   rm "$STUB_DIR/hs"
-  expect_report "✗ the hs command isn't installed — fix: run hs.ipc.cliInstall() in Hammerspoon's console"
+  expect_report "✗ the hs command isn't installed — fix: reload Hammerspoon"
 }
 
 fix_keeps_hammerspoon_without_hs() {

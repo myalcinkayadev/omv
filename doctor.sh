@@ -179,7 +179,7 @@ check_running() {
   # A Hammerspoon that isn't running is named above; asking it would only add a fix that does nothing.
   pgrep -x Hammerspoon >/dev/null 2>&1 || return 0
   if ! command -v hs >/dev/null 2>&1; then
-    problem "the hs command isn't installed" "run hs.ipc.cliInstall() in Hammerspoon's console"
+    problem "the hs command isn't installed" "reload Hammerspoon"
     return 0
   fi
   answer=$(hs_answer 'return type(omvToggleSystemMenu)')

@@ -117,6 +117,11 @@ class ConfigContract(unittest.TestCase):
             load_aerospace()["after-startup-command"],
         )
 
+    def test_should_install_the_hs_command_after_loading_ipc(self) -> None:
+        init = HAMMERSPOON.read_text()
+        self.assertIn("hs.ipc.cliInstall(", init)
+        self.assertLess(init.index('require("hs.ipc")'), init.index("hs.ipc.cliInstall("))
+
     def test_should_start_the_bar_only_when_none_is_running(self) -> None:
         self.assertIn(
             "exec-and-forget pgrep -x sketchybar >/dev/null || /opt/homebrew/bin/sketchybar",

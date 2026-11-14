@@ -4,6 +4,9 @@
 -- Each card lives in features/, sharing the floating card from shell.lua. This file only
 -- loads them, in the order they start, and binds every key in one place.
 require("hs.ipc")
+-- Installs the hs command when it's missing, as on a fresh Mac: the bar and doctor.sh need it.
+local hsPrefix = require("hscli").prefix(hs.fs.attributes("/opt/homebrew") ~= nil)
+if not hs.ipc.cliStatus(hsPrefix, true) then hs.ipc.cliInstall(hsPrefix, true) end
 
 hs.menuIcon(false)
 hs.dockIcon(false)

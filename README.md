@@ -548,6 +548,7 @@ Then, by hand:
 3. If the menu bar still shows, set System Settings > Menu Bar > "Automatically hide and show the menu bar" to Always.
 4. In System Settings > Displays > Arrange, leave each display a free bottom corner, because AeroSpace hides windows there.
 5. Open SwipeAeroSpace, grant Accessibility, and turn on Launch at Login in its Settings.
+6. Open Hammerspoon. On its first start it installs the `hs` command, into `/opt/homebrew/bin` on Apple Silicon or `/usr/local/bin` otherwise, which the bar's clicks and `doctor.sh` use to reach it.
 
 When you pull new files later, run `./install.sh` again. Stow links files one by one, so a new file has no link until then.
 
