@@ -91,7 +91,9 @@ local SCRIPT = [[
   function draw() {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     rows.forEach((row) => {
-      if (row === calc) return;
+      // Spotlight already matched file rows to the typed text, ignoring accents, and they're
+      // cleared whenever the text changes, so filtering them again would only hide matches.
+      if (row === calc || (files && files.contains(row))) return;
       const haystack = ((row.dataset.group || "") + " " + (row.dataset.keywords || "") + " " + row.textContent).toLowerCase();
       row.classList.toggle("hidden", !words.every((word) => haystack.includes(word)));
     });
