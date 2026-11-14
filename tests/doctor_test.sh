@@ -24,17 +24,23 @@ echo "defaults \$*" >> "$CALL_LOG"
 [ "\$1" = read ] || exit 0
 awk -v d="\$2" -v k="\$3" '\$1 == d && \$2 == k { print \$3; found = 1 } END { exit !found }' "$SANDBOX/defaults"
 STUB
-  # ps lists $SANDBOX/ps, lines of "<pid> <etime> <command>": no process by default.
+  # ps lists $SANDBOX/ps, lines of "<pid> <etime> <command>", then one bar per pid in
+  # $SANDBOX/bars.
   cat > "$STUB_DIR/ps" <<STUB
 #!/bin/sh
 cat "$SANDBOX/ps"
+while read -r pid; do echo "\$pid 1-00:00:00 /opt/homebrew/bin/sketchybar"; done < "$SANDBOX/bars"
 STUB
   : > "$SANDBOX/ps"
-  # pgrep finds every process; sketchybar's pids come from $SANDBOX/bars, one bar by default.
+  # pgrep finds every process. Like the real one, -x sketchybar matches the bars in
+  # $SANDBOX/bars (one by default) and any sketchybar command, such as --query, in $SANDBOX/ps.
   cat > "$STUB_DIR/pgrep" <<STUB
 #!/bin/sh
 echo "pgrep \$*" >> "$CALL_LOG"
-[ "\$*" = "-x sketchybar" ] && cat "$SANDBOX/bars"
+if [ "\$*" = "-x sketchybar" ]; then
+  cat "$SANDBOX/bars"
+  awk '{ name = \$3; sub(".*/", "", name); if (name == "sketchybar") print \$1 }' "$SANDBOX/ps"
+fi
 [ "\$*" = "-x Hammerspoon" ] && [ -f "$SANDBOX/no-hammerspoon" ] && exit 1
 exit 0
 STUB
@@ -221,6 +227,41 @@ refuses_unknown_argument() {
   [[ $errors == *'usage: ./doctor.sh [--fix]'* ]] || fail "expected usage, got: $errors"
 }
 
+counts_only_bars() {
+  complete_setup
+  stuck_call '502 00:30 sketchybar --query bar'
+  expect_no_report 'SketchyBars are running'
+}
+
+reports_missing_hs() {
+  complete_setup
+  rm "$STUB_DIR/hs"
+  expect_report "✗ the hs command isn't installed — fix: run hs.ipc.cliInstall() in Hammerspoon's console"
+}
+
+fix_keeps_hammerspoon_without_hs() {
+  complete_setup
+  rm "$STUB_DIR/hs"
+  report --fix >/dev/null
+  assert_not_called '^pkill -x Hammerspoon'
+}
+
+skips_answer_when_not_running() {
+  complete_setup
+  hang_hammerspoon
+  touch "$SANDBOX/no-hammerspoon"
+  expect_no_report "isn't answering"
+}
+
+# Hammerspoon busy with something slow: the first question times out, the next is answered.
+fix_waits_for_busy_hammerspoon() {
+  complete_setup
+  printf '#!/bin/sh\n[ -f "%s/asked" ] && { echo function; exit 0; }\ntouch "%s/asked"\nexec sleep 120\n' "$SANDBOX" "$SANDBOX" > "$STUB_DIR/hs"
+  HS_LIMIT=1
+  report --fix >/dev/null
+  assert_not_called '^pkill -x Hammerspoon'
+}
+
 kills_nothing_without_fix() {
   complete_setup
   stuck_call '4242 01:01 hs -c x'
@@ -404,6 +445,11 @@ run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
+run_case 'should not count a sketchybar command as a bar' counts_only_bars
+run_case 'should report a missing hs command' reports_missing_hs
+run_case 'should not restart Hammerspoon with --fix when hs is missing' fix_keeps_hammerspoon_without_hs
+run_case "should not say Hammerspoon isn't answering when it isn't running" skips_answer_when_not_running
+run_case 'should leave a busy Hammerspoon alone with --fix when it answers on the second try' fix_waits_for_busy_hammerspoon
 run_case 'should kill stuck hs calls with --fix' fix_kills_stuck_calls
 run_case 'should say it killed the stuck calls with --fix' fix_says_killed
 run_case 'should stop every bar with --fix when two run' fix_stops_bars

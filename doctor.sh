@@ -153,8 +153,14 @@ stuck_hs_pids() {
   done < <(ps -axo pid=,etime=,command=)
 }
 
+# Only the bar itself, which runs with no arguments: sketchybar --set, --query and --trigger
+# are commands that share its name, and one blocked in a jam would look like a second bar.
 bar_count() {
-  pgrep -x sketchybar 2>/dev/null | wc -l | tr -d ' '
+  local pid etime command count=0
+  while read -r pid etime command; do
+    [[ $command == sketchybar || $command == */sketchybar ]] && count=$((count + 1))
+  done < <(ps -axo pid=,etime=,command=)
+  echo "$count"
 }
 
 check_running() {
@@ -170,6 +176,12 @@ check_running() {
   bars=$(bar_count)
   if [ "$bars" -gt 1 ]; then problem "$bars SketchyBars are running" './doctor.sh --fix'
   elif [ "$bars" -eq 1 ]; then ok 'one SketchyBar'; fi
+  # A Hammerspoon that isn't running is named above; asking it would only add a fix that does nothing.
+  pgrep -x Hammerspoon >/dev/null 2>&1 || return 0
+  if ! command -v hs >/dev/null 2>&1; then
+    problem "the hs command isn't installed" "run hs.ipc.cliInstall() in Hammerspoon's console"
+    return 0
+  fi
   answer=$(hs_answer 'return type(omvToggleSystemMenu)')
   if [ -z "$answer" ]; then
     problem "Hammerspoon isn't answering" './doctor.sh --fix'
@@ -268,6 +280,11 @@ hammerspoon_silent() {
   [ -z "$(hs_answer 'return 1')" ]
 }
 
+# Silent twice in a row: once may only be Hammerspoon busy with something slow.
+hammerspoon_jammed() {
+  command -v hs >/dev/null 2>&1 && hammerspoon_silent && hammerspoon_silent
+}
+
 fix_running() {
   section 'Fixing'
   local stuck
@@ -283,7 +300,7 @@ fix_running() {
     echo '  → restarted SketchyBar'
   fi
   # Only a Hammerspoon that's running but silent: one that isn't running is reported, not opened.
-  if hammerspoon_running && hammerspoon_silent; then
+  if hammerspoon_running && hammerspoon_jammed; then
     pkill -x Hammerspoon
     wait_until_not 5 hammerspoon_running
     open -a Hammerspoon
