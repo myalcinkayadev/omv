@@ -53,5 +53,7 @@ check.that("should keep a decimal result as typed", select(2, palette.parse("cal
 check.that("should mark a card that asks for the calculator", card.html({ prompt = "x", rows = {}, calc = true }):find("data-calc", 1, true) ~= nil)
 check.that("should add the calculator to a card that asks for it", card.html({ prompt = "x", rows = {}, calc = true }):find("function omvCalc", 1, true) ~= nil)
 check.that("should leave the calculator out of other cards", card.html({ prompt = "x", rows = {} }):find("function omvCalc", 1, true) == nil)
+check.that("should read a file row's path", select(2, palette.parse("file:/a b/c.md")) == "/a b/c.md")
+check.that("should read a file row as file", palette.parse("file:/a b/c.md") == "file")
 
 check.finish()
