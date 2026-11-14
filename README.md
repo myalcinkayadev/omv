@@ -104,6 +104,14 @@ Option+Space opens one list, like Omarchy's: every open window with its app and 
 
 Type a sum, such as `2*35`, and its result shows first: `= 70`. Enter copies it. It reads `+ - * / ^`, `%` for the remainder, brackets and decimals. A lone number, or a name with digits such as `omv-14`, filters as usual.
 
+**File search** is off unless you turn it on. Add this line to `~/.config/omv/flags`, then reload Hammerspoon:
+
+```
+file-search=on
+```
+
+Then, after 3 or more typed characters and a short pause, the palette lists up to 20 files whose names contain the text, under Files: files you opened or changed in the last 30 days, in your home folder, leaving out `Library`, `node_modules` and `.git`. Enter opens one with its app. It asks Spotlight (`mdfind`) in the background, one search at a time, so typing never waits for it. While the flag is off, no search runs.
+
 <img src="docs/windows.png" alt="The palette: open windows with their app and workspace, then apps, then omv commands with their keys" width="720">
 
 ## Key list

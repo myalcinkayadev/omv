@@ -55,5 +55,11 @@ check.that("should add the calculator to a card that asks for it", card.html({ p
 check.that("should leave the calculator out of other cards", card.html({ prompt = "x", rows = {} }):find("function omvCalc", 1, true) == nil)
 check.that("should read a file row's path", select(2, palette.parse("file:/a b/c.md")) == "/a b/c.md")
 check.that("should read a file row as file", palette.parse("file:/a b/c.md") == "file")
+check.that("should let a card ask for files when it allows them", card.html({ prompt = "x", rows = {}, files = true }):find("<body[^>]* data%-files") ~= nil)
+check.that("should keep other cards from asking for files", card.html({ prompt = "x", rows = {} }):find("<body[^>]* data%-files") == nil)
+local fileRow = { id = "file:/x/a<b&\"c.md", icon = "f", label = 'a<b&"c.md', hint = "~/x", group = "Files" }
+check.that("should hand the page rows for the text they were found for", card.filesCall("rea", { fileRow }):find('omvFiles("rea",', 1, true) == 1)
+check.that("should escape a file name in the rows it hands over", card.filesCall("rea", { fileRow }):find("a&lt;b&amp;&quot;c.md", 1, true) ~= nil)
+check.that("should hand over no raw markup from a file name", card.filesCall("rea", { fileRow }):find("a<b", 1, true) == nil)
 
 check.finish()

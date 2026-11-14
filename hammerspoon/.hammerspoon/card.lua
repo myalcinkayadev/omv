@@ -55,8 +55,9 @@ card.STYLE = [[
 ]]
 
 local SCRIPT = [[
-  const rows = Array.from(document.querySelectorAll(".row"));
-  const groups = Array.from(document.querySelectorAll(".group"));
+  // Read again when file search adds rows.
+  let rows = Array.from(document.querySelectorAll(".row"));
+  let groups = Array.from(document.querySelectorAll(".group"));
   // Side by side columns: Left and Right move between columns, and only Enter picks.
   const inColumns = document.querySelector(".rows.columns") !== null;
   const prompt = document.querySelector(".prompt");
@@ -71,6 +72,11 @@ local SCRIPT = [[
   const visible = () => rows.filter((row) => !row.classList.contains("hidden"));
   // The calculator row, first in the list: shown while the search is a whole sum.
   const calc = typeof omvCalc === "function" ? document.querySelector(".row.calc") : null;
+  // File search, on in a card with data-files: after a pause in typing, Hammerspoon is asked
+  // for files matching the text, and its answer fills .files through omvFiles.
+  const files = document.body.dataset.files !== undefined ? document.querySelector(".files") : null;
+  const FILES_PAUSE_MS = 300, FILES_MIN_LENGTH = 3;
+  let filesTimer = null;
 
   // Called from Hammerspoon to update a row's hint while the card stays open.
   window.omvSetHint = (id, value) => {
@@ -132,8 +138,51 @@ local SCRIPT = [[
     if (row) send("choose", row.dataset.id);
   }
 
+  // WebKit reports a move when the card appears under a still pointer, so hover only
+  // selects once the pointer has really moved.
+  let pointer = null;
+  function wire(row) {
+    row.addEventListener("mousemove", (event) => {
+      const at = event.screenX + "," + event.screenY;
+      if (pointer === null || pointer === at) { pointer = at; return; }
+      pointer = at;
+      selected = visible().indexOf(row);
+      draw();
+    });
+    row.addEventListener("click", () => pick(row));
+  }
+
+  function collect() {
+    rows = Array.from(document.querySelectorAll(".row"));
+    groups = Array.from(document.querySelectorAll(".group"));
+  }
+
+  // The files found for older text go at once; new ones are asked for after a pause.
+  function askFiles() {
+    if (!files) return;
+    clearTimeout(filesTimer);
+    if (files.innerHTML !== "") { files.innerHTML = ""; collect(); }
+    if (query.trim().length < FILES_MIN_LENGTH) return;
+    const asked = query;
+    filesTimer = setTimeout(() => send("files", asked), FILES_PAUSE_MS);
+  }
+
+  // Called from Hammerspoon with the rows found for text. An answer for text that's no longer
+  // typed is dropped. The selected row stays selected when it's still shown.
+  window.omvFiles = (asked, html) => {
+    if (!files || asked !== query) return;
+    const was = visible()[selected];
+    files.innerHTML = html;
+    collect();
+    files.querySelectorAll(".row").forEach(wire);
+    draw();
+    const at = visible().indexOf(was);
+    if (at >= 0 && at !== selected) { selected = at; draw(); }
+  };
+
   document.addEventListener("keydown", (event) => {
     const shown = visible();
+    const typed = query;
     if (event.key === "Escape") return send("close");
     // A card that asks for Tab, such as the process card switching its sort, hears it.
     if (event.key === "Tab" && document.body.dataset.tab !== undefined) { event.preventDefault(); return send("tab"); }
@@ -148,22 +197,11 @@ local SCRIPT = [[
     else if (event.key.length === 1 && !event.metaKey && !event.ctrlKey) { query += event.key; selected = 0; }
     else return;
     event.preventDefault();
+    if (query !== typed) askFiles();
     draw();
   });
 
-  // WebKit reports a move when the card appears under a still pointer, so hover only
-  // selects once the pointer has really moved.
-  let pointer = null;
-  rows.forEach((row) => {
-    row.addEventListener("mousemove", (event) => {
-      const at = event.screenX + "," + event.screenY;
-      if (pointer === null || pointer === at) { pointer = at; return; }
-      pointer = at;
-      selected = visible().indexOf(row);
-      draw();
-    });
-    row.addEventListener("click", () => pick(row));
-  });
+  rows.forEach(wire);
 
   draw();
 ]]
@@ -244,11 +282,17 @@ function card.html(screen)
   end
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
-    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (calc and " data-calc" or "") .. ">"
+    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "") .. ">"
     .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span><span class=caret></span></div>'
-    .. rowsOpen(screen.columns) .. table.concat(rows) .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
+    .. rowsOpen(screen.columns) .. table.concat(rows) .. (screen.files and "<div class=files></div>" or "") .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
     .. (calc and ("<script>" .. CALC .. "</script>") or "")
     .. "<script>" .. SCRIPT .. "</script></body>"
+end
+
+-- The JavaScript that hands an open palette the file rows found for text. The page drops
+-- them when other text is typed by then.
+function card.filesCall(text, fileRows)
+  return "omvFiles(" .. card.jsString(text) .. "," .. card.jsString(table.concat(rowsWithHeaders(fileRows))) .. ");"
 end
 
 -- The large card for Pomodoro breaks: the whole screen dims, and a wider card sits in
