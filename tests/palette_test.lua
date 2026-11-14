@@ -63,7 +63,8 @@ check.that("should escape a file name in the rows it hands over", card.filesCall
 check.that("should hand over no raw markup from a file name", card.filesCall("rea", { fileRow }):find("a<b", 1, true) == nil)
 check.that("should mention files in the prompt when file search is on", palette.prompt(true) == "Windows, apps, commands, files…")
 check.that("should keep the prompt when file search is off", palette.prompt(false) == "Windows, apps, commands…")
-check.that("should hand the page a no-files line when nothing was found", card.filesCall("abc", {}):find("No recent files", 1, true) ~= nil)
-check.that("should hand the page no no-files line when files were found", card.filesCall("rea", { fileRow }):find("No recent files", 1, true) == nil)
+check.that("should hand the page no rows when no files were found", card.filesCall("abc", {}) == 'omvFiles("abc","");')
+check.that("should put the searching sign in the prompt when a card allows files", card.html({ prompt = "x", rows = {}, files = true }):find('<div class="prompt empty"[^>]*>.-<span class=busy>') ~= nil)
+check.that("should leave the searching sign out of other cards", card.html({ prompt = "x", rows = {} }):find("<span class=busy>", 1, true) == nil)
 
 check.finish()

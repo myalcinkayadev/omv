@@ -27,6 +27,9 @@ card.STYLE = [[
   body { border: 2px solid #8d8d8d; padding: 14px; display: flex; flex-direction: column; }
   .prompt { font-size: 17px; padding: 6px 10px 12px; white-space: pre; }
   .prompt.empty::before { content: attr(data-prompt); }
+  /* File search's sign, at the prompt's right while Spotlight is asked. */
+  .busy { float: right; font-size: 13px; color: #7a7a7a; margin-top: 3px; visibility: hidden; }
+  .busy.on { visibility: visible; }
   .caret { display: inline-block; width: 8px; height: 18px; background: #fff; vertical-align: -3px; margin-left: 1px; }
   .rows { overflow-y: auto; flex: 1; scrollbar-width: none; }
   .rows::-webkit-scrollbar { display: none; }
@@ -76,7 +79,11 @@ local SCRIPT = [[
   // for files matching the text, and its answer fills .files through omvFiles.
   const files = document.body.dataset.files !== undefined ? document.querySelector(".files") : null;
   const FILES_PAUSE_MS = 300, FILES_MIN_LENGTH = 3;
+  const busy = document.querySelector(".busy");
   let filesTimer = null;
+  // Files are on their way for the typed text: "No matches" waits for them, so it never
+  // shows while a search may still find something.
+  let filesPending = false;
 
   // Called from Hammerspoon to update a row's hint while the card stays open.
   window.omvSetHint = (id, value) => {
@@ -114,7 +121,7 @@ local SCRIPT = [[
       shown[selected].classList.add("selected");
       shown[selected].scrollIntoView({ block: "nearest" });
     }
-    none.style.display = shown.length && !takesInput ? "none" : "block";
+    none.style.display = (shown.length && !takesInput) || filesPending ? "none" : "block";
     text.textContent = query;
     prompt.classList.toggle("empty", query === "");
   }
@@ -164,11 +171,12 @@ local SCRIPT = [[
     if (!files) return;
     clearTimeout(filesTimer);
     if (files.innerHTML !== "") { files.innerHTML = ""; collect(); }
-    if (query.trim().length < FILES_MIN_LENGTH) return;
+    busy.classList.remove("on");
+    filesPending = query.trim().length >= FILES_MIN_LENGTH;
+    if (!filesPending) return;
     const asked = query;
     filesTimer = setTimeout(() => {
-      // Shown until the answer replaces it; the next keystroke clears it like old results.
-      files.innerHTML = '<div class=note><span class=label>Searching files…</span></div>';
+      busy.classList.add("on");
       send("files", asked);
     }, FILES_PAUSE_MS);
   }
@@ -177,6 +185,8 @@ local SCRIPT = [[
   // typed is dropped. The selected row stays selected when it's still shown.
   window.omvFiles = (asked, html) => {
     if (!files || asked !== query) return;
+    filesPending = false;
+    busy.classList.remove("on");
     const was = visible()[selected];
     files.innerHTML = html;
     collect();
@@ -289,19 +299,18 @@ function card.html(screen)
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
     .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "") .. ">"
-    .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span><span class=caret></span></div>'
+    .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span><span class=caret></span>'
+    .. (screen.files and "<span class=busy>Searching files…</span>" or "") .. "</div>"
     .. rowsOpen(screen.columns) .. table.concat(rows) .. (screen.files and "<div class=files></div>" or "") .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
     .. (calc and ("<script>" .. CALC .. "</script>") or "")
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 
 -- The JavaScript that hands an open palette the file rows found for text. The page drops
--- them when other text is typed by then. With none found it says so, so a search that ran
--- and found nothing doesn't look like one that never ran.
+-- them when other text is typed by then. With none found, the card's one "No matches" says
+-- so, once nothing else matches either.
 function card.filesCall(text, fileRows)
-  local html = #fileRows > 0 and table.concat(rowsWithHeaders(fileRows))
-    or rowHtml({ note = true, icon = "󰈔", label = "No recent files" })
-  return "omvFiles(" .. card.jsString(text) .. "," .. card.jsString(html) .. ");"
+  return "omvFiles(" .. card.jsString(text) .. "," .. card.jsString(table.concat(rowsWithHeaders(fileRows))) .. ");"
 end
 
 -- The large card for Pomodoro breaks: the whole screen dims, and a wider card sits in

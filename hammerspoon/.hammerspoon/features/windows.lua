@@ -27,16 +27,22 @@ local function stopSearch()
   search = nil
 end
 
--- The page drops an answer for text that's no longer typed; a closed palette gets none.
+local function answer(text, rows)
+  if shell.isOpen("windows") then shell.view():evaluateJavaScript(card.filesCall(text, rows)) end
+end
+
+-- Every request gets an answer, empty when there's nothing to search for or mdfind fails,
+-- since the page holds "No matches" until it has one. A search stopped for newer text
+-- isn't answered: the newer one will be. The page drops an answer for text no longer typed.
 local function findFiles(text)
   stopSearch()
   local arguments = files.arguments(text, shell.HOME)
-  if not arguments then return end
+  if not arguments then return answer(text, {}) end
   local task
   task = hs.task.new(MDFIND, function(code, output)
-    if search == task then search = nil end
-    if code ~= 0 or not shell.isOpen("windows") then return end
-    shell.view():evaluateJavaScript(card.filesCall(text, files.rows(output, shell.HOME)))
+    if search ~= task then return end
+    search = nil
+    answer(text, code == 0 and files.rows(output, shell.HOME) or {})
   end, arguments)
   search = task
   task:start()
