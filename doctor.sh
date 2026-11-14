@@ -11,6 +11,10 @@ readonly PACKAGES=(aerospace sketchybar claude swipeaerospace ghostty nvim btop 
 readonly APPLICATIONS=${OMV_APPLICATIONS:-/Applications}
 readonly FONT_DIRS=${OMV_FONT_DIRS:-$HOME/Library/Fonts:/Library/Fonts}
 readonly USAGE_MARKER='# omv bar usage'
+# hs -c can wait for Hammerspoon forever, so the doctor gives it this long. 5 unless a test sets it.
+readonly HS_SECONDS=${OMV_HS_SECONDS:-5}
+# An hs -c call running longer than this is stuck: a normal one answers in under a second.
+readonly STUCK_SECONDS=60
 
 problems=0
 
@@ -114,14 +118,56 @@ check_links() {
   done
 }
 
+# The last line of what Hammerspoon answers to the Lua in $1, or nothing when it doesn't
+# answer in time. hs -c prints any extension Hammerspoon loads before the answer.
+# perl's alarm outlives exec, and macOS has no timeout command.
+hs_answer() {
+  perl -e "alarm $HS_SECONDS; exec @ARGV" hs -c "$1" 2>/dev/null | tail -n 1
+}
+
+# ps's etime, [[dd-]hh:]mm:ss, in seconds.
+etime_seconds() {
+  local days=0 rest=$1 hours=0 minutes seconds
+  if [[ $rest == *-* ]]; then days=${rest%%-*}; rest=${rest#*-}; fi
+  IFS=: read -r -a parts <<< "$rest"
+  if [ "${#parts[@]}" -eq 3 ]; then hours=$((10#${parts[0]})); parts=("${parts[@]:1}"); fi
+  minutes=$((10#${parts[0]})) seconds=$((10#${parts[1]}))
+  echo $((((10#$days * 24 + hours) * 60 + minutes) * 60 + seconds))
+}
+
+# One pid per hs -c call that has run longer than STUCK_SECONDS. An hs run by hand, as a
+# REPL, isn't a -c call, so it's left alone.
+stuck_hs_pids() {
+  local pid etime command
+  while read -r pid etime command; do
+    [[ $command == "hs -c"* ]] || continue
+    [ "$(etime_seconds "$etime")" -gt "$STUCK_SECONDS" ] && echo "$pid"
+  done < <(ps -axo pid=,etime=,command=)
+}
+
+bar_count() {
+  pgrep -x sketchybar 2>/dev/null | wc -l | tr -d ' '
+}
+
 check_running() {
   section 'Running'
-  local process
+  local process stuck bars answer
   for process in AeroSpace sketchybar borders Hammerspoon SwipeAeroSpace; do
     if pgrep -x "$process" >/dev/null 2>&1; then ok "$process"; else problem "$process is not running" "open it, or log out and back in"; fi
   done
-  if [ "$(hs -c 'return type(omvToggleSystemMenu)' 2>/dev/null | tail -n 1)" = function ]; then
-    ok 'Hammerspoon has the omv config loaded'
+  # Stuck calls are counted before the doctor asks Hammerspoon anything, so its own call never counts.
+  stuck=$(stuck_hs_pids | wc -l | tr -d ' ')
+  if [ "$stuck" -eq 0 ]; then ok 'no stuck hs calls'
+  elif [ "$stuck" -eq 1 ]; then problem '1 stuck hs call' './doctor.sh --fix'
+  else problem "$stuck stuck hs calls" './doctor.sh --fix'; fi
+  bars=$(bar_count)
+  if [ "$bars" -gt 1 ]; then problem "$bars SketchyBars are running" './doctor.sh --fix'
+  elif [ "$bars" -eq 1 ]; then ok 'one SketchyBar'; fi
+  answer=$(hs_answer 'return type(omvToggleSystemMenu)')
+  if [ -z "$answer" ]; then
+    problem "Hammerspoon isn't answering" './doctor.sh --fix'
+  elif [ "$answer" = function ]; then
+    ok 'Hammerspoon answers, with the omv config loaded'
   else
     problem "Hammerspoon hasn't loaded the omv config" "reload Hammerspoon, then read its console"
   fi

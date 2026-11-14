@@ -24,7 +24,23 @@ echo "defaults \$*" >> "$CALL_LOG"
 [ "\$1" = read ] || exit 0
 awk -v d="\$2" -v k="\$3" '\$1 == d && \$2 == k { print \$3; found = 1 } END { exit !found }' "$SANDBOX/defaults"
 STUB
-  chmod +x "$STUB_DIR/hs" "$STUB_DIR/defaults"
+  # ps lists $SANDBOX/ps, lines of "<pid> <etime> <command>": no process by default.
+  cat > "$STUB_DIR/ps" <<STUB
+#!/bin/sh
+cat "$SANDBOX/ps"
+STUB
+  : > "$SANDBOX/ps"
+  # pgrep finds every process; sketchybar's pids come from $SANDBOX/bars, one bar by default.
+  cat > "$STUB_DIR/pgrep" <<STUB
+#!/bin/sh
+echo "pgrep \$*" >> "$CALL_LOG"
+[ "\$*" = "-x sketchybar" ] && cat "$SANDBOX/bars"
+exit 0
+STUB
+  echo 500 > "$SANDBOX/bars"
+  stub kill
+  stub nohup
+  chmod +x "$STUB_DIR/hs" "$STUB_DIR/defaults" "$STUB_DIR/ps" "$STUB_DIR/pgrep"
   cat > "$SANDBOX/defaults" <<'EOF'
 NSGlobalDomain _HIHideMenuBar 1
 com.apple.spaces spans-displays 1
@@ -46,18 +62,85 @@ EOF
   : > "$CALL_LOG"
 }
 
+# Hammerspoon gets 1 second here, so a test of a hanging hs is quick.
 doctor() {
-  run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" "$DOCTOR"
+  run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" OMV_HS_SECONDS=1 "$DOCTOR" "$@"
 }
 
 report() {
-  doctor 2>&1 || true
+  doctor "$@" 2>&1 || true
 }
 
 expect_report() {
   local output
   output=$(report)
   [[ $output == *"$1"* ]] || fail "expected '$1' in:"$'\n'"$output"
+}
+
+expect_no_report() {
+  local output
+  output=$(report)
+  [[ $output != *"$1"* ]] || fail "didn't expect '$1' in:"$'\n'"$output"
+}
+
+hang_hammerspoon() {
+  printf '#!/bin/sh\necho "hs $*" >> "%s"\nexec sleep 30\n' "$CALL_LOG" > "$STUB_DIR/hs"
+}
+
+stuck_call() {
+  printf '%s\n' "$1" >> "$SANDBOX/ps"
+}
+
+reports_hanging_hammerspoon() {
+  complete_setup
+  hang_hammerspoon
+  local started=$SECONDS
+  expect_report "✗ Hammerspoon isn't answering — fix: ./doctor.sh --fix"
+  [ $((SECONDS - started)) -le 15 ] || fail "took $((SECONDS - started))s"
+}
+
+reports_stuck_call() {
+  complete_setup
+  stuck_call '4242 01:01 hs -c return omvBluetoothPower()'
+  expect_report '✗ 1 stuck hs call — fix: ./doctor.sh --fix'
+}
+
+reads_age_in_days() {
+  complete_setup
+  stuck_call '4242 1-02:03:04 hs -c x'
+  expect_report '✗ 1 stuck hs call'
+}
+
+reads_age_in_hours() {
+  complete_setup
+  stuck_call '4242 02:03:04 hs -c x'
+  expect_report '✗ 1 stuck hs call'
+}
+
+ignores_young_call() {
+  complete_setup
+  stuck_call '4242 00:59 hs -c x'
+  expect_no_report '✗ 1 stuck hs call'
+}
+
+ignores_hs_by_hand() {
+  complete_setup
+  stuck_call '4242 05:00 hs'
+  expect_no_report '✗ 1 stuck hs call'
+}
+
+reports_two_bars() {
+  complete_setup
+  printf '500\n501\n' > "$SANDBOX/bars"
+  expect_report '✗ 2 SketchyBars are running — fix: ./doctor.sh --fix'
+}
+
+kills_nothing_without_fix() {
+  complete_setup
+  stuck_call '4242 01:01 hs -c x'
+  printf '500\n501\n' > "$SANDBOX/bars"
+  doctor >/dev/null 2>&1 || true
+  assert_not_called '^(kill|pkill|nohup|open)'
 }
 
 reports_missing_codex_hooks() {
@@ -227,6 +310,14 @@ changes_nothing() {
 }
 
 run_case 'should pass every check on a complete setup' passes_complete_setup
+run_case "should flag Hammerspoon when hs hangs" reports_hanging_hammerspoon
+run_case 'should flag a stuck hs call when one runs over 60s' reports_stuck_call
+run_case "should read a stuck call's age in days" reads_age_in_days
+run_case "should read a stuck call's age in hours" reads_age_in_hours
+run_case 'should ignore an hs call under 60s old' ignores_young_call
+run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
+run_case 'should flag two bars when two run' reports_two_bars
+run_case 'should kill nothing without --fix' kills_nothing_without_fix
 run_case 'should say there are no problems on a complete setup' reports_no_problems
 run_case 'should exit non-zero when a check fails' fails_on_problem
 run_case 'should name a missing tool and how to install it' names_missing_tool
