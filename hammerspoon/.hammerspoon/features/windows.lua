@@ -27,6 +27,11 @@ local function stopSearch()
   search = nil
 end
 
+-- A file's change time, for ranking the newest first; nil when it can't be read.
+local function modified(path)
+  return hs.fs.attributes(path, "modification")
+end
+
 local function answer(text, rows)
   if shell.isOpen("windows") then shell.view():evaluateJavaScript(card.filesCall(text, rows)) end
 end
@@ -42,7 +47,7 @@ local function findFiles(text)
   task = hs.task.new(MDFIND, function(code, output)
     if search ~= task then return end
     search = nil
-    answer(text, code == 0 and files.rows(output, shell.HOME) or {})
+    answer(text, code == 0 and files.rows(output, shell.HOME, text, modified) or {})
   end, arguments)
   search = task
   task:start()
