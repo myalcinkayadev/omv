@@ -63,6 +63,8 @@ function omvCalc(text) {
   }
   if (at !== tokens.length || operators === 0 || !Number.isFinite(value)) return null;
   if (Number.isSafeInteger(value)) return String(value);
+  // Past 2^53 the digits are no longer exact, so a huge result shows rounded, as 1.15e+18.
+  if (Math.abs(value) > Number.MAX_SAFE_INTEGER) return value.toPrecision(10).replace(/\.?0+e/, "e");
   return String(Number(value.toPrecision(10)));
 }
 
