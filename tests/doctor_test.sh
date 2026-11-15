@@ -262,6 +262,58 @@ fix_waits_for_busy_hammerspoon() {
   assert_not_called '^pkill -x Hammerspoon'
 }
 
+# kill stops what it's told to, unless the pid is listed in $SANDBOX/stubborn: then only -9 does.
+stub_kill() {
+  cat > "$STUB_DIR/kill" <<STUB
+#!/bin/sh
+echo "kill \$*" >> "$CALL_LOG"
+force=0
+[ "\$1" = -9 ] && { force=1; shift; }
+for pid in "\$@"; do
+  if [ "\$force" = 1 ] || ! grep -qx "\$pid" "$SANDBOX/stubborn" 2>/dev/null; then
+    grep -v "^\$pid " "$SANDBOX/ps" > "$SANDBOX/ps.new"; mv "$SANDBOX/ps.new" "$SANDBOX/ps"
+  fi
+done
+STUB
+  chmod +x "$STUB_DIR/kill"
+}
+
+fix_force_kills_stubborn_call() {
+  complete_setup
+  stub_kill
+  stuck_call '4242 01:01 hs -c x'
+  echo 4242 > "$SANDBOX/stubborn"
+  report --fix >/dev/null
+  assert_called '^kill -9 4242$'
+}
+
+fix_spares_stopped_call() {
+  complete_setup
+  stub_kill
+  stuck_call '4242 01:01 hs -c x'
+  report --fix >/dev/null
+  assert_not_called '^kill -9'
+}
+
+fix_force_kills_stubborn_bar() {
+  complete_setup
+  printf '500\n501\n' > "$SANDBOX/bars"
+  # The bars outlive a plain pkill; only -9 stops them.
+  cat > "$STUB_DIR/pkill" <<STUB
+#!/bin/sh
+echo "pkill \$*" >> "$CALL_LOG"
+[ "\$*" = "-9 -x sketchybar" ] && : > "$SANDBOX/bars"
+exit 0
+STUB
+  report --fix >/dev/null
+  assert_called '^pkill -9 -x sketchybar$'
+}
+
+fix_says_nothing_to_fix() {
+  complete_setup
+  [[ $(report --fix) == *$'Fixing\n  ✓ nothing to fix'* ]] || fail 'expected nothing to fix under Fixing'
+}
+
 kills_nothing_without_fix() {
   complete_setup
   stuck_call '4242 01:01 hs -c x'
@@ -445,6 +497,10 @@ run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
+run_case 'should force-kill a stuck hs call that ignores the stop signal' fix_force_kills_stubborn_call
+run_case 'should not force-kill a stuck hs call that stopped' fix_spares_stopped_call
+run_case 'should force-kill a bar that ignores the stop signal' fix_force_kills_stubborn_bar
+run_case "should say there's nothing to fix on a healthy setup" fix_says_nothing_to_fix
 run_case 'should not count a sketchybar command as a bar' counts_only_bars
 run_case 'should report a missing hs command' reports_missing_hs
 run_case 'should not restart Hammerspoon with --fix when hs is missing' fix_keeps_hammerspoon_without_hs

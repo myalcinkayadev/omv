@@ -285,28 +285,41 @@ hammerspoon_jammed() {
   command -v hs >/dev/null 2>&1 && hammerspoon_silent && hammerspoon_silent
 }
 
+has_stuck_calls() {
+  [ -n "$(stuck_hs_pids)" ]
+}
+
 fix_running() {
   section 'Fixing'
-  local stuck
+  local stuck fixed=0
   stuck=$(stuck_hs_pids)
   if [ -n "$stuck" ]; then
     printf '%s\n' "$stuck" | xargs kill 2>/dev/null
+    wait_until_not 2 has_stuck_calls
+    # A call that ignores the stop signal is killed outright.
+    stuck_hs_pids | xargs kill -9 2>/dev/null
     echo "  → killed $(stuck_calls "$(printf '%s\n' "$stuck" | wc -l | tr -d ' ')")"
+    fixed=1
   fi
   if [ "$(bar_count)" -gt 1 ]; then
     pkill -x sketchybar
     wait_until_not 5 has_bars
+    has_bars && pkill -9 -x sketchybar
     nohup sketchybar >/dev/null 2>&1 &
     echo '  → restarted SketchyBar'
+    fixed=1
   fi
   # Only a Hammerspoon that's running but silent: one that isn't running is reported, not opened.
   if hammerspoon_running && hammerspoon_jammed; then
     pkill -x Hammerspoon
     wait_until_not 5 hammerspoon_running
+    hammerspoon_running && pkill -9 -x Hammerspoon
     open -a Hammerspoon
     wait_until_not 10 hammerspoon_silent
     echo '  → reopened Hammerspoon'
+    fixed=1
   fi
+  [ "$fixed" -eq 1 ] || ok 'nothing to fix'
 }
 
 print_manual_checks() {

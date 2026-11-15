@@ -6,7 +6,12 @@
 require("hs.ipc")
 -- Installs the hs command when it's missing, as on a fresh Mac: the bar and doctor.sh need it.
 local hsPrefix = require("hscli").prefix(hs.fs.attributes("/opt/homebrew") ~= nil)
-if not hs.ipc.cliStatus(hsPrefix, true) then hs.ipc.cliInstall(hsPrefix, true) end
+local hsStatus = hs.ipc.cliStatus(hsPrefix, true)
+if require("hscli").needsInstall(hsStatus, hs.fs.attributes(hsPrefix .. "/bin/hs") ~= nil) then
+  -- A link that leads nowhere has to go before a new one can be made.
+  if hsStatus == "broken" then hs.ipc.cliUninstall(hsPrefix, true) end
+  hs.ipc.cliInstall(hsPrefix, true)
+end
 
 hs.menuIcon(false)
 hs.dockIcon(false)
