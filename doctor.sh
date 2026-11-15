@@ -10,7 +10,8 @@ set -uo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly REPO_DIR
-readonly PACKAGES=(aerospace sketchybar claude swipeaerospace ghostty nvim btop hammerspoon)
+# shellcheck source=lib/packages.sh
+source "$REPO_DIR/lib/packages.sh"
 readonly APPLICATIONS=${OMV_APPLICATIONS:-/Applications}
 readonly FONT_DIRS=${OMV_FONT_DIRS:-$HOME/Library/Fonts:/Library/Fonts}
 readonly USAGE_MARKER='# omv bar usage'
@@ -91,9 +92,18 @@ check_fonts() {
 
 # A package is linked when each of its files, seen from $HOME, is the file in this repo.
 # That holds for a link per file and for a whole folder linked at once.
+# Where install.sh links omv: OMV_BIN_DIR for tests, otherwise Homebrew's commands folder.
+omv_link() {
+  local folder=${OMV_BIN_DIR:-}
+  [ -n "$folder" ] || folder=$(brew --prefix 2>/dev/null || true)/bin
+  echo "$folder/omv"
+}
+
 check_links() {
   section 'Links'
   local package file relative missing broken directory link
+  if [ "$(readlink "$(omv_link)" 2>/dev/null)" = "$REPO_DIR/bin/omv" ]; then ok 'omv command'
+  else problem "the omv command isn't linked" './install.sh'; fi
   for package in "${PACKAGES[@]}"; do
     missing=()
     while IFS= read -r file; do

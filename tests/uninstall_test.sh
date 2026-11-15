@@ -209,6 +209,22 @@ skips_quit_when_not_running() {
   assert_not_called '^osascript'
 }
 
+removes_omv_link() {
+  link_everything
+  mkdir -p "$SANDBOX/prefix/bin"
+  ln -s "$REPO_DIR/bin/omv" "$SANDBOX/prefix/bin/omv"
+  run_in_sandbox OMV_BIN_DIR="$SANDBOX/prefix/bin" "$UNINSTALL" >/dev/null
+  [ ! -L "$SANDBOX/prefix/bin/omv" ] || fail 'omv link left behind'
+}
+
+keeps_other_omv() {
+  link_everything
+  mkdir -p "$SANDBOX/prefix/bin"
+  echo mine > "$SANDBOX/prefix/bin/omv"
+  run_in_sandbox OMV_BIN_DIR="$SANDBOX/prefix/bin" "$UNINSTALL" >/dev/null
+  [ -f "$SANDBOX/prefix/bin/omv" ] || fail "removed an omv that isn't this repo's"
+}
+
 run_case 'should unstow only aerospace, sketchybar, claude and swipeaerospace when run without flags' unstows_only_this_setup
 run_case 'should keep the ghostty, nvim, btop and hammerspoon links when run without flags' keeps_older_tool_links
 run_case 'should remove the aerospace and sketchybar links when run without flags' removes_this_setups_links
@@ -239,4 +255,6 @@ run_case 'should remove the keep-awake pid file when uninstalling' removes_keep_
 run_case 'should remove the Codex hooks' removes_codex_hooks
 run_case 'should unlink the OpenCode plugin' unlinks_opencode_plugin
 run_case "should remove the theme's files" removes_theme_files
+run_case 'should remove the omv command' removes_omv_link
+run_case "should keep an omv command that isn't this repo's" keeps_other_omv
 finish

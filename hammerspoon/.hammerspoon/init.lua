@@ -37,7 +37,7 @@ local quickNote = require("features.note")
 local clipboardHistory = require("features.clipboard")
 local bluetoothCard = require("features.bluetooth")
 -- Loaded now, not only from the system menu, so the chosen theme colours the cards from the start.
-require("features.theme")
+local themes = require("features.theme")
 local hungryProcesses = require("features.procs")
 local diskCard = require("features.disk")
 local lyricsWindow = require("features.lyrics")
@@ -151,6 +151,8 @@ omvToggleFocus = later(focusMode.toggle)
 omvToggleTailscale = later(tailscalePanel.toggle)
 omvToggleNightLight = later(nightLight.toggle)
 omvToggleMic = later(mic.toggle)
+-- omv theme <name>: later() takes no arguments, so the name is carried here.
+omvSetTheme = function(name) hs.timer.doAfter(0, function() themes.set(name) end) end
 
 -- SketchyBar's config calls this when it starts: a restarted bar has lost the items set
 -- here, and they are only sent again when they change.

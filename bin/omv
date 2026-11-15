@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# omv: one command for the whole setup.
+#   omv install [--dry-run] [--no-apps]   install everything, then run migrations
+#   omv update                            pull, install, relink, migrate, reload, then check
+#   omv update --undo                     go back to the commit before the last update
+#   omv doctor [--fix]                    check the setup, and clear a jam with --fix
+#   omv uninstall [...]                   remove omv (see uninstall.sh)
+#   omv flags [<name> on|off]             list feature flags, or turn one on or off
+#   omv theme [<name>]                    list themes, or switch to one
+#   omv version                           the commit omv is at
+
+set -euo pipefail
+
+REPO_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)
+readonly REPO_DIR
+# shellcheck source=../lib/packages.sh
+source "$REPO_DIR/lib/packages.sh"
+readonly STATE_DIR=$HOME/.local/state/omv
+readonly UPDATE_FROM=$STATE_DIR/update-from
+readonly MIGRATIONS_DONE=$STATE_DIR/migrations
+readonly FLAGS_FILE=$HOME/.config/omv/flags
+readonly FLAG_DEFAULTS=$REPO_DIR/hammerspoon/.hammerspoon/flags.lua
+readonly THEMES_DIR=$HOME/.local/share/omv/themes
+
+usage() {
+  sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  echo "usage: omv <install|update|doctor|uninstall|flags|theme|version>" >&2
+  exit 2
+}
+
+die() {
+  echo "omv: $1" >&2
+  exit 1
+}
+
+git_repo() {
+  git -C "$REPO_DIR" "$@"
+}
+
+# Update and undo move the clone, so they only run on a clean main: nothing of yours is lost.
+require_clean_main() {
+  [ -z "$(git_repo status --porcelain)" ] || die "the omv folder has changes; commit or stash them first"
+  [ "$(git_repo rev-parse --abbrev-ref HEAD)" = main ] || die "omv is not on main; switch to main first"
+}
+
+# hs -t ends the client cleanly when Hammerspoon is busy, rather than leaving it waiting.
+reload_hammerspoon() {
+  hs -t 3 -c 'hs.timer.doAfter(0.2, hs.reload)' >/dev/null 2>&1 || true
+}
+
+# Stow links files one by one, so a new file has no link until this runs again.
+relink() {
+  mkdir -p "$HOME/.claude"
+  stow --dir="$REPO_DIR" --target="$HOME" --restow "${PACKAGES[@]}"
+}
+
+reload() {
+  reload_hammerspoon
+  sketchybar --reload >/dev/null 2>&1 || true
+}
+
+# Each script in migrations/ runs once, in name order (they start with a timestamp). One that
+# fails stops the rest and isn't recorded, so the next update tries it again.
+run_migrations() {
+  local script name
+  mkdir -p "$STATE_DIR"
+  touch "$MIGRATIONS_DONE"
+  for script in "$REPO_DIR"/migrations/*.sh; do
+    [ -e "$script" ] || continue
+    name=$(basename "$script" .sh)
+    grep -qx "$name" "$MIGRATIONS_DONE" && continue
+    bash "$script" || die "migration $name failed; fix it, then run omv update again"
+    echo "$name" >> "$MIGRATIONS_DONE"
+  done
+}
+
+update() {
+  require_clean_main
+  mkdir -p "$STATE_DIR"
+  git_repo rev-parse HEAD > "$UPDATE_FROM"
+  git_repo pull --ff-only
+  brew bundle --file="$REPO_DIR/Brewfile"
+  relink
+  run_migrations
+  reload
+  "$REPO_DIR/doctor.sh" && return 0
+  echo >&2
+  echo "Something isn't right after the update. To go back: omv update --undo" >&2
+  exit 1
+}
+
+undo() {
+  [ -s "$UPDATE_FROM" ] || die "no update to undo"
+  require_clean_main
+  git_repo reset --hard "$(cat "$UPDATE_FROM")"
+  rm -f "$UPDATE_FROM"
+  relink
+  reload
+}
+
+flag_names() {
+  sed -n -E 's/^[[:space:]]*\["([a-z-]+)"\][[:space:]]*=[[:space:]]*(true|false).*/\1 \2/p' "$FLAG_DEFAULTS"
+}
+
+flag_value() {
+  local name=$1 default=$2 line
+  line=$(grep -E "^[[:space:]]*$name[[:space:]]*=" "$FLAGS_FILE" 2>/dev/null | tail -n 1 || true)
+  case $(echo "${line#*=}" | tr -d '[:space:]') in
+    on) echo on ;;
+    off) echo off ;;
+    *) [ "$default" = true ] && echo on || echo off ;;
+  esac
+}
+
+flags() {
+  local name default
+  if [ "$#" -eq 0 ]; then
+    while read -r name default; do echo "$name  $(flag_value "$name" "$default")"; done < <(flag_names)
+    return 0
+  fi
+  [ "$#" -eq 2 ] || usage
+  flag_names | grep -q "^$1 " || die "no flag named $1; omv flags lists them"
+  case $2 in on | off) ;; *) die "a flag is on or off, not $2" ;; esac
+  mkdir -p "$(dirname "$FLAGS_FILE")"
+  touch "$FLAGS_FILE"
+  if grep -qE "^[[:space:]]*$1[[:space:]]*=" "$FLAGS_FILE"; then
+    sed -i '' -E "s/^[[:space:]]*$1[[:space:]]*=.*/$1=$2/" "$FLAGS_FILE"
+  else
+    echo "$1=$2" >> "$FLAGS_FILE"
+  fi
+  reload_hammerspoon
+  echo "$1 is $2"
+}
+
+theme_names() {
+  local folder
+  {
+    echo vantablack
+    for folder in "$THEMES_DIR"/*/; do
+      [ -f "$folder/colors.toml" ] && basename "$folder"
+    done
+  } | sort -u
+}
+
+theme() {
+  if [ "$#" -eq 0 ]; then theme_names; return 0; fi
+  theme_names | grep -qx "$1" || die "no theme named $1; omv theme lists them"
+  hs -t 5 -c "omvSetTheme(\"$1\")" >/dev/null || die "Hammerspoon didn't answer; is it running?"
+  echo "theme: $1"
+}
+
+command=${1:-}
+[ -n "$command" ] || usage
+shift
+case $command in
+  install) "$REPO_DIR/install.sh" "$@" && run_migrations ;;
+  update)
+    case ${1:-} in
+      '') update ;;
+      --undo) undo ;;
+      *) usage ;;
+    esac
+    ;;
+  doctor) "$REPO_DIR/doctor.sh" "$@" ;;
+  uninstall) "$REPO_DIR/uninstall.sh" "$@" ;;
+  flags) flags "$@" ;;
+  theme) theme "$@" ;;
+  version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;
+  *) usage ;;
+esac

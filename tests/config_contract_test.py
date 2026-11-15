@@ -117,6 +117,9 @@ class ConfigContract(unittest.TestCase):
             load_aerospace()["after-startup-command"],
         )
 
+    def test_should_let_omv_theme_set_a_theme_in_hammerspoon(self) -> None:
+        self.assertIn("omvSetTheme = ", HAMMERSPOON.read_text())
+
     def test_should_install_the_hs_command_after_loading_ipc(self) -> None:
         init = HAMMERSPOON.read_text()
         self.assertIn("hs.ipc.cliInstall(", init)

@@ -63,6 +63,12 @@ trusts_taps_before_installing() {
   [ "$last_trust" -lt "$first_install" ] || fail 'a tap was trusted after brew install ran'
 }
 
+links_omv_command() {
+  use_real_stow
+  run_in_sandbox OMV_BIN_DIR="$SANDBOX/prefix/bin" "$INSTALL" >/dev/null
+  [ "$(readlink "$SANDBOX/prefix/bin/omv")" = "$REPO_DIR/bin/omv" ] || fail "omv link: $(readlink "$SANDBOX/prefix/bin/omv")"
+}
+
 links_all_packages() {
   use_real_stow
   run_in_sandbox "$INSTALL" >/dev/null
@@ -197,6 +203,7 @@ run_case 'should exit non-zero when brew is missing' fails_without_brew
 run_case 'should exit non-zero when stow is missing' fails_without_stow
 run_case 'should trust the taps before installing' trusts_taps_before_installing
 run_case 'should link all eight packages when the target is clean' links_all_packages
+run_case 'should put the omv command on PATH' links_omv_command
 run_case 'should keep .claude a real directory when linking' keeps_claude_dir_real
 run_case 'should add the usage line when installing' adds_usage_line
 run_case "should add the waiting hooks to Claude's settings when installing" adds_waiting_hooks

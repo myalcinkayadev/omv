@@ -9,7 +9,8 @@ set -euo pipefail
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 readonly REPO_DIR
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap smudge/smudge)
-readonly PACKAGES=(aerospace sketchybar claude swipeaerospace ghostty nvim btop hammerspoon)
+# shellcheck source=lib/packages.sh
+source "$REPO_DIR/lib/packages.sh"
 
 DRY_RUN=false
 APPS=true
@@ -59,6 +60,26 @@ link_configs() {
   exit 1
 }
 
+# omv goes where Homebrew puts its commands, which is on PATH. OMV_BIN_DIR replaces that
+# folder, for tests. Without either, omv is still there as bin/omv in this repo.
+link_omv() {
+  local folder=${OMV_BIN_DIR:-}
+  if [ -z "$folder" ] && $DRY_RUN; then
+    echo "would run: ln -sfn $REPO_DIR/bin/omv \$(brew --prefix)/bin/omv"
+    return 0
+  fi
+  if [ -z "$folder" ]; then
+    folder=$(brew --prefix 2>/dev/null || true)
+    [ -n "$folder" ] && folder=$folder/bin
+  fi
+  if [ -z "$folder" ]; then
+    echo "install.sh: couldn't find Homebrew's folder, so omv isn't on PATH; run $REPO_DIR/bin/omv" >&2
+    return 0
+  fi
+  step mkdir -p "$folder"
+  step ln -sfn "$REPO_DIR/bin/omv" "$folder/omv"
+}
+
 # Codex, OpenCode and pi report their sessions to the bar too, each only when it's set up
 # here. Their plugin folders are made first, so Stow links the file, not the folder.
 link_agents() {
@@ -101,7 +122,7 @@ Installed. These steps are yours:
   5. Open SwipeAeroSpace, grant Accessibility, and turn on Launch at Login in
      its Settings.
 
-Then run ./doctor.sh to check that everything is in place.
+Then run omv doctor to check that everything is in place.
 EOF
 }
 
@@ -110,6 +131,7 @@ install_tools
 # The Brewfile installs Stow, so it's only needed from here on.
 $DRY_RUN || require_command stow
 link_configs
+link_omv
 step "$REPO_DIR/claude-usage.sh" add
 step "$REPO_DIR/claude-hooks.sh" add
 link_agents

@@ -69,6 +69,18 @@ unlink_configs() {
   if [ -L "$HOME/.pi/agent/extensions/omv-agent-state.ts" ]; then stow --dir="$REPO_DIR" --target="$HOME" -D pi; fi
 }
 
+# Only an omv that leads to this repo: another one isn't ours to remove.
+remove_omv_command() {
+  local folder=${OMV_BIN_DIR:-} link
+  if [ -z "$folder" ]; then
+    folder=$(brew --prefix 2>/dev/null || true)
+    [ -n "$folder" ] && folder=$folder/bin
+  fi
+  [ -n "$folder" ] || return 0
+  link=$folder/omv
+  if [ -L "$link" ] && [ "$(readlink "$link")" = "$REPO_DIR/bin/omv" ]; then rm "$link"; fi
+}
+
 reset_macos_settings() {
   defaults delete NSGlobalDomain _HIHideMenuBar 2>/dev/null
   defaults delete com.apple.spaces spans-displays 2>/dev/null
@@ -122,6 +134,7 @@ quit_apps
 stop_keep_awake
 remove_claude_usage
 unlink_configs
+remove_omv_command
 reset_macos_settings
 remove_tools
 print_remaining_steps

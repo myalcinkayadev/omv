@@ -62,6 +62,12 @@ local function apply(name)
   hs.task.new(shell.SKETCHYBAR, nil, { "--reload" }):start()
 end
 
+-- Switches to a theme by name, as omv theme <name> does. An unknown name changes nothing.
+function feature.set(name)
+  if name ~= "vantablack" and not hs.fs.attributes(THEMES .. "/" .. tostring(name) .. "/colors.toml") then return end
+  apply(name)
+end
+
 local function sync()
   shell.close()
   shell.alert("Getting Omarchy's themes…", 2)

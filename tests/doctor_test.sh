@@ -75,6 +75,8 @@ EOF
   run_in_sandbox stow --no-folding --dir="$REPO_DIR" --target="$HOME_DIR" $ALL_PACKAGES
   printf 'input=$(cat)\nprintf x | "$HOME/.claude/bar-usage.sh" & # omv bar usage\n' > "$HOME_DIR/.claude/statusline-wrapper.sh"
   printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"$HOME/.claude/claude-waiting.sh wait"}]}]}}' > "$HOME_DIR/.claude/settings.json"
+  mkdir -p "$SANDBOX/prefix/bin"
+  ln -s "$REPO_DIR/bin/omv" "$SANDBOX/prefix/bin/omv"
   : > "$CALL_LOG"
 }
 
@@ -84,7 +86,7 @@ EOF
 HS_LIMIT=60
 
 doctor() {
-  run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" OMV_HS_SECONDS="$HS_LIMIT" "$DOCTOR" "$@"
+  run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" OMV_HS_SECONDS="$HS_LIMIT" OMV_BIN_DIR="$SANDBOX/prefix/bin" "$DOCTOR" "$@"
 }
 
 report() {
@@ -314,6 +316,12 @@ fix_says_nothing_to_fix() {
   [[ $(report --fix) == *$'Fixing\n  ✓ nothing to fix'* ]] || fail 'expected nothing to fix under Fixing'
 }
 
+reports_missing_omv() {
+  complete_setup
+  rm "$SANDBOX/prefix/bin/omv"
+  expect_report "✗ the omv command isn't linked — fix: ./install.sh"
+}
+
 kills_nothing_without_fix() {
   complete_setup
   stuck_call '4242 01:01 hs -c x'
@@ -497,6 +505,7 @@ run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
+run_case "should report the omv command when it isn't linked" reports_missing_omv
 run_case 'should force-kill a stuck hs call that ignores the stop signal' fix_force_kills_stubborn_call
 run_case 'should not force-kill a stuck hs call that stopped' fix_spares_stopped_call
 run_case 'should force-kill a bar that ignores the stop signal' fix_force_kills_stubborn_bar
