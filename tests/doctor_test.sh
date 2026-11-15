@@ -316,6 +316,12 @@ fix_says_nothing_to_fix() {
   [[ $(report --fix) == *$'Fixing\n  ✓ nothing to fix'* ]] || fail 'expected nothing to fix under Fixing'
 }
 
+accepts_omv_link_by_another_path() {
+  complete_setup
+  ln -sfn "$REPO_DIR/bin/../bin/omv" "$SANDBOX/prefix/bin/omv"
+  expect_report '✓ omv command'
+}
+
 reports_missing_omv() {
   complete_setup
   rm "$SANDBOX/prefix/bin/omv"
@@ -506,6 +512,7 @@ run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
 run_case "should report the omv command when it isn't linked" reports_missing_omv
+run_case 'should accept an omv link that reaches this repo another way' accepts_omv_link_by_another_path
 run_case 'should force-kill a stuck hs call that ignores the stop signal' fix_force_kills_stubborn_call
 run_case 'should not force-kill a stuck hs call that stopped' fix_spares_stopped_call
 run_case 'should force-kill a bar that ignores the stop signal' fix_force_kills_stubborn_bar

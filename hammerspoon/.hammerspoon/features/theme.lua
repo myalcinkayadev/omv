@@ -64,6 +64,7 @@ end
 
 -- Switches to a theme by name, as omv theme <name> does. An unknown name changes nothing.
 function feature.set(name)
+  if not theme.plainName(name) then return end
   if name ~= "vantablack" and not hs.fs.attributes(THEMES .. "/" .. tostring(name) .. "/colors.toml") then return end
   apply(name)
 end

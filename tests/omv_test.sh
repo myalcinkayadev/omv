@@ -30,7 +30,11 @@ case "\$*" in
   "status --porcelain") cat "$SANDBOX/dirty" ;;
   "rev-parse --abbrev-ref HEAD") cat "$SANDBOX/branch" ;;
   "rev-parse HEAD") cat "$SANDBOX/head" ;;
-  "pull --ff-only") echo bbb222 > "$SANDBOX/head" ;;
+  "pull --ff-only")
+    [ -f "$SANDBOX/pull-fails" ] && exit 1
+    [ -f "$SANDBOX/up-to-date" ] || echo bbb222 > "$SANDBOX/head"
+    [ -x "$SANDBOX/on-pull" ] && "$SANDBOX/on-pull"
+    ;;
   "reset --hard "*) echo "\$3" > "$SANDBOX/head" ;;
   "log -1 --format=%h %cs") echo "\$(cat "$SANDBOX/head") 2026-11-15" ;;
 esac
@@ -268,6 +272,86 @@ install_runs_migrations() {
   assert_called '^migration 202611150900-first$'
 }
 
+lists_themes_without_folder() {
+  make_repo
+  local output status=0
+  output=$(omv theme) || status=$?
+  [ "$status" = 0 ] || fail "exit $status"
+  [ "$output" = vantablack ] || fail "got: $output"
+}
+
+applies_vantablack_without_folder() {
+  make_repo
+  omv theme vantablack >/dev/null || fail 'vantablack refused'
+  assert_called 'omvSetTheme\("vantablack"\)'
+}
+
+rejects_theme_name_with_lua() {
+  make_repo
+  assert_exit_nonzero omv theme 'vantablack")os.execute("x")--\|.*'
+  assert_not_called 'omvSetTheme'
+}
+
+relinks_with_pulled_packages() {
+  make_repo
+  printf '#!/bin/sh\necho "readonly PACKAGES=(hammerspoon extra)" > "%s/lib/packages.sh"\n' "$REPO" > "$SANDBOX/on-pull"
+  chmod +x "$SANDBOX/on-pull"
+  omv update >/dev/null
+  assert_called '^stow .*--restow hammerspoon extra$'
+}
+
+offers_undo_when_install_fails_after_pull() {
+  make_repo
+  stub brew 1
+  local output
+  output=$(omv update 2>&1) && fail 'expected failure'
+  [[ $output == *'omv update --undo'* ]] || fail "expected the undo hint in: $output"
+}
+
+keeps_saved_commit_when_nothing_was_pulled() {
+  make_repo
+  omv update >/dev/null
+  touch "$SANDBOX/up-to-date"
+  omv update >/dev/null
+  [ "$(saved_commit)" = aaa111 ] || fail "saved: $(saved_commit)"
+}
+
+keeps_saved_commit_when_pull_fails() {
+  make_repo
+  omv update >/dev/null
+  touch "$SANDBOX/pull-fails"
+  omv update >/dev/null 2>&1 || true
+  [ "$(saved_commit)" = aaa111 ] || fail "saved: $(saved_commit)"
+}
+
+undo_refuses_after_new_commits() {
+  make_repo
+  omv update >/dev/null
+  echo ccc333 > "$SANDBOX/head"
+  assert_exit_nonzero omv update --undo
+  assert_not_called 'reset --hard'
+}
+
+undo_refuses_after_migrations() {
+  make_repo
+  add_migration 202611150900-first
+  omv update >/dev/null
+  assert_exit_nonzero omv update --undo
+  assert_not_called 'reset --hard'
+}
+
+dry_run_install_runs_no_migrations() {
+  make_repo
+  add_migration 202611150900-first
+  omv install --dry-run >/dev/null
+  assert_not_called '^migration'
+}
+
+rejects_flag_name_pattern() {
+  make_repo
+  assert_exit_nonzero omv flags file.search on
+}
+
 shows_version() {
   make_repo
   [ "$(omv version)" = 'omv aaa111 2026-11-15' ] || fail "got: $(omv version)"
@@ -304,5 +388,16 @@ run_case 'should list Vantablack once when it also has a folder' lists_vantablac
 run_case "should pass the doctor's arguments through" passes_doctor_arguments
 run_case "should pass uninstall's arguments through" passes_uninstall_arguments
 run_case 'should run migrations after installing' install_runs_migrations
+run_case 'should list Vantablack when there is no themes folder' lists_themes_without_folder
+run_case 'should apply Vantablack when there is no themes folder' applies_vantablack_without_folder
+run_case 'should refuse a theme name that holds Lua' rejects_theme_name_with_lua
+run_case "should relink with the pulled packages list" relinks_with_pulled_packages
+run_case 'should offer undo when installing fails after the pull' offers_undo_when_install_fails_after_pull
+run_case 'should keep the saved commit when nothing was pulled' keeps_saved_commit_when_nothing_was_pulled
+run_case 'should keep the saved commit when the pull fails' keeps_saved_commit_when_pull_fails
+run_case 'should refuse undo after commits made since the update' undo_refuses_after_new_commits
+run_case 'should refuse undo after an update that ran migrations' undo_refuses_after_migrations
+run_case 'should run no migrations on a dry-run install' dry_run_install_runs_no_migrations
+run_case 'should refuse a flag name that is a pattern' rejects_flag_name_pattern
 run_case 'should show the commit and its date' shows_version
 finish

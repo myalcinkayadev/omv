@@ -9,14 +9,19 @@
 #   omv theme [<name>]                    list themes, or switch to one
 #   omv version                           the commit omv is at
 
-set -euo pipefail
+# -E lets the ERR trap that offers undo reach into functions.
+set -eEuo pipefail
 
 REPO_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)
 readonly REPO_DIR
 # shellcheck source=../lib/packages.sh
 source "$REPO_DIR/lib/packages.sh"
 readonly STATE_DIR=$HOME/.local/state/omv
+# The last update that moved omv: the commit before it, the one after it, and the migrations
+# it ran. Kept until undo, so a retried or empty update doesn't lose the way back.
 readonly UPDATE_FROM=$STATE_DIR/update-from
+readonly UPDATE_TO=$STATE_DIR/update-to
+readonly UPDATE_MIGRATIONS=$STATE_DIR/update-migrations
 readonly MIGRATIONS_DONE=$STATE_DIR/migrations
 readonly FLAGS_FILE=$HOME/.config/omv/flags
 readonly FLAG_DEFAULTS=$REPO_DIR/hammerspoon/.hammerspoon/flags.lua
@@ -37,7 +42,7 @@ git_repo() {
   git -C "$REPO_DIR" "$@"
 }
 
-# Update and undo move the clone, so they only run on a clean main: nothing of yours is lost.
+# Update and undo move the clone, so they only run on a clean main.
 require_clean_main() {
   [ -z "$(git_repo status --porcelain)" ] || die "the omv folder has changes; commit or stash them first"
   [ "$(git_repo rev-parse --abbrev-ref HEAD)" = main ] || die "omv is not on main; switch to main first"
@@ -60,40 +65,70 @@ reload() {
 }
 
 # Each script in migrations/ runs once, in name order (they start with a timestamp). One that
-# fails stops the rest and isn't recorded, so the next update tries it again.
+# fails stops the rest and isn't recorded, so the next update tries it again. With a file
+# given, each one that ran is also listed there, so undo knows it can't reverse them.
 run_migrations() {
-  local script name
+  local script name also=${1:-}
   mkdir -p "$STATE_DIR"
   touch "$MIGRATIONS_DONE"
   for script in "$REPO_DIR"/migrations/*.sh; do
     [ -e "$script" ] || continue
     name=$(basename "$script" .sh)
-    grep -qx "$name" "$MIGRATIONS_DONE" && continue
+    grep -qxF -- "$name" "$MIGRATIONS_DONE" && continue
     bash "$script" || die "migration $name failed; fix it, then run omv update again"
     echo "$name" >> "$MIGRATIONS_DONE"
+    if [ -n "$also" ]; then echo "$name" >> "$also"; fi
   done
 }
 
+# Pulls, then hands over to the pulled omv, so the rest runs with the new packages list,
+# migrations and code. The way back is saved only when the pull moved omv.
 update() {
   require_clean_main
   mkdir -p "$STATE_DIR"
-  git_repo rev-parse HEAD > "$UPDATE_FROM"
-  git_repo pull --ff-only
+  local before after
+  before=$(git_repo rev-parse HEAD)
+  git_repo pull --ff-only || die "couldn't pull; nothing changed"
+  after=$(git_repo rev-parse HEAD)
+  if [ "$after" = "$before" ]; then exec "$REPO_DIR/bin/omv" update --finish; fi
+  echo "$before" > "$UPDATE_FROM"
+  echo "$after" > "$UPDATE_TO"
+  : > "$UPDATE_MIGRATIONS"
+  exec "$REPO_DIR/bin/omv" update --finish moved
+}
+
+offer_undo() {
+  echo >&2
+  echo "The update stopped partway. To go back: omv update --undo" >&2
+}
+
+finish_update() {
+  local record=
+  if [ "${1:-}" = moved ]; then record=$UPDATE_MIGRATIONS; fi
+  [ -s "$UPDATE_FROM" ] && trap offer_undo ERR
   brew bundle --file="$REPO_DIR/Brewfile"
   relink
-  run_migrations
+  run_migrations "$record"
   reload
+  trap - ERR
   "$REPO_DIR/doctor.sh" && return 0
   echo >&2
   echo "Something isn't right after the update. To go back: omv update --undo" >&2
   exit 1
 }
 
+# Back to the commit before the last update, only when nothing would be lost: no changes,
+# no commits since, and no migrations, which reset can't reverse.
 undo() {
   [ -s "$UPDATE_FROM" ] || die "no update to undo"
   require_clean_main
+  [ "$(git_repo rev-parse HEAD)" = "$(cat "$UPDATE_TO" 2>/dev/null)" ] \
+    || die "omv has commits since the update; undo would drop them"
+  if [ -s "$UPDATE_MIGRATIONS" ]; then
+    die "this update ran migrations ($(tr '\n' ' ' < "$UPDATE_MIGRATIONS")), which undo can't reverse"
+  fi
   git_repo reset --hard "$(cat "$UPDATE_FROM")"
-  rm -f "$UPDATE_FROM"
+  rm -f "$UPDATE_FROM" "$UPDATE_TO" "$UPDATE_MIGRATIONS"
   relink
   reload
 }
@@ -119,7 +154,8 @@ flags() {
     return 0
   fi
   [ "$#" -eq 2 ] || usage
-  flag_names | grep -q "^$1 " || die "no flag named $1; omv flags lists them"
+  [[ $1 =~ ^[a-z][a-z0-9-]*$ ]] && flag_names | cut -d' ' -f1 | grep -qxF -- "$1" \
+    || die "no flag named $1; omv flags lists them"
   case $2 in on | off) ;; *) die "a flag is on or off, not $2" ;; esac
   mkdir -p "$(dirname "$FLAGS_FILE")"
   touch "$FLAGS_FILE"
@@ -137,14 +173,15 @@ theme_names() {
   {
     echo vantablack
     for folder in "$THEMES_DIR"/*/; do
-      [ -f "$folder/colors.toml" ] && basename "$folder"
+      if [ -f "$folder/colors.toml" ]; then basename "$folder"; fi
     done
   } | sort -u
 }
 
 theme() {
   if [ "$#" -eq 0 ]; then theme_names; return 0; fi
-  theme_names | grep -qx "$1" || die "no theme named $1; omv theme lists them"
+  # A plain name only, as the theme card reads them: it goes into Lua below.
+  [[ $1 =~ ^[A-Za-z0-9-]+$ ]] && theme_names | grep -qxF -- "$1" || die "no theme named $1; omv theme lists them"
   hs -t 5 -c "omvSetTheme(\"$1\")" >/dev/null || die "Hammerspoon didn't answer; is it running?"
   echo "theme: $1"
 }
@@ -153,11 +190,18 @@ command=${1:-}
 [ -n "$command" ] || usage
 shift
 case $command in
-  install) "$REPO_DIR/install.sh" "$@" && run_migrations ;;
+  install)
+    "$REPO_DIR/install.sh" "$@"
+    case " $* " in
+      *" --dry-run "*) echo "would run: pending migrations" ;;
+      *) run_migrations ;;
+    esac
+    ;;
   update)
     case ${1:-} in
       '') update ;;
       --undo) undo ;;
+      --finish) finish_update "${2:-}" ;;
       *) usage ;;
     esac
     ;;

@@ -102,7 +102,7 @@ omv_link() {
 check_links() {
   section 'Links'
   local package file relative missing broken directory link
-  if [ "$(readlink "$(omv_link)" 2>/dev/null)" = "$REPO_DIR/bin/omv" ]; then ok 'omv command'
+  if [ -L "$(omv_link)" ] && [ "$(omv_link)" -ef "$REPO_DIR/bin/omv" ]; then ok 'omv command'
   else problem "the omv command isn't linked" './install.sh'; fi
   for package in "${PACKAGES[@]}"; do
     missing=()

@@ -78,7 +78,7 @@ remove_omv_command() {
   fi
   [ -n "$folder" ] || return 0
   link=$folder/omv
-  if [ -L "$link" ] && [ "$(readlink "$link")" = "$REPO_DIR/bin/omv" ]; then rm "$link"; fi
+  if [ -L "$link" ] && [ "$link" -ef "$REPO_DIR/bin/omv" ]; then rm "$link"; fi
 }
 
 reset_macos_settings() {

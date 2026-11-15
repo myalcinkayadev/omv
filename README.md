@@ -583,7 +583,9 @@ If the doctor finds a problem after an update, go back to where you were:
 omv update --undo
 ```
 
-Migrations are scripts in `migrations/` that run once each, in name order, for changes a pull alone can't make, such as moving a file. The ones that ran are listed in `~/.local/state/omv/migrations`.
+Undo refuses when it would lose something: changes in the omv folder, commits made since the update, or an update that ran a migration, which resetting the code can't reverse. An update that pulled nothing keeps the way back to the last one that did.
+
+Migrations are scripts in `migrations/` that run once each, in name order, for changes a pull alone can't make, such as moving a file. The ones that ran are listed in `~/.local/state/omv/migrations`; `migrations/README.md` has the rules for writing one.
 
 ### Doctor
 
