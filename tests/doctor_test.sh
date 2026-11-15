@@ -42,6 +42,7 @@ if [ "\$*" = "-x sketchybar" ]; then
   awk '{ name = \$3; sub(".*/", "", name); if (name == "sketchybar") print \$1 }' "$SANDBOX/ps"
 fi
 [ "\$*" = "-x Hammerspoon" ] && [ -f "$SANDBOX/no-hammerspoon" ] && exit 1
+[ "\$*" = "-x SwipeAeroSpace" ] && [ -f "$SANDBOX/no-swipe" ] && exit 1
 exit 0
 STUB
   echo 500 > "$SANDBOX/bars"
@@ -219,6 +220,27 @@ fix_opens_no_hammerspoon() {
   touch "$SANDBOX/no-hammerspoon"
   report --fix >/dev/null
   assert_not_called '^open -a Hammerspoon'
+}
+
+fix_opens_swipeaerospace() {
+  complete_setup
+  touch "$SANDBOX/no-swipe"
+  report --fix >/dev/null
+  assert_called '^open -a SwipeAeroSpace$'
+}
+
+fix_says_opened_swipeaerospace() {
+  complete_setup
+  touch "$SANDBOX/no-swipe"
+  [[ $(report --fix) == *'→ opened SwipeAeroSpace'* ]] || fail 'no opened line'
+}
+
+fix_opens_no_missing_swipeaerospace() {
+  complete_setup
+  touch "$SANDBOX/no-swipe"
+  rmdir "$SANDBOX/Applications/SwipeAeroSpace.app"
+  report --fix >/dev/null
+  assert_not_called '^open -a SwipeAeroSpace'
 }
 
 refuses_unknown_argument() {
@@ -511,6 +533,9 @@ run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
+run_case 'should open SwipeAeroSpace when --fix finds it not running' fix_opens_swipeaerospace
+run_case 'should say SwipeAeroSpace was opened when --fix opens it' fix_says_opened_swipeaerospace
+run_case "should not open SwipeAeroSpace when it isn't installed" fix_opens_no_missing_swipeaerospace
 run_case "should report the omv command when it isn't linked" reports_missing_omv
 run_case 'should accept an omv link that reaches this repo another way' accepts_omv_link_by_another_path
 run_case 'should force-kill a stuck hs call that ignores the stop signal' fix_force_kills_stubborn_call

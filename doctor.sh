@@ -2,7 +2,8 @@
 # Checks that the omv setup is healthy and says how to fix what isn't. Exits non-zero when a
 # check fails. Without --fix it only reads: it changes no setting, link or process.
 # --fix first clears a jam: it kills stuck hs calls, restarts SketchyBar when more than one
-# runs, and reopens Hammerspoon when it doesn't answer. Then it checks as usual.
+# runs, reopens Hammerspoon when it doesn't answer, and opens SwipeAeroSpace when it isn't
+# running. Then it checks as usual.
 # Usage: ./doctor.sh [--fix]
 # OMV_APPLICATIONS and OMV_FONT_DIRS replace /Applications and the font folders, for tests.
 
@@ -327,6 +328,13 @@ fix_running() {
     open -a Hammerspoon
     wait_until_not 10 hammerspoon_silent
     echo '  → reopened Hammerspoon'
+    fixed=1
+  fi
+  # SwipeAeroSpace quits without a trace when its permission is missing or it crashes; opening
+  # it again is safe. One that isn't installed is reported under Apps, not opened.
+  if ! pgrep -x SwipeAeroSpace >/dev/null 2>&1 && [ -d "$APPLICATIONS/SwipeAeroSpace.app" ]; then
+    open -a SwipeAeroSpace
+    echo '  → opened SwipeAeroSpace'
     fixed=1
   fi
   [ "$fixed" -eq 1 ] || ok 'nothing to fix'
