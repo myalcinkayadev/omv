@@ -106,14 +106,17 @@ finish_update() {
   local record=
   if [ "${1:-}" = moved ]; then record=$UPDATE_MIGRATIONS; fi
   [ -s "$UPDATE_FROM" ] && trap offer_undo ERR
-  brew bundle --file="$REPO_DIR/Brewfile"
+  # Installs what's missing and upgrades nothing else: undo can't take an upgrade back.
+  brew bundle --no-upgrade --file="$REPO_DIR/Brewfile"
   relink
   run_migrations "$record"
   reload
   trap - ERR
   "$REPO_DIR/doctor.sh" && return 0
   echo >&2
-  echo "Something isn't right after the update. To go back: omv update --undo" >&2
+  echo "Something isn't right after the update. To fix what can be fixed: omv doctor --fix" >&2
+  # Only when an update is saved: with none, undo has nowhere to go back to.
+  [ -s "$UPDATE_FROM" ] && echo "To go back: omv update --undo" >&2
   exit 1
 }
 

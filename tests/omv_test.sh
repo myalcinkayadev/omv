@@ -133,6 +133,29 @@ update_offers_undo_when_doctor_fails() {
   [[ $output == *'omv update --undo'* ]] || fail "expected the undo hint in: $output"
 }
 
+update_suggests_fix_when_doctor_fails() {
+  make_repo
+  echo 1 > "$SANDBOX/doctor-exit"
+  local output
+  output=$(omv update 2>&1) && fail 'expected failure'
+  [[ $output == *'omv doctor --fix'* ]] || fail "expected the fix hint in: $output"
+}
+
+update_offers_no_undo_without_saved_update() {
+  make_repo
+  touch "$SANDBOX/up-to-date"
+  echo 1 > "$SANDBOX/doctor-exit"
+  local output
+  output=$(omv update 2>&1) && fail 'expected failure'
+  [[ $output != *'omv update --undo'* ]] || fail "expected no undo hint in: $output"
+}
+
+update_installs_without_upgrading() {
+  make_repo
+  omv update >/dev/null
+  assert_called '^brew bundle --no-upgrade '
+}
+
 undo_resets_to_saved_commit() {
   make_repo
   omv update >/dev/null
@@ -368,6 +391,9 @@ run_case 'should reload Hammerspoon after updating' update_reloads_hammerspoon
 run_case 'should reload the bar after updating' update_reloads_bar
 run_case 'should run the doctor after updating' update_runs_doctor
 run_case 'should offer undo when the doctor fails after an update' update_offers_undo_when_doctor_fails
+run_case 'should suggest omv doctor --fix when the doctor fails after an update' update_suggests_fix_when_doctor_fails
+run_case 'should offer no undo when the doctor fails and no update is saved' update_offers_no_undo_without_saved_update
+run_case 'should install missing packages without upgrading others when updating' update_installs_without_upgrading
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree
