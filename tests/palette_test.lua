@@ -66,5 +66,11 @@ check.that("should keep the prompt when file search is off", palette.prompt(fals
 check.that("should hand the page no rows when no files were found", card.filesCall("abc", {}) == 'omvFiles("abc","");')
 check.that("should put the searching sign in the prompt when a card allows files", card.html({ prompt = "x", rows = {}, files = true }):find('<div class="prompt empty"[^>]*>.-<span class=busy>') ~= nil)
 check.that("should leave the searching sign out of other cards", card.html({ prompt = "x", rows = {} }):find("<span class=busy>", 1, true) == nil)
+local reveal = palette.action("reveal", "file:/a/b.md")
+check.that("should show a file in Finder on Cmd+Enter", reveal ~= nil and reveal.kind == "reveal" and reveal.path == "/a/b.md")
+local copy = palette.action("copy", "file:/a b/c.md")
+check.that("should copy a file's path on Cmd+C", copy ~= nil and copy.kind == "copy" and copy.path == "/a b/c.md")
+check.that("should do nothing on Cmd+Enter for a window row", palette.action("reveal", "window:12") == nil)
+check.that("should do nothing for an unknown key", palette.action("nope", "file:/a") == nil)
 
 check.finish()

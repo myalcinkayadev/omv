@@ -110,7 +110,7 @@ Type a sum, such as `2*35`, and its result shows first: `= 70`. Enter copies it.
 file-search=on
 ```
 
-Then, after 3 or more typed characters and a short pause, the palette lists up to 20 files whose names contain every typed word, under Files, names starting with the first word first, then the newest: files you opened or changed in the last 30 days, in your home folder, leaving out `Library`, `node_modules` and `.git`. Enter opens one with its app. It asks Spotlight (`mdfind`) in the background, one search at a time, so typing never waits for it. While the flag is off, no search runs.
+Then, after 3 or more typed characters and a short pause, the palette lists up to 20 files whose names contain every typed word, under Files, names starting with the first word first, then the newest: files you opened or changed in the last 30 days, in your home folder, leaving out `Library`, `node_modules` and `.git`. Enter opens one with its app, Cmd+Enter shows it in Finder, and Cmd+C copies its path. It asks Spotlight (`mdfind`) in the background, one search at a time, so typing never waits for it. While the flag is off, no search runs.
 
 <img src="docs/windows.png" alt="The palette: open windows with their app and workspace, then apps, then omv commands with their keys" width="720">
 

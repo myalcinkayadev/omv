@@ -73,6 +73,14 @@ end
 
 local function onPaletteMessage(message)
   if message.type == "files" then return findFiles(message.id) end
+  if message.type == "reveal" or message.type == "copy" then
+    local action = palette.action(message.type, message.id)
+    if not action then return end
+    shell.close()
+    if action.kind == "reveal" then return shell.open({ "-R", action.path })() end
+    hs.pasteboard.setContents(action.path)
+    return shell.alert("Copied path", 1)
+  end
   stopSearch()
   if message.type ~= "choose" then return shell.close() end
   local kind, value = palette.parse(message.id)
@@ -106,7 +114,9 @@ function feature.toggle()
   hs.task.new(shell.AEROSPACE, function(code, output)
     local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY)
     shell.show("windows", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
-      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = true, files = fileSearch }), onPaletteMessage)
+      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = true, files = fileSearch }), onPaletteMessage,
+      -- Closed any way, by Escape, Option+Space or losing focus, a running mdfind stops too.
+      { onClose = stopSearch })
   end, { "list-windows", "--all", "--format", windows.FORMAT }):start()
 end
 

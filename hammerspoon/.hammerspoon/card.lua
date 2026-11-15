@@ -172,7 +172,8 @@ local SCRIPT = [[
     clearTimeout(filesTimer);
     if (files.innerHTML !== "") { files.innerHTML = ""; collect(); }
     busy.classList.remove("on");
-    filesPending = query.trim().length >= FILES_MIN_LENGTH;
+    // Letters as Lua counts them: no spaces, and none of the " \ * it drops.
+    filesPending = Array.from(query.replace(/["\\*\s]/g, "")).length >= FILES_MIN_LENGTH;
     if (!filesPending) return;
     const asked = query;
     filesTimer = setTimeout(() => {
@@ -200,6 +201,13 @@ local SCRIPT = [[
     const shown = visible();
     const typed = query;
     if (event.key === "Escape") return send("close");
+    // File search's actions: Cmd+Enter shows the selected file in Finder, Cmd+C copies its
+    // path. Hammerspoon ignores them on any other row.
+    if (files && event.metaKey && (event.key === "Enter" || event.key.toLowerCase() === "c")) {
+      event.preventDefault();
+      if (shown[selected]) send(event.key === "Enter" ? "reveal" : "copy", shown[selected].dataset.id);
+      return;
+    }
     // A card that asks for Tab, such as the process card switching its sort, hears it.
     if (event.key === "Tab" && document.body.dataset.tab !== undefined) { event.preventDefault(); return send("tab"); }
     if (event.key === "ArrowDown" || (event.ctrlKey && event.key === "n")) selected = (selected + 1) % Math.max(1, shown.length);

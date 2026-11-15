@@ -59,6 +59,16 @@ function palette.rows(windowsOutput, apps, launchers, ownKey)
   return rows
 end
 
+-- What Cmd+Enter ("reveal": show in Finder) and Cmd+C ("copy": copy the path) do with a row:
+-- { kind, path } for a file row, nil for any other row or key.
+local FILE_ACTIONS = { reveal = true, copy = true }
+
+function palette.action(key, id)
+  local kind, path = palette.parse(id)
+  if not FILE_ACTIONS[key] or kind ~= "file" then return nil end
+  return { kind = key, path = path }
+end
+
 -- The prompt names what can be found: files too while file search is on.
 function palette.prompt(fileSearch)
   return fileSearch and "Windows, apps, commands, files…" or "Windows, apps, commands…"
