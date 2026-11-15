@@ -104,11 +104,13 @@ Option+Space opens one list, like Omarchy's: every open window with its app and 
 
 Type a sum, such as `2*35`, and its result shows first: `= 70`. Enter copies it. It reads `+ - * / ^`, `%` for the remainder, brackets and decimals. A lone number, or a name with digits such as `omv-14`, filters as usual.
 
-**File search** is off unless you turn it on. Add this line to `~/.config/omv/flags`, then reload Hammerspoon:
+**File search** is off unless you turn it on:
 
+```sh
+omv flags file-search on
 ```
-file-search=on
-```
+
+That writes `file-search=on` to `~/.config/omv/flags` and reloads Hammerspoon. `omv flags` lists every flag and whether it's on.
 
 Then, after 3 or more typed characters and a short pause, the palette lists up to 20 files whose names contain every typed word, under Files, names starting with the first word first, then the newest: files you opened or changed in the last 30 days, in your home folder, leaving out `Library`, `node_modules` and `.git`. Enter opens one with its app, Cmd+Enter shows it in Finder, and Cmd+C copies its path. It asks Spotlight (`mdfind`) in the background, one search at a time, so typing never waits for it. While the flag is off, no search runs.
 
@@ -558,17 +560,40 @@ Then, by hand:
 5. Open SwipeAeroSpace, grant Accessibility, and turn on Launch at Login in its Settings.
 6. Open Hammerspoon. On its first start it installs the `hs` command, into `/opt/homebrew/bin` on Apple Silicon or `/usr/local/bin` otherwise, which the bar's clicks and `doctor.sh` use to reach it.
 
-When you pull new files later, run `./install.sh` again. Stow links files one by one, so a new file has no link until then.
+It also puts the `omv` command on your PATH, next to Homebrew's commands. From then on:
+
+```sh
+omv doctor            # check the setup; omv doctor --fix clears a jam
+omv flags             # list feature flags; omv flags <name> on|off
+omv theme             # list themes; omv theme <name> switches
+omv version           # the commit omv is at
+```
+
+### Update
+
+```sh
+omv update
+```
+
+Pulls the latest omv, installs what the `Brewfile` added, relinks every config (Stow links files one by one, so a new file has no link until then), runs any migrations, reloads Hammerspoon and the bar, then runs the doctor. It only updates a clean `main`: with changes of your own in the omv folder, it stops and says so.
+
+If the doctor finds a problem after an update, go back to where you were:
+
+```sh
+omv update --undo
+```
+
+Migrations are scripts in `migrations/` that run once each, in name order, for changes a pull alone can't make, such as moving a file. The ones that ran are listed in `~/.local/state/omv/migrations`.
 
 ### Doctor
 
 ```sh
-./doctor.sh
+omv doctor
 ```
 
 Checks that everything is in place, and says how to fix what isn't: the tools, apps and font, that every package is linked with no broken links left behind, that AeroSpace, SketchyBar, borders, Hammerspoon and SwipeAeroSpace are running with the omv config loaded, the macOS settings, AeroSpace's Accessibility, and the Claude usage line. It also finds a jam: `hs` calls stuck for more than a minute, more than one SketchyBar, or a Hammerspoon that doesn't answer in 5 seconds. Without `--fix` it only reads, and exits non-zero when something fails.
 
-`./doctor.sh --fix` first clears a jam, saying each step: it kills stuck `hs` calls, restarts SketchyBar when more than one runs, and reopens Hammerspoon when it's running but doesn't answer. Then it checks as usual. It starts nothing that wasn't running, and leaves the other problems to their printed fixes.
+`omv doctor --fix` first clears a jam, saying each step: it kills stuck `hs` calls, restarts SketchyBar when more than one runs, and reopens Hammerspoon when it's running but doesn't answer. Then it checks as usual. It starts nothing that wasn't running, and leaves the other problems to their printed fixes.
 
 It also lists what macOS doesn't let a script read, to check by hand: Screen Recording for Hammerspoon, Calendar access for "omv agenda", Location Services for Hammerspoon, Microphone access for "omv meter", and Accessibility for SwipeAeroSpace.
 
