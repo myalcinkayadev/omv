@@ -576,7 +576,7 @@ omv version           # the commit omv is at
 omv update
 ```
 
-Pulls the latest omv, installs what the `Brewfile` added (it upgrades nothing already installed; `brew upgrade` stays yours to run), relinks every config (Stow links files one by one, so a new file has no link until then), runs any migrations, reloads Hammerspoon and the bar, then runs the doctor. It only updates a clean `main`: with changes of your own in the omv folder, it stops and says so.
+Pulls the latest omv, installs what the `Brewfile` added (it upgrades nothing already installed; `brew upgrade` stays yours to run), relinks every config (Stow links files one by one, so a new file has no link until then), runs any migrations, reloads Hammerspoon and the bar, then runs `omv doctor --fix`, which clears a second bar or a SwipeAeroSpace that quit along the way. It only updates a clean `main`: with changes of your own in the omv folder, it stops and says so.
 
 If the doctor finds a problem after an update, try `omv doctor --fix` first. If that doesn't help, go back to where you were:
 

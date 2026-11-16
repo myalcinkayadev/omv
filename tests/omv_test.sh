@@ -178,6 +178,12 @@ update_runs_doctor() {
   assert_called '^doctor\.sh'
 }
 
+update_fixes_running_apps() {
+  make_repo
+  omv update >/dev/null
+  assert_called '^doctor\.sh --fix$'
+}
+
 update_offers_undo_when_doctor_fails() {
   make_repo
   echo 1 > "$SANDBOX/doctor-exit"
@@ -530,6 +536,7 @@ run_case 'should relink the configs after pulling' update_restows
 run_case 'should reload Hammerspoon after updating' update_reloads_hammerspoon
 run_case 'should reload the bar after updating' update_reloads_bar
 run_case 'should run the doctor after updating' update_runs_doctor
+run_case 'should let the doctor fix running apps after updating' update_fixes_running_apps
 run_case 'should offer undo when the doctor fails after an update' update_offers_undo_when_doctor_fails
 run_case 'should suggest omv doctor --fix when the doctor fails after an update' update_suggests_fix_when_doctor_fails
 run_case 'should offer no undo when the doctor fails and no update is saved' update_offers_no_undo_without_saved_update

@@ -132,7 +132,9 @@ finish_update() {
   brew bundle --no-upgrade --file="$REPO_DIR/Brewfile"
   reload
   trap - ERR
-  "$REPO_DIR/install/doctor.sh" && return 0
+  # --fix clears what an update can leave behind: a second bar, a SwipeAeroSpace that quit
+  # while its config link was swapped, a stuck hs call.
+  "$REPO_DIR/install/doctor.sh" --fix && return 0
   echo >&2
   echo "Something isn't right after the update. To fix what can be fixed: omv doctor --fix" >&2
   # Only when an update is saved: with none, undo has nowhere to go back to.
