@@ -80,13 +80,27 @@ relink() {
 
 # After editing a file in ~/.config/omv: rebuild aerospace.toml, then reload what reads them.
 # AeroSpace is asked only when it's running; it reads the file when it starts anyway.
+reload_aerospace() {
+  [ -n "$(pgrep -x AeroSpace 2>/dev/null || true)" ] || return 0
+  aerospace reload-config
+}
+
+# After hs.reload, Hammerspoon is silent for a moment; the doctor would take that for a jam
+# and restart it. Up to 5 seconds, only while it's running.
+wait_for_hammerspoon() {
+  command -v hs >/dev/null 2>&1 && pgrep -x Hammerspoon >/dev/null 2>&1 || return 0
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    hs -t 1 -c 'return 1' >/dev/null 2>&1 && return 0
+    sleep 0.5
+  done
+}
+
 reload_all() {
   # Pending migrations first, as update runs them: one may still have to move a link away.
   run_migrations
   build_aerospace || die "aerospace.toml wasn't rebuilt; the old one stays"
-  if [ -n "$(pgrep -x AeroSpace 2>/dev/null || true)" ]; then
-    aerospace reload-config || die "AeroSpace didn't accept the built aerospace.toml; see its message above"
-  fi
+  reload_aerospace || die "AeroSpace didn't accept the built aerospace.toml; see its message above"
   reload
   echo "reloaded"
 }
@@ -107,7 +121,7 @@ run_migrations() {
     [ -e "$script" ] || continue
     name=$(basename "$script" .sh)
     grep -qxF -- "$name" "$MIGRATIONS_DONE" && continue
-    bash "$script" || die "migration $name failed; fix it, then run omv update again"
+    (cd "$REPO_DIR" && bash "$script") || die "migration $name failed; fix it, then run omv update again"
     echo "$name" >> "$MIGRATIONS_DONE"
     if [ -n "$also" ]; then echo "$name" >> "$also"; fi
   done
@@ -149,7 +163,9 @@ finish_update() {
   # Installs what's missing and upgrades nothing else: undo can't take an upgrade back.
   brew bundle --no-upgrade --file="$REPO_DIR/Brewfile"
   reload
+  reload_aerospace || true
   trap - ERR
+  wait_for_hammerspoon
   # --fix clears what an update can leave behind: a second bar, a SwipeAeroSpace that quit
   # while its config link was swapped, a stuck hs call.
   "$REPO_DIR/install/doctor.sh" --fix && return 0
@@ -182,7 +198,8 @@ flag_names() {
 
 flag_value() {
   local name=$1 default=$2 line
-  line=$(grep -E "^[[:space:]]*$name[[:space:]]*=" "$FLAGS_FILE" 2>/dev/null | tail -n 1 || true)
+  # The last line with on or off, as Hammerspoon reads it: a line with another value is ignored.
+  line=$(grep -E "^[[:space:]]*$name[[:space:]]*=[[:space:]]*(on|off)[[:space:]]*$" "$FLAGS_FILE" 2>/dev/null | tail -n 1 || true)
   case $(echo "${line#*=}" | tr -d '[:space:]') in
     on) echo on ;;
     off) echo off ;;
@@ -244,14 +261,14 @@ case $command in
   update)
     case ${1:-} in
       '') update ;;
-      --undo) undo ;;
+      --undo) [ "$#" -eq 1 ] || usage; undo ;;
       --finish) finish_update "${2:-}" ;;
       *) usage ;;
     esac
     ;;
   doctor) "$REPO_DIR/install/doctor.sh" "$@" ;;
   uninstall) "$REPO_DIR/install/uninstall.sh" "$@" ;;
-  reload) reload_all ;;
+  reload) [ "$#" -eq 0 ] || usage; reload_all ;;
   flags) flags "$@" ;;
   theme) theme "$@" ;;
   version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;
