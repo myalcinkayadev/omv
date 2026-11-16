@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/ethernet.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/ethernet.sh
 
 PORTS_WITH_LAN='Hardware Port: Wi-Fi
 Device: en0

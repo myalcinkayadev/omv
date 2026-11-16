@@ -5,19 +5,19 @@
 source "$(dirname "$0")/lib.sh"
 
 # A repo with the real omv, packages list and flag defaults, and stub install, uninstall and
-# doctor scripts that log their arguments. git answers from files: $SANDBOX/dirty (status),
+# doctor scripts (in install/) that log their arguments. git answers from files: $SANDBOX/dirty (status),
 # $SANDBOX/branch (main by default) and $SANDBOX/head (the commit).
 make_repo() {
   REPO=$SANDBOX/repo
-  mkdir -p "$REPO/bin" "$REPO/lib" "$REPO/migrations" "$REPO/hammerspoon/.hammerspoon"
+  mkdir -p "$REPO/bin" "$REPO/install" "$REPO/migrations" "$REPO/config/hammerspoon/.hammerspoon"
   cp "$REPO_DIR/bin/omv" "$REPO/bin/omv"
-  cp "$REPO_DIR/lib/packages.sh" "$REPO/lib/packages.sh"
-  cp "$REPO_DIR/hammerspoon/.hammerspoon/flags.lua" "$REPO/hammerspoon/.hammerspoon/flags.lua"
+  cp "$REPO_DIR/install/packages.sh" "$REPO/install/packages.sh"
+  cp "$REPO_DIR/config/hammerspoon/.hammerspoon/flags.lua" "$REPO/config/hammerspoon/.hammerspoon/flags.lua"
   local script
   for script in install uninstall doctor; do
     printf '#!/bin/sh\necho "%s.sh $*" >> "%s"\nexit $(cat "%s/%s-exit" 2>/dev/null || echo 0)\n' \
-      "$script" "$CALL_LOG" "$SANDBOX" "$script" > "$REPO/$script.sh"
-    chmod +x "$REPO/$script.sh"
+      "$script" "$CALL_LOG" "$SANDBOX" "$script" > "$REPO/install/$script.sh"
+    chmod +x "$REPO/install/$script.sh"
   done
   : > "$SANDBOX/dirty"
   echo main > "$SANDBOX/branch"
@@ -317,7 +317,7 @@ rejects_theme_name_with_lua() {
 
 relinks_with_pulled_packages() {
   make_repo
-  printf '#!/bin/sh\necho "readonly PACKAGES=(hammerspoon extra)" > "%s/lib/packages.sh"\n' "$REPO" > "$SANDBOX/on-pull"
+  printf '#!/bin/sh\nprintf "readonly CONFIG_PACKAGES=(hammerspoon extra)\\nreadonly AGENT_PACKAGES=(claude)\\n" > "%s/install/packages.sh"\n' "$REPO" > "$SANDBOX/on-pull"
   chmod +x "$SANDBOX/on-pull"
   omv update >/dev/null
   assert_called '^stow .*--restow hammerspoon extra$'

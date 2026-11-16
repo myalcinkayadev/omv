@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/keep_awake.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/keep_awake.sh
 
 pid_file() {
   echo "$HOME_DIR/.local/state/omv/keep-awake.pid"

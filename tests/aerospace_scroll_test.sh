@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly SCROLL=$REPO_DIR/sketchybar/.config/sketchybar/plugins/aerospace_scroll.sh
+readonly SCROLL=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/aerospace_scroll.sh
 
 stub_focused() {
   cat > "$STUB_DIR/aerospace" <<STUB

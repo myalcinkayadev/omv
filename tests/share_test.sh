@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly SHARE=$REPO_DIR/hammerspoon/.hammerspoon/share.sh
+readonly SHARE=$REPO_DIR/config/hammerspoon/.hammerspoon/share.sh
 
 # osascript answers by what it's asked: the Finder selection from $SANDBOX/selection, a
 # copied file from $SANDBOX/copied-file, a copied image when $SANDBOX/copied-image exists.

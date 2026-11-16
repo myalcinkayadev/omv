@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib.sh"
 
 luajit "$REPO_DIR/tests/capture_test.lua" "$REPO_DIR" || failed=$((failed + 1))
 
-readonly CAPTURE=$REPO_DIR/hammerspoon/.hammerspoon/capture.sh
+readonly CAPTURE=$REPO_DIR/config/hammerspoon/.hammerspoon/capture.sh
 
 # screencapture saves a picture unless $SANDBOX/cancel exists. swiftc "builds" the helper
 # by copying $SANDBOX/helper, whose output each case sets. pbcopy saves to $SANDBOX/clipboard.

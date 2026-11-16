@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/volume.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/volume.sh
 
 click() {
   stub hs

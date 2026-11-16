@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly COPY_URL=$REPO_DIR/hammerspoon/.hammerspoon/copy-url.sh
+readonly COPY_URL=$REPO_DIR/config/hammerspoon/.hammerspoon/copy-url.sh
 
 # osascript answers with a URL, and pbcopy saves what it receives to $SANDBOX/clipboard.
 stub_helium() {

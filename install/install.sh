@@ -6,11 +6,11 @@
 
 set -euo pipefail
 
-REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 readonly REPO_DIR
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap smudge/smudge)
-# shellcheck source=lib/packages.sh
-source "$REPO_DIR/lib/packages.sh"
+# shellcheck source=packages.sh
+source "$REPO_DIR/install/packages.sh"
 
 DRY_RUN=false
 APPS=true
@@ -55,7 +55,8 @@ install_tools() {
 link_configs() {
   # Stow would otherwise replace a missing ~/.claude with a link into this repo.
   step mkdir -p "$HOME/.claude"
-  step stow --dir="$REPO_DIR" --target="$HOME" "${PACKAGES[@]}" && return 0
+  step stow --dir="$REPO_DIR/config" --target="$HOME" "${CONFIG_PACKAGES[@]}" \
+    && step stow --dir="$REPO_DIR/agents" --target="$HOME" "${AGENT_PACKAGES[@]}" && return 0
   echo "install.sh: stow could not link the configs. Move the files it named, then run this again." >&2
   exit 1
 }
@@ -83,14 +84,14 @@ link_omv() {
 # Codex, OpenCode and pi report their sessions to the bar too, each only when it's set up
 # here. Their plugin folders are made first, so Stow links the file, not the folder.
 link_agents() {
-  if [ -d "$HOME/.codex" ]; then step "$REPO_DIR/codex-hooks.sh" add; fi
+  if [ -d "$HOME/.codex" ]; then step "$REPO_DIR/agents/codex-hooks.sh" add; fi
   if [ -d "$HOME/.config/opencode" ]; then
     step mkdir -p "$HOME/.config/opencode/plugins"
-    step stow --dir="$REPO_DIR" --target="$HOME" opencode
+    step stow --dir="$REPO_DIR/agents" --target="$HOME" opencode
   fi
   if [ -d "$HOME/.pi/agent" ]; then
     step mkdir -p "$HOME/.pi/agent/extensions"
-    step stow --dir="$REPO_DIR" --target="$HOME" pi
+    step stow --dir="$REPO_DIR/agents" --target="$HOME" pi
   fi
 }
 
@@ -132,8 +133,8 @@ install_tools
 $DRY_RUN || require_command stow
 link_configs
 link_omv
-step "$REPO_DIR/claude-usage.sh" add
-step "$REPO_DIR/claude-hooks.sh" add
+step "$REPO_DIR/agents/claude-usage.sh" add
+step "$REPO_DIR/agents/claude-hooks.sh" add
 link_agents
 apply_macos_settings
 $DRY_RUN || print_manual_steps

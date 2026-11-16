@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/bar_fit.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/bar_fit.sh
 
 readonly ONE_DISPLAY='[{"arrangement-id":1,"frame":{"x":0,"y":0,"w":1512,"h":982}}]'
 # A 2560pt main display with the 1512pt one placed to its left, so its frame starts at -1512.

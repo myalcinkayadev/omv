@@ -17,6 +17,6 @@ STUB
 chmod +x "$STUB_DIR/hook"
 
 OMV_AGENT_HOOK="$STUB_DIR/hook" OMV_TEST_LOG="$SANDBOX/hook.log" \
-  OMV_OPENCODE_PLUGIN="$REPO_DIR/opencode/.config/opencode/plugins/omv-agent-state.js" \
-  OMV_PI_EXTENSION="$REPO_DIR/pi/.pi/agent/extensions/omv-agent-state.ts" \
+  OMV_OPENCODE_PLUGIN="$REPO_DIR/agents/opencode/.config/opencode/plugins/omv-agent-state.js" \
+  OMV_PI_EXTENSION="$REPO_DIR/agents/pi/.pi/agent/extensions/omv-agent-state.ts" \
   node --experimental-strip-types --no-warnings "$REPO_DIR/tests/agent_plugins_test.mjs"

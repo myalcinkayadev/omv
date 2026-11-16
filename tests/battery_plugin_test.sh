@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/battery.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/battery.sh
 
 opens_battery_card_on_click() {
   stub hs

@@ -4,7 +4,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/claude_waiting.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/claude_waiting.sh
 # No process has this PID, so a session saved with it counts as ended.
 readonly DEAD_PID=999999
 

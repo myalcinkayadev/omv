@@ -3,14 +3,15 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly UNINSTALL=$REPO_DIR/uninstall.sh
-readonly ALL_PACKAGES='aerospace sketchybar claude swipeaerospace ghostty nvim btop hammerspoon'
+readonly UNINSTALL=$REPO_DIR/install/uninstall.sh
+readonly CONFIG_PACKAGES='aerospace sketchybar swipeaerospace ghostty nvim btop hammerspoon'
 
 # Links every package with the real stow, as a finished install would leave them.
 link_everything() {
   use_real_stow
   # shellcheck disable=SC2086
-  run_in_sandbox stow --dir="$REPO_DIR" --target="$HOME_DIR" $ALL_PACKAGES
+  run_in_sandbox stow --dir="$REPO_DIR/config" --target="$HOME_DIR" $CONFIG_PACKAGES
+  run_in_sandbox stow --dir="$REPO_DIR/agents" --target="$HOME_DIR" claude
 }
 
 # Makes every brew, defaults and process query report that nothing is left to remove.
@@ -32,7 +33,7 @@ removes_codex_hooks() {
 unlinks_opencode_plugin() {
   use_real_stow
   mkdir -p "$HOME_DIR/.config/opencode/plugins"
-  run_in_sandbox stow --dir="$REPO_DIR" --target="$HOME_DIR" opencode
+  run_in_sandbox stow --dir="$REPO_DIR/agents" --target="$HOME_DIR" opencode
   run_in_sandbox "$UNINSTALL" >/dev/null
   [ ! -e "$HOME_DIR/.config/opencode/plugins/omv-agent-state.js" ] || fail 'plugin left linked'
 }
@@ -45,7 +46,8 @@ removes_theme_files() {
 
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
-  assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D aerospace sketchybar claude swipeaerospace$"
+  assert_called "^stow --dir=$REPO_DIR/config --target=$HOME_DIR -D aerospace sketchybar swipeaerospace$"
+  assert_called "^stow --dir=$REPO_DIR/agents --target=$HOME_DIR -D claude$"
 }
 
 keeps_older_tool_links() {
@@ -70,7 +72,8 @@ removes_this_setups_links() {
 
 unstows_everything_with_all_flag() {
   run_in_sandbox "$UNINSTALL" --all >/dev/null
-  assert_called "^stow --dir=$REPO_DIR --target=$HOME_DIR -D $ALL_PACKAGES$"
+  assert_called "^stow --dir=$REPO_DIR/config --target=$HOME_DIR -D $CONFIG_PACKAGES$"
+  assert_called "^stow --dir=$REPO_DIR/agents --target=$HOME_DIR -D claude$"
 }
 
 removes_usage_line() {

@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/now_playing.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/now_playing.sh
 
 # pgrep finds a player when $SANDBOX/running-<name> exists. osascript answers a track
 # question with $SANDBOX/track-<name>, which is empty while that player is paused.

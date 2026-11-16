@@ -4,7 +4,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/github_prs.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/github_prs.sh
 
 # A gh that prints how many pull requests wait, or fails like gh does when offline.
 stub_gh() {

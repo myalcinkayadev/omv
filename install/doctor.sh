@@ -9,10 +9,10 @@
 
 set -uo pipefail
 
-REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 readonly REPO_DIR
-# shellcheck source=lib/packages.sh
-source "$REPO_DIR/lib/packages.sh"
+# shellcheck source=packages.sh
+source "$REPO_DIR/install/packages.sh"
 readonly APPLICATIONS=${OMV_APPLICATIONS:-/Applications}
 readonly FONT_DIRS=${OMV_FONT_DIRS:-$HOME/Library/Fonts:/Library/Fonts}
 readonly USAGE_MARKER='# omv bar usage'
@@ -102,15 +102,16 @@ omv_link() {
 
 check_links() {
   section 'Links'
-  local package file relative missing broken directory link
+  local package folder file relative missing broken directory link
   if [ -L "$(omv_link)" ] && [ "$(omv_link)" -ef "$REPO_DIR/bin/omv" ]; then ok 'omv command'
   else problem "the omv command isn't linked" './install.sh'; fi
-  for package in "${PACKAGES[@]}"; do
+  for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do
+    folder=$(package_dir "$package")
     missing=()
     while IFS= read -r file; do
-      relative=${file#"$REPO_DIR/$package/"}
+      relative=${file#"$folder/$package/"}
       [ "$(realpath "$HOME/$relative" 2>/dev/null)" = "$(realpath "$file")" ] || missing+=("$relative")
-    done < <(find "$REPO_DIR/$package" -type f ! -name '.DS_Store')
+    done < <(find "$folder/$package" -type f ! -name '.DS_Store')
     if [ "${#missing[@]}" -eq 0 ]; then
       ok "$package"
     else
@@ -124,8 +125,9 @@ check_links() {
     while IFS= read -r link; do
       [[ $(readlink "$link") == *"$(basename "$REPO_DIR")/"* ]] && broken+=("${link#"$HOME/"}")
     done < <(find "$HOME/$directory" -maxdepth 1 -type l ! -exec test -e {} \; -print)
-  done < <(for package in "${PACKAGES[@]}"; do
-    find "$REPO_DIR/$package" -type f ! -name '.DS_Store' | sed "s|^$REPO_DIR/$package/||" | xargs -n1 dirname
+  done < <(for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do
+    folder=$(package_dir "$package")
+    find "$folder/$package" -type f ! -name '.DS_Store' | sed "s|^$folder/$package/||" | xargs -n1 dirname
   done | sort -u)
   for link in "${broken[@]+"${broken[@]}"}"; do
     problem "broken link: $link" "remove it, or run stow -R for its package"

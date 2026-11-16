@@ -5,7 +5,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly HOOK=$REPO_DIR/claude/.claude/claude-waiting.sh
+readonly HOOK=$REPO_DIR/agents/claude/.claude/claude-waiting.sh
 
 state_dir() {
   echo "$HOME_DIR/.local/state/omv/claude-sessions"

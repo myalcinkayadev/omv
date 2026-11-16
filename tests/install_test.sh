@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly INSTALL=$REPO_DIR/install.sh
+readonly INSTALL=$REPO_DIR/install/install.sh
 
 add_conflicting_file() {
   mkdir -p "$HOME_DIR/.config/aerospace"

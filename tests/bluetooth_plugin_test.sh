@@ -5,7 +5,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/bluetooth.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/bluetooth.sh
 
 # hs -c prints any extension it loads, then the answer: 1, 0, or nothing without access.
 stub_hammerspoon() {

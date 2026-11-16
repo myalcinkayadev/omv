@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/aerospace_mode.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/aerospace_mode.sh
 
 shows_resize() {
   run_in_sandbox NAME=mode MODE=resize "$PLUGIN"

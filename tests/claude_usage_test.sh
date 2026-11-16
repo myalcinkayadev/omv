@@ -3,9 +3,9 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly WRITER=$REPO_DIR/claude/.claude/bar-usage.sh
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/claude_usage.sh
-readonly LINK=$REPO_DIR/claude-usage.sh
+readonly WRITER=$REPO_DIR/agents/claude/.claude/bar-usage.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/claude_usage.sh
+readonly LINK=$REPO_DIR/agents/claude-usage.sh
 
 # Far from any run of these tests, so nothing depends on today's date.
 readonly FUTURE=4102444800

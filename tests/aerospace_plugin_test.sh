@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly PLUGIN=$REPO_DIR/sketchybar/.config/sketchybar/plugins/aerospace.sh
+readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/aerospace.sh
 readonly FOCUSED_STYLE='background.color=0xffffffff icon.color=0xff000000'
 readonly VISIBLE_STYLE='background.color=0xff3a3a3a icon.color=0xffffffff'
 readonly IDLE_STYLE='background.color=0x00000000 icon.color=0xff7a7a7a'

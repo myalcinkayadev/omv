@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib.sh"
 
 luajit "$REPO_DIR/tests/agenda_test.lua" "$REPO_DIR" || failed=$((failed + 1))
 
-readonly AGENDA=$REPO_DIR/hammerspoon/.hammerspoon/agenda.sh
+readonly AGENDA=$REPO_DIR/config/hammerspoon/.hammerspoon/agenda.sh
 
 app() {
   echo "$HOME_DIR/.cache/omv/Agenda.app"

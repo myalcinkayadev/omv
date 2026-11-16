@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly SCRIPT=$REPO_DIR/claude-hooks.sh
+readonly SCRIPT=$REPO_DIR/agents/claude-hooks.sh
 
 settings() {
   echo "$HOME_DIR/.claude/settings.json"

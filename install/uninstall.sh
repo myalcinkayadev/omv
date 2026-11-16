@@ -5,8 +5,10 @@
 
 set -uo pipefail
 
-REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 readonly REPO_DIR
+# shellcheck source=packages.sh
+source "$REPO_DIR/install/packages.sh"
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap)
 readonly SETUP_PACKAGES=(aerospace sketchybar claude swipeaerospace)
 readonly OLDER_PACKAGES=(ghostty nvim btop hammerspoon)
@@ -49,9 +51,9 @@ stop_keep_awake() {
 
 # Runs before unlinking, so the status line never calls a script that is already gone.
 remove_claude_usage() {
-  "$REPO_DIR/claude-usage.sh" remove
-  "$REPO_DIR/claude-hooks.sh" remove
-  "$REPO_DIR/codex-hooks.sh" remove
+  "$REPO_DIR/agents/claude-usage.sh" remove
+  "$REPO_DIR/agents/claude-hooks.sh" remove
+  "$REPO_DIR/agents/codex-hooks.sh" remove
   rm -f "$HOME/.local/state/omv/claude-usage" "$HOME/.local/state/omv/claude-usage-resets-view"
   rm -rf "$HOME/.local/state/omv/claude-sessions" "$HOME/.local/state/omv/claude-waiting"
   # The chosen theme's colours and the themes fetched from Omarchy.
@@ -63,10 +65,18 @@ unlink_configs() {
     echo "uninstall.sh: stow is missing, so the config links were left in place." >&2
     return 0
   fi
-  stow --dir="$REPO_DIR" --target="$HOME" -D "${packages[@]}"
+  local package folder
+  # One call per folder, each with the packages that live there.
+  for folder in "$REPO_DIR/config" "$REPO_DIR/agents"; do
+    local here=()
+    for package in "${packages[@]}"; do
+      if [ "$(package_dir "$package")" = "$folder" ]; then here+=("$package"); fi
+    done
+    if [ "${#here[@]}" -gt 0 ]; then stow --dir="$folder" --target="$HOME" -D "${here[@]}"; fi
+  done
   # The other agents' plugins, linked only when that agent was set up.
-  if [ -L "$HOME/.config/opencode/plugins/omv-agent-state.js" ]; then stow --dir="$REPO_DIR" --target="$HOME" -D opencode; fi
-  if [ -L "$HOME/.pi/agent/extensions/omv-agent-state.ts" ]; then stow --dir="$REPO_DIR" --target="$HOME" -D pi; fi
+  if [ -L "$HOME/.config/opencode/plugins/omv-agent-state.js" ]; then stow --dir="$REPO_DIR/agents" --target="$HOME" -D opencode; fi
+  if [ -L "$HOME/.pi/agent/extensions/omv-agent-state.ts" ]; then stow --dir="$REPO_DIR/agents" --target="$HOME" -D pi; fi
 }
 
 # Only an omv that leads to this repo: another one isn't ours to remove.

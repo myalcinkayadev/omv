@@ -14,8 +14,8 @@ set -eEuo pipefail
 
 REPO_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)
 readonly REPO_DIR
-# shellcheck source=../lib/packages.sh
-source "$REPO_DIR/lib/packages.sh"
+# shellcheck source=../install/packages.sh
+source "$REPO_DIR/install/packages.sh"
 readonly STATE_DIR=$HOME/.local/state/omv
 # The last update that moved omv: the commit before it, the one after it, and the migrations
 # it ran. Kept until undo, so a retried or empty update doesn't lose the way back.
@@ -24,7 +24,7 @@ readonly UPDATE_TO=$STATE_DIR/update-to
 readonly UPDATE_MIGRATIONS=$STATE_DIR/update-migrations
 readonly MIGRATIONS_DONE=$STATE_DIR/migrations
 readonly FLAGS_FILE=$HOME/.config/omv/flags
-readonly FLAG_DEFAULTS=$REPO_DIR/hammerspoon/.hammerspoon/flags.lua
+readonly FLAG_DEFAULTS=$REPO_DIR/config/hammerspoon/.hammerspoon/flags.lua
 readonly THEMES_DIR=$HOME/.local/share/omv/themes
 
 usage() {
@@ -56,7 +56,8 @@ reload_hammerspoon() {
 # Stow links files one by one, so a new file has no link until this runs again.
 relink() {
   mkdir -p "$HOME/.claude"
-  stow --dir="$REPO_DIR" --target="$HOME" --restow "${PACKAGES[@]}"
+  stow --dir="$REPO_DIR/config" --target="$HOME" --restow "${CONFIG_PACKAGES[@]}"
+  stow --dir="$REPO_DIR/agents" --target="$HOME" --restow "${AGENT_PACKAGES[@]}"
 }
 
 reload() {
@@ -112,7 +113,7 @@ finish_update() {
   run_migrations "$record"
   reload
   trap - ERR
-  "$REPO_DIR/doctor.sh" && return 0
+  "$REPO_DIR/install/doctor.sh" && return 0
   echo >&2
   echo "Something isn't right after the update. To fix what can be fixed: omv doctor --fix" >&2
   # Only when an update is saved: with none, undo has nowhere to go back to.
@@ -194,7 +195,7 @@ command=${1:-}
 shift
 case $command in
   install)
-    "$REPO_DIR/install.sh" "$@"
+    "$REPO_DIR/install/install.sh" "$@"
     case " $* " in
       *" --dry-run "*) echo "would run: pending migrations" ;;
       *) run_migrations ;;
@@ -208,8 +209,8 @@ case $command in
       *) usage ;;
     esac
     ;;
-  doctor) "$REPO_DIR/doctor.sh" "$@" ;;
-  uninstall) "$REPO_DIR/uninstall.sh" "$@" ;;
+  doctor) "$REPO_DIR/install/doctor.sh" "$@" ;;
+  uninstall) "$REPO_DIR/install/uninstall.sh" "$@" ;;
   flags) flags "$@" ;;
   theme) theme "$@" ;;
   version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;

@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly METER=$REPO_DIR/hammerspoon/.hammerspoon/meter.sh
+readonly METER=$REPO_DIR/config/hammerspoon/.hammerspoon/meter.sh
 
 app() {
   echo "$HOME_DIR/.cache/omv/Meter.app"

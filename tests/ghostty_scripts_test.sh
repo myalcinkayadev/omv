@@ -3,8 +3,8 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly NEW_WINDOW=$REPO_DIR/ghostty/.config/ghostty/new-window.sh
-readonly START_BTOP=$REPO_DIR/ghostty/.config/ghostty/start-btop.sh
+readonly NEW_WINDOW=$REPO_DIR/config/ghostty/.config/ghostty/new-window.sh
+readonly START_BTOP=$REPO_DIR/config/ghostty/.config/ghostty/start-btop.sh
 
 asks_running_ghostty_for_window() {
   run_in_sandbox "$NEW_WINDOW"

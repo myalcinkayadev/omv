@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly SCRIPT=$REPO_DIR/codex-hooks.sh
+readonly SCRIPT=$REPO_DIR/agents/codex-hooks.sh
 readonly COMMAND='$HOME/.claude/claude-waiting.sh wait codex'
 
 hooks_file() {

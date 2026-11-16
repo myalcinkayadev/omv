@@ -3,8 +3,8 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly DOCTOR=$REPO_DIR/doctor.sh
-readonly ALL_PACKAGES='aerospace sketchybar claude swipeaerospace ghostty nvim btop hammerspoon'
+readonly DOCTOR=$REPO_DIR/install/doctor.sh
+readonly CONFIG_PACKAGES='aerospace sketchybar swipeaerospace ghostty nvim btop hammerspoon'
 
 # A finished install: every tool, app and font present, every package linked, every
 # process running, every macOS setting applied, and the Claude usage line in place.
@@ -73,7 +73,8 @@ EOF
   # shellcheck disable=SC2086
   # --no-folding links file by file. A folded folder would be a link into this repo, and
   # removing a file "in the sandbox" would then delete the real one.
-  run_in_sandbox stow --no-folding --dir="$REPO_DIR" --target="$HOME_DIR" $ALL_PACKAGES
+  run_in_sandbox stow --no-folding --dir="$REPO_DIR/config" --target="$HOME_DIR" $CONFIG_PACKAGES
+  run_in_sandbox stow --no-folding --dir="$REPO_DIR/agents" --target="$HOME_DIR" claude
   printf 'input=$(cat)\nprintf x | "$HOME/.claude/bar-usage.sh" & # omv bar usage\n' > "$HOME_DIR/.claude/statusline-wrapper.sh"
   printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"$HOME/.claude/claude-waiting.sh wait"}]}]}}' > "$HOME_DIR/.claude/settings.json"
   mkdir -p "$SANDBOX/prefix/bin"
@@ -458,7 +459,7 @@ reports_unlinked_file() {
 reports_broken_link() {
   complete_setup
   [ ! -L "$HOME_DIR/.hammerspoon" ] || fail '.hammerspoon is a link into the repo'
-  ln -s "../$(basename "$REPO_DIR")/hammerspoon/.hammerspoon/gone.lua" "$HOME_DIR/.hammerspoon/gone.lua"
+  ln -s "../$(basename "$REPO_DIR")/config/hammerspoon/.hammerspoon/gone.lua" "$HOME_DIR/.hammerspoon/gone.lua"
   expect_report '✗ broken link: .hammerspoon/gone.lua'
 }
 
