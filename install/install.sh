@@ -6,7 +6,8 @@
 
 set -euo pipefail
 
-REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# Physical, as bin/omv's: the Hammerspoon setting and link checks compare this path.
+REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 readonly REPO_DIR
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap smudge/smudge)
 # shellcheck source=packages.sh

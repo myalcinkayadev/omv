@@ -9,7 +9,8 @@
 
 set -uo pipefail
 
-REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# Physical, as bin/omv's: the Hammerspoon setting and link checks compare this path.
+REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 readonly REPO_DIR
 # shellcheck source=packages.sh
 source "$REPO_DIR/install/packages.sh"
@@ -95,12 +96,15 @@ check_fonts() {
   done
 }
 
-# A package is linked when each of its files, seen from $HOME, is the file in this repo.
-# That holds for a link per file and for a whole folder linked at once.
 # Where install.sh links omv: OMV_BIN_DIR for tests, otherwise Homebrew's commands folder.
+# Nothing without either.
 omv_link() {
   local folder=${OMV_BIN_DIR:-}
-  [ -n "$folder" ] || folder=$(brew --prefix 2>/dev/null || true)/bin
+  if [ -z "$folder" ]; then
+    folder=$(brew --prefix 2>/dev/null || true)
+    [ -n "$folder" ] || return 0
+    folder=$folder/bin
+  fi
   echo "$folder/omv"
 }
 
@@ -127,10 +131,14 @@ check_aerospace_built() {
   else problem 'aerospace.toml is out of date' 'omv reload'; fi
 }
 
+# A package is linked when each of its files, seen from $HOME, is the file in this repo.
+# That holds for a link per file and for a whole folder linked at once.
 check_links() {
   section 'Links'
-  local package folder file relative missing broken directory link
-  if [ -L "$(omv_link)" ] && [ "$(omv_link)" -ef "$REPO_DIR/bin/omv" ]; then ok 'omv command'
+  local package folder file relative missing broken directory link command
+  command=$(omv_link)
+  if [ -z "$command" ]; then problem "Homebrew isn't installed" 'install it from https://brew.sh'
+  elif [ -L "$command" ] && [ "$command" -ef "$REPO_DIR/bin/omv" ]; then ok 'omv command'
   else problem "the omv command isn't linked" 'omv install'; fi
   if [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ]; then ok "Hammerspoon loads omv's config"
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi

@@ -49,6 +49,12 @@ keeps_built_aerospace_in_place() {
   [ ! -e "$HOME_DIR/$BUILT.before-omv" ] || fail 'moved its own file aside'
 }
 
+writes_physical_hammerspoon_path() {
+  ln -s "$REPO_DIR" "$SANDBOX/omv-link"
+  run_in_sandbox "$SANDBOX/omv-link/install/install.sh" >/dev/null
+  assert_called "^defaults write org.hammerspoon.Hammerspoon MJConfigFile $(cd "$REPO_DIR" && pwd -P)/config/hammerspoon/init.lua$"
+}
+
 finishes_with_bad_user_aerospace() {
   mkdir -p "$HOME_DIR/.config/omv"
   printf '[gaps\n' > "$HOME_DIR/.config/omv/aerospace.toml"
@@ -252,6 +258,7 @@ reports_stow_conflict() {
   [[ $output == *"install.sh: stow could not link"* ]] || fail "missing report in: $output"
 }
 
+run_case 'should write the physical path to the Hammerspoon setting when run through a symlinked folder' writes_physical_hammerspoon_path
 run_case "should finish installing when the user's aerospace.toml has an error" finishes_with_bad_user_aerospace
 run_case 'should build aerospace.toml when installing' builds_aerospace_config
 run_case "should move aside an aerospace.toml omv didn't build" moves_foreign_aerospace_aside

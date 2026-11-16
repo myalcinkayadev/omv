@@ -398,6 +398,14 @@ accepts_omv_link_by_another_path() {
   expect_report '✓ omv command'
 }
 
+reports_missing_homebrew() {
+  complete_setup
+  remove_stub brew
+  local output
+  output=$(run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" OMV_HS_SECONDS="$HS_LIMIT" "$DOCTOR" 2>&1 || true)
+  [[ $output == *"✗ Homebrew isn't installed — fix: install it from https://brew.sh"* ]] || fail "missing report in: $output"
+}
+
 reports_missing_omv() {
   complete_setup
   rm "$SANDBOX/prefix/bin/omv"
@@ -587,6 +595,7 @@ run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
+run_case "should say Homebrew is missing when brew isn't found" reports_missing_homebrew
 run_case 'should accept a built aerospace.toml that is up to date' accepts_built_aerospace
 run_case 'should report ~/.config/aerospace still linked' reports_linked_aerospace_folder
 run_case 'should report an aerospace.toml that is out of date' reports_outdated_aerospace
