@@ -501,5 +501,28 @@ class BuiltAerospace(unittest.TestCase):
                 tomllib.loads(built)
 
 
+class AgentDocs(unittest.TestCase):
+    def test_should_pitch_agents_before_the_feature_list_when_the_readme_opens(self) -> None:
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        agents = readme.find("## Built for coding agents")
+        self.assertGreater(agents, 0)
+        self.assertLess(agents, readme.index("## Features"))
+
+    def test_should_point_the_readme_at_agents_md_when_it_explains_agent_setup(self) -> None:
+        self.assertIn("](AGENTS.md)", (REPO / "README.md").read_text(encoding="utf-8"))
+
+    def test_should_name_every_personal_settings_file_when_agents_md_explains_changes(self) -> None:
+        guide = (REPO / "AGENTS.md").read_text(encoding="utf-8")
+        for name in ("aerospace.toml", "ghostty", "sketchybar.sh", "hammerspoon.lua", "nvim.lua", "flags", "apps"):
+            with self.subTest(name=name):
+                self.assertIn(f"~/.config/omv/{name}", guide)
+
+    def test_should_tell_agents_to_reload_when_agents_md_explains_changes(self) -> None:
+        self.assertIn("omv reload", (REPO / "AGENTS.md").read_text(encoding="utf-8"))
+
+    def test_should_tell_agents_not_to_edit_the_clone_when_agents_md_explains_changes(self) -> None:
+        self.assertIn("never edit files in the omv folder", (REPO / "AGENTS.md").read_text(encoding="utf-8"))
+
+
 if __name__ == "__main__":
     unittest.main()

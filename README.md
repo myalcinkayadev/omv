@@ -1,8 +1,32 @@
 # omv
 
-A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the windows, SketchyBar draws the top bar, Hammerspoon adds menus, cards and app keys, and Ghostty, Neovim and btop share the Vantablack theme. It started from [Koen van Gilst's setup](https://koenvangilst.nl/lab/aerospace-sketchybar-macos-setup), with the [fixes listed at the end](#differences-from-the-article).
+A keyboard-driven macOS desktop for working with coding agents, with one look throughout. AeroSpace tiles the windows, SketchyBar draws the top bar, Hammerspoon adds menus, cards and app keys, and Ghostty, Neovim and btop share the Vantablack theme. It started from [Koen van Gilst's setup](https://koenvangilst.nl/lab/aerospace-sketchybar-macos-setup), with the [fixes listed at the end](#differences-from-the-article).
 
 ![Workspace 1 with btop and Neovim, under the top bar](docs/workspace-1.png)
+
+## Built for coding agents
+
+omv is a desktop for working alongside coding agents. Claude Code, Codex, OpenCode and pi report to the bar, so you see every session without hunting through terminals:
+
+- **A pill when a session waits for you.** It shows the project, with `?` when the agent is blocked on your approval. Click it, or press Option+Shift+A, to land in that session's terminal, on any workspace or tab.
+- **The Agents card.** Claude's session and weekly limits, every live session with its state and how long it has been in it, background sessions, and one key to continue or start one.
+- **Dev layout.** Your editor, Claude Code and a shell side by side on their own workspace, optionally on a fresh git worktree, so a task can't collide with other work.
+- **Agent grid.** Two to four agents on one project, each on its own branch, as panes of one window.
+
+[Agents](#agents) and [Dev layout](#dev-layout) have the details.
+
+### Let your agent set it up
+
+Ask your agent for "smaller gaps", "Option+Q closes the window" or "a bigger terminal font". Your own settings live in `~/.config/omv/`, outside the omv folder, so an agent can change them freely and `omv update` still works. [AGENTS.md](AGENTS.md) tells any agent which file holds what, how to apply a change with `omv reload`, and how to check it with `omv doctor`. Point your agent at it, or let it find it in the omv folder.
+
+### Install in a minute
+
+```sh
+git clone https://github.com/myalcinkayadev/omv.git && cd omv
+bin/omv install
+```
+
+It needs [Homebrew](https://brew.sh) and Xcode's Command Line Tools; [Install](#install) has the details and what it changes.
 
 ## Features
 
@@ -600,6 +624,7 @@ Your own changes go in `~/.config/omv/`, outside the omv folder, so `omv update`
 | `hammerspoon.lua` | Hammerspoon | `hs.hotkey.bind({ "alt" }, "q", function() hs.alert("hi") end)` |
 | `nvim.lua` | Neovim | `vim.opt.number = true` |
 | `flags` | Feature flags | `file-search=on` (or `omv flags file-search on`) |
+| `apps` | The browser and editor omv's keys open | `browser = Google Chrome` |
 
 After editing one, run:
 
