@@ -10,7 +10,7 @@ readonly CONFIG_PACKAGES='sketchybar swipeaerospace ghostty nvim btop'
 # process running, every macOS setting applied, and the Claude usage line in place.
 complete_setup() {
   local name
-  for name in borders luajit gh mo m1ddc nightlight tmux; do stub "$name"; done
+  for name in borders gh mo m1ddc nightlight tmux; do stub "$name"; done
   cat > "$STUB_DIR/hs" <<STUB
 #!/bin/sh
 echo "hs \$*" >> "$CALL_LOG"
@@ -80,6 +80,7 @@ EOF
   printf '%s\n' '{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"$HOME/.claude/claude-waiting.sh wait"}]}]}}' > "$HOME_DIR/.claude/settings.json"
   mkdir -p "$SANDBOX/prefix/bin"
   ln -s "$REPO_DIR/bin/omv" "$SANDBOX/prefix/bin/omv"
+  build_aerospace_here
   : > "$CALL_LOG"
 }
 
@@ -243,6 +244,39 @@ fix_opens_no_missing_swipeaerospace() {
   rmdir "$SANDBOX/Applications/SwipeAeroSpace.app"
   report --fix >/dev/null
   assert_not_called '^open -a SwipeAeroSpace'
+}
+
+
+# The aerospace.toml omv builds, with the user file there is, as omv reload would write it.
+build_aerospace_here() {
+  mkdir -p "$HOME_DIR/.config/aerospace"
+  luajit "$REPO_DIR/install/aerospace_merge.lua" "$REPO_DIR/config/aerospace/.config/aerospace/aerospace.toml" \
+    "$HOME_DIR/.config/omv/aerospace.toml" > "$HOME_DIR/.config/aerospace/aerospace.toml"
+}
+
+accepts_built_aerospace() {
+  complete_setup
+  expect_report '✓ aerospace.toml is built from omv and your settings'
+}
+
+reports_outdated_aerospace() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '[gaps]\ninner.horizontal = 2\n' > "$HOME_DIR/.config/omv/aerospace.toml"
+  expect_report '✗ aerospace.toml is out of date — fix: omv reload'
+}
+
+reports_foreign_aerospace() {
+  complete_setup
+  echo 'mine' > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  expect_report "✗ aerospace.toml isn't omv's — fix: omv reload"
+}
+
+reports_unreadable_user_aerospace() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '[gaps\n' > "$HOME_DIR/.config/omv/aerospace.toml"
+  expect_report '✗ ~/.config/omv/aerospace.toml line 1:'
 }
 
 reports_hammerspoon_config() {
@@ -546,6 +580,10 @@ run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
+run_case 'should accept a built aerospace.toml that is up to date' accepts_built_aerospace
+run_case 'should report an aerospace.toml that is out of date' reports_outdated_aerospace
+run_case "should report an aerospace.toml omv didn't build" reports_foreign_aerospace
+run_case "should report a user aerospace.toml it can't read" reports_unreadable_user_aerospace
 run_case "should report Hammerspoon not loading omv's config" reports_hammerspoon_config
 run_case "should accept Hammerspoon loading omv's config" accepts_hammerspoon_config
 run_case 'should open SwipeAeroSpace when --fix finds it not running' fix_opens_swipeaerospace

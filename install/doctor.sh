@@ -15,6 +15,8 @@ readonly REPO_DIR
 source "$REPO_DIR/install/packages.sh"
 # shellcheck source=hammerspoon.sh
 source "$REPO_DIR/install/hammerspoon.sh"
+# shellcheck source=aerospace.sh
+source "$REPO_DIR/install/aerospace.sh"
 readonly APPLICATIONS=${OMV_APPLICATIONS:-/Applications}
 readonly FONT_DIRS=${OMV_FONT_DIRS:-$HOME/Library/Fonts:/Library/Fonts}
 readonly USAGE_MARKER='# omv bar usage'
@@ -102,6 +104,25 @@ omv_link() {
   echo "$folder/omv"
 }
 
+# aerospace.toml is built, not linked: it must be omv's, and match what omv would build now
+# from the defaults and the user's file.
+check_aerospace_built() {
+  local expected errors
+  if ! aerospace_built_by_omv; then
+    problem "aerospace.toml isn't omv's" 'omv reload'
+    return 0
+  fi
+  errors=$(mktemp)
+  if ! expected=$(aerospace_build_text 2>"$errors"); then
+    problem "$(sed 's|^~/.config/omv/aerospace.toml |~/.config/omv/aerospace.toml |' "$errors" | head -n 1)" 'edit it, then omv reload'
+    rm -f "$errors"
+    return 0
+  fi
+  rm -f "$errors"
+  if [ "$expected" = "$(cat "$AEROSPACE_BUILT")" ]; then ok 'aerospace.toml is built from omv and your settings'
+  else problem 'aerospace.toml is out of date' 'omv reload'; fi
+}
+
 check_links() {
   section 'Links'
   local package folder file relative missing broken directory link
@@ -109,6 +130,7 @@ check_links() {
   else problem "the omv command isn't linked" 'omv install'; fi
   if [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ]; then ok "Hammerspoon loads omv's config"
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
+  check_aerospace_built
   for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do
     folder=$(package_dir "$package")
     missing=()

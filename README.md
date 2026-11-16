@@ -588,6 +588,29 @@ Undo refuses when it would lose something: changes in the omv folder, commits ma
 
 Migrations are scripts in `migrations/` that run once each, in name order, for changes a pull alone can't make, such as moving a file. The ones that ran are listed in `~/.local/state/omv/migrations`; `migrations/README.md` has the rules for writing one.
 
+### Your settings
+
+Your own changes go in `~/.config/omv/`, outside the omv folder, so `omv update` never touches them and they never stop an update. Each of omv's configs loads yours last, so your lines win. A file that's missing means omv's defaults; omv creates none of them.
+
+| File | For | Example |
+|---|---|---|
+| `aerospace.toml` | AeroSpace | `[gaps]` then `inner.horizontal = 4` |
+| `ghostty` | Ghostty | `font-size = 15` |
+| `sketchybar.sh` | SketchyBar | `sketchybar --bar height=36` |
+| `hammerspoon.lua` | Hammerspoon | `hs.hotkey.bind({ "alt" }, "q", function() hs.alert("hi") end)` |
+| `nvim.lua` | Neovim | `vim.opt.number = true` |
+| `flags` | Feature flags | `file-search=on` (or `omv flags file-search on`) |
+
+After editing one, run:
+
+```sh
+omv reload
+```
+
+AeroSpace has no way to load a second file, so omv builds `~/.config/aerospace/aerospace.toml` from its defaults and yours: a key you set replaces omv's in the same table, a key or table omv doesn't have is added, and your `[[on-window-detected]]` rules come after omv's. Edit `~/.config/omv/aerospace.toml`, not the built file. An `aerospace.toml` that omv didn't build is moved to `aerospace.toml.before-omv` the first time, never deleted. If yours has a line omv can't read, the old built file stays and `omv reload` names the line.
+
+An error in `hammerspoon.lua` or `nvim.lua` shows as an alert, and omv's keys keep working.
+
 ### Doctor
 
 ```sh
@@ -612,7 +635,7 @@ migrations/    changes a pull alone can't make, run once each by omv update
 
 | Folder | Links | What it does |
 |---|---|---|
-| `config/aerospace` | `~/.config/aerospace` | Tiling, workspaces and window keys |
+| `config/aerospace` | nothing: omv builds `~/.config/aerospace/aerospace.toml` from it | Tiling, workspaces and window keys |
 | `config/sketchybar` | `~/.config/sketchybar` | The top bar and its plugins |
 | `config/hammerspoon` | nothing: Hammerspoon loads it in place | App keys and every card: menus, lists, calendar, reminders, capture, sound, network, battery, weather, disk |
 | `config/ghostty` | `~/.config/ghostty` | Terminal config and window scripts |
