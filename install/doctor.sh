@@ -394,7 +394,7 @@ fix_running() {
 print_manual_checks() {
   cat <<'EOF'
 
-Check by hand (macOS doesn't let a script read these)
+Check by hand (macOS doesn't let a script read these), or open Permissions in the system menu (Option+Escape)
   - Screen Recording for Hammerspoon, for the capture menu:
     System Settings > Privacy & Security > Screen & System Audio Recording
   - Calendar access for "omv agenda", for today's events:

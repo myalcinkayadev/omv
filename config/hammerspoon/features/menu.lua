@@ -51,6 +51,7 @@ local function menuChoose(id)
   if id == "nightlight" then return require("features.nightshift").toggle() end
   if id == "sound" then return require("features.sound").open() end
   if id == "theme" then return require("features.theme").open() end
+  if id == "permissions" then return require("features.permissions").open() end
   if menu.opens(id) then
     menuStack[#menuStack + 1] = id
     return showMenuTop()

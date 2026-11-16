@@ -17,6 +17,7 @@ local SCREENS = {
       { id = "nightlight", icon = "󰖔", label = "Night light" },
       { id = "sound", icon = "󰕾", label = "Sound" },
       { id = "theme", icon = "󰏘", label = "Theme" },
+      { id = "permissions", icon = "󰒃", label = "Permissions" },
       { id = "reload", icon = "󰑐", label = "Reload", submenu = true },
     },
   },

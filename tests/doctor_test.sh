@@ -398,6 +398,11 @@ accepts_omv_link_by_another_path() {
   expect_report '✓ omv command'
 }
 
+points_manual_checks_to_permissions_card() {
+  complete_setup
+  expect_report 'or open Permissions in the system menu (Option+Escape)'
+}
+
 reports_missing_homebrew() {
   complete_setup
   remove_stub brew
@@ -609,6 +614,7 @@ run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
 run_case "should say Homebrew is missing when brew isn't found" reports_missing_homebrew
 run_case "should find Homebrew in its usual folder when brew isn't on the PATH" finds_homebrew_off_path
+run_case 'should point the manual checks to the Permissions card' points_manual_checks_to_permissions_card
 run_case 'should accept a built aerospace.toml that is up to date' accepts_built_aerospace
 run_case 'should report ~/.config/aerospace still linked' reports_linked_aerospace_folder
 run_case 'should report an aerospace.toml that is out of date' reports_outdated_aerospace

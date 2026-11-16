@@ -43,6 +43,8 @@ local clipboardHistory = require("features.clipboard")
 local bluetoothCard = require("features.bluetooth")
 -- Loaded now, not only from the system menu, so the chosen theme colours the cards from the start.
 local themes = require("features.theme")
+-- Loaded now, so the Permissions card can open on its own the first time omv loads.
+require("features.permissions")
 local hungryProcesses = require("features.procs")
 local diskCard = require("features.disk")
 local lyricsWindow = require("features.lyrics")

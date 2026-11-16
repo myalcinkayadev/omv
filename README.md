@@ -161,6 +161,7 @@ Option+Escape opens a menu modeled on Omarchy's.
 | Do Not Disturb | Switches [Do Not Disturb](#do-not-disturb) on or off |
 | Sound | Opens the [Sound card](#sound) |
 | Theme | Opens the [theme picker](#themes) |
+| Permissions | Each permission omv needs, ✓ granted, ✗ not, or ? to check by hand; Enter opens its System Settings pane. Opens on its own the first time omv loads |
 | Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
 
 Type to filter, Up and Down to move, Enter or Right to pick, Left or Backspace to go back, and Escape or a click elsewhere to close.
