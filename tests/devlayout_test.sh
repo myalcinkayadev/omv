@@ -5,7 +5,7 @@ source "$(dirname "$0")/lib.sh"
 
 luajit "$REPO_DIR/tests/devlayout_test.lua" "$REPO_DIR" || failed=$((failed + 1))
 
-readonly SHELL_IN=$REPO_DIR/config/hammerspoon/.hammerspoon/shell-in.sh
+readonly SHELL_IN=$REPO_DIR/config/hammerspoon/shell-in.sh
 
 opens_the_shell_in_the_folder() {
   mkdir -p "$SANDBOX/my project"

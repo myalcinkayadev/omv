@@ -4,7 +4,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly SCRIPT=$REPO_DIR/config/hammerspoon/.hammerspoon/theme-sync.sh
+readonly SCRIPT=$REPO_DIR/config/hammerspoon/theme-sync.sh
 
 themes_dir() {
   echo "$HOME_DIR/.local/share/omv/themes"

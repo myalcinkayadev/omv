@@ -4,7 +4,7 @@
 source "$(dirname "$0")/lib.sh"
 
 readonly DOCTOR=$REPO_DIR/install/doctor.sh
-readonly CONFIG_PACKAGES='aerospace sketchybar swipeaerospace ghostty nvim btop hammerspoon'
+readonly CONFIG_PACKAGES='aerospace sketchybar swipeaerospace ghostty nvim btop'
 
 # A finished install: every tool, app and font present, every package linked, every
 # process running, every macOS setting applied, and the Claude usage line in place.
@@ -58,12 +58,13 @@ STUB
   stub kill
   stub nohup
   chmod +x "$STUB_DIR/hs" "$STUB_DIR/defaults" "$STUB_DIR/ps" "$STUB_DIR/pgrep"
-  cat > "$SANDBOX/defaults" <<'EOF'
+  cat > "$SANDBOX/defaults" <<EOF
 NSGlobalDomain _HIHideMenuBar 1
 com.apple.spaces spans-displays 1
 NSGlobalDomain NSAutomaticWindowAnimationsEnabled 0
 NSGlobalDomain NSWindowShouldDragOnGesture 1
 com.apple.AppleMultitouchTrackpad TrackpadThreeFingerHorizSwipeGesture 0
+org.hammerspoon.Hammerspoon MJConfigFile $REPO_DIR/config/hammerspoon/init.lua
 EOF
   mkdir -p "$SANDBOX/Applications" "$SANDBOX/Fonts"
   for name in Hammerspoon Ghostty SwipeAeroSpace Zed Helium; do mkdir -p "$SANDBOX/Applications/$name.app"; done
@@ -242,6 +243,17 @@ fix_opens_no_missing_swipeaerospace() {
   rmdir "$SANDBOX/Applications/SwipeAeroSpace.app"
   report --fix >/dev/null
   assert_not_called '^open -a SwipeAeroSpace'
+}
+
+reports_hammerspoon_config() {
+  complete_setup
+  sed -i '' '/MJConfigFile/d' "$SANDBOX/defaults"
+  expect_report "✗ Hammerspoon doesn't load omv's config — fix: omv install"
+}
+
+accepts_hammerspoon_config() {
+  complete_setup
+  expect_report "✓ Hammerspoon loads omv's config"
 }
 
 refuses_unknown_argument() {
@@ -452,15 +464,15 @@ remove_link() {
 
 reports_unlinked_file() {
   complete_setup
-  remove_link "$HOME_DIR/.hammerspoon/pomo.lua"
-  expect_report '✗ hammerspoon is not fully linked: .hammerspoon/pomo.lua — fix: ./install.sh'
+  remove_link "$HOME_DIR/.config/sketchybar/plugins/clock.sh"
+  expect_report '✗ sketchybar is not fully linked: .config/sketchybar/plugins/clock.sh — fix: ./install.sh'
 }
 
 reports_broken_link() {
   complete_setup
-  [ ! -L "$HOME_DIR/.hammerspoon" ] || fail '.hammerspoon is a link into the repo'
-  ln -s "../$(basename "$REPO_DIR")/config/hammerspoon/.hammerspoon/gone.lua" "$HOME_DIR/.hammerspoon/gone.lua"
-  expect_report '✗ broken link: .hammerspoon/gone.lua'
+  [ ! -L "$HOME_DIR/.config/sketchybar/plugins" ] || fail 'the plugins folder is a link into the repo'
+  ln -s "../../../$(basename "$REPO_DIR")/config/sketchybar/.config/sketchybar/plugins/gone.sh" "$HOME_DIR/.config/sketchybar/plugins/gone.sh"
+  expect_report '✗ broken link: .config/sketchybar/plugins/gone.sh'
 }
 
 reports_stopped_process() {
@@ -534,6 +546,8 @@ run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
+run_case "should report Hammerspoon not loading omv's config" reports_hammerspoon_config
+run_case "should accept Hammerspoon loading omv's config" accepts_hammerspoon_config
 run_case 'should open SwipeAeroSpace when --fix finds it not running' fix_opens_swipeaerospace
 run_case 'should say SwipeAeroSpace was opened when --fix opens it' fix_says_opened_swipeaerospace
 run_case "should not open SwipeAeroSpace when it isn't installed" fix_opens_no_missing_swipeaerospace

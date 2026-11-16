@@ -5,7 +5,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly HAMMERSPOON=$REPO_DIR/config/hammerspoon/.hammerspoon
+readonly HAMMERSPOON=$REPO_DIR/config/hammerspoon
 readonly INIT_LOCALS_LIMIT=60
 
 compiles_init() {

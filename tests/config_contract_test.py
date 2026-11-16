@@ -7,7 +7,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 AEROSPACE = REPO / "config/aerospace/.config/aerospace/aerospace.toml"
-HAMMERSPOON = REPO / "config/hammerspoon/.hammerspoon/init.lua"
+HAMMERSPOON = REPO / "config/hammerspoon/init.lua"
 GHOSTTY = REPO / "config/ghostty/.config/ghostty/config"
 PACKAGES = tuple(
     f"config/{name}" for name in ("aerospace", "sketchybar", "swipeaerospace", "ghostty", "nvim", "btop", "hammerspoon")
@@ -224,7 +224,7 @@ class ConfigContract(unittest.TestCase):
         self.assertIn("alt-m", hammerspoon_keys())
 
     def test_should_redraw_the_mic_item_when_the_bar_restarts(self) -> None:
-        source = (REPO / "config/hammerspoon/.hammerspoon/init.lua").read_text(encoding="utf-8")
+        source = (REPO / "config/hammerspoon/init.lua").read_text(encoding="utf-8")
         redraw = re.search(r"omvRedrawBar = later\(function\(\)(.*?)\nend\)", source, re.S)
         self.assertIsNotNone(redraw)
         self.assertIn("mic.redrawBar()", redraw.group(1))

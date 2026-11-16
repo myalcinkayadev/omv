@@ -16,6 +16,8 @@ REPO_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)
 readonly REPO_DIR
 # shellcheck source=../install/packages.sh
 source "$REPO_DIR/install/packages.sh"
+# shellcheck source=../install/hammerspoon.sh
+source "$REPO_DIR/install/hammerspoon.sh"
 readonly STATE_DIR=$HOME/.local/state/omv
 # The last update that moved omv: the commit before it, the one after it, and the migrations
 # it ran. Kept until undo, so a retried or empty update doesn't lose the way back.
@@ -24,7 +26,7 @@ readonly UPDATE_TO=$STATE_DIR/update-to
 readonly UPDATE_MIGRATIONS=$STATE_DIR/update-migrations
 readonly MIGRATIONS_DONE=$STATE_DIR/migrations
 readonly FLAGS_FILE=$HOME/.config/omv/flags
-readonly FLAG_DEFAULTS=$REPO_DIR/config/hammerspoon/.hammerspoon/flags.lua
+readonly FLAG_DEFAULTS=$REPO_DIR/config/hammerspoon/flags.lua
 readonly THEMES_DIR=$HOME/.local/share/omv/themes
 
 usage() {
@@ -58,6 +60,7 @@ relink() {
   mkdir -p "$HOME/.claude"
   stow --dir="$REPO_DIR/config" --target="$HOME" --restow "${CONFIG_PACKAGES[@]}"
   stow --dir="$REPO_DIR/agents" --target="$HOME" --restow "${AGENT_PACKAGES[@]}"
+  point_hammerspoon
 }
 
 reload() {

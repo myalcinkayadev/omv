@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly SCRIPT=$REPO_DIR/config/hammerspoon/.hammerspoon/claude-in.sh
+readonly SCRIPT=$REPO_DIR/config/hammerspoon/claude-in.sh
 
 # The login shell is a stub that logs the folder it runs in and what it was asked to run.
 stub_shell() {

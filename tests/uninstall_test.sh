@@ -4,7 +4,7 @@
 source "$(dirname "$0")/lib.sh"
 
 readonly UNINSTALL=$REPO_DIR/install/uninstall.sh
-readonly CONFIG_PACKAGES='aerospace sketchybar swipeaerospace ghostty nvim btop hammerspoon'
+readonly CONFIG_PACKAGES='aerospace sketchybar swipeaerospace ghostty nvim btop'
 
 # Links every package with the real stow, as a finished install would leave them.
 link_everything() {
@@ -44,6 +44,30 @@ removes_theme_files() {
   [ ! -e "$HOME_DIR/.local/state/omv/theme" ] && [ ! -e "$HOME_DIR/.local/share/omv/themes" ] || fail 'theme files left behind'
 }
 
+# defaults answers $1 for Hammerspoon's config file and fails every other read.
+answer_hammerspoon_config() {
+  cat > "$STUB_DIR/defaults" <<STUB
+#!/bin/sh
+echo "defaults \$*" >> "$CALL_LOG"
+[ "\$*" = "read org.hammerspoon.Hammerspoon MJConfigFile" ] && echo "$1" && exit 0
+case "\$1" in read|-currentHost) exit 1 ;; esac
+exit 0
+STUB
+  chmod +x "$STUB_DIR/defaults"
+}
+
+forgets_hammerspoon_setting() {
+  answer_hammerspoon_config "$REPO_DIR/config/hammerspoon/init.lua"
+  run_in_sandbox "$UNINSTALL" --all >/dev/null
+  assert_called '^defaults delete org.hammerspoon.Hammerspoon MJConfigFile$'
+}
+
+keeps_other_hammerspoon_setting() {
+  answer_hammerspoon_config /elsewhere/init.lua
+  run_in_sandbox "$UNINSTALL" --all >/dev/null
+  assert_not_called '^defaults delete org.hammerspoon'
+}
+
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called "^stow --dir=$REPO_DIR/config --target=$HOME_DIR -D aerospace sketchybar swipeaerospace$"
@@ -54,7 +78,7 @@ keeps_older_tool_links() {
   link_everything
   run_in_sandbox "$UNINSTALL" >/dev/null
   local link
-  for link in .config/ghostty .config/nvim .config/btop .hammerspoon; do
+  for link in .config/ghostty .config/nvim .config/btop; do
     [ -L "$HOME_DIR/$link" ] || fail "link was removed: $link"
   done
 }
@@ -229,9 +253,11 @@ keeps_other_omv() {
 }
 
 run_case 'should unstow only aerospace, sketchybar, claude and swipeaerospace when run without flags' unstows_only_this_setup
-run_case 'should keep the ghostty, nvim, btop and hammerspoon links when run without flags' keeps_older_tool_links
+run_case 'should keep the ghostty, nvim and btop links when run without flags' keeps_older_tool_links
 run_case 'should remove the aerospace and sketchybar links when run without flags' removes_this_setups_links
-run_case 'should unstow all eight packages when run with --all' unstows_everything_with_all_flag
+run_case "should forget the Hammerspoon setting with --all when it's omv's" forgets_hammerspoon_setting
+run_case "should keep a Hammerspoon setting that isn't omv's" keeps_other_hammerspoon_setting
+run_case 'should unstow all seven packages when run with --all' unstows_everything_with_all_flag
 run_case 'should remove the usage line when uninstalling' removes_usage_line
 run_case "should remove the waiting hooks from Claude's settings when uninstalling" removes_waiting_hooks
 run_case 'should delete both macOS settings when they are set' deletes_macos_settings

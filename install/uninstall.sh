@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Reverses install.sh. Anything already removed is skipped, so a failed step never
-# stops the rest. By default, the older ghostty, nvim, btop and hammerspoon links
-# stay; --all removes them too. The repo itself is never touched.
+# stops the rest. By default, the older ghostty, nvim and btop links and Hammerspoon's
+# setting that loads omv's config stay; --all removes them too. The repo itself is never touched.
 
 set -uo pipefail
 
@@ -9,16 +9,20 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 readonly REPO_DIR
 # shellcheck source=packages.sh
 source "$REPO_DIR/install/packages.sh"
+# shellcheck source=hammerspoon.sh
+source "$REPO_DIR/install/hammerspoon.sh"
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap)
 readonly SETUP_PACKAGES=(aerospace sketchybar claude swipeaerospace)
-readonly OLDER_PACKAGES=(ghostty nvim btop hammerspoon)
+readonly OLDER_PACKAGES=(ghostty nvim btop)
 
 packages=("${SETUP_PACKAGES[@]}")
+all=false
 
 parse_arguments() {
   [ "$#" -eq 0 ] && return 0
   if [ "$#" -eq 1 ] && [ "$1" = '--all' ]; then
     packages+=("${OLDER_PACKAGES[@]}")
+    all=true
     return 0
   fi
   echo "usage: uninstall.sh [--all]" >&2
@@ -77,6 +81,13 @@ unlink_configs() {
   # The other agents' plugins, linked only when that agent was set up.
   if [ -L "$HOME/.config/opencode/plugins/omv-agent-state.js" ]; then stow --dir="$REPO_DIR/agents" --target="$HOME" -D opencode; fi
   if [ -L "$HOME/.pi/agent/extensions/omv-agent-state.ts" ]; then stow --dir="$REPO_DIR/agents" --target="$HOME" -D pi; fi
+}
+
+# Back to ~/.hammerspoon, only when the setting is omv's: another one isn't ours to remove.
+forget_hammerspoon_config() {
+  $all || return 0
+  [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ] || return 0
+  defaults delete org.hammerspoon.Hammerspoon MJConfigFile
 }
 
 # Only an omv that leads to this repo: another one isn't ours to remove.
@@ -144,6 +155,7 @@ quit_apps
 stop_keep_awake
 remove_claude_usage
 unlink_configs
+forget_hammerspoon_config
 remove_omv_command
 reset_macos_settings
 remove_tools

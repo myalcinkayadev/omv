@@ -8,11 +8,12 @@ source "$(dirname "$0")/lib.sh"
 # doctor scripts (in install/) that log their arguments. git answers from files: $SANDBOX/dirty (status),
 # $SANDBOX/branch (main by default) and $SANDBOX/head (the commit).
 make_repo() {
-  REPO=$SANDBOX/repo
-  mkdir -p "$REPO/bin" "$REPO/install" "$REPO/migrations" "$REPO/config/hammerspoon/.hammerspoon"
+  # Physical, as bin/omv resolves its own path: /var is a link to /private/var.
+  REPO=$(cd "$SANDBOX" && pwd -P)/repo
+  mkdir -p "$REPO/bin" "$REPO/install" "$REPO/migrations" "$REPO/config/hammerspoon"
   cp "$REPO_DIR/bin/omv" "$REPO/bin/omv"
-  cp "$REPO_DIR/install/packages.sh" "$REPO/install/packages.sh"
-  cp "$REPO_DIR/config/hammerspoon/.hammerspoon/flags.lua" "$REPO/config/hammerspoon/.hammerspoon/flags.lua"
+  cp "$REPO_DIR/install/packages.sh" "$REPO_DIR/install/hammerspoon.sh" "$REPO/install/"
+  cp "$REPO_DIR/config/hammerspoon/flags.lua" "$REPO/config/hammerspoon/flags.lua"
   local script
   for script in install uninstall doctor; do
     printf '#!/bin/sh\necho "%s.sh $*" >> "%s"\nexit $(cat "%s/%s-exit" 2>/dev/null || echo 0)\n' \
@@ -42,6 +43,24 @@ exit 0
 STUB
   chmod +x "$STUB_DIR/git"
   stub hs
+  answer_hammerspoon_config "$REPO/config/hammerspoon/init.lua"
+}
+
+# defaults answers $1 for Hammerspoon's config file, and logs every call.
+answer_hammerspoon_config() {
+  cat > "$STUB_DIR/defaults" <<STUB
+#!/bin/sh
+echo "defaults \$*" >> "$CALL_LOG"
+[ "\$*" = "read org.hammerspoon.Hammerspoon MJConfigFile" ] && echo "$1"
+exit 0
+STUB
+  chmod +x "$STUB_DIR/defaults"
+}
+
+# pgrep finds Hammerspoon, with a pid no process has, so the wait for it to quit ends at once.
+run_hammerspoon() {
+  printf '#!/bin/sh\necho "pgrep $*" >> "%s"\n[ "$*" = "-x Hammerspoon" ] && echo 999999\nexit 0\n' "$CALL_LOG" > "$STUB_DIR/pgrep"
+  chmod +x "$STUB_DIR/pgrep"
 }
 
 omv() {
@@ -104,7 +123,7 @@ update_pulls_fast_forward_only() {
 update_restows() {
   make_repo
   omv update >/dev/null
-  assert_called '^stow .*--restow .*hammerspoon'
+  assert_called '^stow .*--restow .*aerospace'
 }
 
 update_reloads_hammerspoon() {
@@ -154,6 +173,35 @@ update_installs_without_upgrading() {
   make_repo
   omv update >/dev/null
   assert_called '^brew bundle --no-upgrade '
+}
+
+points_hammerspoon_at_repo() {
+  make_repo
+  answer_hammerspoon_config "$HOME_DIR/.hammerspoon/init.lua"
+  omv update >/dev/null
+  assert_called "^defaults write org.hammerspoon.Hammerspoon MJConfigFile $REPO/config/hammerspoon/init.lua$"
+}
+
+leaves_hammerspoon_when_config_is_right() {
+  make_repo
+  run_hammerspoon
+  omv update >/dev/null
+  assert_not_called '^pkill'
+}
+
+restarts_hammerspoon_when_config_changed() {
+  make_repo
+  run_hammerspoon
+  answer_hammerspoon_config "$HOME_DIR/.hammerspoon/init.lua"
+  omv update >/dev/null
+  assert_called '^open -a Hammerspoon$'
+}
+
+opens_no_stopped_hammerspoon() {
+  make_repo
+  answer_hammerspoon_config "$HOME_DIR/.hammerspoon/init.lua"
+  omv update >/dev/null
+  assert_not_called '^open -a Hammerspoon'
 }
 
 undo_resets_to_saved_commit() {
@@ -394,6 +442,10 @@ run_case 'should offer undo when the doctor fails after an update' update_offers
 run_case 'should suggest omv doctor --fix when the doctor fails after an update' update_suggests_fix_when_doctor_fails
 run_case 'should offer no undo when the doctor fails and no update is saved' update_offers_no_undo_without_saved_update
 run_case 'should install missing packages without upgrading others when updating' update_installs_without_upgrading
+run_case "should point Hammerspoon at the repo's config when relinking" points_hammerspoon_at_repo
+run_case "should leave Hammerspoon running when it already loads the repo's config" leaves_hammerspoon_when_config_is_right
+run_case 'should restart Hammerspoon when its config changed' restarts_hammerspoon_when_config_changed
+run_case "should not open Hammerspoon when it isn't running" opens_no_stopped_hammerspoon
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree

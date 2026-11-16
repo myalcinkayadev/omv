@@ -6,7 +6,7 @@ source "$(dirname "$0")/lib.sh"
 
 luajit "$REPO_DIR/tests/lyrics_test.lua" "$REPO_DIR" || failed=$((failed + 1))
 
-readonly LYRICS_WINDOW=$REPO_DIR/config/hammerspoon/.hammerspoon/lyrics-window.sh
+readonly LYRICS_WINDOW=$REPO_DIR/config/hammerspoon/lyrics-window.sh
 
 app() {
   echo "$HOME_DIR/.cache/omv/Lyrics.app"

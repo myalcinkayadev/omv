@@ -3,7 +3,7 @@
 
 source "$(dirname "$0")/lib.sh"
 
-readonly LAUNCH=$REPO_DIR/config/hammerspoon/.hammerspoon/launch.sh
+readonly LAUNCH=$REPO_DIR/config/hammerspoon/launch.sh
 
 runs_command_when_switch_fails() {
   stub aerospace 1

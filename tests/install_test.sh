@@ -5,6 +5,19 @@ source "$(dirname "$0")/lib.sh"
 
 readonly INSTALL=$REPO_DIR/install/install.sh
 
+points_hammerspoon_at_repo() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  assert_called "^defaults write org.hammerspoon.Hammerspoon MJConfigFile $REPO_DIR/config/hammerspoon/init.lua$"
+}
+
+prints_hammerspoon_setting_on_dry_run() {
+  local output
+  output=$(run_in_sandbox "$INSTALL" --dry-run)
+  [[ $output == *"would run: defaults write org.hammerspoon.Hammerspoon MJConfigFile $REPO_DIR/config/hammerspoon/init.lua"* ]] \
+    || fail "no dry-run line in: $output"
+  assert_not_called '^defaults write org.hammerspoon'
+}
+
 add_conflicting_file() {
   mkdir -p "$HOME_DIR/.config/aerospace"
   echo 'mine' > "$HOME_DIR/.config/aerospace/aerospace.toml"
@@ -73,7 +86,7 @@ links_all_packages() {
   use_real_stow
   run_in_sandbox "$INSTALL" >/dev/null
   local link
-  for link in .config/aerospace .config/sketchybar .config/ghostty .config/nvim .config/btop .hammerspoon .claude/bar-usage.sh .config/swipeareospace; do
+  for link in .config/aerospace .config/sketchybar .config/ghostty .config/nvim .config/btop .claude/bar-usage.sh .config/swipeareospace; do
     [ -L "$HOME_DIR/$link" ] || fail "not linked: $link"
   done
 }
@@ -199,10 +212,12 @@ reports_stow_conflict() {
   [[ $output == *"install.sh: stow could not link"* ]] || fail "missing report in: $output"
 }
 
+run_case "should point Hammerspoon at the repo's config" points_hammerspoon_at_repo
+run_case 'should only print the Hammerspoon setting on a dry run' prints_hammerspoon_setting_on_dry_run
 run_case 'should exit non-zero when brew is missing' fails_without_brew
 run_case 'should exit non-zero when stow is missing' fails_without_stow
 run_case 'should trust the taps before installing' trusts_taps_before_installing
-run_case 'should link all eight packages when the target is clean' links_all_packages
+run_case 'should link all seven packages when the target is clean' links_all_packages
 run_case 'should put the omv command on PATH' links_omv_command
 run_case 'should keep .claude a real directory when linking' keeps_claude_dir_real
 run_case 'should add the usage line when installing' adds_usage_line

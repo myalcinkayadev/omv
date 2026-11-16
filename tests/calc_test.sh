@@ -9,4 +9,4 @@ if ! command -v node >/dev/null 2>&1; then
   exit 0
 fi
 
-OMV_CALC="$REPO_DIR/config/hammerspoon/.hammerspoon/calc.js" node "$REPO_DIR/tests/calc_test.mjs"
+OMV_CALC="$REPO_DIR/config/hammerspoon/calc.js" node "$REPO_DIR/tests/calc_test.mjs"

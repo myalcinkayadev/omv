@@ -2,7 +2,7 @@
 -- folder, so tests use them the way init.lua does, without Hammerspoon itself.
 
 local repo = arg[1]
-package.path = repo .. "/config/hammerspoon/.hammerspoon/?.lua;" .. package.path
+package.path = repo .. "/config/hammerspoon/?.lua;" .. package.path
 
 local check = { failed = 0 }
 

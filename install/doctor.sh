@@ -13,6 +13,8 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 readonly REPO_DIR
 # shellcheck source=packages.sh
 source "$REPO_DIR/install/packages.sh"
+# shellcheck source=hammerspoon.sh
+source "$REPO_DIR/install/hammerspoon.sh"
 readonly APPLICATIONS=${OMV_APPLICATIONS:-/Applications}
 readonly FONT_DIRS=${OMV_FONT_DIRS:-$HOME/Library/Fonts:/Library/Fonts}
 readonly USAGE_MARKER='# omv bar usage'
@@ -105,6 +107,8 @@ check_links() {
   local package folder file relative missing broken directory link
   if [ -L "$(omv_link)" ] && [ "$(omv_link)" -ef "$REPO_DIR/bin/omv" ]; then ok 'omv command'
   else problem "the omv command isn't linked" './install.sh'; fi
+  if [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ]; then ok "Hammerspoon loads omv's config"
+  else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
   for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do
     folder=$(package_dir "$package")
     missing=()

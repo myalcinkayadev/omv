@@ -1,7 +1,7 @@
 -- Behavior of the cheat sheet's config parser. Run through keymap_test.sh with luajit.
 
-package.path = arg[1] .. "/config/hammerspoon/.hammerspoon/?.lua;" .. package.path
-local keymap = dofile(arg[1] .. "/config/hammerspoon/.hammerspoon/keymap.lua")
+package.path = arg[1] .. "/config/hammerspoon/?.lua;" .. package.path
+local keymap = dofile(arg[1] .. "/config/hammerspoon/keymap.lua")
 
 local failed = 0
 

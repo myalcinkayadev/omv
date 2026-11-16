@@ -11,6 +11,8 @@ readonly REPO_DIR
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap smudge/smudge)
 # shellcheck source=packages.sh
 source "$REPO_DIR/install/packages.sh"
+# shellcheck source=hammerspoon.sh
+source "$REPO_DIR/install/hammerspoon.sh"
 
 DRY_RUN=false
 APPS=true
@@ -132,6 +134,11 @@ install_tools
 # The Brewfile installs Stow, so it's only needed from here on.
 $DRY_RUN || require_command stow
 link_configs
+if $DRY_RUN; then
+  echo "would run: defaults write org.hammerspoon.Hammerspoon MJConfigFile $HAMMERSPOON_CONFIG"
+else
+  point_hammerspoon
+fi
 link_omv
 step "$REPO_DIR/agents/claude-usage.sh" add
 step "$REPO_DIR/agents/claude-hooks.sh" add
