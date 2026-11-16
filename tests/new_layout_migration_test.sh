@@ -104,6 +104,17 @@ matches_through_symlinked_home() {
   assert_gone .config/nvim
 }
 
+matches_clone_path_with_brackets() {
+  CLONE="$SANDBOX/omv[1]"
+  mkdir -p "$CLONE/migrations"
+  cp "$REPO_DIR/migrations/$MIGRATION" "$CLONE/migrations/"
+  link .config/nvim '../../omv[1]/nvim/.config/nvim'
+  touch "$SANDBOX/omv1"
+  (cd "$SANDBOX" && run_in_sandbox bash "$CLONE/migrations/$MIGRATION" >/dev/null)
+  assert_gone .config/nvim
+}
+
+run_case "should match a link whose path holds brackets when a file matches them as a pattern" matches_clone_path_with_brackets
 run_case 'should remove a file link into an old package' removes_file_link
 run_case 'should remove a folder link into an old package' removes_folder_link
 run_case 'should remove a link with an absolute target into an old package' removes_absolute_link

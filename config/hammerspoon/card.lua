@@ -7,8 +7,8 @@
 
 local card = {}
 
--- The palette's calculator, read from beside this file. Empty when calc.js is missing, such
--- as before stow links it: the palette then filters as before, with no calculator row.
+-- The palette's calculator, read from beside this file. Empty when calc.js is missing: the
+-- palette then filters as before, with no calculator row.
 local function readCalc()
   local folder = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
   local file = io.open(folder .. "calc.js", "r")

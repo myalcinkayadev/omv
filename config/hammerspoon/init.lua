@@ -3,6 +3,9 @@
 -- hs.hotkey needs no Accessibility permission, so none is granted.
 -- Each card lives in features/, sharing the floating card from shell.lua. This file only
 -- loads them, in the order they start, and binds every key in one place.
+-- Hammerspoon loads this config from the repo, so its own ~/.hammerspoon is no longer the
+-- config folder; its Spoons still load from there.
+package.path = package.path .. ";" .. os.getenv("HOME") .. "/.hammerspoon/Spoons/?.spoon/init.lua"
 require("hs.ipc")
 -- Installs the hs command when it's missing, as on a fresh Mac: the bar and doctor.sh need it.
 local hsPrefix = require("hscli").prefix(hs.fs.attributes("/opt/homebrew") ~= nil)

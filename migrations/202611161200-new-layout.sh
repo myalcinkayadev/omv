@@ -10,9 +10,11 @@ CLONE=$(cd "$(dirname "$0")/.." && pwd -P)
 readonly CLONE
 readonly OLD_PACKAGES=(aerospace sketchybar claude swipeaerospace ghostty nvim btop hammerspoon opencode pi)
 
-# $1 with "." and ".." collapsed, segment by segment, without touching the disk.
+# $1 with "." and ".." collapsed, segment by segment, without touching the disk. Globbing is
+# off, so a segment such as omv[1] stays as written.
 collapse() {
   local part parts=() IFS=/
+  set -f
   for part in $1; do
     case $part in
       '' | .) ;;
@@ -20,6 +22,7 @@ collapse() {
       *) parts+=("$part") ;;
     esac
   done
+  set +f
   printf '/%s' "${parts[@]+"${parts[@]}"}"
 }
 
