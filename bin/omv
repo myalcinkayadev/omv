@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # omv: one command for the whole setup.
-#   omv install [--dry-run] [--no-apps]   run migrations, then install everything
+#   omv install [--no-setup] [--dry-run] [--no-apps]   install, shown step by step in omv Setup
 #   omv update                            pull, install, relink, migrate, reload, then check
 #   omv update --undo                     go back to the commit before the last update
 #   omv doctor [--fix]                    check the setup, and clear a jam with --fix
@@ -83,6 +83,41 @@ relink() {
 
 # After editing a file in ~/.config/omv: rebuild aerospace.toml, then reload what reads them.
 # AeroSpace is asked only when it's running; it reads the file when it starts anyway.
+# Migrations first: Stow won't link over the links an older layout left behind.
+install_in_terminal() {
+  local argument
+  for argument in "$@"; do
+    if [ "$argument" = --dry-run ]; then
+      echo "would run: pending migrations"
+      "$REPO_DIR/install/install.sh" "$@"
+      return
+    fi
+  done
+  run_migrations
+  "$REPO_DIR/install/install.sh" "$@"
+}
+
+# omv Setup runs the install itself, showing each step, then walks through the permissions.
+# --no-setup, a dry run, or a Mac that can't build the app installs here, in the terminal.
+install() {
+  local argument arguments=() terminal=false
+  for argument in "$@"; do
+    case $argument in
+      --no-setup) terminal=true ;;
+      --dry-run) terminal=true; arguments+=("$argument") ;;
+      --no-apps) arguments+=("$argument") ;;
+      *) usage ;;
+    esac
+  done
+  if ! $terminal && build_setup_app; then
+    open "$SETUP_APP" --args --install "$REPO_DIR"
+    echo "omv Setup is installing; follow it there."
+    return 0
+  fi
+  if ! $terminal; then echo "omv: installing here in the terminal instead" >&2; fi
+  install_in_terminal "${arguments[@]+"${arguments[@]}"}"
+}
+
 reload_aerospace() {
   [ -n "$(pgrep -x AeroSpace 2>/dev/null || true)" ] || return 0
   aerospace reload-config
@@ -265,19 +300,7 @@ command=${1:-}
 [ -n "$command" ] || usage
 shift
 case $command in
-  install)
-    # Migrations first: Stow won't link over the links an older layout left behind.
-    case " $* " in
-      *" --dry-run "*) echo "would run: pending migrations" ;;
-      *) run_migrations ;;
-    esac
-    "$REPO_DIR/install/install.sh" "$@"
-    # The permissions macOS leaves to the user, one guided step at a time.
-    case " $* " in
-      *" --dry-run "*) echo "would run: build and open omv Setup" ;;
-      *) open_setup_app || true ;;
-    esac
-    ;;
+  install) install "$@" ;;
   update)
     case ${1:-} in
       '') update ;;

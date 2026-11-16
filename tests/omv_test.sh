@@ -111,7 +111,7 @@ relinks_before_installing_packages() {
 migrates_before_installing() {
   make_repo
   add_migration 202601010000-a
-  omv install >/dev/null
+  omv install --no-setup >/dev/null
   assert_before '^migration ' '^install\.sh'
 }
 
@@ -415,7 +415,7 @@ shows_last_valid_flag() {
 runs_migrations_in_omv_folder() {
   make_repo
   printf '#!/bin/sh\necho "migration-pwd $(pwd -P)" >> "%s"\n' "$CALL_LOG" > "$REPO/migrations/202601010000-where.sh"
-  (cd "$SANDBOX" && omv install >/dev/null)
+  (cd "$SANDBOX" && omv install --no-setup >/dev/null)
   assert_called "^migration-pwd $REPO$"
 }
 
@@ -586,11 +586,53 @@ setup_says_how_to_fix_build() {
   [[ $output == *'xcode-select --install'* ]] || fail "no fix in: $output"
 }
 
-install_opens_setup() {
+install_builds_setup_first() {
   make_repo
   build_with_stub_swiftc
   omv install >/dev/null
-  assert_called "$SETUP_APP_PATTERN"
+  assert_before '^swiftc ' '^open '
+}
+
+install_opens_setup_in_install_mode() {
+  make_repo
+  build_with_stub_swiftc
+  omv install >/dev/null
+  assert_called "^open .*/Applications/omv Setup\.app --args --install $REPO$"
+}
+
+install_leaves_install_to_setup() {
+  make_repo
+  build_with_stub_swiftc
+  omv install >/dev/null
+  assert_not_called '^install\.sh'
+}
+
+installs_in_terminal_with_no_setup() {
+  make_repo
+  build_with_stub_swiftc
+  omv install --no-setup >/dev/null
+  assert_called '^install\.sh ?$'
+}
+
+opens_no_setup_with_no_setup() {
+  make_repo
+  build_with_stub_swiftc
+  omv install --no-setup >/dev/null
+  assert_not_called '^open '
+}
+
+installs_in_terminal_when_setup_cant_build() {
+  make_repo
+  stub swiftc 1
+  omv install >/dev/null 2>&1 || true
+  assert_called '^install\.sh ?$'
+}
+
+rejects_unknown_install_flag() {
+  make_repo
+  local status=0
+  omv install --bogus >/dev/null 2>&1 || status=$?
+  [ "$status" = 2 ] || fail "expected exit 2, got $status"
 }
 
 dry_run_install_opens_no_setup() {
@@ -734,7 +776,7 @@ passes_uninstall_arguments() {
 install_runs_migrations() {
   make_repo
   add_migration 202611150900-first
-  omv install --no-apps >/dev/null
+  omv install --no-apps --no-setup >/dev/null
   assert_called '^install\.sh --no-apps$'
   assert_called '^migration 202611150900-first$'
 }
@@ -880,7 +922,13 @@ run_case "should say AeroSpace didn't accept the config when its reload fails du
 run_case 'should open the setup app on omv setup' setup_opens_app
 run_case 'should build the setup app before opening it' setup_builds_before_opening
 run_case "should say how to fix it when the setup app can't be built" setup_says_how_to_fix_build
-run_case 'should open the setup app after installing' install_opens_setup
+run_case 'should build the setup app before installing' install_builds_setup_first
+run_case "should open the setup app in install mode with the repo's path" install_opens_setup_in_install_mode
+run_case 'should leave the install to the setup app' install_leaves_install_to_setup
+run_case 'should install in the terminal with --no-setup' installs_in_terminal_with_no_setup
+run_case 'should open no setup app with --no-setup' opens_no_setup_with_no_setup
+run_case "should install in the terminal when the setup app can't be built" installs_in_terminal_when_setup_cant_build
+run_case 'should show usage for an unknown install flag' rejects_unknown_install_flag
 run_case 'should not build the setup app on a dry-run install' dry_run_install_opens_no_setup
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
