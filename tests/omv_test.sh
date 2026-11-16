@@ -233,9 +233,67 @@ restarts_hammerspoon_when_config_changed() {
 
 opens_no_stopped_hammerspoon() {
   make_repo
+  stub pgrep 1
   answer_hammerspoon_config "$HOME_DIR/.hammerspoon/init.lua"
   omv update >/dev/null
   assert_not_called '^open -a Hammerspoon'
+}
+
+finishes_update_without_hammerspoon() {
+  make_repo
+  stub pgrep 1
+  answer_hammerspoon_config "$HOME_DIR/.hammerspoon/init.lua"
+  omv update >/dev/null 2>&1 || fail 'update failed'
+  assert_called '^doctor\.sh'
+}
+
+relinks_opencode_plugin() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config/opencode"
+  omv update >/dev/null
+  assert_called '^stow --dir=.*/agents .*--restow opencode$'
+}
+
+relinks_pi_extension() {
+  make_repo
+  mkdir -p "$HOME_DIR/.pi/agent"
+  omv update >/dev/null
+  assert_called '^stow --dir=.*/agents .*--restow pi$'
+}
+
+points_hammerspoon_when_stow_fails() {
+  make_repo
+  stub stow 1
+  answer_hammerspoon_config "$HOME_DIR/.hammerspoon/init.lua"
+  omv update >/dev/null 2>&1 || true
+  assert_called '^defaults write org.hammerspoon.Hammerspoon MJConfigFile'
+}
+
+offers_no_undo_after_migration_stops() {
+  make_repo
+  add_migration 202601010000-a
+  stub stow 1
+  local output
+  output=$(omv update 2>&1) && fail 'expected failure'
+  [[ $output != *'omv update --undo'* ]] || fail "expected no undo hint in: $output"
+}
+
+says_run_update_again_after_migration_stops() {
+  make_repo
+  add_migration 202601010000-a
+  stub stow 1
+  local output
+  output=$(omv update 2>&1) && fail 'expected failure'
+  [[ $output == *'then run omv update again'* ]] || fail "expected the retry hint in: $output"
+}
+
+says_nothing_stopped_under_system_bash() {
+  make_repo
+  # Like the real one, defaults fails to read a key that isn't set.
+  printf '#!/bin/sh\necho "defaults $*" >> "%s"\n[ "$1" = read ] && exit 1\nexit 0\n' "$CALL_LOG" > "$STUB_DIR/defaults"
+  local output
+  output=$(run_in_sandbox /bin/bash "$REPO/bin/omv" update 2>&1) || fail "update failed: $output"
+  [[ $output != *'stopped partway'* ]] || fail "unexpected stop message in: $output"
 }
 
 undo_resets_to_saved_commit() {
@@ -480,6 +538,13 @@ run_case "should point Hammerspoon at the repo's config when relinking" points_h
 run_case "should leave Hammerspoon running when it already loads the repo's config" leaves_hammerspoon_when_config_is_right
 run_case 'should restart Hammerspoon when its config changed' restarts_hammerspoon_when_config_changed
 run_case "should not open Hammerspoon when it isn't running" opens_no_stopped_hammerspoon
+run_case "should finish the update when Hammerspoon isn't running" finishes_update_without_hammerspoon
+run_case 'should relink the OpenCode plugin when OpenCode is set up' relinks_opencode_plugin
+run_case 'should relink the pi extension when pi is set up' relinks_pi_extension
+run_case 'should point Hammerspoon at the repo even when linking fails' points_hammerspoon_when_stow_fails
+run_case 'should offer no undo when an update that ran a migration stops partway' offers_no_undo_after_migration_stops
+run_case 'should say to run the update again when one that ran a migration stops partway' says_run_update_again_after_migration_stops
+run_case 'should say nothing stopped when an update succeeds under the system bash' says_nothing_stopped_under_system_bash
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree

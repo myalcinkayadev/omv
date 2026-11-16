@@ -18,6 +18,12 @@ prints_hammerspoon_setting_on_dry_run() {
   assert_not_called '^defaults write org.hammerspoon'
 }
 
+finishes_without_hammerspoon() {
+  stub pgrep 1
+  run_in_sandbox "$INSTALL" >/dev/null 2>&1 || fail 'install failed'
+  assert_called '^defaults write NSGlobalDomain _HIHideMenuBar'
+}
+
 add_conflicting_file() {
   mkdir -p "$HOME_DIR/.config/aerospace"
   echo 'mine' > "$HOME_DIR/.config/aerospace/aerospace.toml"
@@ -212,6 +218,7 @@ reports_stow_conflict() {
   [[ $output == *"install.sh: stow could not link"* ]] || fail "missing report in: $output"
 }
 
+run_case "should finish installing when Hammerspoon isn't running" finishes_without_hammerspoon
 run_case "should point Hammerspoon at the repo's config" points_hammerspoon_at_repo
 run_case 'should only print the Hammerspoon setting on a dry run' prints_hammerspoon_setting_on_dry_run
 run_case 'should exit non-zero when brew is missing' fails_without_brew

@@ -57,10 +57,20 @@ reload_hammerspoon() {
 
 # Stow links files one by one, so a new file has no link until this runs again.
 relink() {
+  # First: it needs no link, so Hammerspoon keeps its config even when Stow stops below.
+  point_hammerspoon
   mkdir -p "$HOME/.claude"
   stow --dir="$REPO_DIR/config" --target="$HOME" --restow "${CONFIG_PACKAGES[@]}"
   stow --dir="$REPO_DIR/agents" --target="$HOME" --restow "${AGENT_PACKAGES[@]}"
-  point_hammerspoon
+  # The other agents' plugins, as install links them: only for an agent set up here.
+  if [ -d "$HOME/.config/opencode" ]; then
+    mkdir -p "$HOME/.config/opencode/plugins"
+    stow --dir="$REPO_DIR/agents" --target="$HOME" --restow opencode
+  fi
+  if [ -d "$HOME/.pi/agent" ]; then
+    mkdir -p "$HOME/.pi/agent/extensions"
+    stow --dir="$REPO_DIR/agents" --target="$HOME" --restow pi
+  fi
 }
 
 reload() {
@@ -103,6 +113,11 @@ update() {
 
 offer_undo() {
   echo >&2
+  # Undo can't reverse a migration, so after one the way out is forward.
+  if [ -s "$UPDATE_MIGRATIONS" ]; then
+    echo "The update stopped partway. Fix what it named above, then run omv update again" >&2
+    return 0
+  fi
   echo "The update stopped partway. To go back: omv update --undo" >&2
 }
 

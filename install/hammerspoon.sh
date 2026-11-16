@@ -4,7 +4,8 @@
 readonly HAMMERSPOON_CONFIG=$REPO_DIR/config/hammerspoon/init.lua
 
 hammerspoon_config() {
-  defaults read org.hammerspoon.Hammerspoon MJConfigFile 2>/dev/null
+  # A key that isn't set reads as nothing, not as a failure that would stop the caller.
+  defaults read org.hammerspoon.Hammerspoon MJConfigFile 2>/dev/null || true
 }
 
 # Hammerspoon reads the setting only when it starts, so a running one is restarted when the
@@ -14,9 +15,10 @@ point_hammerspoon() {
   [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ] && return 0
   defaults write org.hammerspoon.Hammerspoon MJConfigFile "$HAMMERSPOON_CONFIG"
   local pid limit
-  pid=$(pgrep -x Hammerspoon 2>/dev/null | head -n 1)
+  # pgrep fails when nothing matches; that's "not running", not an error.
+  pid=$(pgrep -x Hammerspoon 2>/dev/null | head -n 1) || true
   [ -n "$pid" ] || return 0
-  pkill -x Hammerspoon
+  pkill -x Hammerspoon || true
   limit=$((SECONDS + 5))
   while kill -0 "$pid" 2>/dev/null && [ "$SECONDS" -lt "$limit" ]; do sleep 0.2; done
   if kill -0 "$pid" 2>/dev/null; then pkill -9 -x Hammerspoon; fi
