@@ -1,6 +1,7 @@
 // The setup assistant's logic: its steps, when a step is complete, and the summary.
 // Compiled with install/setup/SetupModel.swift and run by setup_model_test.sh.
 
+import CoreGraphics
 import Foundation
 
 var failed = 0
@@ -75,6 +76,68 @@ struct SetupModelTests {
     check("should read nothing from Hammerspoon when it doesn't answer", SetupModel.hammerspoonGrants("").isEmpty)
 
     check("should open each step's Privacy pane", step("disk").paneURL == "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
+
+    check("should read a step's start and done markers into its state", {
+      var run = InstallRun()
+      run.consume("omv-step: taps start")
+      run.consume("omv-step: taps done 4 trusted")
+      run.consume("omv-step: tools start")
+      return run.state("taps") == .done && run.summary("taps") == "4 trusted" && run.state("tools") == .running
+        && run.state("configs") == .pending
+    }())
+
+    check("should keep a step's last output line as its live detail", {
+      var run = InstallRun()
+      run.consume("omv-step: tools start")
+      run.consume("Installing hammerspoon")
+      run.consume("")
+      return run.detail("tools") == "Installing hammerspoon"
+    }())
+
+    check("should mark the running step failed when the install exits non-zero", {
+      var run = InstallRun()
+      run.consume("omv-step: configs start")
+      run.finish(status: 1)
+      return run.state("configs") == .failed
+    }())
+
+    check("should finish every step when the install exits zero", {
+      var run = InstallRun()
+      for step in InstallRun.steps { run.consume("omv-step: \(step.id) start"); run.consume("omv-step: \(step.id) done ok") }
+      run.finish(status: 0)
+      return run.isFinished && InstallRun.steps.allSatisfy { run.state($0.id) == .done }
+    }())
+
+    check("should explain a Stow conflict with the file in the way",
+      InstallRun.failureReason([
+        "WARNING! stowing sketchybar would cause conflicts:",
+        "  * cannot stow config/sketchybar/.config/sketchybar/sketchybarrc over existing target .config/sketchybar/sketchybarrc since neither a link nor a directory and --adopt not specified",
+      ]) == "~/.config/sketchybar/sketchybarrc already exists, where omv links its own.")
+
+    check("should explain a failed brew bundle",
+      InstallRun.failureReason(["Installing foo has failed!", "`brew bundle` failed! 1 Brewfile dependency failed to install"])
+        == "Homebrew couldn't install everything in the Brewfile.")
+
+    check("should fall back to the last error line for an unknown failure",
+      InstallRun.failureReason(["working", "something broke", ""]) == "something broke")
+
+    check("should place the helper to the right of System Settings when it fits",
+      SetupModel.helperFrame(settings: CGRect(x: 100, y: 100, width: 800, height: 600),
+        screen: CGRect(x: 0, y: 0, width: 1600, height: 1000), size: CGSize(width: 300, height: 400))
+        == CGRect(x: 912, y: 100, width: 300, height: 400))
+
+    check("should place the helper to the left when the right side has no room",
+      SetupModel.helperFrame(settings: CGRect(x: 700, y: 100, width: 800, height: 600),
+        screen: CGRect(x: 0, y: 0, width: 1600, height: 1000), size: CGSize(width: 300, height: 400))
+        == CGRect(x: 388, y: 100, width: 300, height: 400))
+
+    check("should hide the helper when System Settings isn't on screen",
+      SetupModel.helperFrame(settings: nil, screen: CGRect(x: 0, y: 0, width: 1600, height: 1000),
+        size: CGSize(width: 300, height: 400)) == nil)
+
+    check("should offer a restart on the Screen Recording step", step("screen").needsRestart)
+
+    check("should offer no restart on other steps", !step("accessibility").needsRestart && !step("location").needsRestart)
 
     exit(failed == 0 ? 0 : 1)
   }

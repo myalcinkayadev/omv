@@ -1,6 +1,7 @@
 // The setup assistant's logic, with no window: the steps, each step's permissions, when a
 // step is complete, and the summary at the end. Tested by tests/setup_model_test.swift.
 
+import CoreGraphics
 import Foundation
 
 enum Grant {
@@ -24,6 +25,9 @@ struct SetupStep {
   let permissions: [SetupPermission]
 
   var paneURL: String { "x-apple.systempreferences:com.apple.preference.security?" + pane }
+
+  // macOS applies Screen Recording only when the app starts again.
+  var needsRestart: Bool { id == "screen" }
 }
 
 struct SetupSummary {
@@ -113,6 +117,16 @@ enum SetupModel {
   ]
 
   static let screens: [String] = ["welcome"] + steps.map(\.id) + ["done"]
+
+  // Where the helper docks: beside System Settings, on the right when it fits, else on the
+  // left; top edges aligned. Nothing when System Settings isn't on screen. Frames use a
+  // top-left origin, as the window list reports them.
+  static func helperFrame(settings: CGRect?, screen: CGRect, size: CGSize, gap: CGFloat = 12) -> CGRect? {
+    guard let settings else { return nil }
+    let right = settings.maxX + gap
+    let x = right + size.width <= screen.maxX ? right : max(screen.minX, settings.minX - gap - size.width)
+    return CGRect(x: x, y: settings.minY, width: size.width, height: size.height)
+  }
 
   // What Hammerspoon reports, asked with SetupChecks.hammerspoonQuestion: four fields,
   // accessibility, screen recording, location, full disk access.
