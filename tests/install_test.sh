@@ -25,8 +25,35 @@ finishes_without_hammerspoon() {
 }
 
 add_conflicting_file() {
+  mkdir -p "$HOME_DIR/.config/sketchybar"
+  echo 'mine' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
+}
+
+readonly BUILT=.config/aerospace/aerospace.toml
+
+builds_aerospace_config() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  [ "$(head -n 1 "$HOME_DIR/$BUILT")" = "# Built by omv from its defaults and ~/.config/omv/aerospace.toml. Edit that file, then run omv reload." ] || fail "not built: $(head -n 1 "$HOME_DIR/$BUILT" 2>&1)"
+}
+
+moves_foreign_aerospace_aside() {
   mkdir -p "$HOME_DIR/.config/aerospace"
-  echo 'mine' > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  echo 'mine' > "$HOME_DIR/$BUILT"
+  run_in_sandbox "$INSTALL" >/dev/null
+  [ "$(cat "$HOME_DIR/$BUILT.before-omv" 2>/dev/null)" = mine ] || fail 'foreign file not kept aside'
+}
+
+keeps_built_aerospace_in_place() {
+  run_in_sandbox "$INSTALL" >/dev/null
+  run_in_sandbox "$INSTALL" >/dev/null
+  [ ! -e "$HOME_DIR/$BUILT.before-omv" ] || fail 'moved its own file aside'
+}
+
+prints_aerospace_build_on_dry_run() {
+  local output
+  output=$(run_in_sandbox "$INSTALL" --dry-run)
+  [[ $output == *'would run: build ~/.config/aerospace/aerospace.toml'* ]] || fail "no dry-run line in: $output"
+  [ ! -e "$HOME_DIR/$BUILT" ] || fail 'built on a dry run'
 }
 
 adds_codex_hooks() {
@@ -92,7 +119,7 @@ links_all_packages() {
   use_real_stow
   run_in_sandbox "$INSTALL" >/dev/null
   local link
-  for link in .config/aerospace .config/sketchybar .config/ghostty .config/nvim .config/btop .claude/bar-usage.sh .config/swipeareospace; do
+  for link in .config/sketchybar .config/ghostty .config/nvim .config/btop .claude/bar-usage.sh .config/swipeareospace; do
     [ -L "$HOME_DIR/$link" ] || fail "not linked: $link"
   done
 }
@@ -218,13 +245,17 @@ reports_stow_conflict() {
   [[ $output == *"install.sh: stow could not link"* ]] || fail "missing report in: $output"
 }
 
+run_case 'should build aerospace.toml when installing' builds_aerospace_config
+run_case "should move aside an aerospace.toml omv didn't build" moves_foreign_aerospace_aside
+run_case 'should leave its own aerospace.toml in place when installing again' keeps_built_aerospace_in_place
+run_case 'should only print the aerospace.toml build on a dry run' prints_aerospace_build_on_dry_run
 run_case "should finish installing when Hammerspoon isn't running" finishes_without_hammerspoon
 run_case "should point Hammerspoon at the repo's config" points_hammerspoon_at_repo
 run_case 'should only print the Hammerspoon setting on a dry run' prints_hammerspoon_setting_on_dry_run
 run_case 'should exit non-zero when brew is missing' fails_without_brew
 run_case 'should exit non-zero when stow is missing' fails_without_stow
 run_case 'should trust the taps before installing' trusts_taps_before_installing
-run_case 'should link all seven packages when the target is clean' links_all_packages
+run_case 'should link all six packages when the target is clean' links_all_packages
 run_case 'should put the omv command on PATH' links_omv_command
 run_case 'should keep .claude a real directory when linking' keeps_claude_dir_real
 run_case 'should add the usage line when installing' adds_usage_line

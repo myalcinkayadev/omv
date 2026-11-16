@@ -13,6 +13,8 @@ readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap smudge/smudge)
 source "$REPO_DIR/install/packages.sh"
 # shellcheck source=hammerspoon.sh
 source "$REPO_DIR/install/hammerspoon.sh"
+# shellcheck source=aerospace.sh
+source "$REPO_DIR/install/aerospace.sh"
 
 DRY_RUN=false
 APPS=true
@@ -136,8 +138,10 @@ $DRY_RUN || require_command stow
 link_configs
 if $DRY_RUN; then
   echo "would run: defaults write org.hammerspoon.Hammerspoon MJConfigFile $HAMMERSPOON_CONFIG"
+  echo "would run: build ~/.config/aerospace/aerospace.toml"
 else
   point_hammerspoon
+  build_aerospace
 fi
 link_omv
 step "$REPO_DIR/agents/claude-usage.sh" add

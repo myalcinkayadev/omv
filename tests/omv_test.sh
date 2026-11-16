@@ -12,7 +12,10 @@ make_repo() {
   REPO=$(cd "$SANDBOX" && pwd -P)/repo
   mkdir -p "$REPO/bin" "$REPO/install" "$REPO/migrations" "$REPO/config/hammerspoon"
   cp "$REPO_DIR/bin/omv" "$REPO/bin/omv"
-  cp "$REPO_DIR/install/packages.sh" "$REPO_DIR/install/hammerspoon.sh" "$REPO/install/"
+  cp "$REPO_DIR/install/packages.sh" "$REPO_DIR/install/hammerspoon.sh" "$REPO_DIR/install/aerospace.sh" \
+    "$REPO_DIR/install/aerospace_merge.lua" "$REPO/install/"
+  mkdir -p "$REPO/config/aerospace/.config/aerospace"
+  printf '[gaps]\ninner.horizontal = 10\n' > "$REPO/config/aerospace/.config/aerospace/aerospace.toml"
   cp "$REPO_DIR/config/hammerspoon/flags.lua" "$REPO/config/hammerspoon/flags.lua"
   local script
   for script in install uninstall doctor; do
@@ -157,7 +160,7 @@ update_pulls_fast_forward_only() {
 update_restows() {
   make_repo
   omv update >/dev/null
-  assert_called '^stow .*--restow .*aerospace'
+  assert_called '^stow .*--restow .*sketchybar'
 }
 
 update_reloads_hammerspoon() {
@@ -300,6 +303,69 @@ says_nothing_stopped_under_system_bash() {
   local output
   output=$(run_in_sandbox /bin/bash "$REPO/bin/omv" update 2>&1) || fail "update failed: $output"
   [[ $output != *'stopped partway'* ]] || fail "unexpected stop message in: $output"
+}
+
+readonly BUILT_HEADER="# Built by omv from its defaults and ~/.config/omv/aerospace.toml. Edit that file, then run omv reload."
+
+built_aerospace() {
+  cat "$HOME_DIR/.config/aerospace/aerospace.toml" 2>/dev/null
+}
+
+user_aerospace() {
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '%b' "$1" > "$HOME_DIR/.config/omv/aerospace.toml"
+}
+
+# pgrep finds AeroSpace, as it does Hammerspoon in run_hammerspoon.
+run_aerospace() {
+  printf '#!/bin/sh\necho "pgrep $*" >> "%s"\n[ "$*" = "-x AeroSpace" ] && echo 999998\nexit 0\n' "$CALL_LOG" > "$STUB_DIR/pgrep"
+  chmod +x "$STUB_DIR/pgrep"
+}
+
+builds_aerospace_on_update() {
+  make_repo
+  omv update >/dev/null
+  [ "$(built_aerospace | head -n 1)" = "$BUILT_HEADER" ] || fail "not built: $(built_aerospace | head -n 1)"
+}
+
+builds_aerospace_on_reload() {
+  make_repo
+  user_aerospace '[gaps]\ninner.horizontal = 3\n'
+  omv reload >/dev/null
+  [[ $(built_aerospace) == *'inner.horizontal = 3'* ]] || fail "user key missing in: $(built_aerospace)"
+}
+
+keeps_built_aerospace_on_user_error() {
+  make_repo
+  omv reload >/dev/null
+  local before
+  before=$(built_aerospace)
+  user_aerospace '[gaps\n'
+  assert_exit_nonzero omv reload
+  [ "$(built_aerospace)" = "$before" ] || fail 'built file changed'
+}
+
+returns_to_defaults_without_user_file() {
+  make_repo
+  user_aerospace '[gaps]\ninner.horizontal = 3\n'
+  omv reload >/dev/null
+  rm "$HOME_DIR/.config/omv/aerospace.toml"
+  omv reload >/dev/null
+  [[ $(built_aerospace) == *'inner.horizontal = 10'* ]] || fail "defaults not back in: $(built_aerospace)"
+}
+
+reload_skips_stopped_aerospace() {
+  make_repo
+  stub pgrep 1
+  omv reload >/dev/null || fail 'reload failed'
+  assert_not_called '^aerospace reload-config'
+}
+
+reload_reloads_running_aerospace() {
+  make_repo
+  run_aerospace
+  omv reload >/dev/null
+  assert_called '^aerospace reload-config$'
 }
 
 undo_resets_to_saved_commit() {
@@ -552,6 +618,12 @@ run_case 'should point Hammerspoon at the repo even when linking fails' points_h
 run_case 'should offer no undo when an update that ran a migration stops partway' offers_no_undo_after_migration_stops
 run_case 'should say to run the update again when one that ran a migration stops partway' says_run_update_again_after_migration_stops
 run_case 'should say nothing stopped when an update succeeds under the system bash' says_nothing_stopped_under_system_bash
+run_case 'should build aerospace.toml when updating' builds_aerospace_on_update
+run_case "should build aerospace.toml with the user's settings on reload" builds_aerospace_on_reload
+run_case "should keep the built aerospace.toml when the user's has an error" keeps_built_aerospace_on_user_error
+run_case "should go back to omv's defaults when the user file is removed" returns_to_defaults_without_user_file
+run_case "should rebuild without reloading AeroSpace when it isn't running" reload_skips_stopped_aerospace
+run_case "should reload AeroSpace when it's running" reload_reloads_running_aerospace
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree

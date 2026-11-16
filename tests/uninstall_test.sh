@@ -4,7 +4,7 @@
 source "$(dirname "$0")/lib.sh"
 
 readonly UNINSTALL=$REPO_DIR/install/uninstall.sh
-readonly CONFIG_PACKAGES='aerospace sketchybar swipeaerospace ghostty nvim btop'
+readonly CONFIG_PACKAGES='sketchybar swipeaerospace ghostty nvim btop'
 
 # Links every package with the real stow, as a finished install would leave them.
 link_everything() {
@@ -68,9 +68,16 @@ keeps_other_hammerspoon_setting() {
   assert_not_called '^defaults delete org.hammerspoon'
 }
 
+removes_built_aerospace() {
+  mkdir -p "$HOME_DIR/.config/aerospace"
+  printf '%s\nx = 1\n' "# Built by omv from its defaults and ~/.config/omv/aerospace.toml. Edit that file, then run omv reload." > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  [ ! -e "$HOME_DIR/.config/aerospace/aerospace.toml" ] || fail 'built file kept'
+}
+
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
-  assert_called "^stow --dir=$REPO_DIR/config --target=$HOME_DIR -D aerospace sketchybar swipeaerospace$"
+  assert_called "^stow --dir=$REPO_DIR/config --target=$HOME_DIR -D sketchybar swipeaerospace$"
   assert_called "^stow --dir=$REPO_DIR/agents --target=$HOME_DIR -D claude$"
 }
 
@@ -87,7 +94,7 @@ removes_this_setups_links() {
   link_everything
   run_in_sandbox "$UNINSTALL" >/dev/null
   local link
-  for link in .config/aerospace .config/sketchybar; do
+  for link in .config/sketchybar; do
     if [ -e "$HOME_DIR/$link" ]; then
       fail "link was kept: $link"
     fi
@@ -252,12 +259,13 @@ keeps_other_omv() {
   [ -f "$SANDBOX/prefix/bin/omv" ] || fail "removed an omv that isn't this repo's"
 }
 
-run_case 'should unstow only aerospace, sketchybar, claude and swipeaerospace when run without flags' unstows_only_this_setup
+run_case 'should unstow only sketchybar, claude and swipeaerospace when run without flags' unstows_only_this_setup
 run_case 'should keep the ghostty, nvim and btop links when run without flags' keeps_older_tool_links
-run_case 'should remove the aerospace and sketchybar links when run without flags' removes_this_setups_links
+run_case 'should remove the aerospace.toml omv built when run without flags' removes_built_aerospace
+run_case 'should remove the sketchybar links when run without flags' removes_this_setups_links
 run_case "should forget the Hammerspoon setting with --all when it's omv's" forgets_hammerspoon_setting
 run_case "should keep a Hammerspoon setting that isn't omv's" keeps_other_hammerspoon_setting
-run_case 'should unstow all seven packages when run with --all' unstows_everything_with_all_flag
+run_case 'should unstow all six packages when run with --all' unstows_everything_with_all_flag
 run_case 'should remove the usage line when uninstalling' removes_usage_line
 run_case "should remove the waiting hooks from Claude's settings when uninstalling" removes_waiting_hooks
 run_case 'should delete both macOS settings when they are set' deletes_macos_settings

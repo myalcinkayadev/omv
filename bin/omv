@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # omv: one command for the whole setup.
-#   omv install [--dry-run] [--no-apps]   install everything, then run migrations
+#   omv install [--dry-run] [--no-apps]   run migrations, then install everything
 #   omv update                            pull, install, relink, migrate, reload, then check
 #   omv update --undo                     go back to the commit before the last update
 #   omv doctor [--fix]                    check the setup, and clear a jam with --fix
 #   omv uninstall [...]                   remove omv (see uninstall.sh)
+#   omv reload                            apply ~/.config/omv: rebuild aerospace.toml, reload apps
 #   omv flags [<name> on|off]             list feature flags, or turn one on or off
 #   omv theme [<name>]                    list themes, or switch to one
 #   omv version                           the commit omv is at
@@ -18,6 +19,8 @@ readonly REPO_DIR
 source "$REPO_DIR/install/packages.sh"
 # shellcheck source=../install/hammerspoon.sh
 source "$REPO_DIR/install/hammerspoon.sh"
+# shellcheck source=../install/aerospace.sh
+source "$REPO_DIR/install/aerospace.sh"
 readonly STATE_DIR=$HOME/.local/state/omv
 # The last update that moved omv: the commit before it, the one after it, and the migrations
 # it ran. Kept until undo, so a retried or empty update doesn't lose the way back.
@@ -30,8 +33,8 @@ readonly FLAG_DEFAULTS=$REPO_DIR/config/hammerspoon/flags.lua
 readonly THEMES_DIR=$HOME/.local/share/omv/themes
 
 usage() {
-  sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
-  echo "usage: omv <install|update|doctor|uninstall|flags|theme|version>" >&2
+  sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  echo "usage: omv <install|update|doctor|uninstall|reload|flags|theme|version>" >&2
   exit 2
 }
 
@@ -71,6 +74,16 @@ relink() {
     mkdir -p "$HOME/.pi/agent/extensions"
     stow --dir="$REPO_DIR/agents" --target="$HOME" --restow pi
   fi
+  build_aerospace
+}
+
+# After editing a file in ~/.config/omv: rebuild aerospace.toml, then reload what reads them.
+# AeroSpace is asked only when it's running; it reads the file when it starts anyway.
+reload_all() {
+  build_aerospace || die "aerospace.toml wasn't rebuilt; the old one stays"
+  if [ -n "$(pgrep -x AeroSpace 2>/dev/null || true)" ]; then aerospace reload-config || true; fi
+  reload
+  echo "reloaded"
 }
 
 reload() {
@@ -233,6 +246,7 @@ case $command in
     ;;
   doctor) "$REPO_DIR/install/doctor.sh" "$@" ;;
   uninstall) "$REPO_DIR/install/uninstall.sh" "$@" ;;
+  reload) reload_all ;;
   flags) flags "$@" ;;
   theme) theme "$@" ;;
   version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;

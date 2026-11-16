@@ -8,6 +8,7 @@
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 readonly REPO_DIR
 readonly REAL_STOW=$(command -v stow)
+readonly REAL_LUAJIT=$(command -v luajit)
 readonly SYSTEM_COMMANDS=(aerospace brew defaults killall open osascript pgrep pkill sketchybar stow)
 
 passed=0
@@ -15,6 +16,8 @@ failed=0
 
 stub() {
   local name=$1 exit_code=${2:-0}
+  # A link, such as the real luajit's, is removed first, so the stub never writes through it.
+  rm -f "$STUB_DIR/$name"
   cat > "$STUB_DIR/$name" <<EOF
 #!/bin/sh
 echo "$name \$*" >> "$CALL_LOG"
@@ -42,6 +45,8 @@ new_sandbox() {
   for name in "${SYSTEM_COMMANDS[@]}"; do
     stub "$name"
   done
+  # luajit only computes, so scripts that build a file with it get the real one.
+  ln -s "$REAL_LUAJIT" "$STUB_DIR/luajit"
 }
 
 run_in_sandbox() {

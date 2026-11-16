@@ -4,7 +4,7 @@
 source "$(dirname "$0")/lib.sh"
 
 readonly DOCTOR=$REPO_DIR/install/doctor.sh
-readonly CONFIG_PACKAGES='aerospace sketchybar swipeaerospace ghostty nvim btop'
+readonly CONFIG_PACKAGES='sketchybar swipeaerospace ghostty nvim btop'
 
 # A finished install: every tool, app and font present, every package linked, every
 # process running, every macOS setting applied, and the Claude usage line in place.

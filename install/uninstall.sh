@@ -11,8 +11,10 @@ readonly REPO_DIR
 source "$REPO_DIR/install/packages.sh"
 # shellcheck source=hammerspoon.sh
 source "$REPO_DIR/install/hammerspoon.sh"
+# shellcheck source=aerospace.sh
+source "$REPO_DIR/install/aerospace.sh"
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap)
-readonly SETUP_PACKAGES=(aerospace sketchybar claude swipeaerospace)
+readonly SETUP_PACKAGES=(sketchybar claude swipeaerospace)
 readonly OLDER_PACKAGES=(ghostty nvim btop)
 
 packages=("${SETUP_PACKAGES[@]}")
@@ -81,6 +83,11 @@ unlink_configs() {
   # The other agents' plugins, linked only when that agent was set up.
   if [ -L "$HOME/.config/opencode/plugins/omv-agent-state.js" ]; then stow --dir="$REPO_DIR/agents" --target="$HOME" -D opencode; fi
   if [ -L "$HOME/.pi/agent/extensions/omv-agent-state.ts" ]; then stow --dir="$REPO_DIR/agents" --target="$HOME" -D pi; fi
+}
+
+# Only the file omv built: one the user wrote isn't ours to remove.
+remove_built_aerospace() {
+  if aerospace_built_by_omv; then rm "$AEROSPACE_BUILT"; fi
 }
 
 # Back to ~/.hammerspoon, only when the setting is omv's: another one isn't ours to remove.
@@ -155,6 +162,7 @@ quit_apps
 stop_keep_awake
 remove_claude_usage
 unlink_configs
+remove_built_aerospace
 forget_hammerspoon_config
 remove_omv_command
 reset_macos_settings
