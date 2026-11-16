@@ -528,7 +528,7 @@ class Leftovers(unittest.TestCase):
     def test_should_keep_the_built_header_in_one_file_when_scripts_need_it(self) -> None:
         holders = [
             path.name for path in (REPO / "install").iterdir()
-            if path.is_file() and "Built by omv from its defaults" in path.read_text(encoding="utf-8")
+            if path.is_file() and "Built by omv from its defaults" in path.read_text(encoding="utf-8", errors="ignore")
         ]
         self.assertEqual(holders, ["aerospace-header.txt"])
 
@@ -538,7 +538,9 @@ class Leftovers(unittest.TestCase):
         def names(source: str, *variables: str) -> set[str]:
             found: set[str] = set()
             for variable in variables:
-                found |= set(re.search(rf"readonly {variable}=\(([^)]*)\)", source).group(1).split())
+                match = re.search(rf"readonly {variable}=\(([^)]*)\)", source)
+                self.assertIsNotNone(match, f"no one-line readonly {variable}=(...) list")
+                found |= set(match.group(1).split())
             return found
         self.assertEqual(names(uninstall, "SETUP_PACKAGES", "OLDER_PACKAGES"), names(packages, "CONFIG_PACKAGES", "AGENT_PACKAGES"))
 
@@ -547,6 +549,13 @@ class Leftovers(unittest.TestCase):
 
     def test_should_keep_spoons_loadable_when_hammerspoon_loads_from_the_repo(self) -> None:
         self.assertIn('/.hammerspoon/Spoons/?.spoon/init.lua', HAMMERSPOON.read_text(encoding="utf-8"))
+
+    def test_should_fall_back_when_home_is_unset_when_init_lua_adds_the_spoons_path(self) -> None:
+        line = next(l for l in HAMMERSPOON.read_text(encoding="utf-8").splitlines() if "/.hammerspoon/Spoons/" in l)
+        self.assertIn('(os.getenv("HOME") or "")', line)
+
+    def test_should_ignore_installed_spoons_when_hammerspoon_installs_one_into_the_repo(self) -> None:
+        self.assertIn("config/hammerspoon/Spoons/", (REPO / ".gitignore").read_text(encoding="utf-8").splitlines())
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
 -- loads them, in the order they start, and binds every key in one place.
 -- Hammerspoon loads this config from the repo, so its own ~/.hammerspoon is no longer the
 -- config folder; its Spoons still load from there.
-package.path = package.path .. ";" .. os.getenv("HOME") .. "/.hammerspoon/Spoons/?.spoon/init.lua"
+package.path = package.path .. ";" .. (os.getenv("HOME") or "") .. "/.hammerspoon/Spoons/?.spoon/init.lua"
 require("hs.ipc")
 -- When this config loaded, so omv update can tell a finished reload from the old instance.
 omvLoadedAt = hs.timer.secondsSinceEpoch()

@@ -1,2 +1,5 @@
 .superpowers/
 .DS_Store
+# Hammerspoon installs a Spoon you double-click into its config folder, which is this repo's
+# config/hammerspoon; ignored, so it never blocks omv update.
+config/hammerspoon/Spoons/

@@ -472,6 +472,24 @@ waits_for_hammerspoon_before_doctor() {
   [ "$asks" -ge 3 ] || fail "doctor ran after $asks asks:"$'\n'"$(cat "$CALL_LOG")"
 }
 
+names_unreadable_file_once() {
+  make_repo
+  user_aerospace '[gaps]\ninner.horizontal = 3\n'
+  chmod 000 "$HOME_DIR/.config/omv/aerospace.toml"
+  local output
+  output=$(omv reload 2>&1 || true)
+  [[ $output == *"~/.config/omv/aerospace.toml can't be read: Permission denied"* ]] || fail "got: $output"
+}
+
+says_aerospace_rejected_on_update() {
+  make_repo
+  run_aerospace
+  stub aerospace 1
+  local output
+  output=$(omv update 2>&1 || true)
+  [[ $output == *"AeroSpace didn't accept"* ]] || fail "got: $output"
+}
+
 fails_reload_on_unopenable_user_aerospace() {
   make_repo
   user_aerospace '[gaps]\ninner.horizontal = 3\n'
@@ -808,6 +826,8 @@ run_case 'should keep an earlier backup when another aerospace.toml is moved asi
 run_case 'should back up beside an earlier backup when one exists' backs_up_beside_earlier_backup
 run_case 'should build aerospace.toml when an earlier backup exists' builds_beside_earlier_backup
 run_case "should not blame the user's file when a build step fails" blames_no_user_file_when_build_step_fails
+run_case "should name an unreadable aerospace.toml once when it can't be read" names_unreadable_file_once
+run_case "should say AeroSpace didn't accept the config when its reload fails during an update" says_aerospace_rejected_on_update
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree

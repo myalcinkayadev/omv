@@ -175,7 +175,7 @@ finish_update() {
   local loaded
   loaded=$(hammerspoon_loaded_at)
   reload
-  reload_aerospace || true
+  reload_aerospace || echo "omv: AeroSpace didn't accept the built aerospace.toml; omv reload shows why" >&2
   trap - ERR
   wait_for_hammerspoon "$loaded"
   # --fix clears what an update can leave behind: a second bar, a SwipeAeroSpace that quit

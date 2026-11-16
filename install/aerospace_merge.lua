@@ -16,8 +16,15 @@ local merge = {}
 -- The first line of the built file, kept in aerospace-header.txt beside this file, which the
 -- shell side reads too.
 merge.HEADER = (function()
-  local folder = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
-  local file = assert(io.open(folder .. "aerospace-header.txt", "r"))
+  local source = debug.getinfo(1, "S").source:gsub("^@", "")
+  local file = io.open((source:match("^(.*/)") or "./") .. "aerospace-header.txt", "r")
+  if not file then
+    -- Run through a link to this file: the header sits beside the file the link leads to.
+    local resolve = io.popen("/usr/bin/readlink -f '" .. source:gsub("'", "'\\''") .. "'")
+    local real = resolve:read("*l") or ""
+    resolve:close()
+    file = assert(io.open((real:match("^(.*/)") or "./") .. "aerospace-header.txt", "r"))
+  end
   local header = file:read("*l")
   file:close()
   return header
@@ -229,7 +236,8 @@ local function readFile(path)
   local file, reason, code = io.open(path, "r")
   if not file then
     if code == ENOENT then return nil end
-    return nil, reason
+    -- io.open's reason starts with the path; the caller names the file already.
+    return nil, (reason:gsub("^.*: ", ""))
   end
   local text, problem = file:read("*a")
   file:close()

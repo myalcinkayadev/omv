@@ -96,12 +96,23 @@ check_fonts() {
   done
 }
 
+# brew from the PATH, else from where Homebrew installs it: a shell that never ran Homebrew's
+# shellenv has no brew on its PATH. OMV_BREW_PATHS replaces those places, for tests.
+homebrew() {
+  local candidate IFS=:
+  if command -v brew >/dev/null 2>&1; then brew "$@"; return; fi
+  for candidate in ${OMV_BREW_PATHS:-/opt/homebrew/bin/brew:/usr/local/bin/brew}; do
+    if [ -x "$candidate" ]; then "$candidate" "$@"; return; fi
+  done
+  return 1
+}
+
 # Where install.sh links omv: OMV_BIN_DIR for tests, otherwise Homebrew's commands folder.
 # Nothing without either.
 omv_link() {
   local folder=${OMV_BIN_DIR:-}
   if [ -z "$folder" ]; then
-    folder=$(brew --prefix 2>/dev/null || true)
+    folder=$(homebrew --prefix 2>/dev/null || true)
     [ -n "$folder" ] || return 0
     folder=$folder/bin
   fi
