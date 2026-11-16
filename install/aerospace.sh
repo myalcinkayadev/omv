@@ -12,6 +12,12 @@ aerospace_build_text() {
   luajit "$REPO_DIR/install/aerospace_merge.lua" "$AEROSPACE_DEFAULTS" "$AEROSPACE_USER"
 }
 
+# ~/.config/aerospace still a link, as Stow left it before omv built the file: writing there
+# would write into the clone (or another one). The migration in omv update removes omv's.
+aerospace_folder_linked() {
+  [ -L "$(dirname "$AEROSPACE_BUILT")" ] || [ -L "$AEROSPACE_BUILT" ]
+}
+
 aerospace_built_by_omv() {
   [ "$(head -n 1 "$AEROSPACE_BUILT" 2>/dev/null)" = "$AEROSPACE_HEADER" ]
 }
@@ -21,6 +27,10 @@ aerospace_built_by_omv() {
 build_aerospace() {
   local folder temporary
   folder=$(dirname "$AEROSPACE_BUILT")
+  if aerospace_folder_linked; then
+    echo "omv: ~/.config/aerospace is still a link; run omv update first, which moves it over" >&2
+    return 1
+  fi
   mkdir -p "$folder"
   if [ -f "$AEROSPACE_BUILT" ] && ! aerospace_built_by_omv; then
     mv "$AEROSPACE_BUILT" "$AEROSPACE_BUILT.before-omv"

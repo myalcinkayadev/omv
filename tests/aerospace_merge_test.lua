@@ -110,4 +110,31 @@ check.that("should name the line where a value is left open", (function()
   return text == nil and problem ~= nil and problem:sub(1, 7) == "line 2:"
 end)())
 
+local function rejects(user, line)
+  local text, problem = merge.build(DEFAULTS, user)
+  return text == nil and problem ~= nil and problem:sub(1, #line + 1) == line .. ":"
+end
+
+check.that("should replace omv's key when the user quotes it", (function()
+  local binding = section(built("[mode.main.binding]\n'alt-h' = 'focus right'\n"), "[mode.main.binding]")
+  return check.contains(binding, "'alt-h' = 'focus right'") and not check.contains(binding, "alt-h = 'focus left'")
+end)())
+
+check.that("should reject an inline table over keys omv sets one by one",
+  rejects("[gaps]\ninner = { horizontal = 2 }\n", "line 2"))
+
+check.that("should reject a table header for keys omv sets inside another table",
+  rejects("[gaps.inner]\nhorizontal = 2\n", "line 1"))
+
+check.that("should reject a top-level dotted key into one of omv's tables",
+  rejects("gaps.inner.horizontal = 4\n", "line 1"))
+
+check.that("should reject a sub-table of a window rule",
+  rejects("[[on-window-detected]]\nrun = 'layout floating'\n[on-window-detected.if]\napp-id = 'y'\n", "line 3"))
+
+check.that("should say how to write a rejected key", (function()
+  local _, problem = merge.build(DEFAULTS, "[gaps.inner]\nhorizontal = 2\n")
+  return problem ~= nil and check.contains(problem, "[gaps]") and check.contains(problem, "inner.horizontal")
+end)())
+
 check.finish()

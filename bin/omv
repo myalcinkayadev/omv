@@ -74,14 +74,19 @@ relink() {
     mkdir -p "$HOME/.pi/agent/extensions"
     stow --dir="$REPO_DIR/agents" --target="$HOME" --restow pi
   fi
-  build_aerospace
+  # A mistake in the user's file mustn't stop omv's own changes; the doctor names its line.
+  build_aerospace || echo "omv: kept the old aerospace.toml; fix ~/.config/omv/aerospace.toml, then run omv reload" >&2
 }
 
 # After editing a file in ~/.config/omv: rebuild aerospace.toml, then reload what reads them.
 # AeroSpace is asked only when it's running; it reads the file when it starts anyway.
 reload_all() {
+  # Pending migrations first, as update runs them: one may still have to move a link away.
+  run_migrations
   build_aerospace || die "aerospace.toml wasn't rebuilt; the old one stays"
-  if [ -n "$(pgrep -x AeroSpace 2>/dev/null || true)" ]; then aerospace reload-config || true; fi
+  if [ -n "$(pgrep -x AeroSpace 2>/dev/null || true)" ]; then
+    aerospace reload-config || die "AeroSpace didn't accept the built aerospace.toml; see its message above"
+  fi
   reload
   echo "reloaded"
 }

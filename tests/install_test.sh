@@ -49,6 +49,13 @@ keeps_built_aerospace_in_place() {
   [ ! -e "$HOME_DIR/$BUILT.before-omv" ] || fail 'moved its own file aside'
 }
 
+finishes_with_bad_user_aerospace() {
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '[gaps\n' > "$HOME_DIR/.config/omv/aerospace.toml"
+  run_in_sandbox "$INSTALL" >/dev/null 2>&1 || true
+  assert_called '^defaults write NSGlobalDomain _HIHideMenuBar'
+}
+
 prints_aerospace_build_on_dry_run() {
   local output
   output=$(run_in_sandbox "$INSTALL" --dry-run)
@@ -245,6 +252,7 @@ reports_stow_conflict() {
   [[ $output == *"install.sh: stow could not link"* ]] || fail "missing report in: $output"
 }
 
+run_case "should finish installing when the user's aerospace.toml has an error" finishes_with_bad_user_aerospace
 run_case 'should build aerospace.toml when installing' builds_aerospace_config
 run_case "should move aside an aerospace.toml omv didn't build" moves_foreign_aerospace_aside
 run_case 'should leave its own aerospace.toml in place when installing again' keeps_built_aerospace_in_place

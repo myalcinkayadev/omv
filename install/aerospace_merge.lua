@@ -34,6 +34,21 @@ local function depthOf(line)
   return depth
 end
 
+-- A key or table name in one spelling: parts split on dots outside quotes, each trimmed and
+-- unquoted, so 'alt-h' and alt-h, or gaps . inner and gaps.inner, are the same.
+local function canonical(name)
+  local parts, part, quote = {}, "", nil
+  for char in name:gmatch(".") do
+    if quote then
+      if char == quote then quote = nil else part = part .. char end
+    elseif char == "'" or char == '"' then quote = char
+    elseif char == "." then parts[#parts + 1] = trim(part); part = ""
+    else part = part .. char end
+  end
+  parts[#parts + 1] = trim(part)
+  return table.concat(parts, ".")
+end
+
 -- The text's lines as items: { kind = "other" | "header" | "key", lines = {...}, section,
 -- array (header of an [[array]]), key }. Or nil and "line N: reason".
 local function read(text)
@@ -49,12 +64,12 @@ local function read(text)
       local array = bare:match("^%[%[%s*([^%[%]]-)%s*%]%]%s*$") or bare:match("^%[%[%s*([^%[%]]-)%s*%]%]%s*#")
       local name = array or bare:match("^%[%s*([^%[%]]-)%s*%]%s*$") or bare:match("^%[%s*([^%[%]]-)%s*%]%s*#")
       if not name or name == "" then return nil, "line " .. i .. ": a table name needs its closing ]" end
-      section = array and "[[" .. name .. "]]" or name
-      items[#items + 1] = { kind = "header", lines = { line }, section = section, array = array ~= nil }
+      section = array and "[[" .. canonical(name) .. "]]" or canonical(name)
+      items[#items + 1] = { kind = "header", lines = { line }, section = section, array = array ~= nil, number = i }
     else
       local key, value = bare:match("^([^=]-)%s*=%s*(.*)$")
       if not key or key == "" or value == "" then return nil, "line " .. i .. ": expected key = value" end
-      local item, start, depth = { kind = "key", lines = { line }, section = section, key = key }, i, depthOf(value)
+      local item, start, depth = { kind = "key", lines = { line }, section = section, key = canonical(key), number = i }, i, depthOf(value)
       while depth > 0 do
         i = i + 1
         if i > #lines then return nil, "line " .. start .. ": the value's brackets are never closed" end
@@ -97,12 +112,60 @@ local function append(out, lines)
   for _, line in ipairs(lines) do out[#out + 1] = line end
 end
 
+local function pathOf(section, key)
+  return section == "" and key or section .. "." .. key
+end
+
+local function startsWith(text, prefix) return text:sub(1, #prefix) == prefix end
+
+-- The user's settings written in a way that can't merge with how omv writes the same keys,
+-- as "line N: reason", or nil. TOML forbids defining a table twice, so a user key must sit in
+-- the same table, with the same name, as omv's.
+local function clash(omvItems, userItems)
+  local paths, headers, arrays = {}, { [""] = true }, {}
+  for _, item in ipairs(omvItems) do
+    if item.kind == "header" and item.array then arrays[#arrays + 1] = item.section:sub(3, -3)
+    elseif item.kind == "header" then headers[item.section] = true
+    elseif item.kind == "key" and not startsWith(item.section, "[[") then
+      paths[#paths + 1] = { path = pathOf(item.section, item.key), section = item.section, key = item.key }
+    end
+  end
+  local function advice(number, omv)
+    local where = omv.section == "" and "at the top" or "under [" .. omv.section .. "]"
+    return "line " .. number .. ": omv sets " .. omv.path .. " " .. where .. "; write it there as " .. omv.key .. " = …"
+  end
+  for _, item in ipairs(userItems) do
+    if item.kind == "header" and not item.array then
+      for _, array in ipairs(arrays) do
+        if startsWith(item.section, array .. ".") then
+          return "line " .. item.number .. ": write a [[" .. array .. "]] entry's keys under it, as if.app-id = …"
+        end
+      end
+      if not headers[item.section] then
+        for _, omv in ipairs(paths) do
+          if startsWith(omv.path, item.section .. ".") then return advice(item.number, omv) end
+        end
+      end
+    elseif item.kind == "key" and not startsWith(item.section, "[[") then
+      local path = pathOf(item.section, item.key)
+      for _, omv in ipairs(paths) do
+        if omv.path == path and (omv.section ~= item.section or omv.key ~= item.key)
+          or startsWith(omv.path, path .. ".") or startsWith(path, omv.path .. ".") then
+          return advice(item.number, omv)
+        end
+      end
+    end
+  end
+end
+
 -- The built text, or nil and the user file's "line N: reason".
 function merge.build(defaults, user)
   if not user or trim(user) == "" then return merge.HEADER .. "\n" .. defaults end
   local userItems, problem = read(user)
   if not userItems then return nil, problem end
   local omvItems = assert(read(defaults))
+  problem = clash(omvItems, userItems)
+  if problem then return nil, problem end
   local keys, order, arrays = settings(userItems)
 
   -- Where each of omv's tables ends: its last key, or its header when it has none. New keys

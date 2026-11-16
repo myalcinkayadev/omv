@@ -279,6 +279,13 @@ reports_unreadable_user_aerospace() {
   expect_report '✗ ~/.config/omv/aerospace.toml line 1:'
 }
 
+reports_linked_aerospace_folder() {
+  complete_setup
+  rm -rf "$HOME_DIR/.config/aerospace"
+  ln -s "$REPO_DIR/config/aerospace/.config/aerospace" "$HOME_DIR/.config/aerospace"
+  expect_report '✗ ~/.config/aerospace is still a link — fix: omv update'
+}
+
 reports_hammerspoon_config() {
   complete_setup
   sed -i '' '/MJConfigFile/d' "$SANDBOX/defaults"
@@ -581,6 +588,7 @@ run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
 run_case 'should accept a built aerospace.toml that is up to date' accepts_built_aerospace
+run_case 'should report ~/.config/aerospace still linked' reports_linked_aerospace_folder
 run_case 'should report an aerospace.toml that is out of date' reports_outdated_aerospace
 run_case "should report an aerospace.toml omv didn't build" reports_foreign_aerospace
 run_case "should report a user aerospace.toml it can't read" reports_unreadable_user_aerospace

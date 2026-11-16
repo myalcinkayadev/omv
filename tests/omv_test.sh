@@ -368,6 +368,44 @@ reload_reloads_running_aerospace() {
   assert_called '^aerospace reload-config$'
 }
 
+refuses_to_build_through_clone_link() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config"
+  ln -s "$REPO/config/aerospace/.config/aerospace" "$HOME_DIR/.config/aerospace"
+  omv reload >/dev/null 2>&1 || true
+  [ ! -e "$REPO/config/aerospace/.config/aerospace/aerospace.toml.before-omv" ] || fail 'moved the repo defaults aside'
+}
+
+says_to_update_when_folder_is_linked() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config"
+  ln -s "$REPO/config/aerospace/.config/aerospace" "$HOME_DIR/.config/aerospace"
+  local output
+  output=$(omv reload 2>&1) && fail 'expected failure'
+  [[ $output == *'omv update'* ]] || fail "expected the update hint in: $output"
+}
+
+reload_runs_pending_migrations() {
+  make_repo
+  add_migration 202601010000-a
+  omv reload >/dev/null
+  assert_called '^migration 202601010000-a$'
+}
+
+reload_fails_when_aerospace_rejects() {
+  make_repo
+  run_aerospace
+  stub aerospace 1
+  assert_exit_nonzero omv reload
+}
+
+finishes_update_with_bad_user_aerospace() {
+  make_repo
+  user_aerospace '[gaps\n'
+  omv update >/dev/null 2>&1 || true
+  assert_called '^doctor\.sh'
+}
+
 undo_resets_to_saved_commit() {
   make_repo
   omv update >/dev/null
@@ -624,6 +662,11 @@ run_case "should keep the built aerospace.toml when the user's has an error" kee
 run_case "should go back to omv's defaults when the user file is removed" returns_to_defaults_without_user_file
 run_case "should rebuild without reloading AeroSpace when it isn't running" reload_skips_stopped_aerospace
 run_case "should reload AeroSpace when it's running" reload_reloads_running_aerospace
+run_case "should not build through a folder link into the clone" refuses_to_build_through_clone_link
+run_case 'should say to run omv update when ~/.config/aerospace is still a link' says_to_update_when_folder_is_linked
+run_case 'should run pending migrations on reload' reload_runs_pending_migrations
+run_case 'should fail the reload when AeroSpace rejects the built file' reload_fails_when_aerospace_rejects
+run_case "should finish the update when the user's aerospace.toml has an error" finishes_update_with_bad_user_aerospace
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree

@@ -53,7 +53,7 @@ AeroSpace reads one `aerospace.toml` and has no include, so omv builds it:
   spanning lines while brackets are open, brackets inside quotes ignored, `[table]`,
   `[[array]]`, comments), not a full TOML parser. A line it can't read stops the build: the
   old built file stays, and omv names the user file's line.
-- Written in Lua (`install/aerospace-merge.lua`, a module plus a small runner), run with
+- Written in Lua (`install/aerospace_merge.lua`, a module plus a small runner), run with
   `luajit` (already in the Brewfile), tested with luajit like the Hammerspoon modules.
 - Built by `omv install`, by `omv update` (in relink), and by a new `omv reload`, which
   rebuilds and then reloads AeroSpace (`aerospace reload-config`), SketchyBar and

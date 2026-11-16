@@ -108,13 +108,17 @@ omv_link() {
 # from the defaults and the user's file.
 check_aerospace_built() {
   local expected errors
+  if aerospace_folder_linked; then
+    problem '~/.config/aerospace is still a link' 'omv update'
+    return 0
+  fi
   if ! aerospace_built_by_omv; then
     problem "aerospace.toml isn't omv's" 'omv reload'
     return 0
   fi
   errors=$(mktemp)
   if ! expected=$(aerospace_build_text 2>"$errors"); then
-    problem "$(sed 's|^~/.config/omv/aerospace.toml |~/.config/omv/aerospace.toml |' "$errors" | head -n 1)" 'edit it, then omv reload'
+    problem "$(head -n 1 "$errors")" 'edit it, then omv reload'
     rm -f "$errors"
     return 0
   fi

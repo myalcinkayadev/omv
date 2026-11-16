@@ -476,5 +476,30 @@ class PersonalSettings(unittest.TestCase):
         self.assertIn("pcall(dofile, ", source)
 
 
+class BuiltAerospace(unittest.TestCase):
+    USER_FILES = (
+        "[mode.main.binding]\nalt-h = 'focus right'\n",
+        "[mode.main.binding]\n'alt-shift-;' = 'mode service'\n\"alt-/\" = 'layout tiles'\n",
+        "[gaps]\ninner.horizontal = 4\nouter.top = [{ monitor.\"built-in\" = 20 }, 40]\n",
+        "[[on-window-detected]]\nif.app-id = 'com.apple.finder'\nrun = 'layout floating'\n",
+        "[mode.resize.binding]\nh = 'resize width -100'\n",
+        "after-startup-command = [\n  'exec-and-forget echo #1',\n]\n",
+        "[key-mapping]\npreset = 'qwerty'\n",
+        "# only a comment\n",
+    )
+
+    def test_should_build_valid_toml_when_the_user_file_is_one_of_the_common_kinds(self) -> None:
+        import subprocess, tempfile
+        for user in self.USER_FILES:
+            with self.subTest(user=user), tempfile.NamedTemporaryFile("w", suffix=".toml") as file:
+                file.write(user)
+                file.flush()
+                built = subprocess.run(
+                    ["luajit", str(REPO / "install/aerospace_merge.lua"), str(AEROSPACE), file.name],
+                    capture_output=True, text=True, check=True,
+                ).stdout
+                tomllib.loads(built)
+
+
 if __name__ == "__main__":
     unittest.main()
