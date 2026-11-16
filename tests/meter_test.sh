@@ -85,6 +85,23 @@ fails_without_a_command() {
   assert_exit_nonzero meter
 }
 
+checks_access_status() {
+  stub_meter_tools
+  meter access status "$SANDBOX/state"
+  assert_called "^open -W -n -g -j $(app) --args --access status $SANDBOX/state$"
+}
+
+requests_access() {
+  stub_meter_tools
+  meter access request "$SANDBOX/state"
+  assert_called "^open -W -n -g -j $(app) --args --access request $SANDBOX/state$"
+}
+
+refuses_unknown_access_mode() {
+  stub_meter_tools
+  assert_exit_nonzero meter access grant "$SANDBOX/state"
+}
+
 run_case "should build the helper into an app bundle" builds_helper_into_a_bundle
 run_case "should say why it needs the microphone" asks_for_microphone_access_by_name
 run_case "should keep the helper out of the Dock" stays_out_of_the_dock
@@ -95,4 +112,7 @@ run_case "should stop the helper by its name" stops_helper_by_name
 run_case "should fail when the helper can't be built" fails_when_the_build_fails
 run_case "should say why when the helper can't be built" says_why_when_the_build_fails
 run_case "should fail when given no command" fails_without_a_command
+run_case "should open the helper to read its access when asked for the status" checks_access_status
+run_case "should open the helper to ask for access when asked to request it" requests_access
+run_case "should refuse an access mode other than status or request" refuses_unknown_access_mode
 finish

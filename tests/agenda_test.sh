@@ -11,7 +11,7 @@ app() {
   echo "$HOME_DIR/.cache/omv/Agenda.app"
 }
 
-# swiftc "builds" the helper by copying $SANDBOX/helper. open runs the bundle's helper with
+# swiftc "builds" the helper by copying $SANDBOX/helper, which writes to its last argument. open runs the bundle's helper with
 # the arguments after --args, the way LaunchServices would.
 stub_agenda_tools() {
   cat > "$STUB_DIR/swiftc" <<STUB
@@ -41,11 +41,11 @@ STUB
 }
 
 helper_writes() {
-  printf '#!/bin/sh\nprintf %q > "$1"\n' "$1" > "$SANDBOX/helper"
+  printf '#!/bin/sh\nfor last; do :; done\nprintf %q > "$last"\n' "$1" > "$SANDBOX/helper"
 }
 
 agenda() {
-  run_in_sandbox "$AGENDA"
+  run_in_sandbox "$AGENDA" "$@"
 }
 
 builds_helper_into_a_bundle() {
@@ -118,9 +118,29 @@ run_case "should say why it needs Calendar access, and stay out of the Dock" ask
 run_case "should sign the bundle" signs_the_bundle
 run_case "should skip the build when the helper is newer than its source" skips_build_when_helper_is_fresh
 run_case "should open the helper in the background and wait for it" opens_helper_in_the_background_and_waits
+checks_access_status() {
+  stub_agenda_tools
+  agenda access status "$SANDBOX/state" > /dev/null
+  assert_called "^open -W -n -g -j $(app) --args --access status $SANDBOX/state$"
+}
+
+requests_access() {
+  stub_agenda_tools
+  agenda access request "$SANDBOX/state" > /dev/null
+  assert_called "^open -W -n -g -j $(app) --args --access request $SANDBOX/state$"
+}
+
+refuses_unknown_access_mode() {
+  stub_agenda_tools
+  assert_exit_nonzero agenda access grant "$SANDBOX/state"
+}
+
 run_case "should print the events the helper wrote" prints_the_events
 run_case "should print denied when access was refused" prints_denied
 run_case "should fail when the helper writes nothing" fails_when_the_helper_writes_nothing
 run_case "should never print events left from an earlier run" never_prints_events_left_from_before
 run_case "should fail when the helper can't be built" fails_when_the_build_fails
+run_case "should open the helper to read its access when asked for the status" checks_access_status
+run_case "should open the helper to ask for access when asked to request it" requests_access
+run_case "should refuse an access mode other than status or request" refuses_unknown_access_mode
 finish

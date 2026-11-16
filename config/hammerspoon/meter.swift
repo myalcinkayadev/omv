@@ -1,4 +1,6 @@
 // Mic level helper for the Sound card's meter. Usage: meter <file>
+// or meter --access status|request <file>, for omv Setup: writes granted, denied or
+// undetermined to <file>; request first asks macOS when access was never asked.
 // Writes the default input's level to <file> about ten times a second, as one line from
 // 0.000 to 1.000, "denied" when microphone access was refused, or "none" when the Mac
 // has no input to listen to.
@@ -8,6 +10,21 @@ import AVFoundation
 import Foundation
 
 let arguments = CommandLine.arguments
+
+func saveAccess(_ word: String, to file: String) -> Never {
+  try? (word + "\n").write(to: URL(fileURLWithPath: file), atomically: true, encoding: .utf8)
+  exit(0)
+}
+
+if arguments.count == 4, arguments[1] == "--access" {
+  let status = AVCaptureDevice.authorizationStatus(for: .audio)
+  if arguments[2] == "request" && status == .notDetermined {
+    AVCaptureDevice.requestAccess(for: .audio) { granted in saveAccess(granted ? "granted" : "denied", to: arguments[3]) }
+    RunLoop.main.run()
+  }
+  saveAccess(status == .authorized ? "granted" : status == .notDetermined ? "undetermined" : "denied", to: arguments[3])
+}
+
 guard arguments.count > 1 else { exit(2) }
 let output = URL(fileURLWithPath: arguments[1])
 let alive = URL(fileURLWithPath: arguments[1] + ".alive")

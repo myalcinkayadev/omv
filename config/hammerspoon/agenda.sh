@@ -1,8 +1,10 @@
 #!/bin/sh
-# Usage: agenda.sh
+# Usage: agenda.sh | agenda.sh access status|request <file>
 # Prints today's Calendar.app events, one per line: start, end, all-day (1 or 0), title and
 # video call links, split by tabs, or "denied" when Calendar access was refused. See agenda.swift.
 # The helper is built from agenda.swift the first time, into an app bundle in the cache.
+# access writes the helper's Calendar access to <file>: granted, denied or undetermined;
+# request first brings up macOS's prompt when it was never asked. omv Setup uses it.
 
 PATH="$PATH:/usr/bin:/bin:/usr/sbin"
 
@@ -42,6 +44,21 @@ build_helper() {
   # Signing the bundle seals its Info.plist, which macOS reads when it asks for access.
   codesign --force --sign - "$app" >/dev/null 2>&1
 }
+
+if [ "${1:-}" = access ]; then
+  case ${2:-} in
+    status | request) ;;
+    *)
+      echo "Usage: agenda.sh access status|request <file>" >&2
+      exit 2
+      ;;
+  esac
+  [ -n "${3:-}" ] || exit 2
+  build_helper
+  # -n opens a new one even while another runs, so -W waits for this one.
+  open -W -n -g -j "$app" --args --access "$2" "$3"
+  exit
+fi
 
 build_helper
 rm -f "$output"

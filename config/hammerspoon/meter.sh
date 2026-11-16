@@ -1,6 +1,8 @@
 #!/bin/sh
-# Usage: meter.sh start <file> | meter.sh stop
+# Usage: meter.sh start <file> | meter.sh stop | meter.sh access status|request <file>
 # Starts or stops the mic level helper behind the Sound card's meter. See meter.swift.
+# access writes the helper's microphone access to <file>: granted, denied or undetermined;
+# request first brings up macOS's prompt when it was never asked. omv Setup uses it.
 # The helper is built from meter.swift the first time, into an app bundle in the cache,
 # so macOS asks for the microphone by its own name.
 
@@ -54,8 +56,21 @@ case ${1:-} in
     pkill -f "$helper"
     exit 0
     ;;
+  access)
+    case ${2:-} in
+      status | request) ;;
+      *)
+        echo "Usage: meter.sh access status|request <file>" >&2
+        exit 2
+        ;;
+    esac
+    [ -n "${3:-}" ] || exit 2
+    build_helper
+    # -n opens a new one beside a running meter, so -W waits for this one.
+    open -W -n -g -j "$app" --args --access "$2" "$3"
+    ;;
   *)
-    echo "Usage: meter.sh start <file> | meter.sh stop" >&2
+    echo "Usage: meter.sh start <file> | meter.sh stop | meter.sh access status|request <file>" >&2
     exit 2
     ;;
 esac

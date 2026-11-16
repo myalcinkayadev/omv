@@ -1,4 +1,6 @@
 // Helper for agenda.sh, built with swiftc on first use into a small app bundle.
+//   agenda --access status|request <file>   for omv Setup: writes granted, denied or
+//                   undetermined to <file>; request first asks macOS when it was never asked.
 //   agenda <file>   writes today's events to <file>, one per line:
 //                   start<TAB>end<TAB>all-day (1 or 0)<TAB>title<TAB>call links, with times
 //                   in Unix seconds and the links split by spaces,
@@ -74,6 +76,15 @@ func todaysEvents() -> String {
 }
 
 let arguments = CommandLine.arguments
+
+if arguments.count == 4, arguments[1] == "--access" {
+  NSApplication.shared.setActivationPolicy(.prohibited)
+  let undetermined = EKEventStore.authorizationStatus(for: .event) == .notDetermined
+  let word = undetermined && arguments[2] == "status" ? "undetermined" : accessGranted() ? "granted" : "denied"
+  try? (word + "\n").write(to: URL(fileURLWithPath: arguments[3]), atomically: true, encoding: .utf8)
+  exit(0)
+}
+
 guard arguments.count > 1 else {
   FileHandle.standardError.write("usage: agenda <file>\n".data(using: .utf8)!)
   exit(2)
