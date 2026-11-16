@@ -449,5 +449,32 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "config/sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         self.assertIn("omv_battery_change", re.search(r"--subscribe battery ([^\n]*)", source).group(1).split())
 
+class PersonalSettings(unittest.TestCase):
+    def test_should_load_the_users_ghostty_file_last_when_ghostty_reads_its_config(self) -> None:
+        lines = [line.strip() for line in GHOSTTY.read_text(encoding="utf-8").splitlines()]
+        includes = [line for line in lines if line.startswith("config-file")]
+        self.assertEqual(includes[-1], "config-file = ?~/.config/omv/ghostty")
+        self.assertLess(lines.index(includes[0]), lines.index(includes[-1]))
+
+    def test_should_source_the_users_sketchybar_file_before_the_redraw_when_the_bar_starts(self) -> None:
+        source = (REPO / "config/sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
+        guarded = re.search(r'\[ -f "\$HOME/\.config/omv/sketchybar\.sh" \] && (source|\.) "\$HOME/\.config/omv/sketchybar\.sh"', source)
+        self.assertIsNotNone(guarded)
+        self.assertLess(guarded.start(), source.rindex("sketchybar --update"))
+
+    def test_should_load_the_users_hammerspoon_file_last_in_pcall_when_the_config_loads(self) -> None:
+        source = HAMMERSPOON.read_text(encoding="utf-8")
+        loads = source.rfind("pcall(dofile, ")
+        self.assertGreater(loads, 0)
+        self.assertIn('/.config/omv/hammerspoon.lua', source[loads - 300:])
+        self.assertNotRegex(source[loads:], r"\nomv[A-Za-z]+ = ")
+
+    def test_should_load_the_users_neovim_file_in_pcall_when_neovim_starts(self) -> None:
+        source = (REPO / "config/nvim/.config/nvim/init.lua").read_text(encoding="utf-8")
+        self.assertIn("/.config/omv/nvim.lua", source)
+        self.assertIn("filereadable", source)
+        self.assertIn("pcall(dofile, ", source)
+
+
 if __name__ == "__main__":
     unittest.main()

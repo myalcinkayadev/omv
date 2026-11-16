@@ -203,6 +203,10 @@ sketchybar --add event bar_fit \
   --set bar_fit drawing=off script="$PLUGIN_DIR/bar_fit.sh" \
   --subscribe bar_fit bar_fit system_woke display_change
 
+# Your own items and settings, from ~/.config/omv/sketchybar.sh when it exists. Last before
+# the redraw, so it can change anything above.
+[ -f "$HOME/.config/omv/sketchybar.sh" ] && source "$HOME/.config/omv/sketchybar.sh"
+
 sketchybar --update
 
 # Hammerspoon sets the weather, meeting and reminder items, and only when they change, so

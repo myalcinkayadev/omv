@@ -176,3 +176,14 @@ omvFocusClaude = later(waitingClaude.focus)
 omvToggleCapture = later(captureMenu.toggle)
 omvToggleReminders = later(reminderCards.toggle)
 omvNewReminder = later(reminderCards.new)
+
+-- Your own settings, from ~/.config/omv/hammerspoon.lua when it exists. Last, so it can
+-- change anything above; an error in it is shown, and omv's keys keep working.
+local personal = os.getenv("HOME") .. "/.config/omv/hammerspoon.lua"
+if hs.fs.attributes(personal) then
+  local ok, problem = pcall(dofile, personal)
+  if not ok then
+    print("omv: " .. tostring(problem))
+    hs.alert.show("~/.config/omv/hammerspoon.lua: " .. tostring(problem), 6)
+  end
+end
