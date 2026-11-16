@@ -16,7 +16,10 @@ final class HelperController {
     panel.title = "omv Setup"
     panel.level = .floating
     panel.backgroundColor = .black
-    panel.contentView = NSHostingView(rootView: HelperView(step: step, close: { [weak self] in self?.back() }).environmentObject(state))
+    let content = NSHostingView(rootView: HelperView(step: step, close: { [weak self] in self?.back() }).environmentObject(state))
+    // Without this the hosting view grows the panel to its content's ideal size.
+    content.sizingOptions = []
+    panel.contentView = content
     self.panel = panel
     follow()
     timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.follow() }
@@ -68,7 +71,7 @@ struct HelperView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       Text(step.title).font(Look.font(13, .bold))
-      Text("Drag each app into the list on the left, then turn its switch on.")
+      Text("Drag each app into the list in System Settings, then turn its switch on.")
         .font(Look.font(12)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
       ForEach(step.permissions, id: \.key) { permission in
         AppRow(permission: permission)
