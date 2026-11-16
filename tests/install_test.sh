@@ -24,6 +24,31 @@ finishes_without_hammerspoon() {
   assert_called '^defaults write NSGlobalDomain _HIHideMenuBar'
 }
 
+prints_step_markers() {
+  local output step
+  output=$(run_in_sandbox OMV_STEPS=1 "$INSTALL" 2>&1)
+  for step in taps tools configs command agents settings; do
+    [[ $output == *"omv-step: $step start"* ]] || fail "no start marker for $step"
+    [[ $output == *"omv-step: $step done"* ]] || fail "no done marker for $step"
+  done
+}
+
+prints_no_markers_by_default() {
+  local output
+  output=$(run_in_sandbox "$INSTALL" 2>&1)
+  [[ $output != *'omv-step:'* ]] || fail "unexpected markers in: $output"
+}
+
+marks_step_before_its_work() {
+  printf '#!/bin/sh\necho "brew $*" >> "%s"\n[ "$1" = bundle ] && echo BREW-BUNDLE-RAN\nexit 0\n' "$CALL_LOG" > "$STUB_DIR/brew"
+  chmod +x "$STUB_DIR/brew"
+  local output marker work
+  output=$(run_in_sandbox OMV_STEPS=1 "$INSTALL" 2>&1)
+  marker=$(printf '%s\n' "$output" | grep -n -m1 'omv-step: tools start' | cut -d: -f1)
+  work=$(printf '%s\n' "$output" | grep -n -m1 'BREW-BUNDLE-RAN' | cut -d: -f1)
+  [ -n "$marker" ] && [ -n "$work" ] && [ "$marker" -lt "$work" ] || fail "marker $marker, work $work"
+}
+
 add_conflicting_file() {
   mkdir -p "$HOME_DIR/.config/sketchybar"
   echo 'mine' > "$HOME_DIR/.config/sketchybar/sketchybarrc"
@@ -258,6 +283,9 @@ reports_stow_conflict() {
   [[ $output == *"install.sh: stow could not link"* ]] || fail "missing report in: $output"
 }
 
+run_case "should print each step's markers when OMV_STEPS is set" prints_step_markers
+run_case 'should print no step markers by default' prints_no_markers_by_default
+run_case "should print a step's start marker before its work runs" marks_step_before_its_work
 run_case 'should write the physical path to the Hammerspoon setting when run through a symlinked folder' writes_physical_hammerspoon_path
 run_case "should finish installing when the user's aerospace.toml has an error" finishes_with_bad_user_aerospace
 run_case 'should build aerospace.toml when installing' builds_aerospace_config

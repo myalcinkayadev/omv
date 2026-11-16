@@ -32,6 +32,13 @@ done
 readonly DRY_RUN APPS
 
 # Runs a step, or with --dry-run only says what it would run.
+# With OMV_STEPS=1, a line per step's start and end, which omv Setup reads to show the
+# install as it runs: "omv-step: <id> start" and "omv-step: <id> done <summary>".
+mark() {
+  if [ "${OMV_STEPS:-}" = 1 ]; then echo "omv-step: $*"; fi
+  return 0
+}
+
 step() {
   if $DRY_RUN; then
     echo "would run: $*"
@@ -48,13 +55,17 @@ require_command() {
 
 install_tools() {
   local tap
+  mark taps start
   # Homebrew refuses to install from a third-party tap until it's trusted.
   for tap in "${TAPS[@]}"; do
     step brew tap "$tap"
     step brew trust --tap "$tap"
   done
+  mark taps done "${#TAPS[@]} trusted"
+  mark tools start
   step brew bundle --file="$REPO_DIR/Brewfile"
   if $APPS; then step brew bundle --file="$REPO_DIR/Brewfile.apps"; fi
+  mark tools done "the Brewfile is installed"
 }
 
 link_configs() {
@@ -136,6 +147,7 @@ require_command brew
 install_tools
 # The Brewfile installs Stow, so it's only needed from here on.
 $DRY_RUN || require_command stow
+mark configs start
 link_configs
 if $DRY_RUN; then
   echo "would run: defaults write org.hammerspoon.Hammerspoon MJConfigFile $HAMMERSPOON_CONFIG"
@@ -145,9 +157,16 @@ else
   # A mistake in the user's file mustn't stop the install; the doctor names its line.
   build_aerospace || echo "install.sh: kept the old aerospace.toml; once the above is fixed, run omv reload" >&2
 fi
+mark configs done "linked, Hammerspoon and aerospace.toml set"
+mark command start
 link_omv
+mark command done "omv is on your PATH"
+mark agents start
 step "$REPO_DIR/agents/claude-usage.sh" add
 step "$REPO_DIR/agents/claude-hooks.sh" add
 link_agents
+mark agents done "hooks added for the agents found"
+mark settings start
 apply_macos_settings
+mark settings done "menu bar, Spaces, animations, swipe"
 $DRY_RUN || print_manual_steps
