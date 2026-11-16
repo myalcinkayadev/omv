@@ -54,6 +54,43 @@ enum SetupChecks {
     return grants
   }
 
+  // Where the meter, the agenda and Hammerspoon's Bluetooth probe write what access they have.
+  static let accessDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/state/omv/access")
+
+  static func readAccess() -> [String: Grant] {
+    var files: [String: String] = [:]
+    for name in ["microphone", "calendars", "bluetooth"] {
+      if let text = try? String(contentsOf: accessDir.appendingPathComponent(name), encoding: .utf8) { files[name] = text }
+    }
+    return SetupModel.accessGrants(files)
+  }
+
+  // Runs the meter or the agenda in access mode, which waits for it. request brings up
+  // macOS's prompt when the helper was never asked.
+  static func helperAccess(_ repo: String, _ name: String, request: Bool) {
+    let script = ["microphone": "meter.sh", "calendars": "agenda.sh"][name]!
+    try? FileManager.default.createDirectory(at: accessDir, withIntermediateDirectories: true)
+    run("/bin/sh", [repo + "/config/hammerspoon/" + script, "access", request ? "request" : "status",
+      accessDir.appendingPathComponent(name).path])
+  }
+
+  // Has Hammerspoon run blueutil --power and write what it printed. Asking Bluetooth this way
+  // brings up macOS's prompt for Hammerspoon when it was never asked; the task doesn't block it.
+  static func bluetoothAccess() {
+    guard let hs = tool("hs"), let blueutil = tool("blueutil") else { return }
+    try? FileManager.default.createDirectory(at: accessDir, withIntermediateDirectories: true)
+    let file = accessDir.appendingPathComponent("bluetooth").path
+    run(hs, ["-t", "2", "-c", """
+      omvSetupBluetooth = hs.task.new("\(blueutil)", function(_, out) local f = io.open("\(file)", "w")       if f then f:write(out or "") f:close() end end, {"--power"}) omvSetupBluetooth:start()
+      """])
+  }
+
+  // Location: Hammerspoon starting its location updates brings up the prompt.
+  static func locationAccess() {
+    guard let hs = tool("hs") else { return }
+    run(hs, ["-t", "2", "-c", "hs.location.start()"])
+  }
+
   // Screen Recording applies when Hammerspoon starts again.
   static func restartHammerspoon() {
     DispatchQueue.global().async {
@@ -69,25 +106,68 @@ final class SetupState: ObservableObject {
   @Published var screen = "welcome"
   @Published var opened: Set<String> = []
   @Published var showDetails = false
+  @Published var asking: Set<String> = []
   let installer: Installer?
+  let repo: String?
   let helper = HelperController()
   private var timer: Timer?
+  private var ticks = 0
+  private var probing: Set<String> = []
 
-  init(installer: Installer?) {
+  init(installer: Installer?, repo: String?) {
     self.installer = installer
+    self.repo = repo
     refresh()
+    for name in ["microphone", "calendars"] { probe(name) }
+    if hasAsked("bluetooth") { probe("bluetooth") }
     timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
       self?.refresh()
       self?.objectWillChange.send()
     }
   }
 
+  private func hasAsked(_ name: String) -> Bool {
+    FileManager.default.fileExists(atPath: SetupChecks.accessDir.appendingPathComponent(name).path)
+  }
+
+  // Reads one helper's access again, at most one run at a time each. Bluetooth only once it
+  // was asked, as a first probe would bring up the prompt unasked.
+  private func probe(_ name: String, request: Bool = false) {
+    guard !probing.contains(name) else { return }
+    if name == "bluetooth" && !request && !hasAsked(name) { return }
+    if name != "bluetooth" && repo == nil { return }
+    probing.insert(name)
+    let repo = repo
+    DispatchQueue.global().async {
+      if name == "bluetooth" { SetupChecks.bluetoothAccess() } else { SetupChecks.helperAccess(repo!, name, request: request) }
+      DispatchQueue.main.async { self.probing.remove(name) }
+    }
+  }
+
+  // Brings up macOS's prompt for a permission whose list has no add button.
+  func ask(_ permission: SetupPermission) {
+    asking.insert(permission.key)
+    switch permission.key {
+    case "meter.microphone": probe("microphone", request: true)
+    case "agenda.calendars": probe("calendars", request: true)
+    case "hammerspoon.bluetooth": probe("bluetooth", request: true)
+    default: DispatchQueue.global().async { SetupChecks.locationAccess() }
+    }
+  }
+
   var screens: [String] { ["welcome", "install"] + SetupModel.steps.map(\.id) + ["done"] }
 
+  // Hammerspoon and AeroSpace every second; the helpers' answers on their own step every 3,
+  // since each one starts an app.
   func refresh() {
+    ticks += 1
+    if ticks % 3 == 0, ["microphone", "calendars", "bluetooth"].contains(screen) { probe(screen) }
     DispatchQueue.global().async {
-      let grants = SetupChecks.read()
-      DispatchQueue.main.async { self.progress.grants = grants }
+      let grants = SetupChecks.read().merging(SetupChecks.readAccess()) { $1 }
+      DispatchQueue.main.async {
+        self.progress.grants = grants
+        self.asking = self.asking.filter { grants[$0] == nil }
+      }
     }
   }
 
@@ -298,17 +378,10 @@ struct SetupView: View {
     return Group {
       Text(step.title).font(Look.font(24, .bold))
       Text(step.purpose).font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
-      HStack(spacing: 14) {
-        number("1", done: state.opened.contains(step.id))
-        secondary("Open System Settings") { state.openSettings(step) }
-      }
-      HStack(alignment: .top, spacing: 14) {
-        number("2", done: complete)
-        VStack(alignment: .leading, spacing: 12) {
-          Text("Drag each app into the list, then turn it on. A helper sits beside System Settings too.")
-            .font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
-          ForEach(step.permissions, id: \.key) { AppRow(permission: $0).frame(width: 320) }
-        }
+      if step.permissions.allSatisfy({ $0.way == .ask }) {
+        askSteps(step, complete: complete)
+      } else {
+        dragSteps(step, complete: complete)
       }
       if step.needsRestart && state.opened.contains(step.id) && !complete {
         HStack(alignment: .top, spacing: 14) {
@@ -324,6 +397,45 @@ struct SetupView: View {
         secondary("Skip") { state.skip() }
         Spacer()
         primary("Next  →", enabled: complete) { state.next() }
+      }
+    }
+  }
+
+  // Lists with an add button: open System Settings, then drag each app in.
+  @ViewBuilder func dragSteps(_ step: SetupStep, complete: Bool) -> some View {
+    HStack(spacing: 14) {
+      number("1", done: state.opened.contains(step.id))
+      secondary("Open System Settings") { state.openSettings(step) }
+    }
+    HStack(alignment: .top, spacing: 14) {
+      number("2", done: complete)
+      VStack(alignment: .leading, spacing: 12) {
+        Text("Drag each app into the list, then turn it on. A helper sits beside System Settings too.")
+          .font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
+        ForEach(step.permissions, id: \.key) { AppRow(permission: $0).frame(width: 320) }
+      }
+    }
+  }
+
+  // Lists with no add button: the app asks, macOS shows its prompt. System Settings only
+  // for an app that was refused before.
+  @ViewBuilder func askSteps(_ step: SetupStep, complete: Bool) -> some View {
+    HStack(alignment: .top, spacing: 14) {
+      number("1", done: complete)
+      VStack(alignment: .leading, spacing: 12) {
+        Text("Press Allow access, then Allow in the prompt macOS shows.")
+          .font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
+        ForEach(step.permissions, id: \.key) { AppRow(permission: $0).frame(width: 320) }
+      }
+    }
+    if step.permissions.contains(where: { state.progress.grants[$0.key] == .denied }) {
+      HStack(alignment: .top, spacing: 14) {
+        number("2", done: false)
+        VStack(alignment: .leading, spacing: 10) {
+          Text("Said no before? macOS won't ask again; switch it on in System Settings.")
+            .font(Look.font(13)).fixedSize(horizontal: false, vertical: true)
+          secondary("Open System Settings") { state.openSettings(step) }
+        }
       }
     }
   }

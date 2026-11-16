@@ -71,7 +71,9 @@ struct HelperView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       Text(step.title).font(Look.font(13, .bold))
-      Text("Drag each app into the list in System Settings, then turn its switch on.")
+      Text(step.permissions.allSatisfy { $0.way == .ask }
+        ? "Switch each app on in the list in System Settings."
+        : "Drag each app into the list in System Settings, then turn its switch on.")
         .font(Look.font(12)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
       ForEach(step.permissions, id: \.key) { permission in
         AppRow(permission: permission)
@@ -90,35 +92,61 @@ struct HelperView: View {
   }
 }
 
-// One app to drag: its real icon, its name, and its state or a box to tick.
+// One app: its real icon and name, then how it's granted. Drag and tick rows drag as a whole,
+// so any part of the card can go into System Settings' list; ask rows have Allow access.
 struct AppRow: View {
   let permission: SetupPermission
   @EnvironmentObject var state: SetupState
 
   var body: some View {
     let granted = state.progress.isGranted(permission)
-    HStack(spacing: 12) {
+    let card = HStack(spacing: 12) {
       Image(nsImage: NSWorkspace.shared.icon(forFile: permission.appPath))
         .resizable().frame(width: 40, height: 40)
-        .onDrag { NSItemProvider(object: URL(fileURLWithPath: permission.appPath) as NSURL) }
-        .accessibilityLabel("Drag \(permission.app) into the list")
+        .accessibilityLabel(permission.way == .ask ? permission.app : "Drag \(permission.app) into the list")
       VStack(alignment: .leading, spacing: 4) {
         Text(permission.app).font(Look.font(12)).lineLimit(1)
-        if permission.checkable {
-          Text(granted ? "✓ granted" : "◌ waiting · drag me").font(Look.font(11)).foregroundColor(granted ? .white : Look.faint)
-        } else {
-          Toggle("I turned it on", isOn: Binding(
-            get: { state.progress.ticked.contains(permission.key) },
-            set: { on in
-              if on { state.progress.ticked.insert(permission.key) } else { state.progress.ticked.remove(permission.key) }
-            }))
-            .toggleStyle(.checkbox).font(Look.font(11))
-        }
+        status(granted)
       }
       Spacer()
     }
     .padding(.horizontal, 12).padding(.vertical, 10)
+    .contentShape(Rectangle())
     .overlay(RoundedRectangle(cornerRadius: 10)
       .stroke(granted ? Color.white : Color(white: 0.35), style: StrokeStyle(lineWidth: 1, dash: granted ? [] : [4])))
+    if permission.way == .ask {
+      card
+    } else {
+      card
+        .onDrag { NSItemProvider(object: URL(fileURLWithPath: permission.appPath) as NSURL) }
+    }
+  }
+
+  @ViewBuilder func status(_ granted: Bool) -> some View {
+    switch permission.way {
+    case .drag:
+      Text(granted ? "✓ granted" : "◌ waiting · drag me").font(Look.font(11)).foregroundColor(granted ? .white : Look.faint)
+    case .tick:
+      Toggle("I turned it on", isOn: Binding(
+        get: { state.progress.ticked.contains(permission.key) },
+        set: { on in
+          if on { state.progress.ticked.insert(permission.key) } else { state.progress.ticked.remove(permission.key) }
+        }))
+        .toggleStyle(.checkbox).font(Look.font(11))
+    case .ask:
+      if granted {
+        Text("✓ granted").font(Look.font(11))
+      } else if state.progress.grants[permission.key] == .denied {
+        Text("✗ off · switch it on in System Settings").font(Look.font(11)).foregroundColor(Look.soft)
+      } else if state.asking.contains(permission.key) {
+        Text("◌ answer macOS's prompt").font(Look.font(11)).foregroundColor(Look.faint)
+      } else {
+        Button { state.ask(permission) } label: {
+          Text("Allow access").font(Look.font(11, .bold)).padding(.horizontal, 10).frame(height: 24)
+            .background(Color.white).foregroundColor(.black).cornerRadius(6)
+        }
+        .buttonStyle(.plain)
+      }
+    }
   }
 }

@@ -42,5 +42,5 @@ build_setup_app() {
 
 open_setup_app() {
   build_setup_app || return 1
-  open "$SETUP_APP"
+  open "$SETUP_APP" --args --repo "$REPO_DIR"
 }

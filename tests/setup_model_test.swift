@@ -53,11 +53,12 @@ struct SetupModelTests {
 
     check("should count granted, skipped and by-hand steps in the summary", {
       var progress = SetupProgress()
-      progress.grants = ["hammerspoon.screen": .granted, "hammerspoon.location": .granted]
+      progress.grants = ["hammerspoon.screen": .granted, "hammerspoon.location": .granted,
+        "aerospace.accessibility": .granted, "hammerspoon.accessibility": .granted]
       progress.skipped = ["bluetooth"]
       let summary = progress.summary(SetupModel.steps)
-      return summary.granted == 2 && summary.skipped == 1 && summary.byHand == ["microphone", "calendars"]
-        && summary.missing == ["accessibility", "disk"]
+      return summary.granted == 2 && summary.skipped == 1 && summary.byHand == ["accessibility"]
+        && summary.missing == ["microphone", "calendars", "disk"]
     }())
 
     check("should start at the first open step when a later run finds earlier ones done", {
@@ -72,6 +73,9 @@ struct SetupModelTests {
       return grants["hammerspoon.accessibility"] == .granted && grants["hammerspoon.screen"] == .denied
         && grants["hammerspoon.location"] == .granted && grants["hammerspoon.disk"] == .granted
     }())
+
+    check("should leave location open when Hammerspoon was never asked",
+      SetupModel.hammerspoonGrants("true,true,notDetermined,true")["hammerspoon.location"] == nil)
 
     check("should read nothing from Hammerspoon when it doesn't answer", SetupModel.hammerspoonGrants("").isEmpty)
 
@@ -138,6 +142,66 @@ struct SetupModelTests {
     check("should offer a restart on the Screen Recording step", step("screen").needsRestart)
 
     check("should offer no restart on other steps", !step("accessibility").needsRestart && !step("location").needsRestart)
+
+    check("should read the meter's granted into a microphone grant",
+      SetupModel.accessGrants(["microphone": "granted\n"])["meter.microphone"] == .granted)
+
+    check("should read the meter's denied into a denied microphone grant",
+      SetupModel.accessGrants(["microphone": "denied"])["meter.microphone"] == .denied)
+
+    check("should leave the microphone open when the meter hasn't been asked",
+      SetupModel.accessGrants(["microphone": "undetermined"])["meter.microphone"] == nil)
+
+    check("should leave the microphone open when the meter's answer is empty",
+      SetupModel.accessGrants(["microphone": ""])["meter.microphone"] == nil)
+
+    check("should read the agenda's granted into a calendars grant",
+      SetupModel.accessGrants(["calendars": "granted"])["agenda.calendars"] == .granted)
+
+    check("should read the agenda's denied into a denied calendars grant",
+      SetupModel.accessGrants(["calendars": "denied"])["agenda.calendars"] == .denied)
+
+    check("should leave calendars open when the agenda hasn't been asked",
+      SetupModel.accessGrants(["calendars": "undetermined"])["agenda.calendars"] == nil)
+
+    check("should leave calendars open when the agenda's answer is empty",
+      SetupModel.accessGrants(["calendars": ""])["agenda.calendars"] == nil)
+
+    check("should grant Bluetooth when blueutil reports the power state",
+      SetupModel.accessGrants(["bluetooth": "0\n"])["hammerspoon.bluetooth"] == .granted)
+
+    check("should deny Bluetooth when blueutil's answer is empty",
+      SetupModel.accessGrants(["bluetooth": ""])["hammerspoon.bluetooth"] == .denied)
+
+    check("should leave Bluetooth open when it was never asked",
+      SetupModel.accessGrants([:])["hammerspoon.bluetooth"] == nil)
+
+    check("should complete the Microphone step when the meter is granted", {
+      var progress = SetupProgress()
+      progress.grants = ["meter.microphone": .granted]
+      return progress.isComplete(step("microphone"))
+    }())
+
+    check("should not complete the Microphone step with a tick", {
+      var progress = SetupProgress()
+      progress.ticked = ["meter.microphone"]
+      return !progress.isComplete(step("microphone"))
+    }())
+
+    check("should list a step as missing when access it asks for is denied", {
+      var progress = SetupProgress()
+      progress.grants = ["agenda.calendars": .denied]
+      return progress.summary(SetupModel.steps).missing.contains("calendars")
+    }())
+
+    check("should ask for access on the steps whose list has no add button",
+      ["location", "microphone", "calendars", "bluetooth"].allSatisfy { id in step(id).permissions.allSatisfy { $0.way == .ask } })
+
+    check("should still need a tick for SwipeAeroSpace",
+      step("accessibility").permissions.first { $0.key == "swipe.accessibility" }?.way == .tick)
+
+    check("should offer drag where the list has an add button",
+      ["screen", "disk"].allSatisfy { id in step(id).permissions.allSatisfy { $0.way == .drag } })
 
     exit(failed == 0 ? 0 : 1)
   }

@@ -8,13 +8,21 @@ enum Grant {
   case granted, denied
 }
 
-// One app's permission within a step. checkable: omv can read whether it's granted; the
-// rest the user ticks once they've turned it on.
+// How the user grants a permission: drag the app into a System Settings list that has an add
+// button; ask, where the list has none and the app itself must bring up macOS's prompt; or
+// tick, where omv can't read the permission at all.
+enum GrantWay {
+  case drag, ask, tick
+}
+
+// One app's permission within a step. omv reads whether it's granted unless it's a tick.
 struct SetupPermission {
   let key: String
   let app: String
   let appPath: String
-  let checkable: Bool
+  let way: GrantWay
+
+  var checkable: Bool { way != .tick }
 }
 
 struct SetupStep {
@@ -80,39 +88,39 @@ enum SetupModel {
     SetupStep(id: "accessibility", title: "Accessibility",
       purpose: "Lets AeroSpace tile windows, SwipeAeroSpace follow your swipes, and Hammerspoon show the volume and brightness pop-ups.",
       pane: "Privacy_Accessibility", permissions: [
-        SetupPermission(key: "aerospace.accessibility", app: "AeroSpace", appPath: aerospace, checkable: true),
-        SetupPermission(key: "hammerspoon.accessibility", app: "Hammerspoon", appPath: hammerspoon, checkable: true),
-        SetupPermission(key: "swipe.accessibility", app: "SwipeAeroSpace", appPath: swipe, checkable: false),
+        SetupPermission(key: "aerospace.accessibility", app: "AeroSpace", appPath: aerospace, way: .drag),
+        SetupPermission(key: "hammerspoon.accessibility", app: "Hammerspoon", appPath: hammerspoon, way: .drag),
+        SetupPermission(key: "swipe.accessibility", app: "SwipeAeroSpace", appPath: swipe, way: .tick),
       ]),
     SetupStep(id: "screen", title: "Screen Recording",
       purpose: "Lets the capture menu take screenshots, read text from the screen and record it.",
       pane: "Privacy_ScreenCapture", permissions: [
-        SetupPermission(key: "hammerspoon.screen", app: "Hammerspoon", appPath: hammerspoon, checkable: true),
+        SetupPermission(key: "hammerspoon.screen", app: "Hammerspoon", appPath: hammerspoon, way: .drag),
       ]),
     SetupStep(id: "location", title: "Location Services",
       purpose: "Gives the weather for where the Mac is, and the Wi-Fi network's name.",
       pane: "Privacy_LocationServices", permissions: [
-        SetupPermission(key: "hammerspoon.location", app: "Hammerspoon", appPath: hammerspoon, checkable: true),
+        SetupPermission(key: "hammerspoon.location", app: "Hammerspoon", appPath: hammerspoon, way: .ask),
       ]),
     SetupStep(id: "microphone", title: "Microphone",
       purpose: "Lets the Sound card show your microphone's level.",
       pane: "Privacy_Microphone", permissions: [
-        SetupPermission(key: "meter.microphone", app: "omv meter", appPath: home + "/.cache/omv/Meter.app", checkable: false),
+        SetupPermission(key: "meter.microphone", app: "omv meter", appPath: home + "/.cache/omv/Meter.app", way: .ask),
       ]),
     SetupStep(id: "calendars", title: "Calendars",
       purpose: "Shows today's events in the calendar card and the next meeting in the bar.",
       pane: "Privacy_Calendars", permissions: [
-        SetupPermission(key: "agenda.calendars", app: "omv agenda", appPath: home + "/.cache/omv/Agenda.app", checkable: false),
+        SetupPermission(key: "agenda.calendars", app: "omv agenda", appPath: home + "/.cache/omv/Agenda.app", way: .ask),
       ]),
     SetupStep(id: "bluetooth", title: "Bluetooth",
       purpose: "Lets the Bluetooth card list and connect your devices.",
       pane: "Privacy_Bluetooth", permissions: [
-        SetupPermission(key: "hammerspoon.bluetooth", app: "Hammerspoon", appPath: hammerspoon, checkable: false),
+        SetupPermission(key: "hammerspoon.bluetooth", app: "Hammerspoon", appPath: hammerspoon, way: .ask),
       ]),
     SetupStep(id: "disk", title: "Full Disk Access",
       purpose: "Lets the bar show when Do Not Disturb is on.",
       pane: "Privacy_AllFiles", permissions: [
-        SetupPermission(key: "hammerspoon.disk", app: "Hammerspoon", appPath: hammerspoon, checkable: true),
+        SetupPermission(key: "hammerspoon.disk", app: "Hammerspoon", appPath: hammerspoon, way: .drag),
       ]),
   ]
 
@@ -134,11 +142,33 @@ enum SetupModel {
     let fields = answer.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ",").map(String.init)
     guard fields.count == 4 else { return [:] }
     func grant(_ yes: Bool) -> Grant { yes ? .granted : .denied }
-    return [
+    var grants = [
       "hammerspoon.accessibility": grant(fields[0] == "true"),
       "hammerspoon.screen": grant(fields[1] == "true"),
-      "hammerspoon.location": grant(fields[2] == "authorized"),
       "hammerspoon.disk": grant(fields[3] == "true"),
     ]
+    // Never asked: left open, so the step offers to ask.
+    if fields[2] != "notDetermined" { grants["hammerspoon.location"] = grant(fields[2] == "authorized") }
+    return grants
+  }
+
+  // What the access files in ~/.local/state/omv/access say, by file name. The meter and the
+  // agenda write granted, denied or undetermined; for Bluetooth, Hammerspoon writes what
+  // blueutil --power printed, which is empty when Hammerspoon has no access. A file that
+  // isn't there, or says nothing it knows, leaves its permission open.
+  static func accessGrants(_ files: [String: String]) -> [String: Grant] {
+    var grants: [String: Grant] = [:]
+    for (helper, key) in [("microphone", "meter.microphone"), ("calendars", "agenda.calendars")] {
+      switch files[helper]?.trimmingCharacters(in: .whitespacesAndNewlines) {
+      case "granted": grants[key] = .granted
+      case "denied": grants[key] = .denied
+      default: break
+      }
+    }
+    if let power = files["bluetooth"] {
+      let first = power.trimmingCharacters(in: .whitespacesAndNewlines).first
+      grants["hammerspoon.bluetooth"] = first == "0" || first == "1" ? .granted : .denied
+    }
+    return grants
   }
 }

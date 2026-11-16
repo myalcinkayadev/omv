@@ -551,7 +551,7 @@ blames_no_user_file_when_build_step_fails() {
   [[ $output != *'fix ~/.config/omv/aerospace.toml'* ]] || fail "blamed the user file in: $output"
 }
 
-readonly SETUP_APP_PATTERN='^open .*/Applications/omv Setup\.app$'
+readonly SETUP_APP_PATTERN='^open .*/Applications/omv Setup\.app( |$)'
 
 # swiftc "builds" by writing the file after -o, as the real one would.
 build_with_stub_swiftc() {
@@ -569,6 +569,13 @@ setup_opens_app() {
   build_with_stub_swiftc
   omv setup >/dev/null
   assert_called "$SETUP_APP_PATTERN"
+}
+
+setup_passes_repo() {
+  make_repo
+  build_with_stub_swiftc
+  omv setup >/dev/null
+  assert_called "^open .*/Applications/omv Setup\.app --args --repo $REPO$"
 }
 
 setup_builds_before_opening() {
@@ -920,6 +927,7 @@ run_case "should not blame the user's file when a build step fails" blames_no_us
 run_case "should name an unreadable aerospace.toml once when it can't be read" names_unreadable_file_once
 run_case "should say AeroSpace didn't accept the config when its reload fails during an update" says_aerospace_rejected_on_update
 run_case 'should open the setup app on omv setup' setup_opens_app
+run_case "should give the setup app the repo's path on omv setup" setup_passes_repo
 run_case 'should build the setup app before opening it' setup_builds_before_opening
 run_case "should say how to fix it when the setup app can't be built" setup_says_how_to_fix_build
 run_case 'should build the setup app before installing' install_builds_setup_first
