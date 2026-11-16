@@ -91,6 +91,31 @@ enum SetupChecks {
     run(hs, ["-t", "2", "-c", "hs.location.start()"])
   }
 
+  // System Settings' frontmost window, from the window list (top-left origin). Its owner's
+  // name needs no Screen Recording permission, unlike its title.
+  static func settingsFrame() -> CGRect? {
+    let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+    for window in windows where (window[kCGWindowOwnerName as String] as? String) == "System Settings"
+      && (window[kCGWindowLayer as String] as? Int) == 0 {
+      if let bounds = window[kCGWindowBounds as String] as? NSDictionary, let rect = CGRect(dictionaryRepresentation: bounds) {
+        return rect
+      }
+    }
+    return nil
+  }
+
+  // Moves the setup window beside System Settings, so the apps can be dragged straight across.
+  // AppKit counts from the bottom of the main screen, the window list from its top.
+  static func moveBesideSettings(_ window: NSWindow) {
+    guard let screen = window.screen ?? NSScreen.main else { return }
+    let height = NSScreen.screens.first?.frame.height ?? screen.frame.height
+    let visible = screen.visibleFrame
+    let screenTopLeft = CGRect(x: visible.minX, y: height - visible.maxY, width: visible.width, height: visible.height)
+    guard let frame = SetupModel.besideSettings(settings: settingsFrame(), screen: screenTopLeft, size: window.frame.size) else { return }
+    window.setFrameOrigin(NSPoint(x: frame.minX, y: height - frame.minY - frame.height))
+    window.orderFront(nil)
+  }
+
   // Screen Recording applies when Hammerspoon starts again.
   static func restartHammerspoon() {
     DispatchQueue.global().async {
@@ -109,7 +134,6 @@ final class SetupState: ObservableObject {
   @Published var asking: Set<String> = []
   let installer: Installer?
   let repo: String?
-  let helper = HelperController()
   private var timer: Timer?
   private var ticks = 0
   private var probing: Set<String> = []
@@ -173,10 +197,7 @@ final class SetupState: ObservableObject {
 
   var step: SetupStep? { SetupModel.steps.first { $0.id == screen } }
 
-  func go(_ id: String) {
-    helper.hide()
-    screen = id
-  }
+  func go(_ id: String) { screen = id }
 
   func next() {
     let index = screens.firstIndex(of: screen) ?? 0
@@ -200,10 +221,16 @@ final class SetupState: ObservableObject {
     next()
   }
 
+  // Opens the step's pane, then moves this window beside System Settings once it's on screen.
   func openSettings(_ step: SetupStep) {
     NSWorkspace.shared.open(URL(string: step.paneURL)!)
     opened.insert(step.id)
-    helper.show(step, state: self)
+    for delay in [0.5, 1.0, 2.0] {
+      DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        guard let window = NSApp.windows.first(where: { $0.title == "omv Setup" }) else { return }
+        SetupChecks.moveBesideSettings(window)
+      }
+    }
   }
 
   func mark(_ id: String) -> String {
@@ -410,7 +437,7 @@ struct SetupView: View {
     HStack(alignment: .top, spacing: 14) {
       number("2", done: complete)
       VStack(alignment: .leading, spacing: 12) {
-        Text("Drag each app into the list, then turn it on. A helper sits beside System Settings too.")
+        Text("Drag each app from here into the list in System Settings, then turn it on.")
           .font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
         ForEach(step.permissions, id: \.key) { AppRow(permission: $0).frame(width: 320) }
       }

@@ -125,18 +125,27 @@ struct SetupModelTests {
     check("should fall back to the last error line for an unknown failure",
       InstallRun.failureReason(["working", "something broke", ""]) == "something broke")
 
-    check("should place the helper to the right of System Settings when it fits",
-      SetupModel.helperFrame(settings: CGRect(x: 100, y: 100, width: 800, height: 600),
+    check("should place the window to the right of System Settings when it fits",
+      SetupModel.besideSettings(settings: CGRect(x: 100, y: 100, width: 800, height: 600),
         screen: CGRect(x: 0, y: 0, width: 1600, height: 1000), size: CGSize(width: 300, height: 400))
         == CGRect(x: 912, y: 100, width: 300, height: 400))
 
-    check("should place the helper to the left when the right side has no room",
-      SetupModel.helperFrame(settings: CGRect(x: 700, y: 100, width: 800, height: 600),
+    check("should place the window to the left when only the left has room",
+      SetupModel.besideSettings(settings: CGRect(x: 700, y: 100, width: 800, height: 600),
         screen: CGRect(x: 0, y: 0, width: 1600, height: 1000), size: CGSize(width: 300, height: 400))
         == CGRect(x: 388, y: 100, width: 300, height: 400))
 
-    check("should hide the helper when System Settings isn't on screen",
-      SetupModel.helperFrame(settings: nil, screen: CGRect(x: 0, y: 0, width: 1600, height: 1000),
+    check("should leave the window where it is when neither side has room",
+      SetupModel.besideSettings(settings: CGRect(x: 400, y: 100, width: 800, height: 600),
+        screen: CGRect(x: 0, y: 0, width: 1600, height: 1000), size: CGSize(width: 860, height: 560)) == nil)
+
+    check("should keep the window on screen when System Settings sits low",
+      SetupModel.besideSettings(settings: CGRect(x: 100, y: 700, width: 800, height: 600),
+        screen: CGRect(x: 0, y: 0, width: 1600, height: 1000), size: CGSize(width: 300, height: 400))
+        == CGRect(x: 912, y: 600, width: 300, height: 400))
+
+    check("should leave the window where it is when System Settings isn't on screen",
+      SetupModel.besideSettings(settings: nil, screen: CGRect(x: 0, y: 0, width: 1600, height: 1000),
         size: CGSize(width: 300, height: 400)) == nil)
 
     check("should offer a restart on the Screen Recording step", step("screen").needsRestart)

@@ -126,14 +126,24 @@ enum SetupModel {
 
   static let screens: [String] = ["welcome"] + steps.map(\.id) + ["done"]
 
-  // Where the helper docks: beside System Settings, on the right when it fits, else on the
-  // left; top edges aligned. Nothing when System Settings isn't on screen. Frames use a
+  // Where the setup window goes when System Settings opens: beside it, on the right when it
+  // fits, else on the left, top edges aligned and kept on screen. Nothing when neither side
+  // has room or System Settings isn't on screen; the window then stays put. Frames use a
   // top-left origin, as the window list reports them.
-  static func helperFrame(settings: CGRect?, screen: CGRect, size: CGSize, gap: CGFloat = 12) -> CGRect? {
+  static func besideSettings(settings: CGRect?, screen: CGRect, size: CGSize, gap: CGFloat = 12) -> CGRect? {
     guard let settings else { return nil }
     let right = settings.maxX + gap
-    let x = right + size.width <= screen.maxX ? right : max(screen.minX, settings.minX - gap - size.width)
-    return CGRect(x: x, y: settings.minY, width: size.width, height: size.height)
+    let left = settings.minX - gap - size.width
+    let x: CGFloat
+    if right + size.width <= screen.maxX {
+      x = right
+    } else if left >= screen.minX {
+      x = left
+    } else {
+      return nil
+    }
+    let y = max(screen.minY, min(settings.minY, screen.maxY - size.height))
+    return CGRect(x: x, y: y, width: size.width, height: size.height)
   }
 
   // What Hammerspoon reports, asked with SetupChecks.hammerspoonQuestion: four fields,
