@@ -18,6 +18,8 @@ source "$REPO_DIR/install/packages.sh"
 source "$REPO_DIR/install/hammerspoon.sh"
 # shellcheck source=aerospace.sh
 source "$REPO_DIR/install/aerospace.sh"
+# shellcheck source=setup.sh
+source "$REPO_DIR/install/setup.sh"
 readonly APPLICATIONS=${OMV_APPLICATIONS:-/Applications}
 readonly FONT_DIRS=${OMV_FONT_DIRS:-$HOME/Library/Fonts:/Library/Fonts}
 readonly USAGE_MARKER='# omv bar usage'
@@ -154,6 +156,8 @@ check_links() {
   if [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ]; then ok "Hammerspoon loads omv's config"
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
   check_aerospace_built
+  if [ -e "$SETUP_BINARY" ]; then ok 'omv Setup is built'
+  else problem "omv Setup isn't built" 'omv setup'; fi
   for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do
     folder=$(package_dir "$package")
     missing=()

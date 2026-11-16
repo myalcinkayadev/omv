@@ -14,6 +14,8 @@ source "$REPO_DIR/install/packages.sh"
 source "$REPO_DIR/install/hammerspoon.sh"
 # shellcheck source=aerospace.sh
 source "$REPO_DIR/install/aerospace.sh"
+# shellcheck source=setup.sh
+source "$REPO_DIR/install/setup.sh"
 readonly TAPS=(nikitabobko/tap felixkratz/formulae mediosz/tap)
 readonly SETUP_PACKAGES=(sketchybar claude swipeaerospace)
 readonly OLDER_PACKAGES=(ghostty nvim btop)
@@ -164,6 +166,7 @@ stop_keep_awake
 remove_claude_usage
 unlink_configs
 remove_built_aerospace
+rm -rf "$SETUP_APP"
 forget_hammerspoon_config
 remove_omv_command
 reset_macos_settings

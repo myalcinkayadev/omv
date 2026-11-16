@@ -5,6 +5,7 @@
 #   omv update --undo                     go back to the commit before the last update
 #   omv doctor [--fix]                    check the setup, and clear a jam with --fix
 #   omv uninstall [...]                   remove omv (see uninstall.sh)
+#   omv setup                             walk through the macOS permissions omv needs
 #   omv reload                            apply ~/.config/omv: rebuild aerospace.toml, reload apps
 #   omv flags [<name> on|off]             list feature flags, or turn one on or off
 #   omv theme [<name>]                    list themes, or switch to one
@@ -21,6 +22,8 @@ source "$REPO_DIR/install/packages.sh"
 source "$REPO_DIR/install/hammerspoon.sh"
 # shellcheck source=../install/aerospace.sh
 source "$REPO_DIR/install/aerospace.sh"
+# shellcheck source=../install/setup.sh
+source "$REPO_DIR/install/setup.sh"
 readonly STATE_DIR=$HOME/.local/state/omv
 # The last update that moved omv: the commit before it, the one after it, and the migrations
 # it ran. Kept until undo, so a retried or empty update doesn't lose the way back.
@@ -33,8 +36,8 @@ readonly FLAG_DEFAULTS=$REPO_DIR/config/hammerspoon/flags.lua
 readonly THEMES_DIR=$HOME/.local/share/omv/themes
 
 usage() {
-  sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
-  echo "usage: omv <install|update|doctor|uninstall|reload|flags|theme|version>" >&2
+  sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  echo "usage: omv <install|update|doctor|uninstall|setup|reload|flags|theme|version>" >&2
   exit 2
 }
 
@@ -269,6 +272,11 @@ case $command in
       *) run_migrations ;;
     esac
     "$REPO_DIR/install/install.sh" "$@"
+    # The permissions macOS leaves to the user, one guided step at a time.
+    case " $* " in
+      *" --dry-run "*) echo "would run: build and open omv Setup" ;;
+      *) open_setup_app || true ;;
+    esac
     ;;
   update)
     case ${1:-} in
@@ -281,6 +289,7 @@ case $command in
   doctor) "$REPO_DIR/install/doctor.sh" "$@" ;;
   uninstall) "$REPO_DIR/install/uninstall.sh" "$@" ;;
   reload) [ "$#" -eq 0 ] || usage; reload_all ;;
+  setup) [ "$#" -eq 0 ] || usage; open_setup_app || exit 1 ;;
   flags) flags "$@" ;;
   theme) theme "$@" ;;
   version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;

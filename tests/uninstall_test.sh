@@ -75,6 +75,12 @@ removes_built_aerospace() {
   [ ! -e "$HOME_DIR/.config/aerospace/aerospace.toml" ] || fail 'built file kept'
 }
 
+removes_setup_app() {
+  mkdir -p "$HOME_DIR/Applications/omv Setup.app/Contents/MacOS"
+  run_in_sandbox "$UNINSTALL" >/dev/null
+  [ ! -e "$HOME_DIR/Applications/omv Setup.app" ] || fail 'setup app kept'
+}
+
 unstows_only_this_setup() {
   run_in_sandbox "$UNINSTALL" >/dev/null
   assert_called "^stow --dir=$REPO_DIR/config --target=$HOME_DIR -D sketchybar swipeaerospace$"
@@ -261,6 +267,7 @@ keeps_other_omv() {
 
 run_case 'should unstow only sketchybar, claude and swipeaerospace when run without flags' unstows_only_this_setup
 run_case 'should keep the ghostty, nvim and btop links when run without flags' keeps_older_tool_links
+run_case 'should remove the setup app when uninstalling' removes_setup_app
 run_case 'should remove the aerospace.toml omv built when run without flags' removes_built_aerospace
 run_case 'should remove the sketchybar links when run without flags' removes_this_setups_links
 run_case "should forget the Hammerspoon setting with --all when it's omv's" forgets_hammerspoon_setting

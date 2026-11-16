@@ -12,7 +12,7 @@ make_repo() {
   REPO=$(cd "$SANDBOX" && pwd -P)/repo
   mkdir -p "$REPO/bin" "$REPO/install" "$REPO/migrations" "$REPO/config/hammerspoon"
   cp "$REPO_DIR/bin/omv" "$REPO/bin/omv"
-  cp "$REPO_DIR/install/packages.sh" "$REPO_DIR/install/hammerspoon.sh" "$REPO_DIR"/install/aerospace* "$REPO/install/"
+  cp -R "$REPO_DIR/install/." "$REPO/install/"
   mkdir -p "$REPO/config/aerospace/.config/aerospace"
   printf '[gaps]\ninner.horizontal = 10\n' > "$REPO/config/aerospace/.config/aerospace/aerospace.toml"
   cp "$REPO_DIR/config/hammerspoon/flags.lua" "$REPO/config/hammerspoon/flags.lua"
@@ -551,6 +551,55 @@ blames_no_user_file_when_build_step_fails() {
   [[ $output != *'fix ~/.config/omv/aerospace.toml'* ]] || fail "blamed the user file in: $output"
 }
 
+readonly SETUP_APP_PATTERN='^open .*/Applications/omv Setup\.app$'
+
+# swiftc "builds" by writing the file after -o, as the real one would.
+build_with_stub_swiftc() {
+  cat > "$STUB_DIR/swiftc" <<STUB
+#!/bin/sh
+echo "swiftc \$*" >> "$CALL_LOG"
+while [ "\$#" -gt 0 ]; do [ "\$1" = -o ] && { printf '#!/bin/sh\\n' > "\$2"; chmod +x "\$2"; }; shift; done
+exit 0
+STUB
+  chmod +x "$STUB_DIR/swiftc"
+}
+
+setup_opens_app() {
+  make_repo
+  build_with_stub_swiftc
+  omv setup >/dev/null
+  assert_called "$SETUP_APP_PATTERN"
+}
+
+setup_builds_before_opening() {
+  make_repo
+  build_with_stub_swiftc
+  omv setup >/dev/null
+  assert_before '^swiftc ' "$SETUP_APP_PATTERN"
+}
+
+setup_says_how_to_fix_build() {
+  make_repo
+  stub swiftc 1
+  local output
+  output=$(omv setup 2>&1) && fail 'expected failure'
+  [[ $output == *'xcode-select --install'* ]] || fail "no fix in: $output"
+}
+
+install_opens_setup() {
+  make_repo
+  build_with_stub_swiftc
+  omv install >/dev/null
+  assert_called "$SETUP_APP_PATTERN"
+}
+
+dry_run_install_opens_no_setup() {
+  make_repo
+  build_with_stub_swiftc
+  omv install --dry-run >/dev/null
+  assert_not_called '^swiftc '
+}
+
 undo_resets_to_saved_commit() {
   make_repo
   omv update >/dev/null
@@ -828,6 +877,11 @@ run_case 'should build aerospace.toml when an earlier backup exists' builds_besi
 run_case "should not blame the user's file when a build step fails" blames_no_user_file_when_build_step_fails
 run_case "should name an unreadable aerospace.toml once when it can't be read" names_unreadable_file_once
 run_case "should say AeroSpace didn't accept the config when its reload fails during an update" says_aerospace_rejected_on_update
+run_case 'should open the setup app on omv setup' setup_opens_app
+run_case 'should build the setup app before opening it' setup_builds_before_opening
+run_case "should say how to fix it when the setup app can't be built" setup_says_how_to_fix_build
+run_case 'should open the setup app after installing' install_opens_setup
+run_case 'should not build the setup app on a dry-run install' dry_run_install_opens_no_setup
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree
