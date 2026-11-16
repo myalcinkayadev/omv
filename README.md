@@ -28,7 +28,7 @@ A keyboard-driven macOS desktop with one look throughout. AeroSpace tiles the wi
 - [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell on a workspace of their own, a new task in a git worktree, or a grid of agents.
 - [**Share with AirDrop**](#share-with-airdrop): the files selected in Finder, or what you copied, in one key.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
-- [**Doctor**](#doctor): `./doctor.sh` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
+- [**Doctor**](#doctor): `omv doctor` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
 Every card shares one design: a black card with a gray border, a title that doubles as a search field, and Up, Down, Enter and Escape to drive it. With two displays, a card opens on the one the pointer is on, so a click on the bar opens it on that display. A card that belongs to a bar item, such as Agents, Wi-Fi or the calendar, opens just under that item.
 
@@ -91,7 +91,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 - The numbers come from Claude Code's status line, so they only update while Claude Code runs. Usage from elsewhere, such as claude.ai, shows after your next response in Claude Code.
 - A window past its reset time shows 0%.
 - Once the 5-hour limit reaches 90%, a reminder is set for its reset, "Claude's 5-hour limit has reset", once per reset.
-- `install.sh` adds one line to `~/.claude/statusline-wrapper.sh` through `claude-usage.sh`. If that file doesn't exist, the item stays hidden.
+- `omv install` adds one line to `~/.claude/statusline-wrapper.sh` through `agents/claude-usage.sh`. If that file doesn't exist, the item stays hidden.
 - Only the four numbers are stored, in `~/.local/state/omv/claude-usage`.
 
 <img src="docs/prs.png" alt="The pull request list: three pull requests waiting for review, each with its repository and number" width="720">
@@ -219,19 +219,19 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - The plan comes from `~/.claude.json`, and only its `organizationType` is read. The folders come from Claude Code's own session files in `~/.claude/projects`.
 - `claude` runs through your login shell, by `claude-in.sh`, so it's found on the PATH your shell sets up.
 
-**Other agents.** Codex, OpenCode and pi sessions show in the same pill, list and Agents card as Claude's, with the agent's name in the card, such as `codex · asks · 3 min`. Each reports through the same hook script as Claude Code, and `install.sh` sets up only the agents it finds:
+**Other agents.** Codex, OpenCode and pi sessions show in the same pill, list and Agents card as Claude's, with the agent's name in the card, such as `codex · asks · 3 min`. Each reports through the same hook script as Claude Code, and `omv install` sets up only the agents it finds:
 
-- **Codex** (`~/.codex`): `codex-hooks.sh` adds hooks to `~/.codex/hooks.json` for when you send a prompt, a tool runs, Codex asks for approval, and it stops. Other hooks, such as herdr's, stay. Codex asks once to trust new hooks: run `/hooks` in Codex.
+- **Codex** (`~/.codex`): `agents/codex-hooks.sh` adds hooks to `~/.codex/hooks.json` for when you send a prompt, a tool runs, Codex asks for approval, and it stops. Other hooks, such as herdr's, stay. Codex asks once to trust new hooks: run `/hooks` in Codex.
 - **OpenCode** (`~/.config/opencode`): a plugin, `omv-agent-state.js`, is linked into its `plugins` folder. Subagents' sessions are left out; their parent stands for them.
 - **pi** (`~/.pi/agent`): an extension, `omv-agent-state.ts`, is linked into its `extensions` folder. pi asks for no approvals, so its sessions are working or done.
-- `uninstall.sh` removes all three, and `doctor.sh` checks each agent that's set up.
+- `omv uninstall` removes all three, and `omv doctor` checks each agent that's set up.
 
 **Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder, as `? omv` when it asks for approval, since that one is blocked until you answer. It sits right next to Claude's logo and 5-hour limit, so the two read as one group, and the limit stays in view. Click it, or press Option+Shift+A, to go to the session's terminal, even in another tab or on another workspace. When several sessions wait, a list opens with the asking ones first, then the one waiting longest, and each row shows its state and how long it has waited. The pill goes when you answer, when a tool runs after your approval, or when the session ends. Working sessions never show in the pill, only in the Agents card.
 
 - **Seen sessions leave the pill.** While Ghostty is in front, the session in the terminal you're looking at is marked seen, so it leaves the pill until its state changes: a session that finishes, then asks, shows again. Ghostty is read every 2 seconds, and only while it's in front.
 - **A notification when a session asks.** A session that starts asking for approval in a terminal you're not looking at sends a notification, "omv · needs your approval". Clicking it goes to that session. A session that only finishes never notifies; the pill covers that.
 
-- `install.sh` adds hooks to `~/.claude/settings.json` through `claude-hooks.sh`: `UserPromptSubmit` and `PostToolUse` mark a session as working, `Stop` as done, a `Notification` that asks for you, such as one for approval, as asking, and `SessionEnd` removes it. Other notifications change nothing. Other hooks and settings stay as they are, and `uninstall.sh` removes only these.
+- `omv install` adds hooks to `~/.claude/settings.json` through `agents/claude-hooks.sh`: `UserPromptSubmit` and `PostToolUse` mark a session as working, `Stop` as done, a `Notification` that asks for you, such as one for approval, as asking, and `SessionEnd` removes it. Other notifications change nothing. Other hooks and settings stay as they are, and `omv uninstall` removes only these.
 - The session's terminal is found by its tty, in Ghostty, iTerm2 or Terminal, through each app's AppleScript, Ghostty first. A terminal app that isn't running is skipped, so it never opens on its own. The first time, macOS asks to let Hammerspoon control that app.
 - Only Claude's PID, its tty, the folder name, the state and when the session entered it are saved, in `~/.local/state/omv/claude-sessions`. A session whose Claude has ended is dropped within 30 seconds.
 - A session in any other app, such as Zed's terminal, still shows. Since no terminal app has its tty, the app it runs in comes forward instead, found among Claude's parent processes; macOS can't pick the exact window or pane. The drop-down terminal can't be focused.
@@ -329,7 +329,7 @@ Option+Shift+X, or a click on the bar's disk item, opens the Disk card. The bar 
 - **Sizes beside the cleanups** come from `mo clean --dry-run` and `mo purge --dry-run`. They take up to two minutes, so they run in the background when the card opens, at most once every 6 hours, and the open card updates when they finish. Until then the line shows `measuring…`. A size an hour old or more shows its age beside it, such as `3h ago`. The last sizes are kept in `~/.local/state/omv/disk-clean` and `disk-purge`.
 - `mo clean --dry-run` also writes its full list to `~/.config/mole/clean-list.txt`. System caches need sudo, so the background preview leaves them out; `mo clean` may ask for your password to clean them.
 - `mo purge` scans `~/workspace`, `~/.claude/worktrees` and `~/.codex/worktrees` among others; `mo purge --paths` changes them.
-- Without Mole, the card offers `brew install mole`. `./install.sh` installs it from the Brewfile.
+- Without Mole, the card offers `brew install mole`. `omv install` installs it from the Brewfile.
 
 ## Lyrics
 
@@ -366,7 +366,7 @@ The volume, mute and brightness keys show omv's own pop-up instead of macOS's: a
 
 ## Night light
 
-Option+Shift+Z, or Option+Escape, then **Night light**, switches macOS's Night Shift on or off. While it's on, the bar shows a moon; click it to turn night light off. Night Shift's own schedule still applies, and the bar checks again every 5 minutes, so it follows a scheduled change too. macOS has no public way to switch Night Shift, so omv uses [nightlight](https://github.com/smudge/nightlight), which `./install.sh` installs.
+Option+Shift+Z, or Option+Escape, then **Night light**, switches macOS's Night Shift on or off. While it's on, the bar shows a moon; click it to turn night light off. Night Shift's own schedule still applies, and the bar checks again every 5 minutes, so it follows a scheduled change too. macOS has no public way to switch Night Shift, so omv uses [nightlight](https://github.com/smudge/nightlight), which `omv install` installs.
 
 ## Dev layout
 
@@ -523,22 +523,23 @@ These tools take the keys system-wide, so apps never receive them:
 
 ### Requirements
 
-- [Homebrew](https://brew.sh). `install.sh` installs everything else from the `Brewfile`.
+- [Homebrew](https://brew.sh). `omv install` installs everything else from the `Brewfile`.
 - Xcode's Command Line Tools, for `swiftc`, used by the capture menu's text and color items, the calendar's events and the Sound card's meter: `xcode-select --install`. Homebrew can't install them.
 
 ### Run it
 
 ```sh
-./install.sh             # everything, including Helium and Zed
-./install.sh --no-apps   # without Helium and Zed, if you use other apps
-./install.sh --dry-run   # print each step, change nothing
+git clone https://github.com/myalcinkayadev/omv.git && cd omv
+bin/omv install             # everything, including Helium and Zed
+bin/omv install --no-apps   # without Helium and Zed, if you use other apps
+bin/omv install --dry-run   # print each step, change nothing
 ```
 
-It's safe to run again. It:
+It's safe to run again. After the first run, `omv` is on your PATH. It:
 
 1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, which Homebrew requires before installing from them.
 2. Installs everything in the `Brewfile` with `brew bundle`: AeroSpace, SketchyBar, borders, SwipeAeroSpace, Hammerspoon, Ghostty, the JetBrainsMono Nerd Font, `stow`, `jq`, `gh`, `luajit`, `btop`, Neovim and `blueutil`. Then the apps the keys open, in `Brewfile.apps`: Helium and Zed.
-3. Links all eight packages with Stow.
+3. Links the packages in `config/` and `agents/` with Stow, and points Hammerspoon at `config/hammerspoon` (its `MJConfigFile` setting), restarting it if it's running.
 4. Adds the Claude usage line to your status line wrapper, and the hooks that tell the bar when a session waits.
 5. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, lets Ctrl+Cmd drag a window from anywhere, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.
 
@@ -558,7 +559,7 @@ Then, by hand:
 3. If the menu bar still shows, set System Settings > Menu Bar > "Automatically hide and show the menu bar" to Always.
 4. In System Settings > Displays > Arrange, leave each display a free bottom corner, because AeroSpace hides windows there.
 5. Open SwipeAeroSpace, grant Accessibility, and turn on Launch at Login in its Settings.
-6. Open Hammerspoon. On its first start it installs the `hs` command, into `/opt/homebrew/bin` on Apple Silicon or `/usr/local/bin` otherwise, which the bar's clicks and `doctor.sh` use to reach it.
+6. Open Hammerspoon. On its first start it installs the `hs` command, into `/opt/homebrew/bin` on Apple Silicon or `/usr/local/bin` otherwise, which the bar's clicks and `omv doctor` use to reach it.
 
 It also puts the `omv` command on your PATH, next to Homebrew's commands. From then on:
 
@@ -601,24 +602,30 @@ It also lists what macOS doesn't let a script read, to check by hand: Screen Rec
 
 ### What's inside
 
-Each folder is a GNU Stow package, linked into `$HOME`.
+```
+bin/omv        the one command
+config/        what omv configures: one GNU Stow package per app, plus hammerspoon/
+agents/        how omv talks to coding agents: Stow packages and the hook scripts
+install/       install, uninstall and doctor, run through omv
+migrations/    changes a pull alone can't make, run once each by omv update
+```
 
-| Package | Links | What it does |
+| Folder | Links | What it does |
 |---|---|---|
-| `aerospace` | `~/.config/aerospace` | Tiling, workspaces and window keys |
-| `sketchybar` | `~/.config/sketchybar` | The top bar and its plugins |
-| `hammerspoon` | `~/.hammerspoon` | App keys and every card: menus, lists, calendar, reminders, capture, sound, network, battery, weather, disk |
-| `ghostty` | `~/.config/ghostty` | Terminal config and window scripts |
-| `nvim` | `~/.config/nvim` | Neovim config |
-| `btop` | `~/.config/btop` | btop config |
-| `claude` | `~/.claude/bar-usage.sh` | Feeds Claude's usage limits to the bar |
-| `swipeaerospace` | `~/.config/swipeareospace` | Three-finger swipe between workspaces |
+| `config/aerospace` | `~/.config/aerospace` | Tiling, workspaces and window keys |
+| `config/sketchybar` | `~/.config/sketchybar` | The top bar and its plugins |
+| `config/hammerspoon` | nothing: Hammerspoon loads it in place | App keys and every card: menus, lists, calendar, reminders, capture, sound, network, battery, weather, disk |
+| `config/ghostty` | `~/.config/ghostty` | Terminal config and window scripts |
+| `config/nvim` | `~/.config/nvim` | Neovim config |
+| `config/btop` | `~/.config/btop` | btop config |
+| `config/swipeaerospace` | `~/.config/swipeareospace` | Three-finger swipe between workspaces |
+| `agents/claude` | `~/.claude/bar-usage.sh` | Feeds Claude's usage limits to the bar |
 
 ## Uninstall
 
 ```sh
-./uninstall.sh        # removes AeroSpace, SketchyBar, borders and SwipeAeroSpace, keeps the older tool links
-./uninstall.sh --all  # also unlinks ghostty, nvim, btop and hammerspoon
+omv uninstall        # removes AeroSpace, SketchyBar, borders and SwipeAeroSpace, keeps the older tool links
+omv uninstall --all  # also unlinks ghostty, nvim and btop, and sends Hammerspoon back to ~/.hammerspoon
 ```
 
 It:

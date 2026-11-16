@@ -4,7 +4,7 @@
 # --fix first clears a jam: it kills stuck hs calls, restarts SketchyBar when more than one
 # runs, reopens Hammerspoon when it doesn't answer, and opens SwipeAeroSpace when it isn't
 # running. Then it checks as usual.
-# Usage: ./doctor.sh [--fix]
+# Usage: omv doctor [--fix]
 # OMV_APPLICATIONS and OMV_FONT_DIRS replace /Applications and the font folders, for tests.
 
 set -uo pipefail
@@ -47,8 +47,8 @@ check_tools() {
   local tool fix
   for tool in aerospace sketchybar borders stow jq swiftc luajit gh mo m1ddc nightlight tmux; do
     case $tool in
-      aerospace) fix='./install.sh' ;;
-      sketchybar) fix='./install.sh' ;;
+      aerospace) fix='omv install' ;;
+      sketchybar) fix='omv install' ;;
       borders) fix='brew install felixkratz/formulae/borders' ;;
       swiftc) fix='xcode-select --install' ;;
       mo) fix='brew install mole' ;;
@@ -64,7 +64,7 @@ check_apps() {
   local app cask
   for app in Hammerspoon Ghostty SwipeAeroSpace Zed Helium; do
     case $app in
-      SwipeAeroSpace) cask='./install.sh' ;;
+      SwipeAeroSpace) cask='omv install' ;;
       Helium) cask='brew install --cask helium-browser' ;;
       *) cask="brew install --cask $(printf '%s' "$app" | tr '[:upper:]' '[:lower:]')" ;;
     esac
@@ -106,7 +106,7 @@ check_links() {
   section 'Links'
   local package folder file relative missing broken directory link
   if [ -L "$(omv_link)" ] && [ "$(omv_link)" -ef "$REPO_DIR/bin/omv" ]; then ok 'omv command'
-  else problem "the omv command isn't linked" './install.sh'; fi
+  else problem "the omv command isn't linked" 'omv install'; fi
   if [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ]; then ok "Hammerspoon loads omv's config"
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
   for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do
@@ -119,7 +119,7 @@ check_links() {
     if [ "${#missing[@]}" -eq 0 ]; then
       ok "$package"
     else
-      problem "$package is not fully linked: ${missing[*]}" './install.sh'
+      problem "$package is not fully linked: ${missing[*]}" 'omv install'
     fi
   done
   # Links left behind by a file removed from the repo, like an old plugin.
@@ -189,9 +189,9 @@ check_running() {
   # Stuck calls are counted before the doctor asks Hammerspoon anything, so its own call never counts.
   stuck=$(stuck_hs_pids | wc -l | tr -d ' ')
   if [ "$stuck" -eq 0 ]; then ok 'no stuck hs calls'
-  else problem "$(stuck_calls "$stuck")" './doctor.sh --fix'; fi
+  else problem "$(stuck_calls "$stuck")" 'omv doctor --fix'; fi
   bars=$(bar_count)
-  if [ "$bars" -gt 1 ]; then problem "$bars SketchyBars are running" './doctor.sh --fix'
+  if [ "$bars" -gt 1 ]; then problem "$bars SketchyBars are running" 'omv doctor --fix'
   elif [ "$bars" -eq 1 ]; then ok 'one SketchyBar'; fi
   # A Hammerspoon that isn't running is named above; asking it would only add a fix that does nothing.
   pgrep -x Hammerspoon >/dev/null 2>&1 || return 0
@@ -201,7 +201,7 @@ check_running() {
   fi
   answer=$(hs_answer 'return type(omvToggleSystemMenu)')
   if [ -z "$answer" ]; then
-    problem "Hammerspoon isn't answering" './doctor.sh --fix'
+    problem "Hammerspoon isn't answering" 'omv doctor --fix'
   elif [ "$answer" = function ]; then
     ok 'Hammerspoon answers, with the omv config loaded'
   else
@@ -214,7 +214,7 @@ check_setting() {
   if [ "$(defaults read "$domain" "$key" 2>/dev/null)" = "$want" ]; then
     ok "$label"
   else
-    problem "$label is off" './install.sh, then log out and back in'
+    problem "$label is off" 'omv install, then log out and back in'
   fi
 }
 
@@ -241,12 +241,12 @@ check_claude() {
   if grep -qF "$USAGE_MARKER" "$HOME/.claude/statusline-wrapper.sh" 2>/dev/null; then
     ok 'usage line in ~/.claude/statusline-wrapper.sh'
   else
-    problem "the Claude usage line isn't in ~/.claude/statusline-wrapper.sh" './claude-usage.sh add'
+    problem "the Claude usage line isn't in ~/.claude/statusline-wrapper.sh" 'agents/claude-usage.sh add'
   fi
   if grep -qF 'claude-waiting.sh' "$HOME/.claude/settings.json" 2>/dev/null; then
     ok 'waiting hooks in ~/.claude/settings.json'
   else
-    problem "the waiting hooks aren't in ~/.claude/settings.json" './claude-hooks.sh add'
+    problem "the waiting hooks aren't in ~/.claude/settings.json" 'agents/claude-hooks.sh add'
   fi
 }
 
@@ -258,16 +258,16 @@ check_agents() {
     if grep -qF 'claude-waiting.sh' "$HOME/.codex/hooks.json" 2>/dev/null; then
       ok 'Codex hooks in ~/.codex/hooks.json (Codex asks once to trust them: /hooks)'
     else
-      problem "the Codex hooks aren't in ~/.codex/hooks.json" './codex-hooks.sh add'
+      problem "the Codex hooks aren't in ~/.codex/hooks.json" 'agents/codex-hooks.sh add'
     fi
   fi
   if [ -d "$HOME/.config/opencode" ]; then
     if [ -L "$HOME/.config/opencode/plugins/omv-agent-state.js" ]; then ok 'OpenCode plugin linked'
-    else problem "the OpenCode plugin isn't linked" './install.sh'; fi
+    else problem "the OpenCode plugin isn't linked" 'omv install'; fi
   fi
   if [ -d "$HOME/.pi/agent" ]; then
     if [ -L "$HOME/.pi/agent/extensions/omv-agent-state.ts" ]; then ok 'pi extension linked'
-    else problem "the pi extension isn't linked" './install.sh'; fi
+    else problem "the pi extension isn't linked" 'omv install'; fi
   fi
 }
 
@@ -374,7 +374,7 @@ case ${1:-} in
   '') fix=0 ;;
   --fix) fix=1 ;;
   *)
-    echo 'usage: ./doctor.sh [--fix]' >&2
+    echo 'usage: omv doctor [--fix]' >&2
     exit 2
     ;;
 esac

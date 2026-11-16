@@ -1,5 +1,5 @@
-# Everything omv needs, installed by ./install.sh with brew bundle. The apps the keys open,
-# Helium and Zed, are in Brewfile.apps, so ./install.sh --no-apps can leave them out.
+# Everything omv needs, installed by omv install with brew bundle. The apps the keys open,
+# Helium and Zed, are in Brewfile.apps, so omv install --no-apps can leave them out.
 # swiftc, for the capture, calendar and meter helpers, comes with Xcode's Command Line
 # Tools: xcode-select --install.
 

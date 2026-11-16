@@ -121,7 +121,7 @@ reports_hanging_hammerspoon() {
   complete_setup
   hang_hammerspoon
   local started=$SECONDS
-  expect_report "✗ Hammerspoon isn't answering — fix: ./doctor.sh --fix"
+  expect_report "✗ Hammerspoon isn't answering — fix: omv doctor --fix"
   # Well under the stub's 120s, with room for a doctor run slowed by a busy machine.
   [ $((SECONDS - started)) -le 90 ] || fail "took $((SECONDS - started))s"
 }
@@ -129,7 +129,7 @@ reports_hanging_hammerspoon() {
 reports_stuck_call() {
   complete_setup
   stuck_call '4242 01:01 hs -c return omvBluetoothPower()'
-  expect_report '✗ 1 stuck hs call — fix: ./doctor.sh --fix'
+  expect_report '✗ 1 stuck hs call — fix: omv doctor --fix'
 }
 
 reads_age_in_days() {
@@ -159,7 +159,7 @@ ignores_hs_by_hand() {
 reports_two_bars() {
   complete_setup
   printf '500\n501\n' > "$SANDBOX/bars"
-  expect_report '✗ 2 SketchyBars are running — fix: ./doctor.sh --fix'
+  expect_report '✗ 2 SketchyBars are running — fix: omv doctor --fix'
 }
 
 fix_kills_stuck_calls() {
@@ -261,7 +261,7 @@ refuses_unknown_argument() {
   local status=0 errors
   errors=$(doctor --fxi 2>&1 >/dev/null) || status=$?
   [ "$status" = 2 ] || fail "expected exit 2, got $status"
-  [[ $errors == *'usage: ./doctor.sh [--fix]'* ]] || fail "expected usage, got: $errors"
+  [[ $errors == *'usage: omv doctor [--fix]'* ]] || fail "expected usage, got: $errors"
 }
 
 counts_only_bars() {
@@ -360,7 +360,7 @@ accepts_omv_link_by_another_path() {
 reports_missing_omv() {
   complete_setup
   rm "$SANDBOX/prefix/bin/omv"
-  expect_report "✗ the omv command isn't linked — fix: ./install.sh"
+  expect_report "✗ the omv command isn't linked — fix: omv install"
 }
 
 kills_nothing_without_fix() {
@@ -374,7 +374,7 @@ kills_nothing_without_fix() {
 reports_missing_codex_hooks() {
   complete_setup
   mkdir -p "$HOME_DIR/.codex"
-  expect_report "✗ the Codex hooks aren't in ~/.codex/hooks.json — fix: ./codex-hooks.sh add"
+  expect_report "✗ the Codex hooks aren't in ~/.codex/hooks.json — fix: agents/codex-hooks.sh add"
 }
 
 reports_codex_hooks() {
@@ -387,7 +387,7 @@ reports_codex_hooks() {
 reports_missing_opencode_plugin() {
   complete_setup
   mkdir -p "$HOME_DIR/.config/opencode"
-  expect_report "✗ the OpenCode plugin isn't linked — fix: ./install.sh"
+  expect_report "✗ the OpenCode plugin isn't linked — fix: omv install"
 }
 
 skips_agents_not_set_up() {
@@ -465,7 +465,7 @@ remove_link() {
 reports_unlinked_file() {
   complete_setup
   remove_link "$HOME_DIR/.config/sketchybar/plugins/clock.sh"
-  expect_report '✗ sketchybar is not fully linked: .config/sketchybar/plugins/clock.sh — fix: ./install.sh'
+  expect_report '✗ sketchybar is not fully linked: .config/sketchybar/plugins/clock.sh — fix: omv install'
 }
 
 reports_broken_link() {
@@ -495,7 +495,7 @@ reports_missing_config() {
 reports_setting_off() {
   complete_setup
   sed -i '' 's/NSWindowShouldDragOnGesture 1/NSWindowShouldDragOnGesture 0/' "$SANDBOX/defaults"
-  expect_report '✗ Ctrl+Cmd drag from anywhere is off — fix: ./install.sh'
+  expect_report '✗ Ctrl+Cmd drag from anywhere is off — fix: omv install'
 }
 
 reports_missing_accessibility() {
@@ -507,13 +507,13 @@ reports_missing_accessibility() {
 reports_missing_usage_line() {
   complete_setup
   printf 'input=$(cat)\n' > "$HOME_DIR/.claude/statusline-wrapper.sh"
-  expect_report "✗ the Claude usage line isn't in ~/.claude/statusline-wrapper.sh — fix: ./claude-usage.sh add"
+  expect_report "✗ the Claude usage line isn't in ~/.claude/statusline-wrapper.sh — fix: agents/claude-usage.sh add"
 }
 
 reports_missing_waiting_hooks() {
   complete_setup
   printf '{}\n' > "$HOME_DIR/.claude/settings.json"
-  expect_report "✗ the waiting hooks aren't in ~/.claude/settings.json — fix: ./claude-hooks.sh add"
+  expect_report "✗ the waiting hooks aren't in ~/.claude/settings.json — fix: agents/claude-hooks.sh add"
 }
 
 lists_manual_checks() {
