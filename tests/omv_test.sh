@@ -79,6 +79,40 @@ add_migration() {
   chmod +x "$REPO/migrations/$1.sh"
 }
 
+# The number of the first call-log line matching $1, or nothing.
+line_of() {
+  grep -nE -m1 -e "$1" "$CALL_LOG" | cut -d: -f1
+}
+
+# Fails unless the first call matching $1 comes before the first matching $2.
+assert_before() {
+  local first second
+  first=$(line_of "$1")
+  second=$(line_of "$2")
+  [ -n "$first" ] && [ -n "$second" ] && [ "$first" -lt "$second" ] \
+    || fail "expected $1 before $2 in:"$'\n'"$(cat "$CALL_LOG")"
+}
+
+migrates_before_relinking() {
+  make_repo
+  add_migration 202601010000-a
+  omv update >/dev/null
+  assert_before '^migration ' '^stow '
+}
+
+relinks_before_installing_packages() {
+  make_repo
+  omv update >/dev/null
+  assert_before '^stow ' '^brew bundle --no-upgrade'
+}
+
+migrates_before_installing() {
+  make_repo
+  add_migration 202601010000-a
+  omv install >/dev/null
+  assert_before '^migration ' '^install\.sh'
+}
+
 shows_usage_without_command() {
   make_repo
   local status=0
@@ -449,6 +483,9 @@ run_case "should not open Hammerspoon when it isn't running" opens_no_stopped_ha
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree
+run_case 'should run migrations before relinking when updating' migrates_before_relinking
+run_case 'should relink before installing missing packages when updating' relinks_before_installing_packages
+run_case 'should run migrations before installing' migrates_before_installing
 run_case 'should run pending migrations in name order' runs_migrations_in_order
 run_case 'should skip migrations that already ran' skips_done_migrations
 run_case 'should stop at a failed migration and name it' stops_on_failed_migration

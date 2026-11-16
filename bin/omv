@@ -110,10 +110,11 @@ finish_update() {
   local record=
   if [ "${1:-}" = moved ]; then record=$UPDATE_MIGRATIONS; fi
   [ -s "$UPDATE_FROM" ] && trap offer_undo ERR
+  # Migrations first: Stow won't link over the links an older layout left behind.
+  run_migrations "$record"
+  relink
   # Installs what's missing and upgrades nothing else: undo can't take an upgrade back.
   brew bundle --no-upgrade --file="$REPO_DIR/Brewfile"
-  relink
-  run_migrations "$record"
   reload
   trap - ERR
   "$REPO_DIR/install/doctor.sh" && return 0
@@ -198,11 +199,12 @@ command=${1:-}
 shift
 case $command in
   install)
-    "$REPO_DIR/install/install.sh" "$@"
+    # Migrations first: Stow won't link over the links an older layout left behind.
     case " $* " in
       *" --dry-run "*) echo "would run: pending migrations" ;;
       *) run_migrations ;;
     esac
+    "$REPO_DIR/install/install.sh" "$@"
     ;;
   update)
     case ${1:-} in
