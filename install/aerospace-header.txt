@@ -1,0 +1,1 @@
+# Built by omv from its defaults and ~/.config/omv/aerospace.toml. Edit that file, then run omv reload.

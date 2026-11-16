@@ -12,8 +12,7 @@ make_repo() {
   REPO=$(cd "$SANDBOX" && pwd -P)/repo
   mkdir -p "$REPO/bin" "$REPO/install" "$REPO/migrations" "$REPO/config/hammerspoon"
   cp "$REPO_DIR/bin/omv" "$REPO/bin/omv"
-  cp "$REPO_DIR/install/packages.sh" "$REPO_DIR/install/hammerspoon.sh" "$REPO_DIR/install/aerospace.sh" \
-    "$REPO_DIR/install/aerospace_merge.lua" "$REPO/install/"
+  cp "$REPO_DIR/install/packages.sh" "$REPO_DIR/install/hammerspoon.sh" "$REPO_DIR"/install/aerospace* "$REPO/install/"
   mkdir -p "$REPO/config/aerospace/.config/aerospace"
   printf '[gaps]\ninner.horizontal = 10\n' > "$REPO/config/aerospace/.config/aerospace/aerospace.toml"
   cp "$REPO_DIR/config/hammerspoon/flags.lua" "$REPO/config/hammerspoon/flags.lua"
@@ -406,6 +405,77 @@ finishes_update_with_bad_user_aerospace() {
   assert_called '^doctor\.sh'
 }
 
+shows_last_valid_flag() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf 'file-search=on\nfile-search=yes\n' > "$HOME_DIR/.config/omv/flags"
+  [[ $(omv flags) == *'file-search  on'* ]] || fail "got: $(omv flags)"
+}
+
+runs_migrations_in_omv_folder() {
+  make_repo
+  printf '#!/bin/sh\necho "migration-pwd $(pwd -P)" >> "%s"\n' "$CALL_LOG" > "$REPO/migrations/202601010000-where.sh"
+  (cd "$SANDBOX" && omv install >/dev/null)
+  assert_called "^migration-pwd $REPO$"
+}
+
+refuses_extra_update_argument() {
+  make_repo
+  local status=0
+  omv update --undo now >/dev/null 2>&1 || status=$?
+  [ "$status" = 2 ] || fail "expected exit 2, got $status"
+}
+
+refuses_extra_reload_argument() {
+  make_repo
+  local status=0
+  omv reload now >/dev/null 2>&1 || status=$?
+  [ "$status" = 2 ] || fail "expected exit 2, got $status"
+}
+
+update_reloads_running_aerospace() {
+  make_repo
+  run_aerospace
+  omv update >/dev/null
+  assert_called '^aerospace reload-config$'
+}
+
+update_skips_stopped_aerospace() {
+  make_repo
+  stub pgrep 1
+  omv update >/dev/null 2>&1 || true
+  assert_not_called '^aerospace reload-config'
+}
+
+waits_for_hammerspoon_before_doctor() {
+  make_repo
+  omv update >/dev/null
+  assert_before '^hs -t 1 -c return 1$' '^doctor\.sh'
+}
+
+fails_reload_on_unopenable_user_aerospace() {
+  make_repo
+  user_aerospace '[gaps]\ninner.horizontal = 3\n'
+  chmod 000 "$HOME_DIR/.config/omv/aerospace.toml"
+  assert_exit_nonzero omv reload
+}
+
+builds_readable_aerospace() {
+  make_repo
+  omv reload >/dev/null
+  [ "$(stat -f %Lp "$HOME_DIR/.config/aerospace/aerospace.toml")" = 644 ] || fail "mode $(stat -f %Lp "$HOME_DIR/.config/aerospace/aerospace.toml")"
+}
+
+keeps_foreign_aerospace_when_aside_fails() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv/full"
+  chmod 555 "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv"
+  echo mine > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  omv reload >/dev/null 2>&1 || true
+  chmod 755 "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv"
+  [ "$(cat "$HOME_DIR/.config/aerospace/aerospace.toml")" = mine ] || fail 'foreign file overwritten'
+}
+
 undo_resets_to_saved_commit() {
   make_repo
   omv update >/dev/null
@@ -667,6 +737,16 @@ run_case 'should say to run omv update when ~/.config/aerospace is still a link'
 run_case 'should run pending migrations on reload' reload_runs_pending_migrations
 run_case 'should fail the reload when AeroSpace rejects the built file' reload_fails_when_aerospace_rejects
 run_case "should finish the update when the user's aerospace.toml has an error" finishes_update_with_bad_user_aerospace
+run_case 'should show the last valid value when a later flag line is invalid' shows_last_valid_flag
+run_case 'should run a migration in the omv folder when omv starts from another folder' runs_migrations_in_omv_folder
+run_case 'should show usage when update gets an extra argument' refuses_extra_update_argument
+run_case 'should show usage when reload gets an extra argument' refuses_extra_reload_argument
+run_case "should reload AeroSpace after updating when it's running" update_reloads_running_aerospace
+run_case "should not reload AeroSpace after updating when it isn't running" update_skips_stopped_aerospace
+run_case 'should wait for Hammerspoon to answer before the doctor runs after updating' waits_for_hammerspoon_before_doctor
+run_case "should fail the reload when the user's aerospace.toml can't be opened" fails_reload_on_unopenable_user_aerospace
+run_case 'should build an aerospace.toml everyone can read' builds_readable_aerospace
+run_case "should keep a foreign aerospace.toml when it can't be moved aside" keeps_foreign_aerospace_when_aside_fails
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree

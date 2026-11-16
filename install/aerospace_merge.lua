@@ -13,7 +13,15 @@
 
 local merge = {}
 
-merge.HEADER = "# Built by omv from its defaults and ~/.config/omv/aerospace.toml. Edit that file, then run omv reload."
+-- The first line of the built file, kept in aerospace-header.txt beside this file, which the
+-- shell side reads too.
+merge.HEADER = (function()
+  local folder = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
+  local file = assert(io.open(folder .. "aerospace-header.txt", "r"))
+  local header = file:read("*l")
+  file:close()
+  return header
+end)()
 
 local function trim(text) return (text:gsub("^%s+", ""):gsub("%s+$", "")) end
 
@@ -160,6 +168,8 @@ end
 
 -- The built text, or nil and the user file's "line N: reason".
 function merge.build(defaults, user)
+  -- A byte order mark, as some editors write, isn't part of the first line.
+  if user then user = user:gsub("^\239\187\191", "") end
   if not user or trim(user) == "" then return merge.HEADER .. "\n" .. defaults end
   local userItems, problem = read(user)
   if not userItems then return nil, problem end
@@ -211,11 +221,19 @@ function merge.build(defaults, user)
   return table.concat(out, "\n") .. "\n"
 end
 
+-- The file's text; nil when it doesn't exist; nil and the reason when it exists but can't
+-- be read, so a user file that can't be opened isn't mistaken for no settings.
+local ENOENT = 2
+
 local function readFile(path)
-  local file = io.open(path, "r")
-  if not file then return nil end
-  local text = file:read("*a")
+  local file, reason, code = io.open(path, "r")
+  if not file then
+    if code == ENOENT then return nil end
+    return nil, reason
+  end
+  local text, problem = file:read("*a")
   file:close()
+  if not text then return nil, problem end
   return text
 end
 
@@ -226,7 +244,12 @@ if arg and arg[0] and arg[0]:match("aerospace_merge%.lua$") then
     io.stderr:write("omv: can't read " .. tostring(arg[1]) .. "\n")
     os.exit(1)
   end
-  local text, problem = merge.build(defaults, readFile(arg[2]))
+  local user, unreadable = readFile(arg[2])
+  if unreadable then
+    io.stderr:write("~/.config/omv/aerospace.toml can't be read: " .. unreadable .. "\n")
+    os.exit(1)
+  end
+  local text, problem = merge.build(defaults, user)
   if not text then
     io.stderr:write("~/.config/omv/aerospace.toml " .. problem .. "\n")
     os.exit(1)

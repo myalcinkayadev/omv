@@ -137,4 +137,7 @@ check.that("should say how to write a rejected key", (function()
   return problem ~= nil and check.contains(problem, "[gaps]") and check.contains(problem, "inner.horizontal")
 end)())
 
+check.that("should read a user file that starts with a byte order mark",
+  check.contains(section(built("\239\187\191[gaps]\ninner.horizontal = 4\n") or "", "[gaps]"), "inner.horizontal = 4"))
+
 check.finish()

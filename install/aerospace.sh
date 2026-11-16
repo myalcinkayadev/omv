@@ -5,7 +5,8 @@
 readonly AEROSPACE_DEFAULTS=$REPO_DIR/config/aerospace/.config/aerospace/aerospace.toml
 readonly AEROSPACE_USER=$HOME/.config/omv/aerospace.toml
 readonly AEROSPACE_BUILT=$HOME/.config/aerospace/aerospace.toml
-readonly AEROSPACE_HEADER="# Built by omv from its defaults and ~/.config/omv/aerospace.toml. Edit that file, then run omv reload."
+AEROSPACE_HEADER=$(head -n 1 "$REPO_DIR/install/aerospace-header.txt")
+readonly AEROSPACE_HEADER
 
 # Prints the file omv would build now, or the user file's error on stderr and fails.
 aerospace_build_text() {
@@ -31,15 +32,20 @@ build_aerospace() {
     echo "omv: ~/.config/aerospace is still a link; run omv update first, which moves it over" >&2
     return 1
   fi
-  mkdir -p "$folder"
+  # Each step returns on failure itself: callers run this with || and that turns set -e off.
+  mkdir -p "$folder" || return 1
   if [ -f "$AEROSPACE_BUILT" ] && ! aerospace_built_by_omv; then
-    mv "$AEROSPACE_BUILT" "$AEROSPACE_BUILT.before-omv"
+    if [ -e "$AEROSPACE_BUILT.before-omv" ] || ! mv "$AEROSPACE_BUILT" "$AEROSPACE_BUILT.before-omv"; then
+      echo "omv: couldn't move your aerospace.toml aside to aerospace.toml.before-omv; it's left as it was" >&2
+      return 1
+    fi
     echo "moved your aerospace.toml to aerospace.toml.before-omv; your settings now go in ~/.config/omv/aerospace.toml"
   fi
-  temporary=$(mktemp "$folder/.aerospace.toml.XXXXXX")
+  temporary=$(mktemp "$folder/.aerospace.toml.XXXXXX") || return 1
   if ! aerospace_build_text > "$temporary"; then
     rm -f "$temporary"
     return 1
   fi
-  mv "$temporary" "$AEROSPACE_BUILT"
+  # mktemp makes it private; the built file is a config like any other.
+  chmod 644 "$temporary" && mv "$temporary" "$AEROSPACE_BUILT" || return 1
 }
