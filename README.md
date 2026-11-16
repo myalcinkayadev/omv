@@ -632,7 +632,7 @@ After editing one, run:
 omv reload
 ```
 
-AeroSpace has no way to load a second file, so omv builds `~/.config/aerospace/aerospace.toml` from its defaults and yours: a key you set replaces omv's in the same table, a key or table omv doesn't have is added, and your `[[on-window-detected]]` rules come after omv's. Edit `~/.config/omv/aerospace.toml`, not the built file. An `aerospace.toml` that omv didn't build is moved to `aerospace.toml.before-omv` the first time, never deleted. If yours has a line omv can't read, the old built file stays and `omv reload` names the line.
+AeroSpace has no way to load a second file, so omv builds `~/.config/aerospace/aerospace.toml` from its defaults and yours: a key you set replaces omv's in the same table, a key or table omv doesn't have is added, and your `[[on-window-detected]]` rules come after omv's. Edit `~/.config/omv/aerospace.toml`, not the built file. An `aerospace.toml` that omv didn't build is moved to `aerospace.toml.before-omv` (or a name ending in the time, if that one exists), never deleted. If yours has a line omv can't read, the old built file stays and `omv reload` names the line.
 
 An error in `hammerspoon.lua` or `nvim.lua` shows as an alert, and omv's keys keep working.
 

@@ -447,10 +447,29 @@ update_skips_stopped_aerospace() {
   assert_not_called '^aerospace reload-config'
 }
 
+# hs answers the load time: 100 for the first two asks, then 200, as a reload would.
+reload_hammerspoon_slowly() {
+  cat > "$STUB_DIR/hs" <<STUB
+#!/bin/sh
+echo "hs \$*" >> "$CALL_LOG"
+case "\$*" in
+  *omvLoadedAt*)
+    count=\$((\$(cat "$SANDBOX/asks" 2>/dev/null || echo 0) + 1))
+    echo "\$count" > "$SANDBOX/asks"
+    [ "\$count" -le 2 ] && echo 100 || echo 200 ;;
+esac
+exit 0
+STUB
+  chmod +x "$STUB_DIR/hs"
+}
+
 waits_for_hammerspoon_before_doctor() {
   make_repo
+  reload_hammerspoon_slowly
   omv update >/dev/null
-  assert_before '^hs -t 1 -c return 1$' '^doctor\.sh'
+  local asks
+  asks=$(sed -n '/^doctor\.sh/q;p' "$CALL_LOG" | grep -c 'omvLoadedAt')
+  [ "$asks" -ge 3 ] || fail "doctor ran after $asks asks:"$'\n'"$(cat "$CALL_LOG")"
 }
 
 fails_reload_on_unopenable_user_aerospace() {
@@ -468,12 +487,50 @@ builds_readable_aerospace() {
 
 keeps_foreign_aerospace_when_aside_fails() {
   make_repo
-  mkdir -p "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv/full"
-  chmod 555 "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv"
+  mkdir -p "$HOME_DIR/.config/aerospace"
   echo mine > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  chmod 555 "$HOME_DIR/.config/aerospace"
   omv reload >/dev/null 2>&1 || true
-  chmod 755 "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv"
+  chmod 755 "$HOME_DIR/.config/aerospace"
   [ "$(cat "$HOME_DIR/.config/aerospace/aerospace.toml")" = mine ] || fail 'foreign file overwritten'
+}
+
+keeps_earlier_backup() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config/aerospace"
+  echo older > "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv"
+  echo mine > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  omv reload >/dev/null
+  [ "$(cat "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv")" = older ] || fail 'earlier backup changed'
+}
+
+backs_up_beside_earlier_backup() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config/aerospace"
+  echo older > "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv"
+  echo mine > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  omv reload >/dev/null
+  grep -qx mine "$HOME_DIR"/.config/aerospace/aerospace.toml.before-omv.* 2>/dev/null || fail 'second backup missing'
+}
+
+builds_beside_earlier_backup() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config/aerospace"
+  echo older > "$HOME_DIR/.config/aerospace/aerospace.toml.before-omv"
+  echo mine > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  omv reload >/dev/null
+  [ "$(built_aerospace | head -n 1)" = "$BUILT_HEADER" ] || fail 'not built'
+}
+
+blames_no_user_file_when_build_step_fails() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config/aerospace"
+  echo mine > "$HOME_DIR/.config/aerospace/aerospace.toml"
+  chmod 555 "$HOME_DIR/.config/aerospace"
+  local output
+  output=$(omv update 2>&1 || true)
+  chmod 755 "$HOME_DIR/.config/aerospace"
+  [[ $output != *'fix ~/.config/omv/aerospace.toml'* ]] || fail "blamed the user file in: $output"
 }
 
 undo_resets_to_saved_commit() {
@@ -747,6 +804,10 @@ run_case 'should wait for Hammerspoon to answer before the doctor runs after upd
 run_case "should fail the reload when the user's aerospace.toml can't be opened" fails_reload_on_unopenable_user_aerospace
 run_case 'should build an aerospace.toml everyone can read' builds_readable_aerospace
 run_case "should keep a foreign aerospace.toml when it can't be moved aside" keeps_foreign_aerospace_when_aside_fails
+run_case 'should keep an earlier backup when another aerospace.toml is moved aside' keeps_earlier_backup
+run_case 'should back up beside an earlier backup when one exists' backs_up_beside_earlier_backup
+run_case 'should build aerospace.toml when an earlier backup exists' builds_beside_earlier_backup
+run_case "should not blame the user's file when a build step fails" blames_no_user_file_when_build_step_fails
 run_case 'should go back to the saved commit on undo' undo_resets_to_saved_commit
 run_case 'should refuse undo without a saved commit' undo_refuses_without_saved_commit
 run_case 'should refuse undo on a tree with changes' undo_refuses_dirty_tree

@@ -75,7 +75,7 @@ relink() {
     stow --dir="$REPO_DIR/agents" --target="$HOME" --restow pi
   fi
   # A mistake in the user's file mustn't stop omv's own changes; the doctor names its line.
-  build_aerospace || echo "omv: kept the old aerospace.toml; fix ~/.config/omv/aerospace.toml, then run omv reload" >&2
+  build_aerospace || echo "omv: kept the old aerospace.toml; once the above is fixed, run omv reload" >&2
 }
 
 # After editing a file in ~/.config/omv: rebuild aerospace.toml, then reload what reads them.
@@ -85,14 +85,24 @@ reload_aerospace() {
   aerospace reload-config
 }
 
-# After hs.reload, Hammerspoon is silent for a moment; the doctor would take that for a jam
-# and restart it. Up to 5 seconds, only while it's running.
+# When Hammerspoon last loaded omv's config (init.lua sets it), or nothing when it doesn't
+# answer or predates that.
+hammerspoon_loaded_at() {
+  local answer
+  answer=$(hs -t 1 -c 'return tostring(omvLoadedAt)' 2>/dev/null | tail -n 1 || true)
+  [ "$answer" = nil ] || echo "$answer"
+}
+
+# hs.reload runs a moment after it's asked for, and Hammerspoon is silent while it reloads;
+# the doctor would take that for a jam and restart it. So wait, up to 10 seconds, until the
+# load time differs from $1, read before the reload. Nothing to wait for without one.
 wait_for_hammerspoon() {
-  command -v hs >/dev/null 2>&1 && pgrep -x Hammerspoon >/dev/null 2>&1 || return 0
-  local attempt
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    hs -t 1 -c 'return 1' >/dev/null 2>&1 && return 0
-    sleep 0.5
+  [ -n "$1" ] || return 0
+  local limit=$((SECONDS + 10)) now
+  while [ "$SECONDS" -lt "$limit" ]; do
+    now=$(hammerspoon_loaded_at)
+    if [ -n "$now" ] && [ "$now" != "$1" ]; then return 0; fi
+    sleep 0.3
   done
 }
 
@@ -162,10 +172,12 @@ finish_update() {
   relink
   # Installs what's missing and upgrades nothing else: undo can't take an upgrade back.
   brew bundle --no-upgrade --file="$REPO_DIR/Brewfile"
+  local loaded
+  loaded=$(hammerspoon_loaded_at)
   reload
   reload_aerospace || true
   trap - ERR
-  wait_for_hammerspoon
+  wait_for_hammerspoon "$loaded"
   # --fix clears what an update can leave behind: a second bar, a SwipeAeroSpace that quit
   # while its config link was swapped, a stuck hs call.
   "$REPO_DIR/install/doctor.sh" --fix && return 0

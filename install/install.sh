@@ -143,7 +143,7 @@ if $DRY_RUN; then
 else
   point_hammerspoon
   # A mistake in the user's file mustn't stop the install; the doctor names its line.
-  build_aerospace || echo "install.sh: kept the old aerospace.toml; fix ~/.config/omv/aerospace.toml, then run omv reload" >&2
+  build_aerospace || echo "install.sh: kept the old aerospace.toml; once the above is fixed, run omv reload" >&2
 fi
 link_omv
 step "$REPO_DIR/agents/claude-usage.sh" add

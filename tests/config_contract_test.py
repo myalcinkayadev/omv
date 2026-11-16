@@ -542,6 +542,9 @@ class Leftovers(unittest.TestCase):
             return found
         self.assertEqual(names(uninstall, "SETUP_PACKAGES", "OLDER_PACKAGES"), names(packages, "CONFIG_PACKAGES", "AGENT_PACKAGES"))
 
+    def test_should_record_its_load_time_when_hammerspoon_loads_omv(self) -> None:
+        self.assertRegex(HAMMERSPOON.read_text(encoding="utf-8"), r"\nomvLoadedAt = hs\.timer\.secondsSinceEpoch\(\)")
+
     def test_should_keep_spoons_loadable_when_hammerspoon_loads_from_the_repo(self) -> None:
         self.assertIn('/.hammerspoon/Spoons/?.spoon/init.lua', HAMMERSPOON.read_text(encoding="utf-8"))
 

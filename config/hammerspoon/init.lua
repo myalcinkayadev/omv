@@ -7,6 +7,8 @@
 -- config folder; its Spoons still load from there.
 package.path = package.path .. ";" .. os.getenv("HOME") .. "/.hammerspoon/Spoons/?.spoon/init.lua"
 require("hs.ipc")
+-- When this config loaded, so omv update can tell a finished reload from the old instance.
+omvLoadedAt = hs.timer.secondsSinceEpoch()
 -- Installs the hs command when it's missing, as on a fresh Mac: the bar and doctor.sh need it.
 local hsPrefix = require("hscli").prefix(hs.fs.attributes("/opt/homebrew") ~= nil)
 local hsStatus = hs.ipc.cliStatus(hsPrefix, true)

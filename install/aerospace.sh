@@ -32,20 +32,40 @@ build_aerospace() {
     echo "omv: ~/.config/aerospace is still a link; run omv update first, which moves it over" >&2
     return 1
   fi
-  # Each step returns on failure itself: callers run this with || and that turns set -e off.
-  mkdir -p "$folder" || return 1
-  if [ -f "$AEROSPACE_BUILT" ] && ! aerospace_built_by_omv; then
-    if [ -e "$AEROSPACE_BUILT.before-omv" ] || ! mv "$AEROSPACE_BUILT" "$AEROSPACE_BUILT.before-omv"; then
-      echo "omv: couldn't move your aerospace.toml aside to aerospace.toml.before-omv; it's left as it was" >&2
-      return 1
-    fi
-    echo "moved your aerospace.toml to aerospace.toml.before-omv; your settings now go in ~/.config/omv/aerospace.toml"
+  # Each step returns on failure itself, saying why: callers run this with ||, which turns
+  # set -e off.
+  if ! mkdir -p "$folder"; then
+    echo "omv: couldn't make ~/.config/aerospace" >&2
+    return 1
   fi
-  temporary=$(mktemp "$folder/.aerospace.toml.XXXXXX") || return 1
+  if [ -f "$AEROSPACE_BUILT" ] && ! aerospace_built_by_omv; then
+    aside_aerospace || return 1
+  fi
+  if ! temporary=$(mktemp "$folder/.aerospace.toml.XXXXXX"); then
+    echo "omv: couldn't write in ~/.config/aerospace" >&2
+    return 1
+  fi
+  # A merge error is named by the merge itself, with the line in the user's file.
   if ! aerospace_build_text > "$temporary"; then
     rm -f "$temporary"
     return 1
   fi
   # mktemp makes it private; the built file is a config like any other.
-  chmod 644 "$temporary" && mv "$temporary" "$AEROSPACE_BUILT" || return 1
+  if ! { chmod 644 "$temporary" && mv "$temporary" "$AEROSPACE_BUILT"; }; then
+    rm -f "$temporary"
+    echo "omv: couldn't replace ~/.config/aerospace/aerospace.toml" >&2
+    return 1
+  fi
+}
+
+# Moves an aerospace.toml omv didn't build to aerospace.toml.before-omv, or, when an earlier
+# backup holds that name, to one ending in the time, so no backup is ever overwritten.
+aside_aerospace() {
+  local backup=$AEROSPACE_BUILT.before-omv
+  if [ -e "$backup" ]; then backup=$backup.$(date +%Y%m%d%H%M%S); fi
+  if [ -e "$backup" ] || ! mv "$AEROSPACE_BUILT" "$backup"; then
+    echo "omv: couldn't move your aerospace.toml aside to $(basename "$backup"); it's left as it was" >&2
+    return 1
+  fi
+  echo "moved your aerospace.toml to $(basename "$backup"); your settings now go in ~/.config/omv/aerospace.toml"
 }
