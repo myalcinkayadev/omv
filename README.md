@@ -34,7 +34,7 @@ bin/omv install
 
 This opens omv Setup, a window that runs the install step by step, then walks you through the permissions only you can grant. Only Accessibility is needed, for tiling; the rest are optional, and each step shows what it turns on. It needs [Homebrew](https://brew.sh) and Xcode's Command Line Tools; [Install](#install) has the details and what it changes.
 
-<img src="docs/install.png" alt="omv Setup's Install step, finished: Homebrew taps trusted, the Brewfile installed, configs linked, the omv command on your PATH, hooks added for the agents found, and the macOS settings set" width="720">
+<img src="docs/setup.png" alt="omv Setup on the Accessibility step: AeroSpace granted, SwipeAeroSpace and Hammerspoon waiting, and beside them the tiled desktop, keys and pop-ups they turn on" width="720">
 
 Before you trust it:
 
@@ -597,7 +597,7 @@ Option+Shift+Enter, Option+Shift+N, Option+Shift+U and the pull request card the
 
 `omv install` opens omv Setup, a window that runs the install, then walks you through the permissions only you can grant. For each one it opens the right place in System Settings and moves beside it, shrinking to just the apps to drag when the whole window doesn't fit, as on a 13-inch screen. It ticks each permission off as you turn it on. Only Accessibility is needed, so AeroSpace can tile your windows. The other six are optional, and each step shows what it turns on. Skip any of them, and come back later with `omv setup`. With `omv install --no-setup`, it installs in the terminal instead, and the list it prints at the end says what to grant by hand.
 
-<img src="docs/setup.png" alt="omv Setup on the Accessibility step: AeroSpace granted, SwipeAeroSpace and Hammerspoon waiting, and beside them the tiled desktop, keys and pop-ups they turn on" width="720">
+<img src="docs/install.png" alt="omv Setup's Install step, finished: Homebrew taps trusted, the Brewfile installed, configs linked, the omv command on your PATH, hooks added for the agents found, and the macOS settings set" width="720">
 
 Then, by hand:
 
