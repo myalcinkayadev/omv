@@ -4,7 +4,8 @@ import AppKit
 import SwiftUI
 
 // One app: its real icon and name, then how it's granted. Drag and tick rows drag as a whole,
-// so any part of the card can go into System Settings' list; ask rows have Allow access.
+// so any part of the card can go into System Settings' list; ask rows have Continue, which
+// brings up macOS's prompt.
 struct AppRow: View {
   let permission: SetupPermission
   @EnvironmentObject var state: SetupState
@@ -17,6 +18,7 @@ struct AppRow: View {
         .accessibilityLabel(permission.way == .ask ? permission.app : "Drag \(permission.app) into the list")
       VStack(alignment: .leading, spacing: 4) {
         Text(permission.app).font(Look.font(12)).lineLimit(1)
+        Text(permission.role).font(Look.font(11)).foregroundColor(Look.faint).fixedSize(horizontal: false, vertical: true)
         status(granted)
       }
       Spacer()
@@ -55,7 +57,7 @@ struct AppRow: View {
         Text("◌ answer macOS's prompt").font(Look.font(11)).foregroundColor(Look.faint)
       } else {
         Button { state.ask(permission) } label: {
-          Text("Allow access").font(Look.font(11, .bold)).padding(.horizontal, 10).frame(height: 24)
+          Text(SetupModel.askButton).font(Look.font(11, .bold)).padding(.horizontal, 10).frame(height: 24)
             .background(Color.white).foregroundColor(.black).cornerRadius(6)
         }
         .buttonStyle(.plain)

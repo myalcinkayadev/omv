@@ -233,7 +233,7 @@ struct SetupModelTests {
     check("should escape quotes and backslashes when quoting a path for Lua",
       SetupModel.luaQuoted("/Users/a \"b\"\\c") == "\"/Users/a \\\"b\\\"\\\\c\"")
 
-    check("should offer Allow access again when a request ends with no answer", {
+    check("should offer Continue again when a request ends with no answer", {
       var progress = SetupProgress()
       progress.asking = ["meter.microphone"]
       progress.requestEnded("meter.microphone")
@@ -253,6 +253,35 @@ struct SetupModelTests {
       progress.take([:])
       return progress.asking == ["hammerspoon.bluetooth"]
     }())
+
+    check("should mark only Accessibility as needed when listing the steps",
+      SetupModel.steps.filter(\.needed).map(\.id) == ["accessibility"])
+
+    check("should give every permission a role when listing the steps",
+      SetupModel.steps.allSatisfy { $0.permissions.allSatisfy { !$0.role.isEmpty } })
+
+    check("should mention the Disk card when describing Full Disk Access", step("disk").purpose.contains("Disk card"))
+
+    check("should show tiling first on the Accessibility step", step("accessibility").parts.first?.app == "AeroSpace")
+
+    check("should show what every step turns on", SetupModel.steps.allSatisfy { !$0.parts.isEmpty })
+
+    check("should name a preview image that exists for every image a step shows", {
+      let repo = ProcessInfo.processInfo.environment["OMV_REPO"] ?? ""
+      let images = SetupModel.steps.flatMap { $0.parts.compactMap(\.image) }
+      return !images.isEmpty && images.allSatisfy { image in
+        SetupModel.previewPath(repo: repo, image: image).map { FileManager.default.fileExists(atPath: $0) } ?? false
+      }
+    }())
+
+    check("should give no preview path when setup runs without omv's folder",
+      SetupModel.previewPath(repo: nil, image: "accessibility-1") == nil)
+
+    check("should title the button before macOS's prompt Continue, never Allow", SetupModel.askButton == "Continue")
+
+    check("should leave the window in place when a 13-inch screen has no room beside System Settings",
+      SetupModel.besideSettings(settings: CGRect(x: 380, y: 40, width: 715, height: 640),
+        screen: CGRect(x: 0, y: 0, width: 1470, height: 920), size: SetupModel.windowSize) == nil)
 
     exit(failed == 0 ? 0 : 1)
   }

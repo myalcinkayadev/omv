@@ -244,6 +244,11 @@ final class SetupState: ObservableObject {
     go(screens[min(index + 1, screens.count - 1)])
   }
 
+  func back() {
+    let index = screens.firstIndex(of: screen) ?? 0
+    go(screens[max(index - 1, 0)])
+  }
+
   // Install mode runs the install first; otherwise straight to the first step not yet done.
   func start() {
     if let installer {
@@ -306,7 +311,7 @@ struct SetupView: View {
         .padding(EdgeInsets(top: 32, leading: 40, bottom: 24, trailing: 40))
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
-    .frame(width: 860, height: 560)
+    .frame(width: SetupModel.windowSize.width, height: SetupModel.windowSize.height)
     .background(Look.ground)
     .foregroundColor(.white)
     .environmentObject(state)
@@ -315,6 +320,10 @@ struct SetupView: View {
   var sidebar: some View {
     VStack(alignment: .leading, spacing: 4) {
       ForEach(state.screens, id: \.self) { id in
+        if let group = group(before: id) {
+          Text(group.uppercased()).font(Look.font(10)).tracking(1.4).foregroundColor(Color(white: 0.44))
+            .padding(EdgeInsets(top: 10, leading: 10, bottom: 2, trailing: 10))
+        }
         Button { if state.canGo(id) { state.go(id) } } label: {
           HStack(spacing: 10) {
             Text(state.mark(id)).frame(width: 16)
@@ -329,10 +338,36 @@ struct SetupView: View {
         .buttonStyle(.plain)
       }
       Spacer()
+      tally
     }
     .font(Look.font(13))
     .padding(16)
     .frame(width: 220)
+  }
+
+  // A label above the first needed step and the first optional one.
+  func group(before id: String) -> String? {
+    guard let index = SetupModel.steps.firstIndex(where: { $0.id == id }) else { return nil }
+    let step = SetupModel.steps[index]
+    if index == 0 { return step.needed ? "Needed" : "Optional" }
+    return SetupModel.steps[index - 1].needed && !step.needed ? "Optional" : nil
+  }
+
+  var tally: some View {
+    let granted = SetupModel.steps.filter(state.progress.isComplete).count
+    let total = SetupModel.steps.count
+    return VStack(alignment: .leading, spacing: 8) {
+      Rectangle().fill(Look.line).frame(height: 1)
+      Text("\(granted) of \(total) granted").font(Look.font(11)).foregroundColor(Look.faint).padding(.horizontal, 10)
+      GeometryReader { box in
+        ZStack(alignment: .leading) {
+          Rectangle().fill(Color(white: 0.16))
+          Rectangle().fill(Color.white).frame(width: box.size.width * CGFloat(granted) / CGFloat(total))
+        }
+      }
+      .frame(height: 4).padding(.horizontal, 10)
+    }
+    .accessibilityElement(children: .combine)
   }
 
   func title(_ id: String) -> String {
@@ -362,6 +397,8 @@ struct SetupView: View {
           .font(Look.font(14)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
       }
       Text("Then a few permissions only you can grant. This window opens the right place and ticks each one off as you go.")
+        .font(Look.font(14)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
+      Text("Only Accessibility is needed: it lets AeroSpace tile your windows. The other six each turn on one extra, and the window shows which.")
         .font(Look.font(14)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
       Text("Skip any permission and come back with omv setup.").font(Look.font(13)).foregroundColor(Look.faint)
       Spacer()
@@ -448,29 +485,47 @@ struct SetupView: View {
 
   func stepView(_ step: SetupStep) -> some View {
     let complete = state.progress.isComplete(step)
-    return Group {
-      Text(step.title).font(Look.font(24, .bold))
-      Text(step.purpose).font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
-      if step.permissions.allSatisfy({ $0.way == .ask }) {
-        askSteps(step, complete: complete)
-      } else {
-        dragSteps(step, complete: complete)
-      }
-      if step.needsRestart && state.opened.contains(step.id) && !complete {
-        HStack(alignment: .top, spacing: 14) {
-          number("3", done: false)
-          VStack(alignment: .leading, spacing: 10) {
-            Text("macOS applies Screen Recording only when Hammerspoon starts again.").font(Look.font(13))
-            primary("Restart Hammerspoon") { SetupChecks.restartHammerspoon() }
+    let index = (SetupModel.steps.firstIndex { $0.id == step.id } ?? 0) + 1
+    return VStack(spacing: 0) {
+      ScrollView {
+        HStack(alignment: .top, spacing: 28) {
+          VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+              Text("\(step.needed ? "Needed" : "Optional") · \(index) of \(SetupModel.steps.count)".uppercased())
+                .font(Look.font(11)).tracking(1.5).foregroundColor(Look.faint)
+              Text(step.title).font(Look.font(24, .bold))
+              Text(step.purpose).font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.bottom, 6)
+            if step.permissions.allSatisfy({ $0.way == .ask }) {
+              askSteps(step, complete: complete)
+            } else {
+              dragSteps(step, complete: complete)
+            }
+            if step.needsRestart && state.opened.contains(step.id) && !complete {
+              HStack(alignment: .top, spacing: 14) {
+                number("3", done: false)
+                VStack(alignment: .leading, spacing: 10) {
+                  Text("macOS applies Screen Recording only when Hammerspoon starts again.").font(Look.font(13))
+                    .fixedSize(horizontal: false, vertical: true)
+                  primary("Restart Hammerspoon") { SetupChecks.restartHammerspoon() }
+                }
+              }
+            }
           }
+          .frame(width: 300, alignment: .leading)
+          TurnsOn(step: step).frame(width: 370, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
       }
-      Spacer()
-      HStack {
+      Rectangle().fill(Look.line).frame(height: 1).padding(.horizontal, -40)
+      HStack(spacing: 10) {
         secondary("Skip") { state.skip() }
         Spacer()
+        secondary("←  Back") { state.back() }
         primary("Next  →", enabled: complete) { state.next() }
       }
+      .padding(.top, 14)
     }
   }
 
@@ -485,7 +540,7 @@ struct SetupView: View {
       VStack(alignment: .leading, spacing: 12) {
         Text("Drag each app from here into the list in System Settings, then turn it on.")
           .font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
-        ForEach(step.permissions, id: \.key) { AppRow(permission: $0).frame(width: 320) }
+        ForEach(step.permissions, id: \.key) { AppRow(permission: $0) }
       }
     }
   }
@@ -496,9 +551,9 @@ struct SetupView: View {
     HStack(alignment: .top, spacing: 14) {
       number("1", done: complete)
       VStack(alignment: .leading, spacing: 12) {
-        Text("Press Allow access, then Allow in the prompt macOS shows.")
+        Text("Press \(SetupModel.askButton), and macOS asks you about \(step.permissions[0].app).")
           .font(Look.font(13)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
-        ForEach(step.permissions, id: \.key) { AppRow(permission: $0).frame(width: 320) }
+        ForEach(step.permissions, id: \.key) { AppRow(permission: $0) }
       }
     }
     if step.permissions.contains(where: { state.progress.grants[$0.key] == .denied }) {

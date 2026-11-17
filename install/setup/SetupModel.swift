@@ -21,8 +21,28 @@ struct SetupPermission {
   let app: String
   let appPath: String
   let way: GrantWay
+  // What this app's access powers, under its name on the card.
+  let role: String
 
   var checkable: Bool { way != .tick }
+}
+
+// Keys shown beside a preview, such as Option+H J K L, and what they do.
+struct SetupKeys {
+  let keys: [String]
+  let does: String
+}
+
+// One thing a step turns on, as the column beside the steps shows it: the app that powers it,
+// what it is, an image of it from install/setup/previews, its keys and a note. key is the
+// permission that powers it, ticked once granted.
+struct SetupPart {
+  let app: String
+  let what: String
+  var key: String? = nil
+  var image: String? = nil
+  var keys: [SetupKeys] = []
+  var note: String? = nil
 }
 
 struct SetupStep {
@@ -31,6 +51,9 @@ struct SetupStep {
   let purpose: String
   let pane: String
   let permissions: [SetupPermission]
+  // Needed steps are the ones omv can't work without; the rest each turn on an extra.
+  var needed = false
+  var parts: [SetupPart] = []
 
   var paneURL: String { "x-apple.systempreferences:com.apple.preference.security?" + pane }
 
@@ -101,41 +124,85 @@ enum SetupModel {
     SetupStep(id: "accessibility", title: "Accessibility",
       purpose: "Lets AeroSpace tile windows, SwipeAeroSpace follow your swipes, and Hammerspoon show the volume and brightness pop-ups.",
       pane: "Privacy_Accessibility", permissions: [
-        SetupPermission(key: "aerospace.accessibility", app: "AeroSpace", appPath: aerospace, way: .drag),
-        SetupPermission(key: "hammerspoon.accessibility", app: "Hammerspoon", appPath: hammerspoon, way: .drag),
-        SetupPermission(key: "swipe.accessibility", app: "SwipeAeroSpace", appPath: swipe, way: .tick),
+        SetupPermission(key: "aerospace.accessibility", app: "AeroSpace", appPath: aerospace, way: .drag, role: "tiles windows"),
+        SetupPermission(key: "swipe.accessibility", app: "SwipeAeroSpace", appPath: swipe, way: .tick, role: "three-finger swipes"),
+        SetupPermission(key: "hammerspoon.accessibility", app: "Hammerspoon", appPath: hammerspoon, way: .drag,
+          role: "volume and brightness pop-ups"),
+      ], needed: true, parts: [
+        SetupPart(app: "AeroSpace", what: "tiles every window", key: "aerospace.accessibility", image: "accessibility-1", keys: [
+          SetupKeys(keys: ["⌥", "H", "J", "K", "L"], does: "focus left, down, up, right"),
+          SetupKeys(keys: ["⌥", "⇧", "H", "J", "K", "L"], does: "move the window"),
+          SetupKeys(keys: ["⌥", "1–7"], does: "go to a workspace"),
+        ]),
+        SetupPart(app: "SwipeAeroSpace", what: "follows your swipes", key: "swipe.accessibility", keys: [
+          SetupKeys(keys: ["three fingers", "← →"], does: "one workspace over; 7 wraps to 1"),
+        ]),
+        SetupPart(app: "Hammerspoon", what: "volume and brightness pop-ups", key: "hammerspoon.accessibility", image: "accessibility-3"),
       ]),
     SetupStep(id: "screen", title: "Screen Recording",
       purpose: "Lets the capture menu take screenshots, read text from the screen and record it.",
       pane: "Privacy_ScreenCapture", permissions: [
-        SetupPermission(key: "hammerspoon.screen", app: "Hammerspoon", appPath: hammerspoon, way: .drag),
+        SetupPermission(key: "hammerspoon.screen", app: "Hammerspoon", appPath: hammerspoon, way: .drag, role: "the capture menu"),
+      ], parts: [
+        SetupPart(app: "Hammerspoon", what: "the capture menu, ⌥⇧S", key: "hammerspoon.screen", image: "screen-1"),
+        SetupPart(app: "", what: "while a recording runs the bar says so; a click stops it", image: "screen-2"),
       ]),
     SetupStep(id: "location", title: "Location Services",
       purpose: "Gives the weather for where the Mac is, and the Wi-Fi network's name.",
       pane: "Privacy_LocationServices", permissions: [
-        SetupPermission(key: "hammerspoon.location", app: "Hammerspoon", appPath: hammerspoon, way: .ask),
+        SetupPermission(key: "hammerspoon.location", app: "Hammerspoon", appPath: hammerspoon, way: .ask, role: "weather and the Wi-Fi name"),
+      ], parts: [
+        SetupPart(app: "Hammerspoon", what: "the weather where the Mac is", key: "hammerspoon.location", image: "location-1"),
+        SetupPart(app: "Hammerspoon", what: "the network's name in the Wi-Fi card", image: "location-2",
+          note: "macOS hides the network's name from apps without Location."),
       ]),
     SetupStep(id: "microphone", title: "Microphone",
       purpose: "Lets the Sound card show your microphone's level.",
       pane: "Privacy_Microphone", permissions: [
-        SetupPermission(key: "meter.microphone", app: "omv meter", appPath: home + "/.cache/omv/Meter.app", way: .ask),
+        SetupPermission(key: "meter.microphone", app: "omv meter", appPath: home + "/.cache/omv/Meter.app", way: .ask, role: "the mic level meter"),
+      ], parts: [
+        SetupPart(app: "omv meter", what: "the live level under INPUT", key: "meter.microphone", image: "microphone-1",
+          note: "The Sound card opens from the bar's volume icon."),
       ]),
     SetupStep(id: "calendars", title: "Calendars",
       purpose: "Shows today's events in the calendar card and the next meeting in the bar.",
       pane: "Privacy_Calendars", permissions: [
-        SetupPermission(key: "agenda.calendars", app: "omv agenda", appPath: home + "/.cache/omv/Agenda.app", way: .ask),
+        SetupPermission(key: "agenda.calendars", app: "omv agenda", appPath: home + "/.cache/omv/Agenda.app", way: .ask, role: "today's events"),
+      ], parts: [
+        SetupPart(app: "omv agenda", what: "today's events in the calendar card", key: "agenda.calendars", image: "calendars-1"),
+        SetupPart(app: "", what: "the next meeting in the bar, white from 5 minutes before; a click joins its call", image: "calendars-2"),
       ]),
     SetupStep(id: "bluetooth", title: "Bluetooth",
       purpose: "Lets the Bluetooth card list and connect your devices.",
       pane: "Privacy_Bluetooth", permissions: [
-        SetupPermission(key: "hammerspoon.bluetooth", app: "Hammerspoon", appPath: hammerspoon, way: .ask),
+        SetupPermission(key: "hammerspoon.bluetooth", app: "Hammerspoon", appPath: hammerspoon, way: .ask, role: "the Bluetooth card"),
+      ], parts: [
+        SetupPart(app: "Hammerspoon", what: "the Bluetooth card, from the bar", key: "hammerspoon.bluetooth", image: "bluetooth-1"),
       ]),
     SetupStep(id: "disk", title: "Full Disk Access",
-      purpose: "Lets the bar show when Do Not Disturb is on.",
+      purpose: "Lets the bar show when Do Not Disturb is on, and the Disk card count the Trash and app caches it can clean.",
       pane: "Privacy_AllFiles", permissions: [
-        SetupPermission(key: "hammerspoon.disk", app: "Hammerspoon", appPath: hammerspoon, way: .drag),
+        SetupPermission(key: "hammerspoon.disk", app: "Hammerspoon", appPath: hammerspoon, way: .drag, role: "Do Not Disturb and the Disk card"),
+      ], parts: [
+        SetupPart(app: "Hammerspoon", what: "Do Not Disturb in the bar", key: "hammerspoon.disk", image: "disk-1",
+          note: "Shows while a Focus is on, with its name. A click switches Do Not Disturb."),
+        SetupPart(app: "Hammerspoon", what: "the Disk card's cleanup sizes, ⌥⇧X", image: "disk-2",
+          note: "Hammerspoon measures Caches and logs with Mole. Without this access Mole skips the Trash and protected app caches, so the size comes out short."),
       ]),
   ]
+
+  // The window: two columns, the steps and what they turn on, with room for the tallest step.
+  static let windowSize = CGSize(width: 1000, height: 760)
+
+  // The button that brings up macOS's prompt. Apple's guidelines ask for Continue or Next, never
+  // Allow, so it isn't mistaken for the prompt's own Allow.
+  static let askButton = "Continue"
+
+  // A preview image in omv's folder; nil when setup runs without it.
+  static func previewPath(repo: String?, image: String) -> String? {
+    guard let repo else { return nil }
+    return repo + "/install/setup/previews/" + image + ".png"
+  }
 
   static let screens: [String] = ["welcome", "install"] + steps.map(\.id) + ["done"]
 

@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 860, height: 560),
+      contentRect: NSRect(origin: .zero, size: SetupModel.windowSize),
       styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
     window.title = "omv Setup"
     window.delegate = self
