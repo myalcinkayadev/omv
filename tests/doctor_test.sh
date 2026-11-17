@@ -408,7 +408,21 @@ points_manual_checks_to_permissions_card() {
 reports_missing_setup_app() {
   complete_setup
   rm -rf "$HOME_DIR/Applications/omv Setup.app"
-  expect_report "✗ omv Setup isn't built — fix: omv setup"
+  expect_report "✗ omv Setup isn't built — fix: omv doctor --fix"
+}
+
+# swiftc "builds" by writing the file after -o, as the real one would.
+fix_builds_setup_app() {
+  complete_setup
+  rm -rf "$HOME_DIR/Applications/omv Setup.app"
+  cat > "$STUB_DIR/swiftc" <<STUB
+#!/bin/sh
+while [ "\$#" -gt 0 ]; do [ "\$1" = -o ] && { printf '#!/bin/sh\\n' > "\$2"; chmod +x "\$2"; }; shift; done
+STUB
+  chmod +x "$STUB_DIR/swiftc"
+  stub codesign
+  [[ $(report --fix) == *'→ built omv Setup'* ]] || fail 'no built line'
+  [ -x "$HOME_DIR/Applications/omv Setup.app/Contents/MacOS/omv-setup" ] || fail 'not built'
 }
 
 reports_missing_homebrew() {
@@ -624,6 +638,7 @@ run_case "should say Homebrew is missing when brew isn't found" reports_missing_
 run_case "should find Homebrew in its usual folder when brew isn't on the PATH" finds_homebrew_off_path
 run_case 'should point the manual checks to the Permissions card' points_manual_checks_to_permissions_card
 run_case "should report the setup app when it isn't built" reports_missing_setup_app
+run_case "should build the setup app when fixing and it isn't built" fix_builds_setup_app
 run_case 'should accept a built aerospace.toml that is up to date' accepts_built_aerospace
 run_case 'should report ~/.config/aerospace still linked' reports_linked_aerospace_folder
 run_case 'should report an aerospace.toml that is out of date' reports_outdated_aerospace

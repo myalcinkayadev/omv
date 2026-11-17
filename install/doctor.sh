@@ -2,8 +2,8 @@
 # Checks that the omv setup is healthy and says how to fix what isn't. Exits non-zero when a
 # check fails. Without --fix it only reads: it changes no setting, link or process.
 # --fix first clears a jam: it kills stuck hs calls, restarts SketchyBar when more than one
-# runs, reopens Hammerspoon when it doesn't answer, and opens SwipeAeroSpace when it isn't
-# running. Then it checks as usual.
+# runs, reopens Hammerspoon when it doesn't answer, opens SwipeAeroSpace when it isn't
+# running, and builds omv Setup when it's missing. Then it checks as usual.
 # Usage: omv doctor [--fix]
 # OMV_APPLICATIONS and OMV_FONT_DIRS replace /Applications and the font folders, for tests.
 
@@ -157,7 +157,7 @@ check_links() {
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
   check_aerospace_built
   if [ -e "$SETUP_BINARY" ]; then ok 'omv Setup is built'
-  else problem "omv Setup isn't built" 'omv setup'; fi
+  else problem "omv Setup isn't built" 'omv doctor --fix'; fi
   for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do
     folder=$(package_dir "$package")
     missing=()
@@ -390,6 +390,11 @@ fix_running() {
   if ! pgrep -x SwipeAeroSpace >/dev/null 2>&1 && [ -d "$APPLICATIONS/SwipeAeroSpace.app" ]; then
     open -a SwipeAeroSpace
     echo '  → opened SwipeAeroSpace'
+    fixed=1
+  fi
+  # omv update runs --fix, so an install from before omv Setup gets it here.
+  if [ ! -e "$SETUP_BINARY" ] && build_setup_app; then
+    echo '  → built omv Setup'
     fixed=1
   fi
   [ "$fixed" -eq 1 ] || ok 'nothing to fix'
