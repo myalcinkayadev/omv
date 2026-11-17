@@ -283,6 +283,50 @@ struct SetupModelTests {
       SetupModel.besideSettings(settings: CGRect(x: 380, y: 40, width: 715, height: 640),
         screen: CGRect(x: 0, y: 0, width: 1470, height: 920), size: SetupModel.windowSize) == nil)
 
+    // A 13-inch screen with System Settings in the middle: the full window fits on neither side.
+    let small = CGRect(x: 0, y: 0, width: 1470, height: 920)
+    let settingsMiddle = CGRect(x: 380, y: 40, width: 715, height: 640)
+
+    check("should collapse to the app cards when a drag step's full window has no room beside System Settings", {
+      let place = SetupModel.placement(step: step("accessibility"), complete: false, settings: settingsMiddle, screen: small)
+      return place.layout == .compact && place.frame?.minX == settingsMiddle.maxX + 12
+    }())
+
+    check("should keep the full window when it fits beside System Settings", {
+      let settings = CGRect(x: 0, y: 40, width: 715, height: 640)
+      let place = SetupModel.placement(step: step("accessibility"), complete: false, settings: settings,
+        screen: CGRect(x: 0, y: 0, width: 2560, height: 1400))
+      return place.layout == .full && place.frame?.minX == settings.maxX + 12
+    }())
+
+    check("should place the compact panel left of System Settings when only the left has room", {
+      let settings = CGRect(x: 740, y: 40, width: 715, height: 640)
+      let place = SetupModel.placement(step: step("disk"), complete: false, settings: settings, screen: small)
+      return place.layout == .compact && place.frame?.maxX == settings.minX - 12
+    }())
+
+    check("should keep the full window when System Settings isn't on screen", {
+      let place = SetupModel.placement(step: step("accessibility"), complete: false, settings: nil, screen: small)
+      return place.layout == .full && place.frame == nil
+    }())
+
+    check("should return to the full window once the step is complete",
+      SetupModel.placement(step: step("accessibility"), complete: true, settings: settingsMiddle, screen: small).layout == .full)
+
+    check("should keep the full window on an ask step, which has no list to drag into",
+      SetupModel.placement(step: step("location"), complete: false, settings: settingsMiddle, screen: small).layout == .full)
+
+    check("should leave the window in place when even the compact panel has no room", {
+      let settings = CGRect(x: 200, y: 40, width: 1100, height: 640)
+      let place = SetupModel.placement(step: step("accessibility"), complete: false, settings: settings, screen: small)
+      return place.layout == .full && place.frame == nil
+    }())
+
+    check("should size the compact panel to fit every app card", {
+      SetupModel.compactSize(apps: 3).height > SetupModel.compactSize(apps: 1).height
+        && SetupModel.compactSize(apps: 3).height <= small.height
+    }())
+
     exit(failed == 0 ? 0 : 1)
   }
 }

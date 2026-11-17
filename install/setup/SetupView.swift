@@ -114,13 +114,22 @@ enum SetupChecks {
 
   // Moves the setup window beside System Settings, so the apps can be dragged straight across.
   // AppKit counts from the bottom of the main screen, the window list from its top.
-  static func moveBesideSettings(_ window: NSWindow) {
-    guard let screen = window.screen ?? NSScreen.main else { return }
-    let height = NSScreen.screens.first?.frame.height ?? screen.frame.height
+  // The window's screen, with a top-left origin like the window list's, or nil off screen.
+  static func screenTopLeft(_ window: NSWindow) -> CGRect? {
+    guard let screen = window.screen ?? NSScreen.main else { return nil }
     let visible = screen.visibleFrame
-    let screenTopLeft = CGRect(x: visible.minX, y: height - visible.maxY, width: visible.width, height: visible.height)
-    guard let frame = SetupModel.besideSettings(settings: settingsFrame(), screen: screenTopLeft, size: window.frame.size) else { return }
-    window.setFrameOrigin(NSPoint(x: frame.minX, y: height - frame.minY - frame.height))
+    return CGRect(x: visible.minX, y: mainHeight(screen) - visible.maxY, width: visible.width, height: visible.height)
+  }
+
+  static func mainHeight(_ screen: NSScreen) -> CGFloat {
+    NSScreen.screens.first?.frame.height ?? screen.frame.height
+  }
+
+  // Puts the window at a top-left frame, resizing it when the layout changes.
+  static func place(_ window: NSWindow, at frame: CGRect) {
+    guard let screen = window.screen ?? NSScreen.main else { return }
+    let bottomLeft = NSRect(x: frame.minX, y: mainHeight(screen) - frame.minY - frame.height, width: frame.width, height: frame.height)
+    window.setFrame(bottomLeft, display: true, animate: window.frame.size != bottomLeft.size)
     window.orderFront(nil)
   }
 
@@ -139,6 +148,10 @@ final class SetupState: ObservableObject {
   @Published var screen = "welcome"
   @Published var opened: Set<String> = []
   @Published var showDetails = false
+  // Compact while a drag step's apps are dragged into System Settings beside it.
+  @Published var layout = SetupLayout.full
+  private var fullOrigin: NSPoint?
+  private var expandedByHand: Set<String> = []
   // Why a permission can't be asked for, by its key.
   @Published var problems: [String: String] = [:]
   let installer: Installer?
@@ -223,6 +236,7 @@ final class SetupState: ObservableObject {
   func refresh() {
     ticks += 1
     if ticks % 3 == 0, SetupState.helperKeys[screen] != nil { probe(screen) }
+    if layout == .compact { arrange() }
     // One reading at a time: hs can take 2 seconds, and an older answer mustn't land last.
     guard !reading else { return }
     reading = true
@@ -237,7 +251,10 @@ final class SetupState: ObservableObject {
 
   var step: SetupStep? { SetupModel.steps.first { $0.id == screen } }
 
-  func go(_ id: String) { screen = id }
+  func go(_ id: String) {
+    screen = id
+    if layout == .compact { restoreFull() }
+  }
 
   func next() {
     let index = screens.firstIndex(of: screen) ?? 0
@@ -271,11 +288,43 @@ final class SetupState: ObservableObject {
     NSWorkspace.shared.open(URL(string: step.paneURL)!)
     opened.insert(step.id)
     for delay in [0.5, 1.0, 2.0] {
-      DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-        guard let window = NSApp.windows.first(where: { $0.title == "omv Setup" }) else { return }
-        SetupChecks.moveBesideSettings(window)
-      }
+      DispatchQueue.main.asyncAfter(deadline: .now() + delay) { self.arrange() }
     }
+  }
+
+  var window: NSWindow? { NSApp.windows.first { $0.title == "omv Setup" } }
+
+  // Moves the window beside System Settings, collapsing it to the compact panel when the full
+  // window has no room there, and back to the full window when the step is done or System
+  // Settings is gone.
+  func arrange() {
+    guard let window, let step, let screen = SetupChecks.screenTopLeft(window) else { return }
+    let place = SetupModel.placement(step: step, complete: progress.isComplete(step),
+      settings: SetupChecks.settingsFrame(), screen: screen)
+    if place.layout == .compact && !expandedByHand.contains(step.id) {
+      if layout == .full { fullOrigin = window.frame.origin }
+      layout = .compact
+      if let frame = place.frame { SetupChecks.place(window, at: frame) }
+      return
+    }
+    if layout == .compact { restoreFull(); return }
+    if let frame = place.frame { SetupChecks.place(window, at: frame) }
+  }
+
+  // Show all, from the compact panel: the full window, and no collapsing again on this step.
+  func expand() {
+    if let step { expandedByHand.insert(step.id) }
+    restoreFull()
+  }
+
+  private func restoreFull() {
+    layout = .full
+    guard let window else { return }
+    let origin = fullOrigin ?? window.frame.origin
+    let top = window.frame.maxY
+    window.setFrame(NSRect(x: origin.x, y: fullOrigin == nil ? top - SetupModel.windowSize.height : origin.y,
+      width: SetupModel.windowSize.width, height: SetupModel.windowSize.height), display: true, animate: true)
+    fullOrigin = nil
   }
 
   // Install is reached through Welcome's button, which starts it; before that, the sidebar
@@ -304,6 +353,43 @@ struct SetupView: View {
   @StateObject var state: SetupState
 
   var body: some View {
+    if state.layout == .compact, let step = state.step {
+      compactPanel(step)
+        .frame(width: SetupModel.compactSize(apps: 0).width)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Look.ground)
+        .foregroundColor(.white)
+        .environmentObject(state)
+    } else {
+      fullWindow
+    }
+  }
+
+  // Only the step's apps, to drag into System Settings beside it, and a way back.
+  func compactPanel(_ step: SetupStep) -> some View {
+    let complete = state.progress.isComplete(step)
+    let granted = step.permissions.filter(state.progress.isGranted).count
+    return VStack(alignment: .leading, spacing: 12) {
+      Text(step.title).font(Look.font(16, .bold))
+      Text("Drag each app into the list in System Settings, then turn it on.")
+        .font(Look.font(12)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
+      ForEach(step.permissions, id: \.key) { AppRow(permission: $0) }
+      if step.needsRestart && !complete {
+        Text("macOS applies Screen Recording only when Hammerspoon starts again.")
+          .font(Look.font(11)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
+        secondary("Restart Hammerspoon") { SetupChecks.restartHammerspoon() }
+      }
+      Spacer(minLength: 0)
+      HStack {
+        link("Show all") { state.expand() }
+        Spacer()
+        Text("\(granted) of \(step.permissions.count) granted").font(Look.font(11)).foregroundColor(Look.faint)
+      }
+    }
+    .padding(20)
+  }
+
+  var fullWindow: some View {
     HStack(spacing: 0) {
       sidebar
       Rectangle().fill(Look.line).frame(width: 1)

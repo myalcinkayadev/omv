@@ -61,6 +61,15 @@ struct SetupStep {
   var needsRestart: Bool { id == "screen" }
 }
 
+enum SetupLayout {
+  case full, compact
+}
+
+struct SetupPlacement {
+  let layout: SetupLayout
+  let frame: CGRect?
+}
+
 struct SetupSummary {
   let granted: Int
   let skipped: Int
@@ -232,6 +241,26 @@ enum SetupModel {
     }
     let y = max(screen.minY, min(settings.minY, screen.maxY - size.height))
     return CGRect(x: x, y: y, width: size.width, height: size.height)
+  }
+
+  // The compact panel: only a drag step's app cards, so they can be dragged across when the full
+  // window has no room beside System Settings, as on a 13-inch screen.
+  static func compactSize(apps: Int) -> CGSize {
+    CGSize(width: 340, height: 150 + 86 * CGFloat(apps))
+  }
+
+  // Where the window goes, and in which layout, while a step is on screen. A drag step whose
+  // full window has no room beside System Settings collapses to the compact panel there; the
+  // full window comes back once the step is complete or System Settings is gone. frame is nil
+  // when the window should stay where it is.
+  static func placement(step: SetupStep, complete: Bool, settings: CGRect?, screen: CGRect) -> SetupPlacement {
+    let full = besideSettings(settings: settings, screen: screen, size: windowSize)
+    let draggable = step.permissions.contains { $0.way != .ask }
+    guard full == nil, draggable, !complete else { return SetupPlacement(layout: .full, frame: full) }
+    guard let compact = besideSettings(settings: settings, screen: screen, size: compactSize(apps: step.permissions.count + (step.needsRestart ? 1 : 0))) else {
+      return SetupPlacement(layout: .full, frame: nil)
+    }
+    return SetupPlacement(layout: .compact, frame: compact)
   }
 
   // What Hammerspoon reports, asked with SetupChecks.hammerspoonQuestion: four fields,
