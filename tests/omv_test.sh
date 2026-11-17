@@ -607,6 +607,51 @@ install_opens_setup_in_install_mode() {
   assert_called "^open .*/Applications/omv Setup\.app --args --install $REPO$"
 }
 
+install_passes_no_apps_to_setup() {
+  make_repo
+  build_with_stub_swiftc
+  omv install --no-apps >/dev/null
+  assert_called "^open .*/Applications/omv Setup\.app --args --install $REPO --no-apps$"
+}
+
+# pgrep finds omv Setup's binary, as it would while the app is open.
+setup_app_running() {
+  printf '#!/bin/sh\necho "pgrep $*" >> "%s"\ncase "$*" in *omv-setup*) echo 4242 ;; *) exit 1 ;; esac\n' "$CALL_LOG" > "$STUB_DIR/pgrep"
+  chmod +x "$STUB_DIR/pgrep"
+}
+
+install_says_setup_is_open() {
+  make_repo
+  build_with_stub_swiftc
+  setup_app_running
+  local output
+  output=$(omv install 2>&1) && fail 'expected failure'
+  [[ $output == *'omv Setup is already open; quit it first'* ]] || fail "no message in: $output"
+}
+
+install_opens_no_second_setup() {
+  make_repo
+  build_with_stub_swiftc
+  setup_app_running
+  omv install >/dev/null 2>&1 || true
+  assert_not_called '^open '
+}
+
+setup_says_setup_is_open() {
+  make_repo
+  build_with_stub_swiftc
+  setup_app_running
+  local output
+  output=$(omv setup 2>&1) && fail 'expected failure'
+  [[ $output == *'omv Setup is already open; quit it first'* ]] || fail "no message in: $output"
+}
+
+install_points_to_setup() {
+  make_repo
+  build_with_stub_swiftc
+  [[ $(omv install) == *'Continue in omv Setup'* ]] || fail 'no pointer to omv Setup'
+}
+
 install_leaves_install_to_setup() {
   make_repo
   build_with_stub_swiftc
@@ -926,13 +971,18 @@ run_case 'should build aerospace.toml when an earlier backup exists' builds_besi
 run_case "should not blame the user's file when a build step fails" blames_no_user_file_when_build_step_fails
 run_case "should name an unreadable aerospace.toml once when it can't be read" names_unreadable_file_once
 run_case "should say AeroSpace didn't accept the config when its reload fails during an update" says_aerospace_rejected_on_update
-run_case 'should open the setup app on omv setup' setup_opens_app
+run_case 'should open the setup app when running omv setup' setup_opens_app
 run_case "should give the setup app the repo's path on omv setup" setup_passes_repo
 run_case 'should build the setup app before opening it' setup_builds_before_opening
 run_case "should say how to fix it when the setup app can't be built" setup_says_how_to_fix_build
-run_case 'should build the setup app before installing' install_builds_setup_first
+run_case 'should build the setup app first when installing' install_builds_setup_first
 run_case "should open the setup app in install mode with the repo's path" install_opens_setup_in_install_mode
-run_case 'should leave the install to the setup app' install_leaves_install_to_setup
+run_case 'should leave the install to the setup app when it opens' install_leaves_install_to_setup
+run_case 'should pass --no-apps to the setup app when installing without apps' install_passes_no_apps_to_setup
+run_case 'should say omv Setup is open when installing while it runs' install_says_setup_is_open
+run_case 'should open no second omv Setup when installing while it runs' install_opens_no_second_setup
+run_case 'should say omv Setup is open when running omv setup while it runs' setup_says_setup_is_open
+run_case 'should point to omv Setup when it opens for the install' install_points_to_setup
 run_case 'should install in the terminal with --no-setup' installs_in_terminal_with_no_setup
 run_case 'should open no setup app with --no-setup' opens_no_setup_with_no_setup
 run_case "should install in the terminal when the setup app can't be built" installs_in_terminal_when_setup_cant_build

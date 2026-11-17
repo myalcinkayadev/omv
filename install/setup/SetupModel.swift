@@ -49,6 +49,19 @@ struct SetupProgress {
   var grants: [String: Grant] = [:]
   var ticked: Set<String> = []
   var skipped: Set<String> = []
+  // Permissions whose prompt omv brought up and whose answer hasn't come yet.
+  var asking: Set<String> = []
+
+  // New readings; a permission with an answer is no longer being asked.
+  mutating func take(_ readings: [String: Grant]) {
+    grants = readings
+    asking = asking.filter { grants[$0] == nil }
+  }
+
+  // A request that ended with no answer, say a helper that couldn't build: offer it again.
+  mutating func requestEnded(_ key: String) {
+    if grants[key] == nil { asking.remove(key) }
+  }
 
   func isGranted(_ permission: SetupPermission) -> Bool {
     permission.checkable ? grants[permission.key] == .granted : ticked.contains(permission.key)
@@ -124,7 +137,15 @@ enum SetupModel {
       ]),
   ]
 
-  static let screens: [String] = ["welcome"] + steps.map(\.id) + ["done"]
+  static let screens: [String] = ["welcome", "install"] + steps.map(\.id) + ["done"]
+
+  // A string as a Lua literal, for paths sent to Hammerspoon in hs -c.
+  static func luaQuoted(_ text: String) -> String {
+    let escaped = text.replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "\"", with: "\\\"")
+      .replacingOccurrences(of: "\n", with: "\\n")
+    return "\"" + escaped + "\""
+  }
 
   // Where the setup window goes when System Settings opens: beside it, on the right when it
   // fits, else on the left, top edges aligned and kept on screen. Nothing when neither side

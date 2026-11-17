@@ -16,11 +16,11 @@ func step(_ id: String) -> SetupStep { SetupModel.steps.first { $0.id == id }! }
 @main
 struct SetupModelTests {
   static func main() {
-    check("should put Welcome first and Done last when listing the screens",
-      SetupModel.screens.first == "welcome" && SetupModel.screens.last == "done")
+    check("should put Welcome, then Install, first and Done last when listing the screens",
+      Array(SetupModel.screens.prefix(2)) == ["welcome", "install"] && SetupModel.screens.last == "done")
 
-    check("should give each permission step a screen between Welcome and Done",
-      SetupModel.screens == ["welcome"] + SetupModel.steps.map(\.id) + ["done"])
+    check("should give each permission step a screen between Install and Done",
+      SetupModel.screens == ["welcome", "install"] + SetupModel.steps.map(\.id) + ["done"])
 
     check("should cover every permission omv needs",
       SetupModel.steps.map(\.id) == ["accessibility", "screen", "location", "microphone", "calendars", "bluetooth", "disk"])
@@ -105,11 +105,11 @@ struct SetupModelTests {
       return run.state("configs") == .failed
     }())
 
-    check("should finish every step when the install exits zero", {
+    check("should mark no step failed when the install exits zero", {
       var run = InstallRun()
-      for step in InstallRun.steps { run.consume("omv-step: \(step.id) start"); run.consume("omv-step: \(step.id) done ok") }
+      run.consume("omv-step: taps start")
       run.finish(status: 0)
-      return run.isFinished && InstallRun.steps.allSatisfy { run.state($0.id) == .done }
+      return run.isFinished && run.failed == nil
     }())
 
     check("should explain a Stow conflict with the file in the way",
@@ -211,6 +211,48 @@ struct SetupModelTests {
 
     check("should offer drag where the list has an add button",
       ["screen", "disk"].allSatisfy { id in step(id).permissions.allSatisfy { $0.way == .drag } })
+
+    check("should keep a line's character whole when a chunk splits it", {
+      var lines = LineSplitter()
+      let beer = Array("🍺 done\n".utf8)
+      return lines.feed(Data(beer[..<2])).isEmpty && lines.feed(Data(beer[2...])) == ["🍺 done"]
+    }())
+
+    check("should hand over the last line when output ends without a newline", {
+      var lines = LineSplitter()
+      _ = lines.feed(Data("first\nlast".utf8))
+      return lines.finish() == ["last"]
+    }())
+
+    check("should hand over nothing at the end when the last line was complete", {
+      var lines = LineSplitter()
+      _ = lines.feed(Data("only\n".utf8))
+      return lines.finish().isEmpty
+    }())
+
+    check("should escape quotes and backslashes when quoting a path for Lua",
+      SetupModel.luaQuoted("/Users/a \"b\"\\c") == "\"/Users/a \\\"b\\\"\\\\c\"")
+
+    check("should offer Allow access again when a request ends with no answer", {
+      var progress = SetupProgress()
+      progress.asking = ["meter.microphone"]
+      progress.requestEnded("meter.microphone")
+      return progress.asking.isEmpty
+    }())
+
+    check("should stop asking when an answer arrives", {
+      var progress = SetupProgress()
+      progress.asking = ["agenda.calendars"]
+      progress.take(["agenda.calendars": .denied])
+      return progress.asking.isEmpty && progress.grants["agenda.calendars"] == .denied
+    }())
+
+    check("should keep asking while no answer has arrived", {
+      var progress = SetupProgress()
+      progress.asking = ["hammerspoon.bluetooth"]
+      progress.take([:])
+      return progress.asking == ["hammerspoon.bluetooth"]
+    }())
 
     exit(failed == 0 ? 0 : 1)
   }

@@ -4,6 +4,7 @@
 // itself as the user turns a switch on in System Settings.
 
 import AppKit
+import Combine
 import SwiftUI
 
 enum Look {
@@ -35,10 +36,11 @@ enum SetupChecks {
     process.executableURL = URL(fileURLWithPath: path)
     process.arguments = arguments
     process.standardOutput = output
-    process.standardError = Pipe()
+    process.standardError = FileHandle.nullDevice
     guard (try? process.run()) != nil else { return (-1, "") }
-    process.waitUntilExit()
+    // Read to the end first: a full pipe would otherwise keep the process from exiting.
     let text = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    process.waitUntilExit()
     return (process.terminationStatus, text)
   }
 
@@ -76,26 +78,32 @@ enum SetupChecks {
 
   // Has Hammerspoon run blueutil --power and write what it printed. Asking Bluetooth this way
   // brings up macOS's prompt for Hammerspoon when it was never asked; the task doesn't block it.
-  static func bluetoothAccess() {
-    guard let hs = tool("hs"), let blueutil = tool("blueutil") else { return }
+  // Says what's missing when it can't ask.
+  static func bluetoothAccess() -> String? {
+    guard let hs = tool("hs") else { return "Hammerspoon's hs command is missing: omv install" }
+    guard let blueutil = tool("blueutil") else { return "blueutil is missing: brew install blueutil" }
     try? FileManager.default.createDirectory(at: accessDir, withIntermediateDirectories: true)
-    let file = accessDir.appendingPathComponent("bluetooth").path
-    run(hs, ["-t", "2", "-c", """
-      omvSetupBluetooth = hs.task.new("\(blueutil)", function(_, out) local f = io.open("\(file)", "w")       if f then f:write(out or "") f:close() end end, {"--power"}) omvSetupBluetooth:start()
-      """])
+    let file = SetupModel.luaQuoted(accessDir.appendingPathComponent("bluetooth").path)
+    let lua = "omvSetupBluetooth = hs.task.new(\(SetupModel.luaQuoted(blueutil)), function(_, out) "
+      + "local f = io.open(\(file), \"w\") if f then f:write(out or \"\") f:close() end end, {\"--power\"}) "
+      + "omvSetupBluetooth:start()"
+    return run(hs, ["-t", "2", "-c", lua]).0 == 0 ? nil : "Hammerspoon didn't answer; is it running?"
   }
 
   // Location: Hammerspoon starting its location updates brings up the prompt.
-  static func locationAccess() {
-    guard let hs = tool("hs") else { return }
-    run(hs, ["-t", "2", "-c", "hs.location.start()"])
+  static func locationAccess() -> String? {
+    guard let hs = tool("hs") else { return "Hammerspoon's hs command is missing: omv install" }
+    return run(hs, ["-t", "2", "-c", "hs.location.start()"]).0 == 0 ? nil : "Hammerspoon didn't answer; is it running?"
   }
 
-  // System Settings' frontmost window, from the window list (top-left origin). Its owner's
-  // name needs no Screen Recording permission, unlike its title.
+  // System Settings' frontmost window, from the window list (top-left origin). Its owner needs
+  // no Screen Recording permission, unlike its title.
   static func settingsFrame() -> CGRect? {
     let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
-    for window in windows where (window[kCGWindowOwnerName as String] as? String) == "System Settings"
+    // By its process, not its name, which is translated on a Mac in another language.
+    let settings = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.systempreferences")
+      .map(\.processIdentifier)
+    for window in windows where settings.contains(window[kCGWindowOwnerPID as String] as? pid_t ?? -1)
       && (window[kCGWindowLayer as String] as? Int) == 0 {
       if let bounds = window[kCGWindowBounds as String] as? NSDictionary, let rect = CGRect(dictionaryRepresentation: bounds) {
         return rect
@@ -131,16 +139,21 @@ final class SetupState: ObservableObject {
   @Published var screen = "welcome"
   @Published var opened: Set<String> = []
   @Published var showDetails = false
-  @Published var asking: Set<String> = []
+  // Why a permission can't be asked for, by its key.
+  @Published var problems: [String: String] = [:]
   let installer: Installer?
   let repo: String?
   private var timer: Timer?
   private var ticks = 0
   private var probing: Set<String> = []
+  private var reading = false
+  private var installerChanges: AnyCancellable?
 
   init(installer: Installer?, repo: String?) {
     self.installer = installer
     self.repo = repo
+    // The install's steps redraw as they change, not only on the next tick.
+    installerChanges = installer?.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }
     refresh()
     for name in ["microphone", "calendars"] { probe(name) }
     if hasAsked("bluetooth") { probe("bluetooth") }
@@ -154,43 +167,70 @@ final class SetupState: ObservableObject {
     FileManager.default.fileExists(atPath: SetupChecks.accessDir.appendingPathComponent(name).path)
   }
 
+  static let helperKeys = ["microphone": "meter.microphone", "calendars": "agenda.calendars", "bluetooth": "hammerspoon.bluetooth"]
+
   // Reads one helper's access again, at most one run at a time each. Bluetooth only once it
-  // was asked, as a first probe would bring up the prompt unasked.
+  // was asked, as a first probe would bring up the prompt unasked. The meter and the agenda
+  // wait for the prompt's answer, so once one ends a request with no answer is offered again.
   private func probe(_ name: String, request: Bool = false) {
     guard !probing.contains(name) else { return }
     if name == "bluetooth" && !request && !hasAsked(name) { return }
-    if name != "bluetooth" && repo == nil { return }
+    let key = SetupState.helperKeys[name]!
+    guard name == "bluetooth" || repo != nil else {
+      if request { cannotAsk(key, "opened without omv's folder: run omv setup") }
+      return
+    }
     probing.insert(name)
     let repo = repo
     DispatchQueue.global().async {
-      if name == "bluetooth" { SetupChecks.bluetoothAccess() } else { SetupChecks.helperAccess(repo!, name, request: request) }
-      DispatchQueue.main.async { self.probing.remove(name) }
+      var problem: String?
+      if name == "bluetooth" { problem = SetupChecks.bluetoothAccess() } else { SetupChecks.helperAccess(repo!, name, request: request) }
+      let answers = SetupChecks.readAccess()
+      DispatchQueue.main.async {
+        self.probing.remove(name)
+        guard request else { return }
+        if let problem { self.cannotAsk(key, problem); return }
+        guard name != "bluetooth" else { return }
+        self.progress.take(self.progress.grants.merging(answers) { $1 })
+        self.progress.requestEnded(key)
+      }
     }
+  }
+
+  private func cannotAsk(_ key: String, _ problem: String) {
+    problems[key] = problem
+    progress.requestEnded(key)
   }
 
   // Brings up macOS's prompt for a permission whose list has no add button.
   func ask(_ permission: SetupPermission) {
-    asking.insert(permission.key)
-    switch permission.key {
-    case "meter.microphone": probe("microphone", request: true)
-    case "agenda.calendars": probe("calendars", request: true)
-    case "hammerspoon.bluetooth": probe("bluetooth", request: true)
-    default: DispatchQueue.global().async { SetupChecks.locationAccess() }
+    problems[permission.key] = nil
+    progress.asking.insert(permission.key)
+    if let name = SetupState.helperKeys.first(where: { $0.value == permission.key })?.key {
+      probe(name, request: true)
+      return
+    }
+    DispatchQueue.global().async {
+      let problem = SetupChecks.locationAccess()
+      DispatchQueue.main.async { if let problem { self.cannotAsk(permission.key, problem) } }
     }
   }
 
-  var screens: [String] { ["welcome", "install"] + SetupModel.steps.map(\.id) + ["done"] }
+  var screens: [String] { SetupModel.screens }
 
   // Hammerspoon and AeroSpace every second; the helpers' answers on their own step every 3,
   // since each one starts an app.
   func refresh() {
     ticks += 1
-    if ticks % 3 == 0, ["microphone", "calendars", "bluetooth"].contains(screen) { probe(screen) }
+    if ticks % 3 == 0, SetupState.helperKeys[screen] != nil { probe(screen) }
+    // One reading at a time: hs can take 2 seconds, and an older answer mustn't land last.
+    guard !reading else { return }
+    reading = true
     DispatchQueue.global().async {
       let grants = SetupChecks.read().merging(SetupChecks.readAccess()) { $1 }
       DispatchQueue.main.async {
-        self.progress.grants = grants
-        self.asking = self.asking.filter { grants[$0] == nil }
+        self.progress.take(grants)
+        self.reading = false
       }
     }
   }
@@ -233,6 +273,12 @@ final class SetupState: ObservableObject {
     }
   }
 
+  // Install is reached through Welcome's button, which starts it; before that, the sidebar
+  // would show an install screen with nothing running.
+  func canGo(_ id: String) -> Bool {
+    id != "install" || installer == nil || installer?.started != nil
+  }
+
   func mark(_ id: String) -> String {
     if id == screen { return "●" }
     if id == "install" {
@@ -269,7 +315,7 @@ struct SetupView: View {
   var sidebar: some View {
     VStack(alignment: .leading, spacing: 4) {
       ForEach(state.screens, id: \.self) { id in
-        Button { state.go(id) } label: {
+        Button { if state.canGo(id) { state.go(id) } } label: {
           HStack(spacing: 10) {
             Text(state.mark(id)).frame(width: 16)
             Text(title(id))

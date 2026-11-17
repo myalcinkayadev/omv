@@ -49,7 +49,9 @@ struct AppRow: View {
         Text("✓ granted").font(Look.font(11))
       } else if state.progress.grants[permission.key] == .denied {
         Text("✗ off · switch it on in System Settings").font(Look.font(11)).foregroundColor(Look.soft)
-      } else if state.asking.contains(permission.key) {
+      } else if let problem = state.problems[permission.key] {
+        Text("✗ " + problem).font(Look.font(11)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
+      } else if state.progress.asking.contains(permission.key) {
         Text("◌ answer macOS's prompt").font(Look.font(11)).foregroundColor(Look.faint)
       } else {
         Button { state.ask(permission) } label: {

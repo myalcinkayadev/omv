@@ -284,7 +284,7 @@ reports_stow_conflict() {
 }
 
 run_case "should print each step's markers when OMV_STEPS is set" prints_step_markers
-run_case 'should print no step markers by default' prints_no_markers_by_default
+run_case 'should print no step markers when OMV_STEPS is unset' prints_no_markers_by_default
 run_case "should print a step's start marker before its work runs" marks_step_before_its_work
 run_case 'should write the physical path to the Hammerspoon setting when run through a symlinked folder' writes_physical_hammerspoon_path
 run_case "should finish installing when the user's aerospace.toml has an error" finishes_with_bad_user_aerospace

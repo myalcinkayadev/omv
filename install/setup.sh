@@ -40,7 +40,19 @@ build_setup_app() {
   codesign --force --sign - "$SETUP_APP" >/dev/null 2>&1 || true
 }
 
+# A second open would only bring the running one forward, without its arguments.
+setup_app_open() {
+  [ -n "$(pgrep -f "$SETUP_BINARY" 2>/dev/null || true)" ]
+}
+
+refuse_when_setup_open() {
+  setup_app_open || return 0
+  echo "omv: omv Setup is already open; quit it first" >&2
+  return 1
+}
+
 open_setup_app() {
+  refuse_when_setup_open || return 1
   build_setup_app || return 1
   open "$SETUP_APP" --args --repo "$REPO_DIR"
 }

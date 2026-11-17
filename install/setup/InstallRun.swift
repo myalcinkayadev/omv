@@ -83,3 +83,25 @@ struct InstallRun {
     return lines.last { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? "The install stopped."
   }
 }
+
+// Output arrives in chunks that can end mid-line, or mid-character: brew prints 🍺. Lines are
+// cut as bytes and decoded whole.
+struct LineSplitter {
+  private var pending = Data()
+
+  mutating func feed(_ data: Data) -> [String] {
+    pending.append(data)
+    var lines: [String] = []
+    while let newline = pending.firstIndex(of: UInt8(ascii: "\n")) {
+      lines.append(String(decoding: pending[pending.startIndex..<newline], as: UTF8.self))
+      pending = Data(pending[pending.index(after: newline)...])
+    }
+    return lines
+  }
+
+  // What's left once the output has ended: a last line with no newline.
+  mutating func finish() -> [String] {
+    defer { pending = Data() }
+    return pending.isEmpty ? [] : [String(decoding: pending, as: UTF8.self)]
+  }
+}
