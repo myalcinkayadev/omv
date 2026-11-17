@@ -25,6 +25,13 @@ enum SetupChecks {
     hs.location.authorizationStatus(), tostring((pcall(hs.fs.dir, os.getenv("HOME") .. "/Library/DoNotDisturb/DB")))}, ",")
     """
 
+  static let aerospaceID = "bobko.aerospace"
+
+  // A fresh install leaves AeroSpace closed, and only a running AeroSpace can say it's allowed.
+  static func openAeroSpace() {
+    run("/usr/bin/open", ["-g", "-b", aerospaceID])
+  }
+
   static func tool(_ name: String) -> String? {
     ["/opt/homebrew/bin/", "/usr/local/bin/"].map { $0 + name }.first { FileManager.default.isExecutableFile(atPath: $0) }
   }
@@ -51,7 +58,9 @@ enum SetupChecks {
       grants = SetupModel.hammerspoonGrants(answer.split(separator: "\n").last.map(String.init) ?? "")
     }
     if let aerospace = tool("aerospace") {
-      grants["aerospace.accessibility"] = run(aerospace, ["list-windows", "--all"]).0 == 0 ? .granted : .denied
+      let running = !NSRunningApplication.runningApplications(withBundleIdentifier: aerospaceID).isEmpty
+      grants["aerospace.accessibility"] = SetupModel.aerospaceGrant(running: running,
+        listed: running && run(aerospace, ["list-windows", "--all"]).0 == 0)
     }
     return grants
   }
@@ -245,11 +254,23 @@ final class SetupState: ObservableObject {
       DispatchQueue.main.async {
         self.progress.take(grants)
         self.reading = false
+        self.openAeroSpaceOnce()
       }
     }
   }
 
   var step: SetupStep? { SetupModel.steps.first { $0.id == screen } }
+
+  private var openedAeroSpace = false
+
+  // On the Accessibility step, a closed AeroSpace is opened once, so its check can answer;
+  // after that, its card offers to open it.
+  private func openAeroSpaceOnce() {
+    guard screen == "accessibility", !openedAeroSpace,
+      progress.grants["aerospace.accessibility"] == .notRunning else { return }
+    openedAeroSpace = true
+    DispatchQueue.global().async { SetupChecks.openAeroSpace() }
+  }
 
   func go(_ id: String) {
     screen = id

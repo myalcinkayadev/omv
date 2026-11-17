@@ -348,6 +348,22 @@ struct SetupModelTests {
         "`brew bundle` failed! 1 Brewfile dependency failed to install",
       ]) == "Homebrew couldn't take over /Applications/Zed.app, which macOS protects. It's installed already: run omv install --no-apps.")
 
+    check("should read AeroSpace as not running when it isn't running",
+      SetupModel.aerospaceGrant(running: false, listed: false) == .notRunning)
+
+    check("should keep the Accessibility step open while AeroSpace isn't running", {
+      var progress = SetupProgress()
+      progress.grants = ["aerospace.accessibility": .notRunning, "hammerspoon.accessibility": .granted]
+      progress.ticked = ["swipe.accessibility"]
+      return !progress.isComplete(step("accessibility"))
+    }())
+
+    check("should count AeroSpace as granted once it lists windows",
+      SetupModel.aerospaceGrant(running: true, listed: true) == .granted)
+
+    check("should read AeroSpace as not granted when it runs but can't list windows",
+      SetupModel.aerospaceGrant(running: true, listed: false) == .denied)
+
     exit(failed == 0 ? 0 : 1)
   }
 }

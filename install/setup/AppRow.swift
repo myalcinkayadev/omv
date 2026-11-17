@@ -37,6 +37,15 @@ struct AppRow: View {
 
   @ViewBuilder func status(_ granted: Bool) -> some View {
     switch permission.way {
+    case .drag where state.progress.grants[permission.key] == .notRunning:
+      VStack(alignment: .leading, spacing: 6) {
+        Text("✗ not running").font(Look.font(11)).foregroundColor(Look.soft)
+        Button { DispatchQueue.global().async { SetupChecks.openAeroSpace() } } label: {
+          Text("Open \(permission.app)").font(Look.font(11, .bold)).padding(.horizontal, 10).frame(height: 24)
+            .background(Color.white).foregroundColor(.black).cornerRadius(6)
+        }
+        .buttonStyle(.plain)
+      }
     case .drag:
       Text(granted ? "✓ granted" : "◌ waiting · drag me").font(Look.font(11)).foregroundColor(granted ? .white : Look.faint)
     case .tick:

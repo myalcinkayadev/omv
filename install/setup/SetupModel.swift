@@ -4,8 +4,10 @@
 import CoreGraphics
 import Foundation
 
+// notRunning: the app answers for itself and isn't running, so whether it's allowed can't be
+// read yet. AeroSpace's check needs it running.
 enum Grant {
-  case granted, denied
+  case granted, denied, notRunning
 }
 
 // How the user grants a permission: drag the app into a System Settings list that has an add
@@ -279,6 +281,12 @@ enum SetupModel {
     // Never asked: left open, so the step offers to ask.
     if fields[2] != "notDetermined" { grants["hammerspoon.location"] = grant(fields[2] == "authorized") }
     return grants
+  }
+
+  // AeroSpace is allowed when, running, it can list the windows; not running, it can't say.
+  static func aerospaceGrant(running: Bool, listed: Bool) -> Grant {
+    guard running else { return .notRunning }
+    return listed ? .granted : .denied
   }
 
   // What the access files in ~/.local/state/omv/access say, by file name. The meter and the
