@@ -46,6 +46,22 @@ function shell.run(command, arguments)
   end
 end
 
+-- Runs a script with osascript in the background and hands its output to done, or nil
+-- when it failed or took longer than seconds. Asking an app over Apple Events waits for its
+-- answer, and an app stuck in a dialog never answers: on Hammerspoon's main thread, as
+-- hs.osascript runs, that froze every card and key until the app was dealt with.
+function shell.osascript(source, language, seconds, done)
+  local timer = nil
+  local task = hs.task.new("/usr/bin/osascript", function(code, output)
+    if timer then timer:stop() end
+    done(code == 0 and output or nil)
+  end, { "-l", language, "-e", source })
+  if not task:start() then return done(nil) end
+  timer = hs.timer.doAfter(seconds, function()
+    if task:isRunning() then task:terminate() end
+  end)
+end
+
 function shell.open(arguments)
   return shell.run("/usr/bin/open", arguments)
 end

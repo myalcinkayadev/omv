@@ -221,4 +221,29 @@ check.that("should scroll in step with the song in between", math.abs(lyrics.pla
 check.that("should give no scroll for an unknown length", lyrics.plainScroll(10, 0) == nil)
 check.that("should stay at the bottom past the end", lyrics.plainScroll(240, 200) == 1)
 
+local MUSIC = { name = "Music", durationScale = 1 }
+local SPOTIFY = { name = "Spotify", durationScale = 1 / 1000 }
+
+check.that("should ask a player in JavaScript, and only when it's already running", (function()
+  local script = lyrics.playerScript("Music")
+  return check.contains(script, 'Application("Music")') and check.contains(script, ".running()")
+end)())
+
+local read = lyrics.playerReading("playing\31" .. "12.5\31Artist\31Title\31Album\31" .. "245.5\n", MUSIC, 100)
+check.that("should read the state and position from a player's answer",
+  read and read.playing == true and read.position == 12.5 and read.readAt == 100 and read.player == "Music")
+check.that("should read the track from a player's answer",
+  read and read.track.artist == "Artist" and read.track.title == "Title" and read.track.album == "Album" and read.track.duration == 245.5)
+
+local spotify = lyrics.playerReading("paused\31" .. "3\31A\31T\31B\31" .. "245000", SPOTIFY, 1)
+check.that("should scale Spotify's duration from milliseconds", spotify and spotify.track.duration == 245 and spotify.playing == false)
+
+check.that("should read nothing from a stopped player's empty answer", lyrics.playerReading("\n", MUSIC, 1) == nil)
+check.that("should read nothing when a player didn't answer", lyrics.playerReading(nil, MUSIC, 1) == nil)
+
+local paused, playing = { playing = false }, { playing = true }
+check.that("should pick the playing player over a paused one", lyrics.pickPlayback({ paused, playing }, 2) == playing)
+check.that("should pick a paused player when none is playing", lyrics.pickPlayback({ nil, paused }, 2) == paused)
+check.that("should pick nothing when no player answered", lyrics.pickPlayback({}, 2) == nil)
+
 check.finish()

@@ -517,4 +517,44 @@ function lyrics.html(track, shown, paused, artwork, accent)
     .. "<script>" .. SCRIPT .. "</script></body></html>"
 end
 
+-- The player is read by osascript, off Hammerspoon's main thread: a player stuck in a
+-- dialog never answers, and Hammerspoon waiting on it froze every card and key. JavaScript
+-- asks running() first, since asking a closed player would launch it, and writes numbers
+-- with a dot whatever the Mac's decimal separator. The fields are joined with the unit
+-- separator, which no title holds; a stopped player answers nothing.
+local SEPARATOR = "\31"
+
+function lyrics.playerScript(name)
+  return '(() => { const app = Application("' .. name .. '"); if (!app.running()) return "";'
+    .. ' const state = app.playerState(); if (state === "stopped") return "";'
+    .. ' const track = app.currentTrack();'
+    .. ' return [state, app.playerPosition(), track.artist(), track.name(), track.album(), track.duration()]'
+    .. '.join("\\u001f"); })()'
+end
+
+-- player is { name, durationScale }; readAt dates the position. nil for no answer.
+function lyrics.playerReading(answer, player, readAt)
+  local fields = {}
+  for field in ((answer or ""):gsub("\n$", "") .. SEPARATOR):gmatch("(.-)" .. SEPARATOR) do fields[#fields + 1] = field end
+  if #fields < 6 then return nil end
+  return {
+    playing = fields[1] == "playing",
+    position = tonumber(fields[2]) or 0,
+    readAt = readAt,
+    player = player.name,
+    track = { artist = fields[3], title = fields[4], album = fields[5], duration = (tonumber(fields[6]) or 0) * player.durationScale },
+  }
+end
+
+-- The playing reading, else the first paused one, from count readings in player order.
+function lyrics.pickPlayback(readings, count)
+  local paused = nil
+  for index = 1, count do
+    local reading = readings[index]
+    if reading and reading.playing then return reading end
+    paused = paused or reading
+  end
+  return paused
+end
+
 return lyrics

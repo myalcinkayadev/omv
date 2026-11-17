@@ -154,4 +154,10 @@ function claudewait.newlyAsking(before, after, viewedTty)
   return asking
 end
 
+-- The tty in osascript's answer to viewedScript, or nil when Ghostty answered nothing.
+function claudewait.viewedTty(answer)
+  local tty = (answer or ""):match("^%s*(.-)%s*$")
+  return tty ~= "" and tty or nil
+end
+
 return claudewait

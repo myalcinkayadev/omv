@@ -109,9 +109,12 @@ local GHOSTTY = "com.mitchellh.ghostty"
 local VIEW_SECONDS = 2
 local viewedTty = nil
 
-local function readViewed()
-  local ok, tty = hs.osascript.applescript(claudewait.viewedScript())
-  viewedTty = ok and type(tty) == "string" and tty or nil
+-- How long Ghostty gets to answer; a busy one is asked again at the next read.
+local VIEW_ANSWER_SECONDS = 2
+-- Set while Ghostty is being asked, so a slow answer never has a second ask piled on.
+local viewing = false
+
+local function markSeen()
   local marked = false
   for _, seen in ipairs(claudewait.seenNow(savedSessions(), viewedTty)) do
     local path = claudewait.STATE_DIR .. "/.seen-" .. seen.id
@@ -125,6 +128,17 @@ local function readViewed()
     end
   end
   if marked then hs.task.new(shell.SKETCHYBAR, nil, { "--trigger", "claude_waiting_change" }):start() end
+end
+
+-- Asked in the background: Ghostty not answering mustn't freeze Hammerspoon.
+local function readViewed()
+  if viewing then return end
+  viewing = true
+  shell.osascript(claudewait.viewedScript(), "AppleScript", VIEW_ANSWER_SECONDS, function(answer)
+    viewing = false
+    viewedTty = claudewait.viewedTty(answer)
+    markSeen()
+  end)
 end
 
 -- Kept on the feature, so they aren't garbage-collected.

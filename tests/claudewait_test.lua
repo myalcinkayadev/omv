@@ -142,4 +142,8 @@ local agentRows = claudewait.rows({
 check.that("should hint the agent's name for agents other than Claude", agentRows[1].hint == "codex · asks · 1 min")
 check.that("should hint no agent name for Claude", agentRows[2].hint == "done · 1 min")
 
+check.that("should read the viewed terminal from osascript's answer", claudewait.viewedTty("/dev/ttys003\n") == "/dev/ttys003")
+check.that("should read no terminal from an empty answer", claudewait.viewedTty("\n") == nil)
+check.that("should read no terminal when Ghostty didn't answer", claudewait.viewedTty(nil) == nil)
+
 check.finish()

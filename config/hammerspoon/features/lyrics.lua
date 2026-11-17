@@ -45,36 +45,26 @@ local function trackKey(track)
   return track and (track.artist .. "\n" .. track.title) or nil
 end
 
--- A list, so numbers arrive as numbers whatever the Mac's decimal separator.
--- No variable holds the track: Music reserves words like "playing" and "song".
-local function readPlayer(player)
-  local ok, answer = hs.osascript.applescript('tell application "' .. player.name .. '"\n'
-    .. "if player state is stopped then return {}\n"
-    .. "return {player state as string, player position, artist of current track, name of current track, "
-    .. "album of current track, duration of current track}\n"
-    .. "end tell")
-  if not ok or type(answer) ~= "table" or #answer < 6 then return nil end
-  return {
-    playing = answer[1] == "playing",
-    position = tonumber(answer[2]) or 0,
-    readAt = hs.timer.secondsSinceEpoch(),
-    player = player.name,
-    track = { artist = answer[3], title = answer[4], album = answer[5], duration = (tonumber(answer[6]) or 0) * player.durationScale },
-  }
-end
+-- How long a player gets to answer; one stuck in a dialog is given up on, and asked again
+-- at the next sync.
+local READ_SECONDS = 2
 
--- The playing player, else one paused on a track. Never asks one that isn't running,
--- since asking would launch it.
-local function readPlayback()
-  local paused = nil
+-- The playing player, else one paused on a track, to done; nil when none is. Never asks one
+-- that isn't running, since asking would launch it.
+local function readPlayback(done)
+  local running = {}
   for _, player in ipairs(PLAYERS) do
-    if hs.application.applicationsForBundleID(player.bundle)[1] then
-      local state = readPlayer(player)
-      if state and state.playing then return state end
-      paused = paused or state
-    end
+    if hs.application.applicationsForBundleID(player.bundle)[1] then running[#running + 1] = player end
   end
-  return paused
+  if #running == 0 then return done(nil) end
+  local readings, left = {}, #running
+  for index, player in ipairs(running) do
+    shell.osascript(lyrics.playerScript(player.name), "JavaScript", READ_SECONDS, function(answer)
+      readings[index] = lyrics.playerReading(answer, player, hs.timer.secondsSinceEpoch())
+      left = left - 1
+      if left == 0 then done(lyrics.pickPlayback(readings, #running)) end
+    end)
+  end
 end
 
 local function cachePath(track)
@@ -182,9 +172,9 @@ local function showArtwork(track, path)
   render()
 end
 
--- Music hands over the cover's bytes, written straight to the cache.
-local function musicArtwork(path)
-  local ok, answer = hs.osascript.applescript('tell application "Music"\n'
+-- Music hands over the cover's bytes, written straight to the cache; it answers "ok".
+local function musicArtworkScript(path)
+  return 'tell application "Music"\n'
     .. "if (count of artworks of current track) is 0 then return \"\"\n"
     .. "set art to raw data of artwork 1 of current track\n"
     .. "end tell\n"
@@ -192,15 +182,11 @@ local function musicArtwork(path)
     .. "set eof of target to 0\n"
     .. "write art to target\n"
     .. "close access target\n"
-    .. 'return "ok"')
-  return ok and answer == "ok"
+    .. 'return "ok"'
 end
 
-local function spotifyArtworkUrl()
-  local ok, answer = hs.osascript.applescript('tell application "Spotify" to return artwork url of current track')
-  if not ok or type(answer) ~= "string" or not answer:find("^https://") then return nil end
-  return answer
-end
+local SPOTIFY_ARTWORK = 'tell application "Spotify" to return artwork url of current track'
+local ARTWORK_SECONDS = 5
 
 -- Kept as a file like Music's, so the page needs no network and its color can be read.
 local function downloadArtwork(track, url, path)
@@ -230,15 +216,29 @@ local function loadArtwork(track, player)
   -- Music writes the cover here itself, so the folder must already exist.
   hs.fs.mkdir(CACHE_DIR)
   if hs.fs.attributes(path) then return showArtwork(track, path) end
-  if player == "Music" and musicArtwork(path) then return showArtwork(track, path) end
-  local url = player == "Spotify" and spotifyArtworkUrl() or nil
-  if url then return downloadArtwork(track, url, path) end
+  if player == "Music" then
+    return shell.osascript(musicArtworkScript(path), "AppleScript", ARTWORK_SECONDS, function(answer)
+      if (answer or ""):match("^ok") then return showArtwork(track, path) end
+      searchArtwork(track, path)
+    end)
+  end
+  if player == "Spotify" then
+    return shell.osascript(SPOTIFY_ARTWORK, "AppleScript", ARTWORK_SECONDS, function(answer)
+      local url = (answer or ""):match("^(https://%S+)")
+      if url then return downloadArtwork(track, url, path) end
+      searchArtwork(track, path)
+    end)
+  end
   searchArtwork(track, path)
 end
 
-local function sync()
+-- Set while the players are being read, so a slow one never has a second read piled on.
+local syncing = false
+
+-- A new reading of the player; a new track brings its cover and lyrics.
+local function changed(reading)
   local previous = trackKey(playback and playback.track)
-  playback = readPlayback()
+  playback = reading
   stale = true
   local current = trackKey(playback and playback.track)
   if current == previous then return end
@@ -249,6 +249,16 @@ local function sync()
   end
   loadArtwork(playback.track, playback.player)
   loadLyrics(playback.track)
+end
+
+local function sync()
+  if syncing then return end
+  syncing = true
+  readPlayback(function(reading)
+    syncing = false
+    -- The window may have closed while the player was being read.
+    if window then changed(reading) end
+  end)
 end
 
 local function scrollPlain(now)
