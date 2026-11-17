@@ -204,13 +204,39 @@ installs_from_brewfile() {
 }
 
 installs_the_apps() {
-  run_in_sandbox "$INSTALL" >/dev/null
-  assert_called "^brew bundle --file=$REPO_DIR/Brewfile.apps$"
+  run_in_sandbox OMV_APPLICATIONS_DIR="$SANDBOX/Applications" "$INSTALL" >/dev/null
+  assert_called "^brew install --cask helium-browser zed$"
 }
 
 skips_the_apps_when_asked() {
-  run_in_sandbox "$INSTALL" --no-apps >/dev/null
-  assert_not_called 'Brewfile\.apps'
+  run_in_sandbox OMV_APPLICATIONS_DIR="$SANDBOX/Applications" "$INSTALL" --no-apps >/dev/null
+  assert_not_called 'install --cask'
+}
+
+skips_an_app_already_in_applications() {
+  mkdir -p "$SANDBOX/Applications/Zed.app"
+  run_in_sandbox OMV_APPLICATIONS_DIR="$SANDBOX/Applications" "$INSTALL" >/dev/null
+  assert_called "^brew install --cask helium-browser$"
+}
+
+installs_no_app_when_all_are_there() {
+  mkdir -p "$SANDBOX/Applications/Zed.app" "$SANDBOX/Applications/Helium.app"
+  run_in_sandbox OMV_APPLICATIONS_DIR="$SANDBOX/Applications" "$INSTALL" >/dev/null
+  assert_not_called 'install --cask'
+}
+
+says_which_app_it_left() {
+  local output
+  mkdir -p "$SANDBOX/Applications/Zed.app"
+  output=$(run_in_sandbox OMV_APPLICATIONS_DIR="$SANDBOX/Applications" "$INSTALL" 2>&1)
+  [[ $output == *"Zed is already in Applications; omv uses it as it is"* ]] || fail "no note in: $output"
+}
+
+names_every_app_in_brewfile_apps() {
+  local casks apps
+  casks=$(grep -c '^cask ' "$REPO_DIR/Brewfile.apps")
+  apps=$(grep -cE '^cask "[^"]+" # .+\.app$' "$REPO_DIR/Brewfile.apps")
+  [ "$casks" -gt 0 ] && [ "$casks" = "$apps" ] || fail "$apps of $casks casks name their app"
 }
 
 changes_nothing_on_a_dry_run() {
@@ -318,6 +344,10 @@ run_case 'should report the failure when stow finds a conflicting real file' rep
 run_case 'should install the tools from the Brewfile' installs_from_brewfile
 run_case 'should install the apps from Brewfile.apps' installs_the_apps
 run_case 'should skip Brewfile.apps with --no-apps' skips_the_apps_when_asked
+run_case 'should skip an app already in Applications' skips_an_app_already_in_applications
+run_case 'should install no app when every one is already there' installs_no_app_when_all_are_there
+run_case 'should say which app it left as it is' says_which_app_it_left
+run_case 'should name the app of every cask in Brewfile.apps' names_every_app_in_brewfile_apps
 run_case 'should change nothing with --dry-run' changes_nothing_on_a_dry_run
 run_case 'should list each step with --dry-run' lists_steps_on_a_dry_run
 run_case 'should exit 2 on an unknown option' rejects_an_unknown_option

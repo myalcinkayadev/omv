@@ -340,6 +340,14 @@ struct SetupModelTests {
       return !files.isEmpty && files.allSatisfy { shown.contains("install/setup/previews/" + $0) }
     }())
 
+    check("should name the app when Homebrew can't take over one already installed",
+      InstallRun.failureReason([
+        "==> Adopting existing App at '/Applications/Zed.app'",
+        "chgrp: /Applications/Zed.app/Contents: Operation not permitted",
+        "Error: zed: Failure while executing; `/usr/bin/sudo -A -E -- chgrp -hR admin /Applications/Zed.app` exited with 1.",
+        "`brew bundle` failed! 1 Brewfile dependency failed to install",
+      ]) == "Homebrew couldn't take over /Applications/Zed.app, which macOS protects. It's installed already: run omv install --no-apps.")
+
     exit(failed == 0 ? 0 : 1)
   }
 }

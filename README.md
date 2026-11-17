@@ -570,7 +570,7 @@ bin/omv install --dry-run   # print each step, change nothing
 It's safe to run again. After the first run, `omv` is on your PATH. It:
 
 1. Trusts the third-party taps `nikitabobko/tap`, `felixkratz/formulae` and `mediosz/tap`, which Homebrew requires before installing from them.
-2. Installs everything in the `Brewfile` with `brew bundle`: AeroSpace, SketchyBar, borders, SwipeAeroSpace, Hammerspoon, Ghostty, the JetBrainsMono Nerd Font, `stow`, `jq`, `gh`, `luajit`, `btop`, Neovim and `blueutil`. Then the apps the keys open, in `Brewfile.apps`: Helium and Zed.
+2. Installs everything in the `Brewfile` with `brew bundle`: AeroSpace, SketchyBar, borders, SwipeAeroSpace, Hammerspoon, Ghostty, the JetBrainsMono Nerd Font, `stow`, `jq`, `gh`, `luajit`, `btop`, Neovim and `blueutil`. Then the apps the keys open, in `Brewfile.apps`: Helium and Zed, unless one is already in /Applications, which it leaves as it is.
 3. Links the packages in `config/` and `agents/` with Stow, and points Hammerspoon at `config/hammerspoon` (its `MJConfigFile` setting), restarting it if it's running.
 4. Adds the Claude usage line to your status line wrapper, and the hooks that tell the bar when a session waits.
 5. Hides the macOS menu bar, turns off "Displays have separate Spaces", turns off window-opening animations, lets Ctrl+Cmd drag a window from anywhere, and turns off macOS's three-finger horizontal swipe, so a swipe only switches workspace.

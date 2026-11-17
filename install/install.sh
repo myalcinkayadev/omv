@@ -19,6 +19,8 @@ source "$REPO_DIR/install/aerospace.sh"
 
 DRY_RUN=false
 APPS=true
+# Where the apps go; the tests point it at a sandbox.
+APPLICATIONS_DIR=${OMV_APPLICATIONS_DIR:-/Applications}
 for argument in "$@"; do
   case $argument in
     --dry-run) DRY_RUN=true ;;
@@ -64,8 +66,30 @@ install_tools() {
   mark taps done "${#TAPS[@]} trusted"
   mark tools start
   step brew bundle --file="$REPO_DIR/Brewfile"
-  if $APPS; then step brew bundle --file="$REPO_DIR/Brewfile.apps"; fi
+  if $APPS; then install_apps; fi
   mark tools done "the Brewfile is installed"
+}
+
+# The casks in Brewfile.apps whose app isn't in Applications yet. One that is, such as one
+# downloaded from its site, stays as it is: macOS won't let Homebrew take it over, and omv's
+# keys open it by name either way.
+missing_apps() {
+  local line
+  while IFS= read -r line; do
+    [[ $line =~ ^cask\ \"([^\"]+)\"\ \#\ (.+)\.app$ ]] || continue
+    if [ -d "$APPLICATIONS_DIR/${BASH_REMATCH[2]}.app" ]; then
+      echo "${BASH_REMATCH[2]} is already in Applications; omv uses it as it is." >&2
+      continue
+    fi
+    echo "${BASH_REMATCH[1]}"
+  done < "$REPO_DIR/Brewfile.apps"
+}
+
+install_apps() {
+  local casks=() cask
+  while IFS= read -r cask; do casks+=("$cask"); done < <(missing_apps)
+  [ "${#casks[@]}" -eq 0 ] && return 0
+  step brew install --cask "${casks[@]}"
 }
 
 link_configs() {

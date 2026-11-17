@@ -1,6 +1,8 @@
 # The apps omv's keys open: Option+Shift+Enter opens the browser, Option+Shift+N the editor.
 # To use others, skip this file with omv install --no-apps and name yours in
 # ~/.config/omv/apps (see the README).
+# Each cask names its app: omv install leaves an app already in /Applications as it is, since
+# macOS won't let Homebrew take over one installed another way.
 
-cask "helium-browser"
-cask "zed"
+cask "helium-browser" # Helium.app
+cask "zed" # Zed.app

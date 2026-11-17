@@ -77,6 +77,12 @@ struct InstallRun {
         return "~/" + path + " already exists, where omv links its own."
       }
     }
+    // An app installed another way, which macOS won't let Homebrew take over.
+    if lines.contains(where: { $0.contains("Operation not permitted") }),
+       let adopting = lines.first(where: { $0.contains("Adopting existing App at '") }),
+       let app = adopting.components(separatedBy: "'").dropFirst().first {
+      return "Homebrew couldn't take over \(app), which macOS protects. It's installed already: run omv install --no-apps."
+    }
     if lines.contains(where: { $0.contains("`brew bundle` failed") }) {
       return "Homebrew couldn't install everything in the Brewfile."
     }

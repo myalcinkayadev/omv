@@ -91,7 +91,9 @@ final class Installer: ObservableObject {
     process.terminate()
   }
 
-  var failureReason: String { InstallRun.failureReason(Array(run.output.suffix(40))) }
+  // All of it: Homebrew names the app it's adopting long before the hundreds of lines its
+  // refusal prints.
+  var failureReason: String { InstallRun.failureReason(run.output) }
 
   // The file a Stow conflict names, to show in Finder.
   var conflictPath: String? {
