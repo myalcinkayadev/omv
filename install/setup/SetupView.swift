@@ -402,8 +402,43 @@ struct SetupView: View {
         .font(Look.font(14)).foregroundColor(Look.soft).fixedSize(horizontal: false, vertical: true)
       Text("Skip any permission and come back with omv setup.").font(Look.font(13)).foregroundColor(Look.faint)
       Spacer()
+      if !installing { HStack { Spacer(); installedStatus; Spacer() } }
+      Spacer()
       HStack { Spacer(); primary(installing ? "Install  →" : "Start  →") { state.start() } }
     }
+  }
+
+  // Where omv stands when setup opens on an installed Mac: a large tick for what's done, then
+  // what's done and what's left, read from the permissions as they are now.
+  var installedStatus: some View {
+    let needed = SetupModel.steps.filter(\.needed)
+    let optional = SetupModel.steps.filter { !$0.needed }
+    let neededDone = needed.allSatisfy(state.progress.isComplete)
+    let optionalDone = optional.filter(state.progress.isComplete).count
+    return VStack(spacing: 18) {
+      Text("✓").font(Look.font(34, .bold)).foregroundColor(.black)
+        .frame(width: 76, height: 76).background(Circle().fill(Color.white))
+        .accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 0) {
+        statusRow(done: true, "omv", "tools, apps and configs in place")
+        statusRow(done: neededDone, needed.map(\.title).joined(separator: ", "), neededDone ? "granted" : "needed, not granted yet")
+        statusRow(done: optionalDone == optional.count, "Optional", "\(optionalDone) of \(optional.count) granted")
+      }
+      .frame(width: 440)
+      .overlay(RoundedRectangle(cornerRadius: 10).stroke(Look.line))
+    }
+  }
+
+  func statusRow(done: Bool, _ name: String, _ detail: String) -> some View {
+    HStack(spacing: 12) {
+      Text(done ? "✓" : "○").frame(width: 16).foregroundColor(done ? .white : Look.faint)
+      Text(name).foregroundColor(.white)
+      Spacer()
+      Text(detail).foregroundColor(done ? Look.soft : Look.faint)
+    }
+    .font(Look.font(13))
+    .padding(.horizontal, 16).frame(height: 44)
+    .accessibilityElement(children: .combine)
   }
 
   // The install's six steps, the running one with its live detail and time, a failed one with
