@@ -32,7 +32,7 @@ git clone https://github.com/myalcinkayadev/omv.git && cd omv
 bin/omv install
 ```
 
-It needs [Homebrew](https://brew.sh) and Xcode's Command Line Tools; [Install](#install) has the details and what it changes.
+This opens omv Setup, a window that runs the install step by step, then walks you through the permissions only you can grant. Only Accessibility is needed, for tiling; the rest are optional, and each step shows what it turns on. It needs [Homebrew](https://brew.sh) and Xcode's Command Line Tools; [Install](#install) has the details and what it changes.
 
 ## Features
 
