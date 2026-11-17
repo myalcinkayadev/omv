@@ -16,7 +16,7 @@ local LIST = {
   { key = "microphone", label = "Microphone", purpose = "the Sound card's level meter", pane = "Privacy_Microphone" },
   { key = "calendars", label = "Calendars", purpose = "today's events", pane = "Privacy_Calendars" },
   { key = "bluetooth", label = "Bluetooth", purpose = "the Bluetooth card", pane = "Privacy_Bluetooth" },
-  { key = "disk", label = "Full Disk Access", purpose = "Do Not Disturb in the bar", pane = "Privacy_AllFiles" },
+  { key = "disk", label = "Full Disk Access", purpose = "Do Not Disturb in the bar and the Disk card's cleanup sizes", pane = "Privacy_AllFiles" },
 }
 
 local BY_KEY = {}

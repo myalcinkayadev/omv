@@ -206,6 +206,11 @@ fix_leaves_hammerspoon() {
   assert_not_called '^(pkill|open).*Hammerspoon'
 }
 
+lists_disk_card_with_full_disk_access() {
+  complete_setup
+  expect_report 'Full Disk Access for Hammerspoon, to show Do Not Disturb in the bar and let the Disk card'
+}
+
 fix_changes_nothing() {
   complete_setup
   doctor --fix >/dev/null 2>&1 || fail 'expected exit 0'
@@ -687,6 +692,7 @@ run_case "should report when AeroSpace can't list windows" reports_missing_acces
 run_case 'should report a missing Claude usage line' reports_missing_usage_line
 run_case "should report missing waiting hooks in Claude's settings" reports_missing_waiting_hooks
 run_case 'should list the checks it cannot do as check by hand' lists_manual_checks
+run_case 'should name the Disk card when listing Full Disk Access' lists_disk_card_with_full_disk_access
 run_case 'should list Location for Hammerspoon as a check by hand' lists_location_check
 run_case 'should list Microphone for the meter helper as a check by hand' lists_microphone_check
 run_case 'should change nothing on the system' changes_nothing

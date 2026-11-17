@@ -417,7 +417,8 @@ Check by hand (macOS doesn't let a script read these), or open Permissions in th
   - Accessibility for SwipeAeroSpace, for three-finger swipes, and for Hammerspoon, for the
     volume and brightness pop-ups:
     System Settings > Privacy & Security > Accessibility
-  - Full Disk Access for Hammerspoon, to show Do Not Disturb in the bar:
+  - Full Disk Access for Hammerspoon, to show Do Not Disturb in the bar and let the Disk card
+    count the Trash and app caches it can clean:
     System Settings > Privacy & Security > Full Disk Access
   - A shortcut named "omv Do Not Disturb", for switching Do Not Disturb: in Shortcuts, one
     action, Set Focus: Do Not Disturb, Toggle

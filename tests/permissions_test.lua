@@ -24,6 +24,8 @@ end)())
 
 check.that("should say what each permission is for", check.contains(row(permissions.rows({}), "screen").hint, "capture"))
 
+check.that("should mention the Disk card when describing Full Disk Access", check.contains(row(permissions.rows({}), "disk").hint, "Disk card"))
+
 check.that("should list every permission omv needs", (function()
   local rows = permissions.rows({})
   for _, key in ipairs({ "accessibility", "aerospace", "swipe", "screen", "location", "microphone", "calendars", "bluetooth", "disk" }) do
