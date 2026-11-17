@@ -34,9 +34,14 @@ local function running(bundle)
   return hs.application.get(bundle) ~= nil
 end
 
-local function runScript(script)
-  local ok, found = hs.osascript.applescript(script)
-  return ok and found ~= false
+-- How long a terminal gets to answer whether it has the session.
+local FOCUS_SECONDS = 3
+
+-- A focus script answers false when its terminal hasn't the tty; no answer counts the same.
+local function runScript(script, answer)
+  shell.osascript(script, "AppleScript", FOCUS_SECONDS, function(output)
+    answer(output ~= nil and not output:match("^%s*false%s*$"))
+  end)
 end
 
 -- Every live session's row, asking first, then done, then working.
@@ -63,20 +68,26 @@ local TMUX = "/opt/homebrew/bin/tmux"
 
 -- A session in a tmux pane, such as an agent grid's: selects its pane, then brings forward
 -- the terminal attached to that tmux session. Only a plain target reaches the shell.
-local function focusTmux(row)
-  if not hs.fs.attributes(TMUX) then return false end
+local function focusTmux(row, done)
+  if not hs.fs.attributes(TMUX) then return done(false) end
   local panes = hs.execute(TMUX .. " list-panes -a -F '#{pane_tty} #{session_name}:#{window_index}.#{pane_index}' 2>/dev/null")
   local target = agentgrid.paneFor(panes, row.id)
-  if not target or not target:match("^[%w_%-]+:%d+%.%d+$") then return false end
+  if not target or not target:match("^[%w_%-]+:%d+%.%d+$") then return done(false) end
   hs.execute(TMUX .. " select-window -t " .. target .. " && " .. TMUX .. " select-pane -t " .. target)
   local client = agentgrid.clientFor(hs.execute(TMUX .. " list-clients -F '#{client_tty} #{session_name}' 2>/dev/null"), target)
-  return client ~= nil and claudewait.focus(client, running, runScript)
+  if not client then return done(false) end
+  claudewait.focus(client, running, runScript, done)
 end
 
 -- Goes to the session's terminal, its tmux pane, else the app it runs in, or says where it runs.
 function feature.focusRow(row)
-  if claudewait.focus(row.id, running, runScript) or focusTmux(row) or activateApp(row) then return end
-  shell.alert("Claude runs in " .. row.label .. ", which can't be brought forward", 2)
+  claudewait.focus(row.id, running, runScript, function(focused)
+    if focused then return end
+    focusTmux(row, function(tmuxFocused)
+      if tmuxFocused or activateApp(row) then return end
+      shell.alert("Claude runs in " .. row.label .. ", which can't be brought forward", 2)
+    end)
+  end)
 end
 
 local function waitingRows()

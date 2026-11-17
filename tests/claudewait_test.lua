@@ -85,25 +85,31 @@ check.that("should give no scripts for a session outside a terminal", #claudewai
 check.that("should give no scripts for a tty that isn't a plain device path",
   #claudewait.focusScripts('/dev/ttys1" & do shell script "x') == 0)
 
+-- The scripts answer through a callback, as osascript does in the background.
 local tried = {}
 local function recording(found)
   tried = {}
-  return function(script)
+  return function(script, answer)
     tried[#tried + 1] = script
-    return script == found
+    answer(script == found)
   end
 end
-claudewait.focus("/dev/ttys009", function(bundle) return bundle == TERMINAL end, recording(nil))
+local function focused(tty, running, run)
+  local result = nil
+  claudewait.focus(tty, running, run, function(done) result = done end)
+  return result
+end
+focused("/dev/ttys009", function(bundle) return bundle == TERMINAL end, recording(nil))
 check.that("should skip a terminal that isn't running",
   #tried == 1 and tried[1] == scriptFor(TERMINAL, "/dev/ttys009"))
-claudewait.focus("/dev/ttys009", everyTerminal, recording(scriptFor(ITERM, "/dev/ttys009")))
+focused("/dev/ttys009", everyTerminal, recording(scriptFor(ITERM, "/dev/ttys009")))
 check.that("should stop at the first terminal that finds the tty", #tried == 2)
 check.that("should report success when a terminal finds the tty",
-  claudewait.focus("/dev/ttys009", everyTerminal, recording(scriptFor(TERMINAL, "/dev/ttys009"))) == true)
+  focused("/dev/ttys009", everyTerminal, recording(scriptFor(TERMINAL, "/dev/ttys009"))) == true)
 check.that("should report failure when no terminal has the tty",
-  claudewait.focus("/dev/ttys009", everyTerminal, recording(nil)) == false)
+  focused("/dev/ttys009", everyTerminal, recording(nil)) == false)
 check.that("should report failure for a session outside a terminal",
-  claudewait.focus("-", everyTerminal, recording(nil)) == false)
+  focused("-", everyTerminal, recording(nil)) == false)
 
 -- A session you've seen leaves the pill until its state changes.
 check.that("should build the AppleScript that reads Ghostty's focused tty",

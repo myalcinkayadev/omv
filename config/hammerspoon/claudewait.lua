@@ -94,14 +94,23 @@ function claudewait.focusScripts(tty)
   return scripts
 end
 
--- Focuses the terminal on tty in the first running app that has it. Apps that aren't
--- running are skipped, since telling one to look would launch it.
--- running(bundle) says whether an app runs; run(script) says whether the script found the tty.
-function claudewait.focus(tty, running, run)
-  for _, entry in ipairs(claudewait.focusScripts(tty)) do
-    if running(entry.bundle) and run(entry.script) then return true end
+-- Focuses the terminal on tty in the first running app that has it, then calls done(true),
+-- or done(false) when none has it. Apps that aren't running are skipped, since telling one
+-- to look would launch it. running(bundle) says whether an app runs; run(script, answer)
+-- runs a script in the background and calls answer(found), so a terminal that doesn't
+-- answer can't freeze Hammerspoon.
+function claudewait.focus(tty, running, run, done)
+  local scripts = claudewait.focusScripts(tty)
+  local function try(index)
+    local entry = scripts[index]
+    if not entry then return done(false) end
+    if not running(entry.bundle) then return try(index + 1) end
+    run(entry.script, function(found)
+      if found then return done(true) end
+      try(index + 1)
+    end)
   end
-  return false
+  try(1)
 end
 
 -- The app a session runs in when no terminal app has its tty, such as Zed's terminal: the
