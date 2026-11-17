@@ -583,14 +583,19 @@ editor = Cursor
 
 Option+Shift+Enter, Option+Shift+N, Option+Shift+U and the pull request card then open those, after a Hammerspoon reload. The key list shows their names. Option+Shift+U copies the URL from Safari or any Chromium browser, such as Chrome, Brave or Arc. AeroSpace's workspace rules stay as they are: to send your browser to workspace 3, change Helium's bundle ID, `net.imput.helium`, to yours in `aerospace.toml`.
 
+### Setup
+
+`omv install` opens omv Setup, a window that runs the install, then walks you through the permissions only you can grant. For each one it opens the right place in System Settings, moves beside it when there's room, and ticks the permission off as you turn it on. Only Accessibility is needed, so AeroSpace can tile your windows. The other six are optional, and each step shows what it turns on. Skip any of them, and come back later with `omv setup`. With `omv install --no-setup`, it installs in the terminal instead, and the list it prints at the end says what to grant by hand.
+
+<img src="docs/setup.png" alt="omv Setup on the Accessibility step: AeroSpace granted, SwipeAeroSpace and Hammerspoon waiting, and beside them the tiled desktop, keys and pop-ups they turn on" width="720">
+
 Then, by hand:
 
-1. Open AeroSpace from Finder and grant Accessibility in System Settings.
-2. Log out and back in, so "Displays have separate Spaces" and macOS's three-finger swipe turn off.
-3. If the menu bar still shows, set System Settings > Menu Bar > "Automatically hide and show the menu bar" to Always.
-4. In System Settings > Displays > Arrange, leave each display a free bottom corner, because AeroSpace hides windows there.
-5. Open SwipeAeroSpace, grant Accessibility, and turn on Launch at Login in its Settings.
-6. Open Hammerspoon. On its first start it installs the `hs` command, into `/opt/homebrew/bin` on Apple Silicon or `/usr/local/bin` otherwise, which the bar's clicks and `omv doctor` use to reach it.
+1. Log out and back in, so "Displays have separate Spaces" and macOS's three-finger swipe turn off.
+2. If the menu bar still shows, set System Settings > Menu Bar > "Automatically hide and show the menu bar" to Always.
+3. In System Settings > Displays > Arrange, leave each display a free bottom corner, because AeroSpace hides windows there.
+4. Open SwipeAeroSpace and turn on Launch at Login in its Settings.
+5. Open Hammerspoon. On its first start it installs the `hs` command, into `/opt/homebrew/bin` on Apple Silicon or `/usr/local/bin` otherwise, which the bar's clicks and `omv doctor` use to reach it.
 
 It also puts the `omv` command on your PATH, next to Homebrew's commands. From then on:
 
