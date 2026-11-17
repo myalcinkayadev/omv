@@ -34,6 +34,15 @@ bin/omv install
 
 This opens omv Setup, a window that runs the install step by step, then walks you through the permissions only you can grant. Only Accessibility is needed, for tiling; the rest are optional, and each step shows what it turns on. It needs [Homebrew](https://brew.sh) and Xcode's Command Line Tools; [Install](#install) has the details and what it changes.
 
+<img src="docs/install.png" alt="omv Setup's Install step, finished: Homebrew taps trusted, the Brewfile installed, configs linked, the omv command on your PATH, hooks added for the agents found, and the macOS settings set" width="720">
+
+Before you trust it:
+
+- `bin/omv install --dry-run` prints every step it would run and changes nothing.
+- omv never asks for your password itself. Homebrew may, for an app it puts in /Applications.
+- Everything it runs is in [`install/install.sh`](install/install.sh), a plain shell script.
+- `omv uninstall` takes it back out; [Uninstall](#uninstall) says what it removes and what stays.
+
 ## Features
 
 - [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app plus a dev workspace, Vim-style keys, Option+Tab back to the last workspace, a tabbed layout, a focus border, and three-finger swipes.

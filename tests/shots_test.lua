@@ -6,7 +6,7 @@ local shots = dofile(arg[1] .. "/docs/shots.lua")
 
 -- The desktop shots need real windows, and omv Setup is a SwiftUI window, not a card, so
 -- they're taken by hand.
-local BY_HAND = { ["workspace-1.png"] = true, ["tabbed.png"] = true, ["bar.png"] = true, ["setup.png"] = true }
+local BY_HAND = { ["workspace-1.png"] = true, ["tabbed.png"] = true, ["bar.png"] = true, ["setup.png"] = true, ["install.png"] = true }
 local NOW = os.time({ year = 2026, month = 11, day = 13, hour = 10, min = 20 })
 
 local ok, list = pcall(shots.build, NOW)
