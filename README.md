@@ -1,6 +1,12 @@
 # omv
 
-A keyboard-driven macOS desktop for working with coding agents, with one look throughout. AeroSpace tiles the windows, SketchyBar draws the top bar, Hammerspoon adds menus, cards and app keys, and Ghostty, Neovim and btop share the Vantablack theme. It started from [Koen van Gilst's setup](https://koenvangilst.nl/lab/aerospace-sketchybar-macos-setup), with the [fixes listed at the end](#differences-from-the-article).
+A keyboard-driven desktop inspired by Omarchy, on the macOS you already have.
+
+[Omarchy](https://omarchy.org) is an opinionated, keyboard-driven Linux desktop: tiling windows, one theme everywhere, and a key for everything. To get it on a Mac, you install a second operating system beside macOS and boot into one or the other. omv is inspired by that way of working and brings it to macOS itself instead. You keep macOS, your apps and your files, with nothing to partition and no second system to boot into.
+
+AeroSpace tiles the windows, SketchyBar draws the top bar, Hammerspoon adds the menus, cards and app keys, and Ghostty, Neovim and btop share one theme. It's built for working with coding agents, and it started from [Koen van Gilst's setup](https://koenvangilst.nl/lab/aerospace-sketchybar-macos-setup), with the [fixes listed at the end](#differences-from-the-article).
+
+omv is an independent project, not affiliated with Omarchy. Its themes come from [Omarchy's](https://github.com/basecamp/omarchy) (MIT).
 
 ![Workspace 1 with btop and Neovim, under the top bar](docs/workspace-1.png)
 
