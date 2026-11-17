@@ -268,14 +268,14 @@ struct SetupModelTests {
 
     check("should name a preview image that exists for every image a step shows", {
       let repo = ProcessInfo.processInfo.environment["OMV_REPO"] ?? ""
-      let images = SetupModel.steps.flatMap { $0.parts.compactMap(\.image) }
+      let images = SetupModel.steps.flatMap { $0.parts.flatMap(\.images) }
       return !images.isEmpty && images.allSatisfy { image in
         SetupModel.previewPath(repo: repo, image: image).map { FileManager.default.fileExists(atPath: $0) } ?? false
       }
     }())
 
     check("should give no preview path when setup runs without omv's folder",
-      SetupModel.previewPath(repo: nil, image: "accessibility-1") == nil)
+      SetupModel.previewPath(repo: nil, image: "docs/sound.png") == nil)
 
     check("should title the button before macOS's prompt Continue, never Allow", SetupModel.askButton == "Continue")
 
@@ -325,6 +325,19 @@ struct SetupModelTests {
     check("should size the compact panel to fit every app card", {
       SetupModel.compactSize(apps: 3).height > SetupModel.compactSize(apps: 1).height
         && SetupModel.compactSize(apps: 3).height <= small.height
+    }())
+
+    check("should show the README's own card image for a feature that is a card",
+      step("microphone").parts.first?.images == ["docs/sound.png"])
+
+    check("should show both pop-ups for Hammerspoon's Accessibility",
+      step("accessibility").parts.last?.images == ["docs/osd-volume.png", "docs/osd-brightness.png"])
+
+    check("should keep no preview in install/setup/previews that no step shows", {
+      let repo = ProcessInfo.processInfo.environment["OMV_REPO"] ?? ""
+      let shown = Set(SetupModel.steps.flatMap { $0.parts.flatMap(\.images) })
+      let files = (try? FileManager.default.contentsOfDirectory(atPath: repo + "/install/setup/previews")) ?? []
+      return !files.isEmpty && files.allSatisfy { shown.contains("install/setup/previews/" + $0) }
     }())
 
     exit(failed == 0 ? 0 : 1)

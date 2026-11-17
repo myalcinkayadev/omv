@@ -1,6 +1,6 @@
 // The column beside a permission step: what the step turns on, as omv draws it. Each part names
-// the app that powers it, ticked once that app is granted, then shows an image of it from
-// install/setup/previews, its keys and a note. A part whose image is missing shows its text only.
+// the app that powers it, ticked once that app is granted, then shows its images, side by side
+// and shrunk to fit the column, its keys and a note. A missing image is left out.
 
 import AppKit
 import SwiftUI
@@ -26,10 +26,8 @@ struct TurnsOn: View {
           Text("✓").font(Look.font(11)).accessibilityLabel("granted")
         }
       }
-      if let image = part.image.flatMap(previewImage) {
-        Image(nsImage: image.picture).resizable().frame(width: image.size.width, height: image.size.height)
-          .accessibilityLabel(part.what)
-      }
+      let pictures = part.images.compactMap(previewImage)
+      if !pictures.isEmpty { picturesView(pictures).accessibilityLabel(part.what) }
       if !part.keys.isEmpty { keysView(part.keys) }
       if let note = part.note {
         Text(note).font(Look.font(11)).foregroundColor(Look.faint).fixedSize(horizontal: false, vertical: true)
@@ -37,7 +35,27 @@ struct TurnsOn: View {
     }
   }
 
-  // The previews are rendered at twice their size, for Retina screens.
+  static let columnWidth: CGFloat = 370
+  static let tallest: CGFloat = 380
+  static let gap: CGFloat = 10
+
+  // The images at their own size, or smaller so that together they fit the column's width and
+  // none is taller than the tallest a preview may be.
+  func picturesView(_ pictures: [(picture: NSImage, size: CGSize)]) -> some View {
+    let natural = pictures.map(\.size.width).reduce(0, +)
+    let room = TurnsOn.columnWidth - TurnsOn.gap * CGFloat(pictures.count - 1)
+    let byWidth = min(1, room / natural)
+    let byHeight = min(1, TurnsOn.tallest / (pictures.map(\.size.height).max() ?? 1))
+    let scale = min(byWidth, byHeight)
+    return HStack(alignment: .top, spacing: TurnsOn.gap) {
+      ForEach(Array(pictures.enumerated()), id: \.offset) { _, item in
+        Image(nsImage: item.picture).resizable().interpolation(.high)
+          .frame(width: item.size.width * scale, height: item.size.height * scale)
+      }
+    }
+  }
+
+  // The images are taken at twice their size, on a Retina screen.
   func previewImage(_ name: String) -> (picture: NSImage, size: CGSize)? {
     guard let path = SetupModel.previewPath(repo: state.repo, image: name),
       let picture = NSImage(contentsOfFile: path),

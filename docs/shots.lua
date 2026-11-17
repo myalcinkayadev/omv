@@ -1,6 +1,8 @@
 -- The README's card screenshots and the sample data each is drawn from, so no real network,
 -- place, event, path or clipboard ever reaches an image. docs/shoot.lua takes them in
 -- Hammerspoon; tests/shots_test.lua checks the list against the README.
+-- omv Setup shows some of these images beside its steps (install/setup/SetupModel.swift), so
+-- retaking them updates it too, and renaming one means renaming it there.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 --
 -- Each shot is { file, kind, ... }:

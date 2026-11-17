@@ -34,13 +34,15 @@ struct SetupKeys {
 }
 
 // One thing a step turns on, as the column beside the steps shows it: the app that powers it,
-// what it is, an image of it from install/setup/previews, its keys and a note. key is the
-// permission that powers it, ticked once granted.
+// what it is, images of it, its keys and a note. key is the permission that powers it, ticked
+// once granted. Images are paths in omv's folder: a card's is the README's own, from docs/,
+// which docs/shoot.sh takes from the real card; the desktop and the bar, which aren't cards,
+// are in install/setup/previews.
 struct SetupPart {
   let app: String
   let what: String
   var key: String? = nil
-  var image: String? = nil
+  var images: [String] = []
   var keys: [SetupKeys] = []
   var note: String? = nil
 }
@@ -138,7 +140,7 @@ enum SetupModel {
         SetupPermission(key: "hammerspoon.accessibility", app: "Hammerspoon", appPath: hammerspoon, way: .drag,
           role: "volume and brightness pop-ups"),
       ], needed: true, parts: [
-        SetupPart(app: "AeroSpace", what: "tiles every window", key: "aerospace.accessibility", image: "accessibility-1", keys: [
+        SetupPart(app: "AeroSpace", what: "tiles every window", key: "aerospace.accessibility", images: ["install/setup/previews/accessibility-1.png"], keys: [
           SetupKeys(keys: ["⌥", "H", "J", "K", "L"], does: "focus left, down, up, right"),
           SetupKeys(keys: ["⌥", "⇧", "H", "J", "K", "L"], does: "move the window"),
           SetupKeys(keys: ["⌥", "1–7"], does: "go to a workspace"),
@@ -146,23 +148,23 @@ enum SetupModel {
         SetupPart(app: "SwipeAeroSpace", what: "follows your swipes", key: "swipe.accessibility", keys: [
           SetupKeys(keys: ["three fingers", "← →"], does: "one workspace over; 7 wraps to 1"),
         ]),
-        SetupPart(app: "Hammerspoon", what: "volume and brightness pop-ups", key: "hammerspoon.accessibility", image: "accessibility-3"),
+        SetupPart(app: "Hammerspoon", what: "volume and brightness pop-ups", key: "hammerspoon.accessibility", images: ["docs/osd-volume.png", "docs/osd-brightness.png"]),
       ]),
     SetupStep(id: "screen", title: "Screen Recording",
       purpose: "Lets the capture menu take screenshots, read text from the screen and record it.",
       pane: "Privacy_ScreenCapture", permissions: [
         SetupPermission(key: "hammerspoon.screen", app: "Hammerspoon", appPath: hammerspoon, way: .drag, role: "the capture menu"),
       ], parts: [
-        SetupPart(app: "Hammerspoon", what: "the capture menu, ⌥⇧S", key: "hammerspoon.screen", image: "screen-1"),
-        SetupPart(app: "", what: "while a recording runs the bar says so; a click stops it", image: "screen-2"),
+        SetupPart(app: "Hammerspoon", what: "the capture menu, ⌥⇧S", key: "hammerspoon.screen", images: ["docs/capture.png"]),
+        SetupPart(app: "", what: "while a recording runs the bar says so; a click stops it", images: ["install/setup/previews/screen-2.png"]),
       ]),
     SetupStep(id: "location", title: "Location Services",
       purpose: "Gives the weather for where the Mac is, and the Wi-Fi network's name.",
       pane: "Privacy_LocationServices", permissions: [
         SetupPermission(key: "hammerspoon.location", app: "Hammerspoon", appPath: hammerspoon, way: .ask, role: "weather and the Wi-Fi name"),
       ], parts: [
-        SetupPart(app: "Hammerspoon", what: "the weather where the Mac is", key: "hammerspoon.location", image: "location-1"),
-        SetupPart(app: "Hammerspoon", what: "the network's name in the Wi-Fi card", image: "location-2",
+        SetupPart(app: "Hammerspoon", what: "the weather where the Mac is", key: "hammerspoon.location", images: ["docs/weather.png"]),
+        SetupPart(app: "Hammerspoon", what: "the network's name in the Wi-Fi card", images: ["docs/wifi.png"],
           note: "macOS hides the network's name from apps without Location."),
       ]),
     SetupStep(id: "microphone", title: "Microphone",
@@ -170,7 +172,7 @@ enum SetupModel {
       pane: "Privacy_Microphone", permissions: [
         SetupPermission(key: "meter.microphone", app: "omv meter", appPath: home + "/.cache/omv/Meter.app", way: .ask, role: "the mic level meter"),
       ], parts: [
-        SetupPart(app: "omv meter", what: "the live level under INPUT", key: "meter.microphone", image: "microphone-1",
+        SetupPart(app: "omv meter", what: "the live level under INPUT", key: "meter.microphone", images: ["docs/sound.png"],
           note: "The Sound card opens from the bar's volume icon."),
       ]),
     SetupStep(id: "calendars", title: "Calendars",
@@ -178,24 +180,24 @@ enum SetupModel {
       pane: "Privacy_Calendars", permissions: [
         SetupPermission(key: "agenda.calendars", app: "omv agenda", appPath: home + "/.cache/omv/Agenda.app", way: .ask, role: "today's events"),
       ], parts: [
-        SetupPart(app: "omv agenda", what: "today's events in the calendar card", key: "agenda.calendars", image: "calendars-1"),
-        SetupPart(app: "", what: "the next meeting in the bar, white from 5 minutes before; a click joins its call", image: "calendars-2"),
+        SetupPart(app: "omv agenda", what: "today's events in the calendar card", key: "agenda.calendars", images: ["docs/calendar.png"]),
+        SetupPart(app: "", what: "the next meeting in the bar, white from 5 minutes before; a click joins its call", images: ["install/setup/previews/calendars-2.png"]),
       ]),
     SetupStep(id: "bluetooth", title: "Bluetooth",
       purpose: "Lets the Bluetooth card list and connect your devices.",
       pane: "Privacy_Bluetooth", permissions: [
         SetupPermission(key: "hammerspoon.bluetooth", app: "Hammerspoon", appPath: hammerspoon, way: .ask, role: "the Bluetooth card"),
       ], parts: [
-        SetupPart(app: "Hammerspoon", what: "the Bluetooth card, from the bar", key: "hammerspoon.bluetooth", image: "bluetooth-1"),
+        SetupPart(app: "Hammerspoon", what: "the Bluetooth card, from the bar", key: "hammerspoon.bluetooth", images: ["docs/bluetooth.png"]),
       ]),
     SetupStep(id: "disk", title: "Full Disk Access",
       purpose: "Lets the bar show when Do Not Disturb is on, and the Disk card count the Trash and app caches it can clean.",
       pane: "Privacy_AllFiles", permissions: [
         SetupPermission(key: "hammerspoon.disk", app: "Hammerspoon", appPath: hammerspoon, way: .drag, role: "Do Not Disturb and the Disk card"),
       ], parts: [
-        SetupPart(app: "Hammerspoon", what: "Do Not Disturb in the bar", key: "hammerspoon.disk", image: "disk-1",
+        SetupPart(app: "Hammerspoon", what: "Do Not Disturb in the bar", key: "hammerspoon.disk", images: ["install/setup/previews/disk-1.png"],
           note: "Shows while a Focus is on, with its name. A click switches Do Not Disturb."),
-        SetupPart(app: "Hammerspoon", what: "the Disk card's cleanup sizes, ⌥⇧X", image: "disk-2",
+        SetupPart(app: "Hammerspoon", what: "the Disk card's cleanup sizes, ⌥⇧X", images: ["docs/disk.png"],
           note: "Hammerspoon measures Caches and logs with Mole. Without this access Mole skips the Trash and protected app caches, so the size comes out short."),
       ]),
   ]
@@ -210,7 +212,7 @@ enum SetupModel {
   // A preview image in omv's folder; nil when setup runs without it.
   static func previewPath(repo: String?, image: String) -> String? {
     guard let repo else { return nil }
-    return repo + "/install/setup/previews/" + image + ".png"
+    return repo + "/" + image
   }
 
   static let screens: [String] = ["welcome", "install"] + steps.map(\.id) + ["done"]
