@@ -371,7 +371,7 @@ fix_running() {
     pkill -x sketchybar
     wait_until_not 5 has_bars
     has_bars && pkill -9 -x sketchybar
-    nohup sketchybar >/dev/null 2>&1 &
+    nohup "$REPO_DIR/config/sketchybar/.config/sketchybar/start.sh" >/dev/null 2>&1 &
     echo '  → restarted SketchyBar'
     fixed=1
   fi

@@ -25,11 +25,11 @@ enum SetupChecks {
     hs.location.authorizationStatus(), tostring((pcall(hs.fs.dir, os.getenv("HOME") .. "/Library/DoNotDisturb/DB")))}, ",")
     """
 
-  static let aerospaceID = "bobko.aerospace"
+  static let aerospaceID = SetupModel.aerospaceID
 
-  // A fresh install leaves AeroSpace closed, and only a running AeroSpace can say it's allowed.
-  static func openAeroSpace() {
-    run("/usr/bin/open", ["-g", "-b", aerospaceID])
+  // Opens an app in the background, by its bundle ID.
+  static func openApp(_ bundleID: String) {
+    run("/usr/bin/open", ["-g", "-b", bundleID])
   }
 
   static func tool(_ name: String) -> String? {
@@ -254,22 +254,23 @@ final class SetupState: ObservableObject {
       DispatchQueue.main.async {
         self.progress.take(grants)
         self.reading = false
-        self.openAeroSpaceOnce()
+        self.openAppsOnce()
       }
     }
   }
 
   var step: SetupStep? { SetupModel.steps.first { $0.id == screen } }
 
-  private var openedAeroSpace = false
+  // Apps already opened by this window, each once; after that, AeroSpace's card offers to.
+  private var openedApps: Set<String> = []
 
-  // On the Accessibility step, a closed AeroSpace is opened once, so its check can answer;
-  // after that, its card offers to open it.
-  private func openAeroSpaceOnce() {
-    guard screen == "accessibility", !openedAeroSpace,
-      progress.grants["aerospace.accessibility"] == .notRunning else { return }
-    openedAeroSpace = true
-    DispatchQueue.global().async { SetupChecks.openAeroSpace() }
+  // On the Accessibility step, AeroSpace and SwipeAeroSpace are opened if they're closed.
+  private func openAppsOnce() {
+    let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
+    for bundleID in SetupModel.appsToOpen(screen: screen, running: running) where !openedApps.contains(bundleID) {
+      openedApps.insert(bundleID)
+      DispatchQueue.global().async { SetupChecks.openApp(bundleID) }
+    }
   }
 
   func go(_ id: String) {

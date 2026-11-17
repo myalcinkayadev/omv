@@ -364,6 +364,14 @@ struct SetupModelTests {
     check("should read AeroSpace as not granted when it runs but can't list windows",
       SetupModel.aerospaceGrant(running: true, listed: false) == .denied)
 
+    check("should open AeroSpace and SwipeAeroSpace on the Accessibility step when neither runs",
+      SetupModel.appsToOpen(screen: "accessibility", running: []) == ["bobko.aerospace", "club.mediosz.SwipeAeroSpace"])
+
+    check("should open only the app that isn't running",
+      SetupModel.appsToOpen(screen: "accessibility", running: ["bobko.aerospace"]) == ["club.mediosz.SwipeAeroSpace"])
+
+    check("should open no app on another step", SetupModel.appsToOpen(screen: "screen", running: []).isEmpty)
+
     exit(failed == 0 ? 0 : 1)
   }
 }

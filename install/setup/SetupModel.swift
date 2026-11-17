@@ -283,6 +283,17 @@ enum SetupModel {
     return grants
   }
 
+  // The apps the Accessibility step needs running: a fresh install leaves them closed, and
+  // AeroSpace only says it's allowed, and SwipeAeroSpace only swipes, while it runs.
+  static let aerospaceID = "bobko.aerospace"
+  static let swipeID = "club.mediosz.SwipeAeroSpace"
+
+  // The bundle IDs to open on screen, of those not running already.
+  static func appsToOpen(screen: String, running: Set<String>) -> [String] {
+    guard screen == "accessibility" else { return [] }
+    return [aerospaceID, swipeID].filter { !running.contains($0) }
+  }
+
   // AeroSpace is allowed when, running, it can list the windows; not running, it can't say.
   static func aerospaceGrant(running: Bool, listed: Bool) -> Grant {
     guard running else { return .notRunning }

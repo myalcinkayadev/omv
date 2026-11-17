@@ -189,7 +189,7 @@ fix_starts_one_bar() {
   complete_setup
   printf '500\n501\n' > "$SANDBOX/bars"
   [[ $(report --fix) == *'→ restarted SketchyBar'* ]] || fail 'no restarted line'
-  [ "$(grep -c '^nohup sketchybar$' "$CALL_LOG")" = 1 ] || fail 'expected one nohup sketchybar'
+  [ "$(grep -c '^nohup .*/sketchybar/start.sh$' "$CALL_LOG")" = 1 ] || fail 'expected one start through start.sh'
 }
 
 fix_reopens_hammerspoon() {

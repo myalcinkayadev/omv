@@ -40,7 +40,7 @@ struct AppRow: View {
     case .drag where state.progress.grants[permission.key] == .notRunning:
       VStack(alignment: .leading, spacing: 6) {
         Text("✗ not running").font(Look.font(11)).foregroundColor(Look.soft)
-        Button { DispatchQueue.global().async { SetupChecks.openAeroSpace() } } label: {
+        Button { DispatchQueue.global().async { SetupChecks.openApp(SetupChecks.aerospaceID) } } label: {
           Text("Open \(permission.app)").font(Look.font(11, .bold)).padding(.horizontal, 10).frame(height: 24)
             .background(Color.white).foregroundColor(.black).cornerRadius(6)
         }

@@ -129,7 +129,7 @@ class ConfigContract(unittest.TestCase):
 
     def test_should_start_the_bar_only_when_none_is_running(self) -> None:
         self.assertIn(
-            "exec-and-forget pgrep -x sketchybar >/dev/null || /opt/homebrew/bin/sketchybar",
+            "exec-and-forget $HOME/.config/sketchybar/start.sh",
             load_aerospace()["after-startup-command"],
         )
 
