@@ -292,14 +292,21 @@ While the card is open, it follows the charge and charging as they change, and t
 
 ## Weather
 
-The weather item shows the condition and the temperature where the Mac is. Click it, or press Option+Shift+O, for the weather card: the temperature, what it feels like, wind and humidity, and the next three days' highs and lows.
+The weather item shows the condition and the temperature where the Mac is. Click it, or press Option+Shift+O, for the weather card:
+
+- **Now:** the temperature and the sky in words, what it feels like, and today's high and low. Beside it, an arc shows where the sun is between sunrise and sunset, and how long until the next of them.
+- **Details:** wind with an arrow for where it blows, humidity, and the UV index with its level, from low to extreme.
+- **A summary** of what matters most in the next hours: when rain comes and when it's heaviest, or where the temperature goes and when fog sets in.
+- **The next twelve hours** as one temperature line, labelled every hour. The sky's icon shows only where it changes, and a band along the top shades it hour by hour. Night is shaded from sunset, and rain shows as columns by strength, light, moderate or heavy, with the strongest named. Point at an hour, or use Left and Right, to read its temperature, sky, rain and UV.
+- **The next three days,** each a bar from its low to its high, all on one scale so a cold day reads colder.
+- Opening the card plays a short animation, unless reduced motion is on in System Settings > Accessibility > Display.
 
 - The location comes from macOS's Location Services. The first time, macOS asks to let Hammerspoon use it. The city's name comes from macOS too.
 - The weather comes from [Open-Meteo](https://open-meteo.com), which needs no key. Only the location, rounded to about a kilometre, is sent.
 - It's read when Hammerspoon starts, every 30 minutes, when the Mac wakes, and when the card opens.
 - When a reading fails, the last one stays. With none yet, the item stays hidden and the card says why.
 
-<img src="docs/weather.png" alt="The weather card: temperature, feels-like, wind, humidity and three days ahead" width="500">
+<img src="docs/weather.png" alt="The weather card: 12°C and cloudy with the sun arc counting down to sunset, wind, humidity and UV, a summary of rain from 18:00, the next twelve hours as a temperature line with rain columns and night shading, and three days on one scale" width="500">
 
 ## Calendar and today's events
 

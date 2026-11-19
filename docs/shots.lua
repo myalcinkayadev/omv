@@ -70,11 +70,33 @@ local function bigShot(file, screen)
   return { file = file, kind = "card", big = true, crop = ".card", html = card.big(screen) }
 end
 
+-- A cloudy afternoon turning wet at dusk: the arc mid-afternoon, rain building to moderate
+-- after sunset, then a clear night, so the card shows all it can.
+local function weatherHours()
+  local time, temperature, code, day, rain, uv = {}, {}, {}, {}, {}, {}
+  local temps = { 12, 12, 11, 10, 9, 8, 8, 7, 6, 6, 5, 5, 4, 4, 4, 3, 3 }
+  local wet = { [4] = 0.6, [5] = 1.8, [6] = 3.4, [7] = 2.1, [8] = 0.7 }
+  for index = 0, 40 do
+    local hour = (15 + index) % 24
+    time[#time + 1] = string.format("2026-11-%02dT%02d:00", 13 + math.floor((15 + index) / 24), hour)
+    temperature[#temperature + 1] = temps[index + 1] or 3
+    rain[#rain + 1] = wet[index] or 0
+    code[#code + 1] = (wet[index] or 0) >= 2.5 and 63 or wet[index] and 61 or (index > 8 and 0 or 3)
+    day[#day + 1] = (hour >= 8 and hour < 17) and 1 or 0
+    uv[#uv + 1] = hour == 15 and 1 or 0
+  end
+  return { time = time, temperature_2m = temperature, weather_code = code, is_day = day, precipitation = rain, uv_index = uv }
+end
+
 local function weatherShot()
   local reading = weather.reading({
-    current = { temperature_2m = 4.6, apparent_temperature = 0.8, relative_humidity_2m = 43, wind_speed_10m = 19.7, weather_code = 0, is_day = 0 },
-    daily = { time = { "2026-11-08", "2026-11-09", "2026-11-10", "2026-11-11" }, weather_code = { 3, 2, 73, 45 },
-      temperature_2m_max = { 7, 8.2, 4.6, 11.4 }, temperature_2m_min = { -2, -3.4, -1, 0.3 } },
+    current = { temperature_2m = 12.4, apparent_temperature = 10.6, relative_humidity_2m = 64, wind_speed_10m = 18.2,
+      wind_direction_10m = 230, uv_index = 1.2, weather_code = 3, is_day = 1, time = "2026-11-13T15:20" },
+    hourly = weatherHours(),
+    daily = { time = { "2026-11-13", "2026-11-14", "2026-11-15", "2026-11-16" }, weather_code = { 3, 2, 73, 45 },
+      temperature_2m_max = { 13, 8.2, 4.6, 11.4 }, temperature_2m_min = { 3, -3.4, -1, 0.3 },
+      sunrise = { "2026-11-13T07:12", "2026-11-14T07:13", "2026-11-15T07:14", "2026-11-16T07:15" },
+      sunset = { "2026-11-13T16:48", "2026-11-14T16:47", "2026-11-15T16:46", "2026-11-16T16:45" } },
   })
   return { file = "weather.png", kind = "card", width = weather.WIDTH, height = weather.height(reading), html = weather.html(reading, "Ankara") }
 end
