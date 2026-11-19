@@ -7,7 +7,7 @@ local weather = require("weather")
 -- its temperature that plus 0.4, its sky clear, and it is day from 07:00 to 16:00.
 -- Index 21 is 20:00 and index 22 is 21:00 on the first day.
 local function hourly()
-  local times, chances, temperatures, codes, days = {}, {}, {}, {}, {}
+  local times, chances, temperatures, codes, days, amounts, uvs = {}, {}, {}, {}, {}, {}, {}
   for index = 0, 47 do
     local hour = index % 24
     times[#times + 1] = string.format("2026-11-%02dT%02d:00", 8 + math.floor(index / 24), hour)
@@ -15,8 +15,11 @@ local function hourly()
     temperatures[#temperatures + 1] = hour + 0.4
     codes[#codes + 1] = 0
     days[#days + 1] = (hour >= 7 and hour < 17) and 1 or 0
+    amounts[#amounts + 1] = 0
+    uvs[#uvs + 1] = 0
   end
-  return { time = times, precipitation_probability = chances, temperature_2m = temperatures, weather_code = codes, is_day = days }
+  return { time = times, precipitation_probability = chances, temperature_2m = temperatures, weather_code = codes,
+    is_day = days, precipitation = amounts, uv_index = uvs }
 end
 
 -- Shaped like Open-Meteo's answer to weather.url, after JSON decoding.
@@ -24,7 +27,7 @@ local function response()
   return {
     current = {
       temperature_2m = 4.6, apparent_temperature = 0.8, relative_humidity_2m = 43,
-      wind_speed_10m = 19.7, weather_code = 0, is_day = 0, time = "2026-11-08T20:30",
+      wind_speed_10m = 19.7, wind_direction_10m = 200, uv_index = 3.4, weather_code = 0, is_day = 0, time = "2026-11-08T20:30",
     },
     hourly = hourly(),
     daily = {
@@ -43,7 +46,7 @@ local page = check.visible(weather.html(reading, "Ankara"))
 
 check.that("should round the temperature when it has a fraction", reading.temp == 5)
 check.that("should show the temperature in °C on the card", check.contains(page, "5°C"))
-check.that("should show feels-like on the card", check.contains(page, "1°C"))
+check.that("should show feels-like on the card", check.contains(page, "Feels 1°"))
 check.that("should show wind in km/h on the card", check.contains(page, "20 km/h"))
 check.that("should show humidity on the card", check.contains(page, "43%"))
 check.that("should show the city uppercased on the card", check.contains(page, "ANKARA"))
@@ -94,19 +97,11 @@ check.that("should label the first hour NOW", reading.hours[1].label == "NOW")
 check.that("should label each later hour by when it starts", reading.hours[2].label == "21")
 check.that("should label the last of twelve hours by when it starts", reading.hours[12].label == "07")
 check.that("should wrap the label past midnight", reading.hours[4].label == "23")
-check.that("should take an hour's chance from the value at its end",
-  withHourly(function(h) h.precipitation_probability[21] = 0; h.precipitation_probability[22] = 70 end).hours[1].chance == 70)
 check.that("should take an hour's temperature from its start", reading.hours[1].temp == 20)
 check.that("should take an hour's icon from the value at its end",
   withHourly(function(h) h.weather_code[22] = 61 end).hours[1].icon == weather.icon(61, false))
-check.that("should round the chance down to the nearest ten",
-  withHourly(function(h) h.precipitation_probability[22] = 44 end).hours[1].chance == 40)
-check.that("should round the chance up to the nearest ten from halfway",
-  withHourly(function(h) h.precipitation_probability[22] = 45 end).hours[1].chance == 50)
-check.that("should show a dash when an hour's chance is missing",
-  check.contains(cardOf(withHourly(function(h) h.precipitation_probability[22] = nil end)), "20°—NOW"))
-check.that("should show a dash when an hour's temperature is missing",
-  check.contains(cardOf(withHourly(function(h) h.temperature_2m[21] = nil end)), "—20%NOW"))
+check.that("should take an hour's rain from the value at its end",
+  withHourly(function(h) h.precipitation[21] = 0; h.precipitation[22] = 1.2 end).hours[1].rain == 1.2)
 
 local noHourly = response()
 noHourly.hourly = nil
@@ -115,28 +110,87 @@ local noTime = response()
 noTime.current.time = nil
 check.that("should list no hours when the current time is missing", #weather.reading(noTime).hours == 0)
 
-local function oneHour(chance)
-  local single = weather.reading(response())
-  single.hours = { { label = "NOW", chance = chance, temp = 5, icon = "" } }
-  return weather.html(single, "Ankara")
-end
-check.that("should dim a chance under 30%", check.contains(oneHour(20), 'class="chance dim"'))
-check.that("should not dim a chance of 30% or more", not check.contains(oneHour(30), 'class="chance dim"'))
+-- Rain by strength, from millimetres an hour.
+check.that("should call a trace of rain no rain", weather.strength(0.1) == nil)
+check.that("should call under 2.5 mm an hour light", weather.strength(0.6) == "light")
+check.that("should call 2.5 mm an hour moderate", weather.strength(2.5) == "moderate")
+check.that("should call 7.6 mm an hour heavy", weather.strength(7.6) == "heavy")
 
-check.that("should show each hour's chance on the card", check.contains(page, "20%NOW"))
-local _, columns = weather.html(reading, "Ankara"):gsub("class=hour>", "")
-check.that("should render a column per hour", columns == 12)
-check.that("should title the row with what the % means", check.contains(page, "PRECIP %"))
-check.that("should omit the hourly row when there are no hours",
-  not check.contains(cardOf(weather.reading(noHourly)), "PRECIP %"))
+-- Index 24 is 23:00, the end of the hour from 22:00; index 25 is 00:00, the end of 23:00's.
+local rainy = withHourly(function(h) h.precipitation[24] = 1; h.precipitation[25] = 3 end)
+check.that("should sum up coming rain by its start, end and heaviest hour",
+  weather.summary(rainy) == "Rain from 22:00 to 00:00, heaviest at 23:00.")
+check.that("should start the summary at now when it rains now",
+  check.contains(weather.summary(withHourly(function(h) h.precipitation[22] = 1 end)), "Rain from now"))
+check.that("should sum up a dry spell by where the temperature goes",
+  weather.summary(reading) == "Dry. Cooling to 0° by 00:00.")
+check.that("should name when fog sets in on a dry spell",
+  weather.summary(withHourly(function(h) for i = 26, 34 do h.weather_code[i] = 45 end end))
+    == "Dry. Cooling to 0° by 00:00, fog from 00:00.")
+check.that("should show the summary on the card", check.contains(page, "Dry. Cooling to 0° by 00:00."))
+
+local rainyPage = weather.html(withHourly(function(h)
+  h.precipitation[24], h.precipitation[25], h.precipitation[26] = 1, 3, 1
+end), "Ankara")
+check.that("should name only the strongest run of rain on the card",
+  check.contains(rainyPage, ">moderate<") and not check.contains(rainyPage, ">light<"))
+check.that("should name no rain on a dry card", not check.contains(weather.html(reading, "Ankara"), "class=rain"))
+
+-- The hours as one line, with the sky only where it changes.
+local html = weather.html(reading, "Ankara")
+check.that("should draw the hours as one temperature line", check.contains(html, "<path class=line"))
+local _, skies = html:gsub("class=sky ", "")
+check.that("should show the sky only where it changes", skies == 2)
+local _, bands = html:gsub("class=band ", "")
+check.that("should shade a band for every hour's sky", bands == 12)
+local _, temps = html:gsub("class=lbl ", "")
+check.that("should label every hour's temperature", temps == 12)
+local _, clocks = html:gsub("class=tm ", "")
+check.that("should label every hour's time", clocks == 12)
+check.that("should not title the hours", not check.contains(page, "NEXT 12 HOURS") and not check.contains(page, "PRECIP"))
+check.that("should draw a flat line when every hour is the same",
+  not check.contains(weather.html(withHourly(function(h) for i = 1, #h.temperature_2m do h.temperature_2m[i] = 5 end end), "Ankara"), "nan"))
+check.that("should omit the hours when there are none",
+  not check.contains(weather.html(weather.reading(noHourly), "Ankara"), "<path class=line"))
 check.that("should make the card taller when there are hours",
   weather.height(reading) > weather.height(weather.reading(noHourly)))
+check.that("should make the card taller when rain needs its row",
+  weather.height(withHourly(function(h) h.precipitation[24] = 3 end)) > weather.height(reading))
 
-check.that("should show today's sunrise", check.contains(page, "07:12"))
-check.that("should show today's sunset", check.contains(page, "16:48"))
-check.that("should omit sunrise and sunset when the daily answer lacks them",
-  not check.contains(cardOf(withHourly(function(_, data) data.daily.sunrise, data.daily.sunset = nil, nil end)), "󰖜"))
+-- Night, from sunset to sunrise, shaded on the hours.
+check.that("should shade the night that falls in the hours", check.contains(html, "class=night"))
+local afternoon = withHourly(function(_, data) data.current.time = "2026-11-08T12:30" end)
+check.that("should mark sunset where it falls in the hours", check.contains(weather.html(afternoon, "Ankara"), "class=sunset"))
+check.that("should mark no sunset when it has passed", not check.contains(html, "class=sunset"))
+check.that("should show today's sunrise and sunset at the arc's ends", check.contains(page, "07:1216:48"))
+check.that("should count down to tomorrow's sunrise after sunset", check.contains(page, "Sunrise in 10h 43m"))
+check.that("should count down to sunset during the day", check.contains(cardOf(afternoon), "Sunset in 4h 18m"))
+check.that("should omit the arc when the daily answer lacks sunrise and sunset",
+  not check.contains(weather.html(withHourly(function(_, data) data.daily.sunrise, data.daily.sunset = nil, nil end), "Ankara"), "class=arc"))
 
+-- The header: the sky in words, today's high and low, and UV.
+check.that("should name the sky in words", weather.sky(2) == "Partly cloudy" and weather.sky(45) == "Fog" and weather.sky(95) == "Thunderstorm")
+check.that("should name an unknown sky cloudy", weather.sky(12345) == "Cloudy")
+check.that("should show the sky in words on the card", check.contains(page, "Clear"))
+check.that("should show today's high and low", check.contains(page, "H 7° L -2°"))
+check.that("should round UV", reading.uv == 3)
+check.that("should rate UV on the WHO scale", weather.uvLevel(2) == "low" and weather.uvLevel(3) == "moderate"
+  and weather.uvLevel(6) == "high" and weather.uvLevel(8) == "very high" and weather.uvLevel(11) == "extreme")
+check.that("should show UV with its rating", check.contains(page, "3 moderate"))
+check.that("should take an hour's UV from its start", withHourly(function(h) h.uv_index[21] = 4.6 end).hours[1].uv == 5)
+
+-- Wind with an arrow toward where it blows.
+check.that("should read where the wind comes from", reading.windFrom == 200)
+check.that("should point the wind arrow where it blows", check.contains(html, "rotate(20deg)"))
+check.that("should draw no arrow when the wind's direction is missing",
+  not check.contains(weather.html(withHourly(function(_, data) data.current.wind_direction_10m = nil end), "Ankara"), "class=arrow"))
+
+-- Days on one scale: the coldest low at the left end, the warmest high at the right.
+check.that("should start the coldest day's bar at the left", check.contains(html, "left:0%"))
+check.that("should end the warmest day's bar at the right", check.contains(html, "right:0%"))
+
+check.that("should put the place on its own line above the temperature",
+  html:find("class=place", 1, true) < html:find("class=temp", 1, true))
 check.that("should show the time of the reading next to the place", check.contains(page, "ANKARA · 20:30"))
 check.that("should omit the time when the current time is missing",
   not check.contains(cardOf(weather.reading(noTime)), "ANKARA ·"))
@@ -145,9 +199,11 @@ local url = weather.url(39.93, 32.85)
 check.that("should ask for the given latitude", check.contains(url, "latitude=39.93"))
 check.that("should ask for the given longitude", check.contains(url, "longitude=32.85"))
 check.that("should ask for the local time zone", check.contains(url, "timezone=auto"))
-check.that("should ask for the chance of rain each hour", check.contains(url, "hourly=precipitation_probability"))
-check.that("should ask for each hour's temperature, sky and daylight",
-  check.contains(url, "temperature_2m,weather_code,is_day&daily"))
+check.that("should ask for each hour's rain, temperature, sky and daylight",
+  check.contains(url, "hourly=precipitation,temperature_2m,weather_code,is_day,uv_index&daily"))
+check.that("should ask where the wind comes from", check.contains(url, "wind_direction_10m"))
+check.that("should ask for UV now and each hour", check.contains(url, "uv_index,weather_code,is_day&hourly")
+  and check.contains(url, "is_day,uv_index&daily"))
 check.that("should ask for sunrise and sunset", check.contains(url, "sunrise,sunset"))
 check.that("should ask for four days", check.contains(url, "forecast_days=4"))
 
