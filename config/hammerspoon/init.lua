@@ -101,6 +101,7 @@ bindKey(SUPER_SHIFT, "p", "Option+Shift+P", "Hungry processes and ports", "Tools
 bindKey(SUPER_SHIFT, "x", "Option+Shift+X", "Disk space and cleanup", "Tools", diskCard.toggle)
 bindKey(SUPER_SHIFT, "z", "Option+Shift+Z", "Night light on or off", "Tools", nightLight.toggle)
 bindKey(SUPER, "m", "Option+M", "Mute or unmute the mic", "Tools", mic.toggle)
+bindKey(SUPER, "o", "Option+O", "Next sound output", "Tools", soundCard.nextOutput)
 bindKey(SUPER_SHIFT, "q", "Option+Shift+Q", "Share with AirDrop", "Tools", airDrop.share)
 bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus)
 bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join)

@@ -50,7 +50,7 @@ Before you trust it:
 - [**Palette**](#palette): Option+Space finds any window, app or omv command as you type.
 - [**Key list**](#key-list): Option+/ shows every shortcut at once, and runs the one you pick.
 - [**System menu**](#system-menu): lock, sleep, restart and reload the tools.
-- [**Sound**](#sound): volume, mute, output and input devices, a live mic level, and Option+M to mute the mic from anywhere.
+- [**Sound**](#sound): volume, mute, output and input devices, a live mic level, Option+O for the next output, and Option+M to mute the mic from anywhere.
 - [**Wi-Fi and Ethernet**](#wi-fi-and-ethernet): the network, signal, address and router, a click away.
 - [**Agents**](#agents): Claude Code's session and weekly limits, one click to continue or start a session, and a pill when a session waits for you.
 - [**Battery**](#battery): charge, time left, cycles and power draw.
@@ -207,6 +207,8 @@ Click the volume item in the bar, or press Option+Shift+V, for the Sound card un
 - **The level meter** comes from a small Swift helper, `meter.swift`, built the first time into `~/.cache/omv/Meter.app`. It listens only while the card is open, so macOS shows its orange microphone dot until the card closes. The first time, macOS asks to let "omv meter" use the microphone. If you refuse, the meter stays empty and the rest of the card still works.
 
 <img src="docs/sound.png" alt="The Sound card: the speakers in use, AirPods and a monitor listed, and the mic level meter" width="420">
+
+**Next output.** Option+O switches to the next output, in the card's order, and a notice names it. A virtual device, such as Zoom's, is skipped unless it's in use.
 
 **Mic mute.** Option+M mutes or unmutes the mic from any app, so a meeting never needs its own window in front to go quiet. While it's muted, a red mic shows in the bar; click it to unmute.
 
@@ -538,6 +540,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 | Option+Shift+X | Disk card: free space and Mole's cleanups | |
 | Option+Shift+Z | Night light on or off | |
 | Option+M | Mute or unmute the mic | |
+| Option+O | Next sound output | |
 | Option+Shift+Q | Share the Finder selection, or what you copied, with AirDrop | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |

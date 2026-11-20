@@ -72,4 +72,17 @@ local switched = state()
 switched.outputs[1].current = false
 check.that("should keep the card when only the volume or the current device changes", sound.sameDevices(before, state()))
 
+-- Option+O moves to the next output, in the order the card lists them.
+local outputs = state().outputs
+local function uidOf(device) return device and device.uid end
+check.that("should pick the output after the current one when there are several", uidOf(sound.nextOutput(outputs)) == "dell")
+local last = state().outputs
+last[2].current, last[3].current = false, true
+check.that("should wrap to the first output when the current one is last", uidOf(sound.nextOutput(last)) == "BuiltInSpeakerDevice")
+check.that("should skip a virtual device that isn't in use", uidOf(sound.nextOutput(last)) ~= "zoom")
+check.that("should keep the current output when it's the only one", uidOf(sound.nextOutput({ { uid = "solo", name = "Speakers", current = true } })) == "solo")
+check.that("should give nothing when there's no output", sound.nextOutput({}) == nil)
+check.that("should start from the first output when none is current", uidOf(sound.nextOutput({ { uid = "a", name = "A" }, { uid = "b", name = "B" } })) == "a")
+check.that("should name the output it switched to", check.contains(sound.outputNotice({ name = "DELL U2723QE", transport = "DisplayPort" }), "DELL U2723QE"))
+
 check.finish()

@@ -198,6 +198,16 @@ onSoundMessage = function(message)
 end
 
 -- The meter starts first, so the card opens knowing the helper hasn't answered yet.
+-- Option+O: the next output, named in a notice; nothing changes when there's only one.
+function feature.nextOutput()
+  local output = hs.audiodevice.defaultOutputDevice()
+  local nextDevice = sound.nextOutput(deviceList(hs.audiodevice.allOutputDevices(), output))
+  if not nextDevice then return shell.alert("No output", 1.2) end
+  local device = hs.audiodevice.findDeviceByUID(nextDevice.uid)
+  if device and not nextDevice.current then device:setDefaultOutputDevice() end
+  shell.alert(sound.outputNotice(nextDevice), 1.2)
+end
+
 function feature.open()
   startMeter()
   showSound()

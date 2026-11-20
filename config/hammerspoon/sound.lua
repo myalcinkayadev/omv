@@ -45,6 +45,22 @@ local function shown(devices)
   return result
 end
 
+-- The output after the current one, in the card's order, back to the first after the last;
+-- the first when none is current, and nil when there are none. Option+O switches to it.
+function sound.nextOutput(outputs)
+  local list = shown(outputs)
+  if #list == 0 then return nil end
+  for index, device in ipairs(list) do
+    if device.current then return list[index % #list + 1] end
+  end
+  return list[1]
+end
+
+-- What the notice says after Option+O: the device's icon and name.
+function sound.outputNotice(device)
+  return sound.icon(device) .. "  " .. device.name
+end
+
 local function percent(volume)
   if not volume then return nil end
   return math.floor(volume + 0.5)
