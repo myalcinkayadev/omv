@@ -18,8 +18,11 @@ STUB
   chmod +x "$STUB_DIR/hs"
 }
 
+# hs gets 60 seconds to answer, not the plugin's 10: with the test files running in parallel,
+# a loaded Mac can hold a new process for over 10 seconds before it runs. A case that wants hs
+# to time out sets its own OMV_HS_SECONDS, which comes later and wins.
 run_plugin() {
-  run_in_sandbox NAME=bluetooth "$@" "$PLUGIN"
+  run_in_sandbox NAME=bluetooth OMV_HS_SECONDS=60 "$@" "$PLUGIN"
 }
 
 shows_on_icon() {
