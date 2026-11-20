@@ -3,6 +3,7 @@
 
 local placement = require("placement")
 local theme = require("theme")
+local paste = require("paste")
 
 local shell = {}
 
@@ -78,8 +79,8 @@ end
 -- A single webview is made once and only hidden between uses: a new one costs about
 -- 110ms to start WebKit, while showing new HTML in this one costs about 6ms.
 -- Escape is a hotkey while a card is open, so it closes the card even if typing never reached it.
--- Nothing here uses hs.window: it needs Accessibility, which Hammerspoon is not given,
--- and without it those calls stall.
+-- Nothing here uses hs.window except through shell.typingIn: it needs Accessibility, which
+-- Hammerspoon may not be given, and without it those calls stall.
 local panel = nil
 local closeOnEscape = nil
 local view = nil
@@ -93,6 +94,35 @@ function shell.close()
   view:hide()
   closeOnEscape:disable()
   if previous then previous:activate() end
+end
+
+-- The window you're typing in, read before a card opens so a pick can be pasted back into it;
+-- nil without Accessibility, which hs.window needs.
+function shell.typingIn()
+  if not paste.canLook(hs.accessibilityState()) then return nil end
+  local window = hs.window.focusedWindow()
+  return window and window:id()
+end
+
+-- After a pick put text on the clipboard and closed the card: Cmd+V once the window typing
+-- was in (from shell.typingIn) has focus again, waiting up to 0.6 seconds; otherwise the
+-- notice says it was only copied.
+local PASTE_WAIT = 0.6
+
+function shell.pasteBack(typingIn, notice)
+  if typingIn == nil then return shell.alert(notice, 1.2) end
+  local deadline = hs.timer.secondsSinceEpoch() + PASTE_WAIT
+  local function back()
+    return shell.typingIn() == typingIn
+  end
+  hs.timer.waitUntil(function()
+    return back() or hs.timer.secondsSinceEpoch() >= deadline
+  end, function()
+    if paste.way(hs.accessibilityState(), typingIn, shell.typingIn()) == "paste" then
+      return hs.eventtap.keyStroke({ "cmd" }, "v", 0)
+    end
+    shell.alert(notice, 1.2)
+  end, 0.05)
 end
 
 -- Whether the card named name is the one showing. With several names, any of them.

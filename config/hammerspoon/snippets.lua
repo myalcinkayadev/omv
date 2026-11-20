@@ -46,11 +46,4 @@ function snippets.rows(list)
   return rows
 end
 
--- After a pick: "paste" when Accessibility lets omv press Cmd+V and the window you were
--- typing in has focus again, else "copy", leaving the text on the clipboard for you.
-function snippets.way(accessible, before, after)
-  if accessible and before ~= nil and before == after then return "paste" end
-  return "copy"
-end
-
 return snippets

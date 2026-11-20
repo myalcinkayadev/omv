@@ -64,28 +64,12 @@ end
 -- without a reload. typingIn is the window that had focus before the palette.
 local SNIPPETS_PATH = shell.HOME .. "/.config/omv/snippets"
 local shownSnippets, typingIn = {}, nil
--- How long to wait for focus to come back to that window before only copying.
-local FOCUS_WAIT = 0.6
 
-local function focusedId()
-  local window = hs.window.focusedWindow()
-  return window and window:id()
-end
-
--- The snippet goes on the clipboard, then Cmd+V pastes it once the window you were typing in
--- has focus again; otherwise it stays on the clipboard and a notice says so.
+-- The snippet goes on the clipboard, then is pasted where you were typing; see shell.pasteBack.
 local function useSnippet(snippet)
   hs.pasteboard.setContents(snippet.text)
   shell.close()
-  local deadline = hs.timer.secondsSinceEpoch() + FOCUS_WAIT
-  hs.timer.waitUntil(function()
-    return focusedId() == typingIn or hs.timer.secondsSinceEpoch() >= deadline
-  end, function()
-    if snippets.way(hs.accessibilityState(), typingIn, focusedId()) == "paste" then
-      return hs.eventtap.keyStroke({ "cmd" }, "v", 0)
-    end
-    shell.alert("Copied " .. snippet.name, 1)
-  end, 0.05)
+  shell.pasteBack(typingIn, "Copied " .. snippet.name)
 end
 
 local function answer(text, rows)
@@ -173,7 +157,7 @@ end
 
 function feature.toggle()
   if shell.isOpen("windows") then return shell.close() end
-  typingIn = focusedId()
+  typingIn = shell.typingIn()
   shownSnippets = snippets.parse(shell.readText(SNIPPETS_PATH))
   hs.task.new(shell.AEROSPACE, function(code, output)
     local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY, snippets.rows(shownSnippets))

@@ -43,9 +43,4 @@ local all = palette.rows("1|Ghostty|1|~", { { name = "Zed", path = "/Application
 check.that("should list snippets after the windows", all[1].group == "Windows" and all[2].group == "Snippets")
 check.that("should list snippets before the apps", all[#rows + 2].group == "Apps")
 
-check.that("should paste when focus is back where you were typing", snippets.way(true, 7, 7) == "paste")
-check.that("should only copy when another window has focus", snippets.way(true, 7, 9) == "copy")
-check.that("should only copy when no window had focus before", snippets.way(true, nil, nil) == "copy")
-check.that("should only copy without Accessibility", snippets.way(false, 7, 7) == "copy")
-
 check.finish()
