@@ -28,7 +28,7 @@
 1. Wi-Fi off or Location refused (SSID nil, RSSI 0) → card shows `OFF` / `—`, never errors. Test in Task 1.
 2. Open-Meteo returns a payload missing `daily` or with fewer than 4 days → card shows what it has, no Lua error. Test in Task 3.
 3. A device that can't take a volume (volume `nil`) → slider disabled, `—`. Test in Task 2.
-4. Device names with `<`, `&`, `'` (e.g. "Mehmet's AirPods") → escaped in HTML and in `data-id`. Test in Task 2.
+4. Device names with `<`, `&`, `'` (e.g. "Alex's AirPods") → escaped in HTML and in `data-id`. Test in Task 2.
 5. Ethernet adapter present but unplugged (`status: inactive`) → bar item hidden, card not shown. Test in Task 4.
 
 ## File Structure
@@ -101,7 +101,7 @@
   - should show `NN%` for output and input volume, rounding 42.6 to `43%`.
   - should show `—` and a disabled slider when output volume is nil.
   - should show the mute switch off when muted.
-  - should escape `Mehmet's <AirPods>` in labels and `data-id`.
+  - should escape `Alex's <AirPods>` in labels and `data-id`.
   - should list no Sources section.
   - should use the headphones icon for AirPods (existing icon tests move from `menu_test.lua`).
   - menu: should not treat Sound as a screen to open; should list Sound without `›`.
