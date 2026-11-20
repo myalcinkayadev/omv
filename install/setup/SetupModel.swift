@@ -37,9 +37,9 @@ struct SetupKeys {
 
 // One thing a step turns on, as the column beside the steps shows it: the app that powers it,
 // what it is, images of it, its keys and a note. key is the permission that powers it, ticked
-// once granted. Images are paths in omv's folder: a card's is the README's own, from docs/,
-// which docs/shoot.sh takes from the real card; the desktop and the bar, which aren't cards,
-// are in install/setup/previews.
+// once granted. Images are paths in omv's folder: the README's own from docs/, which
+// docs/shoot.sh takes from the real cards, or a strip of the bar in install/setup/previews,
+// taken by hand as docs/shoot.sh says.
 struct SetupPart {
   let app: String
   let what: String
@@ -142,7 +142,7 @@ enum SetupModel {
         SetupPermission(key: "hammerspoon.accessibility", app: "Hammerspoon", appPath: hammerspoon, way: .drag,
           role: "volume and brightness pop-ups"),
       ], needed: true, parts: [
-        SetupPart(app: "AeroSpace", what: "tiles every window", key: "aerospace.accessibility", images: ["install/setup/previews/accessibility-1.png"], keys: [
+        SetupPart(app: "AeroSpace", what: "tiles every window", key: "aerospace.accessibility", images: ["docs/workspace-1.png"], keys: [
           SetupKeys(keys: ["⌥", "H", "J", "K", "L"], does: "focus left, down, up, right"),
           SetupKeys(keys: ["⌥", "⇧", "H", "J", "K", "L"], does: "move the window"),
           SetupKeys(keys: ["⌥", "1–7"], does: "go to a workspace"),

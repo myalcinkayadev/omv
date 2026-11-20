@@ -11,6 +11,11 @@
 #   bar.png          screencapture of the bar's 34pt on the built-in screen
 #   workspace-1.png  workspace 1 with btop and Neovim on the README
 #   tabbed.png       three windows tiled, then tabbed with Option+A, side by side
+# and omv Setup's strips of the bar in install/setup/previews, 740x72 from the right end of the
+# bar on the built-in screen, with every right item but volume and the clock hidden:
+#   screen-2.png     recording shown, as during a screen recording
+#   disk-1.png       focus shown, labeled Do Not Disturb
+#   calendars-2.png  meeting shown white, labeled a start time within 5 minutes
 
 docs=$(cd "$(dirname "$0")" && pwd)
 done_file=$(mktemp)
