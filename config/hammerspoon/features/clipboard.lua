@@ -1,7 +1,7 @@
 -- Clipboard history (Option+V): the text you copied in the last day, and the last 20
 -- images, newest first, kept in memory only, so a reload or restart forgets it. Secrets are skipped; see clipboard.lua.
--- Enter puts a copy back on the clipboard, for you to paste with Cmd+V: pasting for you
--- would need Accessibility, which omv doesn't grant. While paused, the bar says so.
+-- Enter puts a copy back on the clipboard and pastes it where you were typing; without
+-- Accessibility it's only copied, for you to paste with Cmd+V. While paused, the bar says so.
 
 local shell = require("shell")
 local card = require("card")
@@ -42,6 +42,9 @@ local function setPaused(paused)
   shell.alert(paused and "Clipboard history paused" or "Clipboard history on", 1.2)
 end
 
+-- The window you were typing in when the card opened, to paste a pick back into.
+local typingIn = nil
+
 local function onMessage(message)
   if message.type ~= "choose" then return shell.close() end
   shell.close()
@@ -58,11 +61,12 @@ local function onMessage(message)
   else
     hs.pasteboard.setContents(item.text)
   end
-  shell.alert("Copied · ⌘V to paste", 1.2)
+  shell.pasteBack(typingIn, "Copied · ⌘V to paste")
 end
 
 function feature.toggle()
   if shell.isOpen("clipboard") then return shell.close() end
+  typingIn = shell.typingIn()
   local rows = clipboard.rows(history, os.time())
   local screen = { prompt = "Clipboard…", rows = rows, compact = true }
   shell.show("clipboard", shell.centered(WIDTH, shell.listHeight(#rows, VISIBLE_ROWS)), card.html(screen), onMessage)
