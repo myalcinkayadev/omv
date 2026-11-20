@@ -51,4 +51,15 @@ check.that("should catch the brightness keys", osd.isBrightnessKey("BRIGHTNESS_U
 check.that("should leave the media keys alone", not osd.isVolumeKey("PLAY") and not osd.isBrightnessKey("PLAY"))
 check.that("should tell a key's direction", osd.direction("SOUND_UP") == 1 and osd.direction("BRIGHTNESS_DOWN") == -1)
 
+-- An external display's level is read again on the first press after a pause, as its own
+-- buttons may have changed it, and kept while a key is pressed again and again.
+check.that("should read the display on the first press", osd.isPause(nil, 100, 2) == true)
+check.that("should not read the display while a key is pressed again", osd.isPause(99, 100, 2) == false)
+check.that("should read the display after a pause", osd.isPause(90, 100, 2) == true)
+check.that("should count a gap of exactly the pause as one", osd.isPause(98, 100, 2) == true)
+check.that("should start from the level the display gives", osd.startLevel(30, 70) == 30)
+check.that("should start from the known level when the display gives junk", osd.startLevel(nil, 70) == 70)
+check.that("should start from the middle when no level was ever known", osd.startLevel(nil, nil) == 50)
+check.that("should start from a level of 0 the display gives", osd.startLevel(0, 70) == 0)
+
 check.finish()

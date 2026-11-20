@@ -70,7 +70,19 @@ function osd.likelyLevel(readings)
   return best
 end
 
-local VOLUME_KEYS = { SOUND_UP = 1, SOUND_DOWN = -1, MUTE = 0 }
+-- Whether a press at now comes after a pause: the first press, or one gap seconds or more
+-- after the last.
+function osd.isPause(lastPress, now, gap)
+  return lastPress == nil or now - lastPress >= gap
+end
+
+-- Where a press starts: the level the display just gave, else the last known one, else the
+-- middle.
+function osd.startLevel(reading, known)
+  return reading or known or 50
+end
+
+local VOLUME_KEYS ={ SOUND_UP = 1, SOUND_DOWN = -1, MUTE = 0 }
 local BRIGHTNESS_KEYS = { BRIGHTNESS_UP = 1, BRIGHTNESS_DOWN = -1 }
 
 function osd.isVolumeKey(key)

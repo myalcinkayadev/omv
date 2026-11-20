@@ -427,7 +427,7 @@ The volume, mute and brightness keys show omv's own pop-up instead of macOS's: a
 
 - **Volume** moves in macOS's 16 steps on the current output. An output macOS can't set the volume of, such as some HDMI displays, keeps macOS's own behavior.
 - **Fine steps:** hold Option with a volume or brightness key to move 1% at a time.
-- **Brightness** dims the display under the pointer: the built-in one directly, an external one over DDC with [m1ddc](https://github.com/waydabber/m1ddc). A held key changes the pop-up at once and the display once it settles, since DDC is slow. A display that doesn't answer DDC keeps macOS's behavior.
+- **Brightness** dims the display under the pointer: the built-in one directly, an external one over DDC with [m1ddc](https://github.com/waydabber/m1ddc). A held key changes the pop-up at once and the display once it settles, since DDC is slow. The first press after a pause reads the display first, so it starts from the level the display's own buttons left. A display that doesn't answer DDC keeps macOS's behavior.
 - Catching the keys needs Accessibility for Hammerspoon, in System Settings > Privacy & Security > Accessibility. Without it, the keys work as macOS's own.
 
 <img src="docs/osd-volume.png" alt="The volume pop-up: a speaker icon and 10 of 16 segments lit" width="320">

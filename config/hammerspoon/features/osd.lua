@@ -19,7 +19,9 @@ local DDC_SETTLE_SECONDS = 0.15
 local canvas = nil
 local hideTimer = nil
 -- The external displays m1ddc can dim, their brightness, and levels still to be written.
-local ddc = { displays = {}, levels = {}, pending = {} }
+-- pressed holds each display's last key press; waiting, the presses held while its level
+-- is read; limits, the timers that end a read the display doesn't answer.
+local ddc = { displays = {}, levels = {}, pending = {}, pressed = {}, waiting = {}, limits = {} }
 -- On the feature too, to look into from the console.
 feature.ddc = ddc
 
@@ -85,16 +87,51 @@ local writeDdc = hs.timer.delayed.new(DDC_SETTLE_SECONDS, function()
   ddc.pending = {}
 end)
 
+local function stepDdc(index, direction, fine)
+  local level = osd.step(osd.startLevel(nil, ddc.levels[index]), direction, fine)
+  ddc.levels[index], ddc.pending[index] = level, level
+  writeDdc:start()
+  show(osd.ICONS.brightness, level)
+end
+
+-- Ends a read: the display's answer, or nil when it gave junk or none in time, then the
+-- presses that waited for it.
+local function finishRead(index, reading)
+  local presses = ddc.waiting[index]
+  if not presses then return end
+  ddc.waiting[index] = nil
+  ddc.levels[index] = osd.startLevel(reading, ddc.levels[index])
+  for _, press in ipairs(presses) do stepDdc(index, press.direction, press.fine) end
+end
+
+-- The display's own buttons may have changed it since omv last knew, so the first press
+-- after a pause reads it first; presses close together step from what omv holds, which
+-- keeps a held key fast.
+local PAUSE_SECONDS = 2
+local READ_LIMIT_SECONDS = 1
+
+local function pressDdc(index, direction, fine)
+  local now = hs.timer.secondsSinceEpoch()
+  local pause = osd.isPause(ddc.pressed[index], now, PAUSE_SECONDS)
+  ddc.pressed[index] = now
+  local press = { direction = direction, fine = fine }
+  if ddc.waiting[index] then table.insert(ddc.waiting[index], press); return end
+  if not pause then stepDdc(index, direction, fine); return end
+  ddc.waiting[index] = { press }
+  local read = hs.task.new(M1DDC, function(_, output)
+    finishRead(index, osd.parseLevel(output))
+  end, { "display", tostring(index), "get", "luminance" })
+  if not (read and read:start()) then finishRead(index, nil); return end
+  ddc.limits[index] = hs.timer.doAfter(READ_LIMIT_SECONDS, function() finishRead(index, nil) end)
+end
+
 -- Returns false for a display neither macOS nor m1ddc can dim.
 local function changeBrightness(key, fine)
   local screen = shell.screen()
   local direction = osd.direction(key)
   local index = osd.displayFor(ddc.displays, screen:name())
   if index then
-    local level = osd.step(ddc.levels[index] or 50, direction, fine)
-    ddc.levels[index], ddc.pending[index] = level, level
-    writeDdc:start()
-    show(osd.ICONS.brightness, level)
+    pressDdc(index, direction, fine)
     return true
   end
   if not (screen:name() or ""):find("Built%-in") then return false end
@@ -109,7 +146,7 @@ local function changeBrightness(key, fine)
 end
 
 -- A display's brightness, read 3 times one after another, since some answer DDC reads with
--- junk; until a reading makes sense, a key starts from the middle.
+-- junk; it's what a key falls back on when the read on a press gives junk.
 local READS = 3
 
 local function readLevel(index, readings)
