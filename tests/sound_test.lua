@@ -7,7 +7,7 @@ local function state(overrides)
   local base = {
     outputs = {
       { uid = "BuiltInSpeakerDevice", name = "MacBook Pro Speakers", transport = "Built-in", current = false },
-      { uid = "aa-bb", name = "Mehmet's AirPods Pro", transport = "Bluetooth", current = true },
+      { uid = "aa-bb", name = "Alex's AirPods Pro", transport = "Bluetooth", current = true },
       { uid = "dell", name = "DELL U2723QE", transport = "DisplayPort", current = false },
       { uid = "zoom", name = "ZoomAudioDevice", transport = "Virtual", current = false },
     },
@@ -26,7 +26,7 @@ end
 local page = sound.html(state())
 local visible = check.visible(page)
 
-check.that("should show the current output's name uppercased when it opens", check.contains(visible, "MEHMET'S AIRPODS PRO"))
+check.that("should show the current output's name uppercased when it opens", check.contains(visible, "ALEX'S AIRPODS PRO"))
 check.that("should highlight the current output row when it opens", check.contains(page, 'class="dev current" data-kind="output" data-id="aa-bb"'))
 check.that("should highlight the current input row when it opens",
   check.contains(page, 'class="dev current" data-kind="input" data-id="BuiltInMicrophoneDevice"'))
@@ -47,14 +47,14 @@ check.that("should have a level meter for the input", check.contains(page, "clas
 check.that("should list no Sources section", not check.contains(visible, "SOURCES"))
 check.that("should say so when there are no outputs", check.contains(check.visible(sound.html(state({ outputs = {} }))), "No output devices"))
 
-local tricky = sound.html(state({ outputs = { { uid = 'x"<y', name = "Mehmet's <AirPods> & co", transport = "Bluetooth", current = true } } }))
-check.that("should escape markup in a device name", check.contains(tricky, "Mehmet's &lt;AirPods&gt; &amp; co"))
+local tricky = sound.html(state({ outputs = { { uid = 'x"<y', name = "Alex's <AirPods> & co", transport = "Bluetooth", current = true } } }))
+check.that("should escape markup in a device name", check.contains(tricky, "Alex's &lt;AirPods&gt; &amp; co"))
 check.that("should escape markup in a device id", check.contains(tricky, 'data-id="x&quot;&lt;y"'))
 
 check.that("should grow taller when there are more devices",
   sound.height(state()) > sound.height(state({ outputs = { { uid = "a", name = "a", transport = "Built-in", current = true } } })))
 
-check.that("should show headphones for AirPods", sound.icon({ name = "Mehmet's AirPods Pro", transport = "Bluetooth" }) == "󰋋")
+check.that("should show headphones for AirPods", sound.icon({ name = "Alex's AirPods Pro", transport = "Bluetooth" }) == "󰋋")
 check.that("should show a monitor for a display", sound.icon({ name = "DELL U2723QE", transport = "DisplayPort" }) == "󰍹")
 check.that("should show a speaker for built-in speakers", sound.icon({ name = "MacBook Pro Speakers", transport = "Built-in" }) == "󰓃")
 check.that("should show AirPlay for an AirPlay device", sound.icon({ name = "Living Room", transport = "AirPlay" }) == "󰄘")

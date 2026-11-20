@@ -7,10 +7,10 @@ local palette = require("palette")
 
 local FILE = [[
 # My snippets
-addr = Ataturk Blv. 12, Ankara
+reply = Thanks, I'll take a look today.
 
 email=me@example.com
-sign = Thanks,\nMehmet
+sign = Best regards,\nAlex
 broken line
  = no name
 email = work@example.com
@@ -23,19 +23,19 @@ local function find(name)
   end
 end
 
-check.that("should read a name = text line", find("addr").text == "Ataturk Blv. 12, Ankara")
+check.that("should read a name = text line", find("reply").text == "Thanks, I'll take a look today.")
 check.that("should read a line written without spaces around =", find("email") ~= nil)
 check.that("should skip comments and blank lines", #list == 3)
-check.that("should turn \\n into a line break", find("sign").text == "Thanks,\nMehmet")
+check.that("should turn \\n into a line break", find("sign").text == "Best regards,\nAlex")
 check.that("should keep the last one when a name appears twice", find("email").text == "work@example.com")
 check.that("should skip a line with no =", find("broken line") == nil)
 check.that("should skip a line with no name", find("") == nil)
 check.that("should give no snippets when the file is missing", #snippets.parse(nil) == 0)
 
 local rows = snippets.rows(list)
-check.that("should list a snippet in the palette by its name", rows[1].label == "addr")
+check.that("should list a snippet in the palette by its name", rows[1].label == "reply")
 check.that("should group snippets under Snippets", rows[1].group == "Snippets")
-check.that("should show the start of a snippet's text beside it", rows[3].hint == "Thanks, Mehmet")
+check.that("should show the start of a snippet's text beside it", rows[3].hint == "Best regards, Alex")
 check.that("should cut a long snippet's text short beside it", #snippets.rows({ { name = "long", text = string.rep("x", 80) } })[1].hint <= 40 + 3)
 check.that("should read a snippet row as a snippet", palette.parse(rows[2].id) == "snippet")
 check.that("should read which snippet a row is", select(2, palette.parse(rows[2].id)) == 2)

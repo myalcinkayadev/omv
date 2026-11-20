@@ -151,13 +151,13 @@ It converts too, with Enter copying the result the same way:
 
 ### Snippets
 
-Text you type often, such as an address or a sign-off, kept in `~/.config/omv/snippets`, one per line:
+Text you type often, such as a reply or a sign-off, kept in `~/.config/omv/snippets`, one per line:
 
 ```
 # name = text; \n is a line break
-addr = Ataturk Blv. 12, Ankara
+reply = Thanks, I'll take a look today.
 email = me@example.com
-sign = Thanks,\nMehmet
+sign = Best regards,\nAlex
 ```
 
 In the palette they're listed under Snippets, by name with the start of the text beside it. Type a name, press Enter, and the text is pasted where you were typing. omv puts it on the clipboard, waits for that window to have focus again, then presses Cmd+V, so the text stays on the clipboard afterwards. When that window doesn't come back, or Hammerspoon lacks Accessibility, it's only copied, and a notice says so. The file is read each time the palette opens, so an edit shows at once.
