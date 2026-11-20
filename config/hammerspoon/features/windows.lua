@@ -9,6 +9,7 @@ local windows = require("windows")
 local keys = require("features.keys")
 local flags = require("flags")
 local files = require("files")
+local rates = require("rates")
 
 local feature = {}
 
@@ -30,6 +31,32 @@ end
 -- A file's change time, for ranking the newest first; nil when it can't be read.
 local function modified(path)
   return hs.fs.attributes(path, "modification")
+end
+
+-- Currency rates, asked for by the page once per opening, when a currency conversion is
+-- typed. Saved ones under 4 hours old go at once; otherwise Frankfurter is asked, and the
+-- saved ones, if any, still go when it fails, their date shown beside the result.
+local RATES_PATH = rates.path(shell.HOME)
+
+local function sendRates(saved)
+  if saved and shell.isOpen("windows") then
+    shell.view():evaluateJavaScript("omvSetRates(" .. hs.json.encode(saved) .. ")")
+  end
+end
+
+local function giveRates()
+  local ok, saved = pcall(hs.json.read, RATES_PATH)
+  saved = ok and saved or nil
+  if not rates.stale(saved, os.time()) then return sendRates(saved) end
+  hs.http.asyncGet(rates.URL, nil, function(status, body)
+    local readable, answer = pcall(hs.json.decode, status == 200 and body or "")
+    local kept = rates.after(saved, readable and answer or nil, os.time())
+    if kept ~= saved then
+      os.execute("/bin/mkdir -p '" .. shell.STATE_DIR .. "'")
+      hs.json.write(kept, RATES_PATH, false, true)
+    end
+    sendRates(kept)
+  end)
 end
 
 local function answer(text, rows)
@@ -73,6 +100,7 @@ end
 
 local function onPaletteMessage(message)
   if message.type == "files" then return findFiles(message.id) end
+  if message.type == "rates" then return giveRates() end
   if message.type == "reveal" or message.type == "copy" then
     local action = palette.action(message.type, message.id)
     if not action then return end

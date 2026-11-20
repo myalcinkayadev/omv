@@ -85,6 +85,10 @@ local SCRIPT = [[
   // shows while a search may still find something.
   let filesPending = false;
 
+  // Currency rates, from Hammerspoon when the page asks; the calculator redraws with them.
+  let rates = null, ratesAsked = false;
+  window.omvSetRates = (given) => { rates = given; draw(); };
+
   // Called from Hammerspoon to update a row's hint while the card stays open.
   window.omvSetHint = (id, value) => {
     const row = rows.find((candidate) => candidate.dataset.id === id);
@@ -105,10 +109,17 @@ local SCRIPT = [[
       row.classList.toggle("hidden", !words.every((word) => haystack.includes(word)));
     });
     if (calc) {
-      const result = omvCalc(query);
+      // A sum first, then a conversion; a currency one asks Hammerspoon for rates, once.
+      let result = omvCalc(query), note = null;
+      if (result === null && typeof omvConvert === "function") {
+        if (!ratesAsked && omvConvert.wantsRates(query)) { ratesAsked = true; send("rates"); }
+        const converted = omvConvert(query, { now: Date.now(), rates: rates });
+        if (converted) { result = converted.value; note = converted.note; }
+      }
       calc.classList.toggle("hidden", result === null);
       calc.dataset.id = "calc:" + (result || "");
       calc.querySelector(".label").textContent = "= " + (result || "");
+      calc.querySelector(".hint").textContent = (note ? note + " · " : "") + "Enter copies";
     }
     groups.forEach((group) => {
       const name = group.dataset.name;

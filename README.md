@@ -47,7 +47,7 @@ Before you trust it:
 
 - [**Tiling and workspaces**](#tiling-and-workspaces): six workspaces with fixed homes for each app plus a dev workspace, Vim-style keys, Option+Tab back to the last workspace, a tabbed layout, a focus border, and three-finger swipes.
 - [**The bar**](#the-bar): workspaces, the playing track, reminders, meetings, Claude usage, and a macOS-style clock that stays clear of the notch.
-- [**Palette**](#palette): Option+Space finds any window, app or omv command as you type.
+- [**Palette**](#palette): Option+Space finds any window, app or omv command as you type, works out sums, and converts units, currencies and dates.
 - [**Key list**](#key-list): Option+/ shows every shortcut at once, and runs the one you pick.
 - [**System menu**](#system-menu): lock, sleep, restart and reload the tools.
 - [**Sound**](#sound): volume, mute, output and input devices, a live mic level, Option+O for the next output, and Option+M to mute the mic from anywhere.
@@ -142,6 +142,12 @@ Option+Shift+Space shows or hides the bar.
 Option+Space opens one list, like Omarchy's: every open window with its app and workspace, then every app in `/Applications`, `/System/Applications` and `~/Applications`, then every omv command the [key list](#key-list) can run, such as the Wi-Fi card or the capture menu. Type to filter by name, app, workspace number or key, and press Enter to go to the window, open the app or run the command.
 
 Type a sum, such as `2*35`, and its result shows first: `= 70`. Enter copies it. It reads `+ - * / ^`, `%` for the remainder, brackets and decimals. A lone number, or a name with digits such as `omv-14`, filters as usual.
+
+It converts too, with Enter copying the result the same way:
+
+- **Units:** `5 km to mi`, `100 f in c`, `1.5 GB to MB`, `90 min to h`, `100 km/h to mph`. Length, mass, volume, temperature, data, time and speed. GB and MB are decimal; GiB and MiB are binary.
+- **Currencies:** `100 usd to eur`, with any two three-letter codes. Rates come from [Frankfurter](https://frankfurter.dev), free and keyless, and only once a currency is typed. They're saved in `~/.local/state/omv/rates.json` and fetched again once 4 hours old. The rate's date shows beside the result. Offline, the saved rates still work.
+- **Dates:** `today + 30 days`, `2027-01-31 + 1 month`, `in 3 weeks`, `days until 2026-12-25`, `days since 2026-11-10`. A month added to the 31st keeps to the last day of a shorter month.
 
 **File search** is off unless you turn it on:
 
