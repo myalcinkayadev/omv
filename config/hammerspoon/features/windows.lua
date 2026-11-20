@@ -10,6 +10,7 @@ local keys = require("features.keys")
 local flags = require("flags")
 local files = require("files")
 local rates = require("rates")
+local snippets = require("snippets")
 
 local feature = {}
 
@@ -57,6 +58,34 @@ local function giveRates()
     end
     sendRates(kept)
   end)
+end
+
+-- Snippets, read from ~/.config/omv/snippets each time the palette opens, so an edit shows
+-- without a reload. typingIn is the window that had focus before the palette.
+local SNIPPETS_PATH = shell.HOME .. "/.config/omv/snippets"
+local shownSnippets, typingIn = {}, nil
+-- How long to wait for focus to come back to that window before only copying.
+local FOCUS_WAIT = 0.6
+
+local function focusedId()
+  local window = hs.window.focusedWindow()
+  return window and window:id()
+end
+
+-- The snippet goes on the clipboard, then Cmd+V pastes it once the window you were typing in
+-- has focus again; otherwise it stays on the clipboard and a notice says so.
+local function useSnippet(snippet)
+  hs.pasteboard.setContents(snippet.text)
+  shell.close()
+  local deadline = hs.timer.secondsSinceEpoch() + FOCUS_WAIT
+  hs.timer.waitUntil(function()
+    return focusedId() == typingIn or hs.timer.secondsSinceEpoch() >= deadline
+  end, function()
+    if snippets.way(hs.accessibilityState(), typingIn, focusedId()) == "paste" then
+      return hs.eventtap.keyStroke({ "cmd" }, "v", 0)
+    end
+    shell.alert("Copied " .. snippet.name, 1)
+  end, 0.05)
 end
 
 local function answer(text, rows)
@@ -123,6 +152,11 @@ local function onPaletteMessage(message)
     shell.close()
     return shell.alert("Copied " .. value, 1)
   end
+  if kind == "snippet" then
+    local snippet = shownSnippets[value]
+    if snippet then return useSnippet(snippet) end
+    return shell.close()
+  end
   if kind == "file" then
     shell.close()
     return shell.open({ value })()
@@ -139,8 +173,10 @@ end
 
 function feature.toggle()
   if shell.isOpen("windows") then return shell.close() end
+  typingIn = focusedId()
+  shownSnippets = snippets.parse(shell.readText(SNIPPETS_PATH))
   hs.task.new(shell.AEROSPACE, function(code, output)
-    local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY)
+    local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY, snippets.rows(shownSnippets))
     shell.show("windows", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
       card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = true, files = fileSearch }), onPaletteMessage,
       -- Closed any way, by Escape, Option+Space or losing focus, a running mdfind stops too.

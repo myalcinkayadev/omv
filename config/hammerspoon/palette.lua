@@ -51,9 +51,11 @@ function palette.windowRows(output)
   return rows
 end
 
-function palette.rows(windowsOutput, apps, launchers, ownKey)
+-- Windows first, as the palette opens; snippets next, ahead of the apps and commands, so
+-- typing a snippet's name picks it.
+function palette.rows(windowsOutput, apps, launchers, ownKey, snippetRows)
   local rows = {}
-  for _, part in ipairs({ palette.windowRows(windowsOutput), palette.appRows(apps), palette.commandRows(launchers, ownKey) }) do
+  for _, part in ipairs({ palette.windowRows(windowsOutput), snippetRows or {}, palette.appRows(apps), palette.commandRows(launchers, ownKey) }) do
     for _, row in ipairs(part) do rows[#rows + 1] = row end
   end
   return rows
@@ -79,7 +81,7 @@ end
 function palette.parse(id)
   local kind, value = id:match("^(%a+):(.+)$")
   if kind == "window" or kind == "app" or kind == "calc" or kind == "file" then return kind, value end
-  if kind == "command" then return kind, tonumber(value) end
+  if kind == "command" or kind == "snippet" then return kind, tonumber(value) end
   return nil
 end
 

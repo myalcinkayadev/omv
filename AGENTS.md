@@ -23,6 +23,7 @@ overwrites. Create a file there only when the change needs it.
 | `~/.config/omv/nvim.lua` | Neovim | Lua, run after omv's `init.lua` |
 | `~/.config/omv/flags` | Feature flags | `name=on` or `name=off`; prefer `omv flags <name> on` |
 | `~/.config/omv/apps` | The browser and editor omv's keys open | `browser = Google Chrome`, `editor = Cursor` |
+| `~/.config/omv/snippets` | Text the palette pastes by name | `name = text` lines, `\n` for a line break |
 
 Then apply it:
 
