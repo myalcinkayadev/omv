@@ -120,6 +120,18 @@ function omvUnits(amount, from, to) {
   return { value: omvAmount(value) + " " + target.label, note: null };
 }
 
+// Currencies written as words; anything else of three letters is read as a code. "pound"
+// isn't here: it's a weight.
+const OMV_CURRENCY_NAMES = {
+  euro: "EUR", euros: "EUR", dollar: "USD", dollars: "USD", lira: "TRY", liras: "TRY", tl: "TRY",
+  yen: "JPY", franc: "CHF", francs: "CHF", yuan: "CNY", ruble: "RUB", rubles: "RUB",
+};
+
+function omvCurrencyCode(word) {
+  if (OMV_CURRENCY_NAMES[word]) return OMV_CURRENCY_NAMES[word];
+  return /^[a-z]{3}$/.test(word) ? word.toUpperCase() : null;
+}
+
 // A rate against the base: 1 for the base itself, nil when the rates don't list the code.
 function omvRate(rates, code) {
   if (code === rates.base) return { rate: 1, date: null };
@@ -133,11 +145,13 @@ function omvShortDate(iso) {
 
 function omvCurrency(amount, from, to, rates) {
   if (!rates || !rates.quotes) return null;
-  const source = omvRate(rates, from.toUpperCase()), target = omvRate(rates, to.toUpperCase());
+  const fromCode = omvCurrencyCode(from), toCode = omvCurrencyCode(to);
+  if (!fromCode || !toCode) return null;
+  const source = omvRate(rates, fromCode), target = omvRate(rates, toCode);
   if (!source || !target) return null;
   const value = amount / source.rate * target.rate;
   const dates = [source.date, target.date].filter(Boolean).sort();
-  return { value: (Math.round(value * 100) / 100).toFixed(2) + " " + to.toUpperCase(), note: dates.length ? "rate of " + omvShortDate(dates[0]) : null };
+  return { value: (Math.round(value * 100) / 100).toFixed(2) + " " + toCode, note: dates.length ? "rate of " + omvShortDate(dates[0]) : null };
 }
 
 // A real calendar date from YYYY-MM-DD, or null for one such as 2026-13-01.
@@ -197,13 +211,13 @@ function omvConvert(text, context) {
   return omvCurrency(amount, from, to, context && context.rates);
 }
 
-// Whether text reads as a currency conversion, three letters to three letters, so the page
-// asks Hammerspoon for rates only then.
+// Whether text reads as a currency conversion, a code or currency name on each side, so the
+// page asks Hammerspoon for rates only then.
 omvConvert.wantsRates = (text) => {
   const match = OMV_CONVERSION.exec(String(text));
   if (!match) return false;
   const from = match[2].toLowerCase(), to = match[3].toLowerCase();
-  return /^[a-z]{3}$/.test(from) && /^[a-z]{3}$/.test(to) && !OMV_UNITS[from] && !OMV_UNITS[to];
+  return Boolean(omvCurrencyCode(from) && omvCurrencyCode(to)) && !OMV_UNITS[from] && !OMV_UNITS[to];
 };
 
 if (typeof module !== "undefined") {

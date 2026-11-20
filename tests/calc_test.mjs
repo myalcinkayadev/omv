@@ -66,6 +66,14 @@ check("should give nothing for a currency when there are no rates", value("100 u
 check("should give nothing for an unknown currency code", value("100 xyz to eur", RATES) === null);
 check("should want rates for what looks like a currency conversion", convert.wantsRates("100 usd to eur") === true);
 check("should not want rates for a unit conversion", convert.wantsRates("5 km to mi") === false);
+check("should convert a currency named in words when typed 3 euro to try", value("3 euro to try", RATES) === value("3 eur to try", RATES));
+check("should read a plural currency name", value("3 euros to try", RATES) === value("3 eur to try", RATES));
+check("should read dollars as USD", value("10 dollars to try", RATES) === "418.52 TRY");
+check("should read lira as TRY", value("10 usd to lira", RATES) === "418.52 TRY");
+check("should read tl as TRY", value("418.52 tl to usd", RATES) === "10.00 USD");
+check("should keep pounds a weight", value("5 pounds to kg") === "2.268 kg");
+check("should give nothing for an unknown currency name", value("3 euro to xyz", RATES) === null);
+check("should want rates for a currency named in words", convert.wantsRates("3 euro to lira") === true);
 
 check("should give the date a number of days from today", value("today + 30 days") === "Sun Dec 20 2026");
 check("should go back from today with a minus", value("today - 1 week") === "Fri Nov 13 2026");

@@ -146,7 +146,7 @@ Type a sum, such as `2*35`, and its result shows first: `= 70`. Enter copies it.
 It converts too, with Enter copying the result the same way:
 
 - **Units:** `5 km to mi`, `100 f in c`, `1.5 GB to MB`, `90 min to h`, `100 km/h to mph`. Length, mass, volume, temperature, data, time and speed. GB and MB are decimal; GiB and MiB are binary.
-- **Currencies:** `100 usd to eur`, with any two three-letter codes. Rates come from [Frankfurter](https://frankfurter.dev), free and keyless, and only once a currency is typed. They're saved in `~/.local/state/omv/rates.json` and fetched again once 4 hours old. The rate's date shows beside the result. Offline, the saved rates still work.
+- **Currencies:** `100 usd to eur` or `3 euro to lira`, with any two three-letter codes or the common names: euro, dollar, lira (or tl), yen, franc, yuan, ruble. Rates come from [Frankfurter](https://frankfurter.dev), free and keyless, and only once a currency is typed. They're saved in `~/.local/state/omv/rates.json` and fetched again once 4 hours old. The rate's date shows beside the result. Offline, the saved rates still work.
 - **Dates:** `today + 30 days`, `2027-01-31 + 1 month`, `in 3 weeks`, `days until 2026-12-25`, `days since 2026-11-10`. A month added to the 31st keeps to the last day of a shorter month.
 
 ### Snippets
