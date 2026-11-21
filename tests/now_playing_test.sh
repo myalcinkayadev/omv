@@ -77,12 +77,13 @@ toggles_on_click() {
   assert_called '^osascript -e tell application "Music" to playpause$'
 }
 
+# The toggle exists only while the lyrics flag is on, so the call checks for it first.
 opens_lyrics_on_right_click() {
   stub_players
   stub hs
   playing Music 'Korn — Freak on a Leash'
   draw mouse.clicked 0 right
-  assert_called '^hs -c omvToggleLyrics\(\)$'
+  assert_called '^hs -c if omvToggleLyrics then omvToggleLyrics\(\) end$'
 }
 
 keeps_playing_on_right_click() {
