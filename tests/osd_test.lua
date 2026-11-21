@@ -14,6 +14,16 @@ check.that("should treat an unknown level as 0", osd.step(nil, 1) == 6.25)
 check.that("should step up from a level macOS reports a hair under a step", osd.step(43.749996, 1) == 50)
 check.that("should step down from a level macOS reports a hair over a step", osd.step(43.750004, -1) == 37.5)
 
+-- The built-in display takes whole percents and reads back up to about 1.25% low: 12.5% is
+-- set as 13 and read as 12, 6.25% as 6 and read as 5.
+local slack = osd.BRIGHTNESS_SLACK
+check.that("should step brightness up from 12.5% read back as 12", osd.step(12, 1, false, slack) == 18.75)
+check.that("should step brightness up from 6.25% read back as 5", osd.step(5, 1, false, slack) == 12.5)
+check.that("should step brightness up from 18.75% read back as 18", osd.step(18, 1, false, slack) == 25)
+check.that("should step brightness down from 12.5% read back as 12", osd.step(12, -1, false, slack) == 6.25)
+check.that("should step brightness up from a level on a step", osd.step(50, 1, false, slack) == 56.25)
+check.that("should keep brightness at 100", osd.step(99, 1, false, slack) == 100)
+check.that("should step the volume up from 12 to 12.5 without slack", osd.step(12, 1, false) == 12.5)
 check.that("should move 1% up with Option held", osd.step(50, 1, true) == 51)
 check.that("should move 1% down with Option held", osd.step(50, -1, true) == 49)
 check.that("should stop at 100 in fine steps", osd.step(100, 1, true) == 100)

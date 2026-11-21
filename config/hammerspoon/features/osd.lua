@@ -139,7 +139,7 @@ local function changeBrightness(key, fine)
   -- the key goes to macOS, which dims it with its own pop-up.
   local current = hs.brightness.get()
   if not current then return false end
-  local level = osd.step(current, direction, fine)
+  local level = osd.step(current, direction, fine, osd.BRIGHTNESS_SLACK)
   hs.brightness.set(math.floor(level + 0.5))
   show(osd.ICONS.brightness, level)
   return true

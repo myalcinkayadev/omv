@@ -12,12 +12,18 @@ osd.ICONS = { muted = "󰝟", low = "󰕿", medium = "󰖀", high = "󰕾", brig
 -- How close to a step counts as on it: macOS reports 43.75% as 43.749996.
 local ON_STEP = 1e-3
 
+-- The built-in display takes whole percents and reads back up to about 1.25% low: 12.5% is set
+-- as 13 and read as 12. Stepping up from that reading would aim at 12.5% again and never
+-- move, so a brightness this close under a step counts as on it.
+osd.BRIGHTNESS_SLACK = 1.5
+
 -- level moved one step up or down, snapped to the steps, kept between 0 and 100. A fine
--- step, with Option held, moves 1% from where the level is.
-function osd.step(level, direction, fine)
+-- step, with Option held, moves 1% from where the level is. slack, in percent, is how far
+-- under a step a level read back low may be and still count as on it, when stepping up.
+function osd.step(level, direction, fine, slack)
   local current = level or 0
   if fine then return math.max(0, math.min(100, math.floor((current + direction) * 1000 + 0.5) / 1000)) end
-  local index = direction > 0 and math.floor(current / STEP + ON_STEP) + 1 or math.ceil(current / STEP - ON_STEP) - 1
+  local index = direction > 0 and math.floor((current + (slack or 0)) / STEP + ON_STEP) + 1 or math.ceil(current / STEP - ON_STEP) - 1
   return math.max(0, math.min(100, index * STEP))
 end
 
