@@ -7,6 +7,7 @@
 #   omv uninstall [...]                   remove omv (see uninstall.sh)
 #   omv setup                             walk through the macOS permissions omv needs
 #   omv reload                            apply ~/.config/omv: rebuild aerospace.toml, reload apps
+#   omv reload aerospace                  rebuild aerospace.toml and reload AeroSpace only
 #   omv flags [<name> on|off]             list feature flags, or turn one on or off
 #   omv theme [<name>]                    list themes, or switch to one
 #   omv version                           the commit omv is at
@@ -45,7 +46,7 @@ readonly THEMES_DIR=$HOME/.local/share/omv/themes
 readonly HS_SECONDS=${OMV_HS_SECONDS:-5}
 
 usage() {
-  sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
   echo "usage: omv <install|update|doctor|uninstall|setup|reload|flags|theme|version>" >&2
   exit 2
 }
@@ -339,7 +340,16 @@ case $command in
     ;;
   doctor) "$REPO_DIR/install/doctor.sh" "$@" ;;
   uninstall) "$REPO_DIR/install/uninstall.sh" "$@" ;;
-  reload) [ "$#" -eq 0 ] || usage; reload_all ;;
+  reload)
+    case $# in
+      0) reload_all ;;
+      # A display profile's gaps changed: only AeroSpace needs them, and Hammerspoon asks.
+      1) [ "$1" = aerospace ] || usage
+         build_aerospace || die "aerospace.toml wasn't rebuilt; the old one stays"
+         reload_aerospace || die "AeroSpace didn't accept the built aerospace.toml; see its message above" ;;
+      *) usage ;;
+    esac
+    ;;
   setup) [ "$#" -eq 0 ] || usage; open_setup_app || exit 1 ;;
   flags) flags "$@" ;;
   theme) theme "$@" ;;

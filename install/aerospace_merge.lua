@@ -8,8 +8,8 @@
 -- over lines while brackets are open; [table] and [[array]] headers; # comments. Brackets and
 -- # inside quotes don't count. It isn't a full TOML parser.
 --
--- Run: luajit aerospace_merge.lua <defaults> <user file>. Prints the built file, or the user
--- file's line it can't read on stderr and exits 1.
+-- Run: luajit aerospace_merge.lua <defaults> <user file> [<display profile file>]. Prints the
+-- built file, or the user file's line it can't read on stderr and exits 1.
 
 local merge = {}
 
@@ -228,6 +228,24 @@ function merge.build(defaults, user)
   return table.concat(out, "\n") .. "\n"
 end
 
+-- defaults with each layer applied in turn, such as the user's file and then a display
+-- profile's gaps; a nil layer is skipped. The header starts the result once. nil and the
+-- problem when a layer can't be read, as build gives.
+function merge.buildAll(defaults, ...)
+  local headerLine = "^" .. merge.HEADER:gsub("%p", "%%%0") .. "\n"
+  local text = defaults
+  for index = 1, select("#", ...) do
+    local layer = select(index, ...)
+    if layer ~= nil then
+      local built, problem = merge.build(text, layer)
+      if not built then return nil, problem end
+      -- Each pass adds the header; the next one starts from the text without it.
+      text = built:gsub(headerLine, "", 1)
+    end
+  end
+  return merge.build(text, nil)
+end
+
 -- The file's text; nil when it doesn't exist; nil and the reason when it exists but can't
 -- be read, so a user file that can't be opened isn't mistaken for no settings.
 local ENOENT = 2
@@ -257,7 +275,9 @@ if arg and arg[0] and arg[0]:match("aerospace_merge%.lua$") then
     io.stderr:write("~/.config/omv/aerospace.toml can't be read: " .. unreadable .. "\n")
     os.exit(1)
   end
-  local text, problem = merge.build(defaults, user)
+  -- The display profile's gaps, written by omv, when one is in use.
+  local profile = arg[3] and readFile(arg[3]) or nil
+  local text, problem = merge.buildAll(defaults, user, profile)
   if not text then
     io.stderr:write("~/.config/omv/aerospace.toml " .. problem .. "\n")
     os.exit(1)

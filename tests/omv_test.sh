@@ -428,6 +428,27 @@ refuses_extra_update_argument() {
   [ "$status" = 2 ] || fail "expected exit 2, got $status"
 }
 
+adds_profile_gaps_on_reload_aerospace() {
+  make_repo
+  mkdir -p "$HOME_DIR/.local/state/omv"
+  printf '[gaps]\ninner.horizontal = 2\n' > "$HOME_DIR/.local/state/omv/aerospace-profile.toml"
+  omv reload aerospace >/dev/null
+  [[ $(built_aerospace) == *'inner.horizontal = 2'* ]] || fail "profile gap missing in: $(built_aerospace)"
+}
+
+reloads_aerospace_on_reload_aerospace() {
+  make_repo
+  run_aerospace
+  omv reload aerospace >/dev/null
+  assert_called '^aerospace reload-config$'
+}
+
+skips_bar_on_reload_aerospace() {
+  make_repo
+  omv reload aerospace >/dev/null
+  assert_not_called '^sketchybar --reload'
+}
+
 refuses_extra_reload_argument() {
   make_repo
   local status=0
@@ -1127,6 +1148,9 @@ run_case 'should show the last valid value when a later flag line is invalid' sh
 run_case 'should run a migration in the omv folder when omv starts from another folder' runs_migrations_in_omv_folder
 run_case 'should show usage when update gets an extra argument' refuses_extra_update_argument
 run_case 'should show usage when reload gets an extra argument' refuses_extra_reload_argument
+run_case "should add the display profile's gaps on reload aerospace" adds_profile_gaps_on_reload_aerospace
+run_case 'should reload AeroSpace on reload aerospace' reloads_aerospace_on_reload_aerospace
+run_case 'should leave the bar alone on reload aerospace' skips_bar_on_reload_aerospace
 run_case "should reload AeroSpace after updating when it's running" update_reloads_running_aerospace
 run_case "should not reload AeroSpace after updating when it isn't running" update_skips_stopped_aerospace
 run_case 'should wait for Hammerspoon to answer before the doctor runs after updating' waits_for_hammerspoon_before_doctor

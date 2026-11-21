@@ -140,4 +140,13 @@ end)())
 check.that("should read a user file that starts with a byte order mark",
   check.contains(section(built("\239\187\191[gaps]\ninner.horizontal = 4\n") or "", "[gaps]"), "inner.horizontal = 4"))
 
+-- A display profile's gaps, applied after the user's own settings.
+local PROFILE = "[gaps]\ninner.horizontal = 3\n"
+local layered = merge.buildAll(DEFAULTS, "[gaps]\ninner.horizontal = 7\ninner.vertical = 7\n", PROFILE)
+check.that("should apply a display profile's setting over the user's", layered:find("inner.horizontal = 3", 1, true) ~= nil and layered:find("inner.horizontal = 7", 1, true) == nil)
+check.that("should keep the user's setting a profile doesn't change", layered:find("inner.vertical = 7", 1, true) ~= nil)
+check.that("should start a file built with a profile with one header line", select(2, layered:gsub(HEADER:gsub("%p", "%%%0"), "")) == 1)
+check.that("should build as before without a profile", merge.buildAll(DEFAULTS, nil, nil) == built(nil))
+check.that("should build as before with only the user's file", merge.buildAll(DEFAULTS, "[gaps]\ninner.vertical = 7\n", nil) == built("[gaps]\ninner.vertical = 7\n"))
+
 check.finish()

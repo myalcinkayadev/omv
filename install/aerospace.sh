@@ -4,13 +4,15 @@
 # shellcheck disable=SC2034
 readonly AEROSPACE_DEFAULTS=$REPO_DIR/config/aerospace/.config/aerospace/aerospace.toml
 readonly AEROSPACE_USER=$HOME/.config/omv/aerospace.toml
+# The gaps of the display profile in use, written by Hammerspoon; applied after the user's file.
+readonly AEROSPACE_PROFILE=$HOME/.local/state/omv/aerospace-profile.toml
 readonly AEROSPACE_BUILT=$HOME/.config/aerospace/aerospace.toml
 AEROSPACE_HEADER=$(head -n 1 "$REPO_DIR/install/aerospace-header.txt")
 readonly AEROSPACE_HEADER
 
 # Prints the file omv would build now, or the user file's error on stderr and fails.
 aerospace_build_text() {
-  luajit "$REPO_DIR/install/aerospace_merge.lua" "$AEROSPACE_DEFAULTS" "$AEROSPACE_USER"
+  luajit "$REPO_DIR/install/aerospace_merge.lua" "$AEROSPACE_DEFAULTS" "$AEROSPACE_USER" "$AEROSPACE_PROFILE"
 }
 
 # ~/.config/aerospace still a link, as Stow left it before omv built the file: writing there
