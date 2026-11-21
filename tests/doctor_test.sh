@@ -358,10 +358,12 @@ skips_answer_when_not_running() {
 }
 
 # Hammerspoon busy with something slow: the first question times out, the next is answered.
+# Hammerspoon gives no answer the first time and answers the second. An empty answer counts the
+# same as one that never came, so the first call returns at once: a hang until HS_LIMIT raced the
+# stub's own start under a busy test run. reports_hanging_hammerspoon covers the hang.
 fix_waits_for_busy_hammerspoon() {
   complete_setup
-  printf '#!/bin/sh\n[ -f "%s/asked" ] && { echo function; exit 0; }\ntouch "%s/asked"\nexec sleep 120\n' "$SANDBOX" "$SANDBOX" > "$STUB_DIR/hs"
-  HS_LIMIT=1
+  printf '#!/bin/sh\n[ -f "%s/asked" ] && { echo function; exit 0; }\ntouch "%s/asked"\n' "$SANDBOX" "$SANDBOX" > "$STUB_DIR/hs"
   report --fix >/dev/null
   assert_not_called '^pkill -x Hammerspoon'
 }
