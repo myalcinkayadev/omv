@@ -20,5 +20,8 @@ notify-on-command-finish = unfocused
 notify-on-command-finish-action = no-bell,notify
 notify-on-command-finish-after = 10s
 
+# Features turned off with omv flags (drop-down-terminal, long-command-notices); omv writes it.
+config-file = ?~/.local/state/omv/ghostty-flags
+
 # Your own settings, from ~/.config/omv/ghostty when it exists. Last, so your lines win.
 config-file = ?~/.config/omv/ghostty

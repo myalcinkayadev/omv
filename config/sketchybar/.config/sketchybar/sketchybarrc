@@ -3,6 +3,13 @@
 
 export PATH="/opt/homebrew/bin:$PATH"
 
+# Feature flags, read as Hammerspoon reads them: an item whose feature is off isn't added.
+# Found through this file's real place in the clone, so a new install's links don't matter.
+BAR_SOURCE=$(dirname "$(readlink -f "$CONFIG_DIR/sketchybarrc")")
+OMV_FLAG_DEFAULTS="$BAR_SOURCE/../../../hammerspoon/flags.lua"
+# shellcheck source=flags.sh
+if ! . "$BAR_SOURCE/flags.sh" 2>/dev/null; then omv_flag_on() { return 0; }; fi
+
 PLUGIN_DIR="$CONFIG_DIR/plugins"
 FONT="JetBrainsMono Nerd Font Mono"
 ICON_FONT="JetBrainsMono Nerd Font Propo"
@@ -50,15 +57,17 @@ sketchybar --add event aerospace_mode_change \
   --set mode drawing=off icon.drawing=off label.color=$WHITE script="$PLUGIN_DIR/aerospace_mode.sh" \
   --subscribe mode aerospace_mode_change
 
-# Hidden while nothing plays. Hammerspoon sends now_playing_change when Music or Spotify
-# changes. It can't be called media_change: that is SketchyBar's own event, which ignores
-# --trigger and relies on MediaRemote, closed to other apps on recent macOS.
-sketchybar --add event now_playing_change \
-  --add item now_playing left \
-  --set now_playing drawing=off icon=󰝚 icon.color=$MUTED label.color=$MUTED padding_left=8 \
-    icon.padding_right=3 label.padding_left=3 \
-    script="$PLUGIN_DIR/now_playing.sh" \
-  --subscribe now_playing now_playing_change mouse.clicked mouse.scrolled system_woke
+if omv_flag_on now-playing; then
+  # Hidden while nothing plays. Hammerspoon sends now_playing_change when Music or Spotify
+  # changes. It can't be called media_change: that is SketchyBar's own event, which ignores
+  # --trigger and relies on MediaRemote, closed to other apps on recent macOS.
+  sketchybar --add event now_playing_change \
+    --add item now_playing left \
+    --set now_playing drawing=off icon=󰝚 icon.color=$MUTED label.color=$MUTED padding_left=8 \
+      icon.padding_right=3 label.padding_left=3 \
+      script="$PLUGIN_DIR/now_playing.sh" \
+    --subscribe now_playing now_playing_change mouse.clicked mouse.scrolled system_woke
+fi
 
 # The right side is tighter than the workspaces: about 16pt between items, as in macOS's own
 # menu bar. Icon-only items share one fixed, centered slot, so a narrow icon like the
@@ -68,134 +77,174 @@ STATUS_ICON=(icon.width=32 icon.align=center icon.padding_left=0 icon.padding_ri
 
 # Added first, so the clock sits at the far right, as on macOS. Clicking it opens the calendar card, which Hammerspoon draws.
 sketchybar --add item clock right \
-  --set clock icon.drawing=off label.padding_left=4 update_freq=30 script="$PLUGIN_DIR/clock.sh" \
-    click_script="hs -c 'omvToggleCalendar()'"
+  --set clock icon.drawing=off label.padding_left=4 update_freq=30 script="$PLUGIN_DIR/clock.sh"
+if omv_flag_on calendar; then
+  sketchybar --set clock click_script="hs -c 'omvToggleCalendar()'"
+fi
 
-# Clicking it opens the Battery card, which Hammerspoon draws.
-sketchybar --add event omv_battery_change \
-  --add item battery right \
-  --set battery "${STATUS_ICON[@]}" label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
-  --subscribe battery system_woke power_source_change omv_battery_change mouse.clicked
+if omv_flag_on battery; then
+  # Clicking it opens the Battery card, which Hammerspoon draws.
+  sketchybar --add event omv_battery_change \
+    --add item battery right \
+    --set battery "${STATUS_ICON[@]}" label.drawing=off update_freq=120 script="$PLUGIN_DIR/battery.sh" \
+    --subscribe battery system_woke power_source_change omv_battery_change mouse.clicked
+fi
 
-sketchybar --add item volume right \
-  --set volume "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/volume.sh" \
-  --subscribe volume volume_change mouse.clicked mouse.scrolled
+if omv_flag_on sound; then
+  sketchybar --add item volume right \
+    --set volume "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/volume.sh" \
+    --subscribe volume volume_change mouse.clicked mouse.scrolled
+fi
 
-# Bluetooth, on or off, drawn only when blueutil is installed. The card redraws it with the
-# bluetooth_change event after a change; the timer catches changes made elsewhere.
-sketchybar --add event bluetooth_change \
-  --add item bluetooth right \
-  --set bluetooth "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/bluetooth.sh" \
-  --subscribe bluetooth bluetooth_change system_woke mouse.clicked
+if omv_flag_on bluetooth; then
+  # Bluetooth, on or off, drawn only when blueutil is installed. The card redraws it with the
+  # bluetooth_change event after a change; the timer catches changes made elsewhere.
+  sketchybar --add event bluetooth_change \
+    --add item bluetooth right \
+    --set bluetooth "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/bluetooth.sh" \
+    --subscribe bluetooth bluetooth_change system_woke mouse.clicked
+fi
 
-# SketchyBar's wifi_change event has not worked since macOS Sonoma, hence the timer.
-# Clicking it opens the Wi-Fi card, which Hammerspoon draws.
-sketchybar --add event omv_network_change \
-  --add item wifi right \
-  --set wifi "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/wifi.sh" \
-  --subscribe wifi system_woke omv_network_change mouse.clicked
+if omv_flag_on network; then
+  # SketchyBar's wifi_change event has not worked since macOS Sonoma, hence the timer.
+  # Clicking it opens the Wi-Fi card, which Hammerspoon draws.
+  sketchybar --add event omv_network_change \
+    --add item wifi right \
+    --set wifi "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/wifi.sh" \
+    --subscribe wifi system_woke omv_network_change mouse.clicked
+fi
 
-# Hidden unless a cable is connected. Clicking it opens the Ethernet card.
-sketchybar --add item ethernet right \
-  --set ethernet drawing=off "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/ethernet.sh" \
-  --subscribe ethernet system_woke omv_network_change mouse.clicked
+if omv_flag_on network; then
+  # Hidden unless a cable is connected. Clicking it opens the Ethernet card.
+  sketchybar --add item ethernet right \
+    --set ethernet drawing=off "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/ethernet.sh" \
+    --subscribe ethernet system_woke omv_network_change mouse.clicked
+fi
 
-# Added after the status icons, so it sits just to the left of them. Hidden until
-# Hammerspoon has a reading. It sets the icon and temperature, and the temperature gives way before
-# the notch; see bar_fit.sh. Clicking it opens the weather card.
-sketchybar --add item weather right \
-  --set weather drawing=off icon.padding_right=3 label.padding_left=3 label.padding_right=10 \
-    click_script="hs -c 'omvToggleWeather()'"
+if omv_flag_on weather; then
+  # Added after the status icons, so it sits just to the left of them. Hidden until
+  # Hammerspoon has a reading. It sets the icon and temperature, and the temperature gives way before
+  # the notch; see bar_fit.sh. Clicking it opens the weather card.
+  sketchybar --add item weather right \
+    --set weather drawing=off icon.padding_right=3 label.padding_left=3 label.padding_right=10 \
+      click_script="hs -c 'omvToggleWeather()'"
+fi
 
-# Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the weather.
-sketchybar --add event keep_awake_toggle \
-  --add item keep_awake right \
-  --set keep_awake drawing=off icon=󰒳 "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \
-  --subscribe keep_awake keep_awake_toggle mouse.clicked
+if omv_flag_on keep-awake; then
+  # Hidden until Option+Shift+I or a click turns keep-awake on. Sits left of the weather.
+  sketchybar --add event keep_awake_toggle \
+    --add item keep_awake right \
+    --set keep_awake drawing=off icon=󰒳 "${STATUS_ICON[@]}" label.drawing=off script="$PLUGIN_DIR/keep_awake.sh" \
+    --subscribe keep_awake keep_awake_toggle mouse.clicked
+fi
 
-# Hidden while the startup disk has room; shows the free space once it's low. Sits left of
-# keep-awake. Clicking it opens the Disk card, which Hammerspoon draws.
-sketchybar --add item disk right \
-  --set disk drawing=off icon=󰋊 icon.padding_right=3 label.padding_left=3 update_freq=600 \
-    script="$PLUGIN_DIR/disk.sh" \
-  --subscribe disk system_woke mouse.clicked
+if omv_flag_on disk; then
+  # Hidden while the startup disk has room; shows the free space once it's low. Sits left of
+  # keep-awake. Clicking it opens the Disk card, which Hammerspoon draws.
+  sketchybar --add item disk right \
+    --set disk drawing=off icon=󰋊 icon.padding_right=3 label.padding_left=3 update_freq=600 \
+      script="$PLUGIN_DIR/disk.sh" \
+    --subscribe disk system_woke mouse.clicked
+fi
 
-# Shown only while clipboard history is paused, so a pause is never forgotten. Hammerspoon
-# sets it; clicking it turns history back on.
-sketchybar --add item clipboard_paused right \
-  --set clipboard_paused drawing=off icon=󰅍 icon.color=$MUTED icon.padding_right=3 label=paused \
-    label.color=$MUTED label.padding_left=3 click_script="hs -c 'omvResumeClipboard()'"
+if omv_flag_on clipboard; then
+  # Shown only while clipboard history is paused, so a pause is never forgotten. Hammerspoon
+  # sets it; clicking it turns history back on.
+  sketchybar --add item clipboard_paused right \
+    --set clipboard_paused drawing=off icon=󰅍 icon.color=$MUTED icon.padding_right=3 label=paused \
+      label.color=$MUTED label.padding_left=3 click_script="hs -c 'omvResumeClipboard()'"
+fi
 
-# Shown only while night light (macOS's Night Shift) is on. Hammerspoon sets it; clicking
-# it turns night light off.
-sketchybar --add item nightlight right \
-  --set nightlight drawing=off icon=󰖔 icon.color=$MUTED label.drawing=off click_script="hs -c 'omvToggleNightLight()'"
+if omv_flag_on night-light; then
+  # Shown only while night light (macOS's Night Shift) is on. Hammerspoon sets it; clicking
+  # it turns night light off.
+  sketchybar --add item nightlight right \
+    --set nightlight drawing=off icon=󰖔 icon.color=$MUTED label.drawing=off click_script="hs -c 'omvToggleNightLight()'"
+fi
 
-# Shown only while the mic is muted (Option+M), in red so a muted mic is never missed.
-# Hammerspoon sets it; clicking it unmutes.
-sketchybar --add item mic_muted right \
-  --set mic_muted drawing=off icon=󰍭 icon.color=0xffff5f5f label.drawing=off click_script="hs -c 'omvToggleMic()'"
+if omv_flag_on mic-mute; then
+  # Shown only while the mic is muted (Option+M), in red so a muted mic is never missed.
+  # Hammerspoon sets it; clicking it unmutes.
+  sketchybar --add item mic_muted right \
+    --set mic_muted drawing=off icon=󰍭 icon.color=0xffff5f5f label.drawing=off click_script="hs -c 'omvToggleMic()'"
+fi
 
-# Tailscale, shown only once it's installed: white while connected, gray otherwise.
-# Hammerspoon sets it; clicking it opens the Tailscale card.
-sketchybar --add item tailscale right \
-  --set tailscale drawing=off icon=󰖂 label.drawing=off click_script="hs -c 'omvToggleTailscale()'"
+if omv_flag_on tailscale; then
+  # Tailscale, shown only once it's installed: white while connected, gray otherwise.
+  # Hammerspoon sets it; clicking it opens the Tailscale card.
+  sketchybar --add item tailscale right \
+    --set tailscale drawing=off icon=󰖂 label.drawing=off click_script="hs -c 'omvToggleTailscale()'"
+fi
 
-# Shown only while a Focus such as Do Not Disturb is on, with its name. Hammerspoon sets it
-# from macOS's Focus files; clicking it switches Do Not Disturb.
-sketchybar --add item focus right \
-  --set focus drawing=off icon=󰽥 icon.color=$MUTED icon.padding_right=3 label.color=$MUTED \
-    label.padding_left=3 click_script="hs -c 'omvToggleFocus()'"
+if omv_flag_on focus; then
+  # Shown only while a Focus such as Do Not Disturb is on, with its name. Hammerspoon sets it
+  # from macOS's Focus files; clicking it switches Do Not Disturb.
+  sketchybar --add item focus right \
+    --set focus drawing=off icon=󰽥 icon.color=$MUTED icon.padding_right=3 label.color=$MUTED \
+      label.padding_left=3 click_script="hs -c 'omvToggleFocus()'"
+fi
 
-# Shown only while a screen recording runs, from the capture menu. Hammerspoon sets it;
-# clicking it stops the recording and saves it to the Desktop.
-sketchybar --add item recording right \
-  --set recording drawing=off icon=󰻃 icon.color=$WHITE icon.padding_right=3 label=rec \
-    label.color=$WHITE label.padding_left=3 click_script="hs -c 'omvStopRecording()'"
+if omv_flag_on capture; then
+  # Shown only while a screen recording runs, from the capture menu. Hammerspoon sets it;
+  # clicking it stops the recording and saves it to the Desktop.
+  sketchybar --add item recording right \
+    --set recording drawing=off icon=󰻃 icon.color=$WHITE icon.padding_right=3 label=rec \
+      label.color=$WHITE label.padding_left=3 click_script="hs -c 'omvStopRecording()'"
+fi
 
-# A white pill while a Claude Code session waits for you, set by the claude_waiting_change
-# event from claude-waiting.sh. Every 30 seconds it drops sessions whose Claude has ended.
-# Added just before Claude's item, so it sits right next to it with no icon of its own: the
-# logo and the 5-hour limit read as one group. Clicking it focuses the session's terminal.
-sketchybar --add event claude_waiting_change \
-  --add item claude_waiting right \
-  --set claude_waiting drawing=off icon.drawing=off label.color=$BLACK padding_left=6 padding_right=8 \
-    label.padding_left=6 label.padding_right=6 background.drawing=on background.color=$WHITE \
-    background.corner_radius=5 background.height=24 update_freq=30 script="$PLUGIN_DIR/claude_waiting.sh" \
-  --subscribe claude_waiting claude_waiting_change mouse.clicked system_woke
+if omv_flag_on claude; then
+  # A white pill while a Claude Code session waits for you, set by the claude_waiting_change
+  # event from claude-waiting.sh. Every 30 seconds it drops sessions whose Claude has ended.
+  # Added just before Claude's item, so it sits right next to it with no icon of its own: the
+  # logo and the 5-hour limit read as one group. Clicking it focuses the session's terminal.
+  sketchybar --add event claude_waiting_change \
+    --add item claude_waiting right \
+    --set claude_waiting drawing=off icon.drawing=off label.color=$BLACK padding_left=6 padding_right=8 \
+      label.padding_left=6 label.padding_right=6 background.drawing=on background.color=$WHITE \
+      background.corner_radius=5 background.height=24 update_freq=30 script="$PLUGIN_DIR/claude_waiting.sh" \
+    --subscribe claude_waiting claude_waiting_change mouse.clicked system_woke
+fi
 
-# Claude's logo and 5-hour limit; clicking it opens the Agents card. Added after the waiting
-# pill, so it sits just to the left of it. Claude sits left of keep-awake and the weather,
-# nearer the middle of the screen, since it changes most and is clicked most.
-sketchybar --add event claude_usage_change \
-  --add item claude_usage right \
-  --set claude_usage drawing=off icon.width=27 icon.padding_left=0 icon.padding_right=0 \
-    icon.background.drawing=on icon.background.image="$CONFIG_DIR/icons/claude.png" \
-    icon.background.image.drawing=on icon.background.image.scale=0.25 update_freq=60 script="$PLUGIN_DIR/claude_usage.sh" \
-    background.drawing=off background.color=$WHITE background.corner_radius=5 background.height=24 \
-  --subscribe claude_usage claude_usage_change mouse.clicked system_woke
+if omv_flag_on claude; then
+  # Claude's logo and 5-hour limit; clicking it opens the Agents card. Added after the waiting
+  # pill, so it sits just to the left of it. Claude sits left of keep-awake and the weather,
+  # nearer the middle of the screen, since it changes most and is clicked most.
+  sketchybar --add event claude_usage_change \
+    --add item claude_usage right \
+    --set claude_usage drawing=off icon.width=27 icon.padding_left=0 icon.padding_right=0 \
+      icon.background.drawing=on icon.background.image="$CONFIG_DIR/icons/claude.png" \
+      icon.background.image.drawing=on icon.background.image.scale=0.25 update_freq=60 script="$PLUGIN_DIR/claude_usage.sh" \
+      background.drawing=off background.color=$WHITE background.corner_radius=5 background.height=24 \
+    --subscribe claude_usage claude_usage_change mouse.clicked system_woke
+fi
 
-# Pull requests waiting for your review, counted with gh every 5 minutes. Hidden when none
-# wait or GitHub can't be reached. Sits left of Claude's item; clicking it opens the card.
-sketchybar --add item github_prs right \
-  --set github_prs drawing=off icon=󰊤 icon.padding_right=3 label.padding_left=3 update_freq=300 \
-    script="$PLUGIN_DIR/github_prs.sh" \
-  --subscribe github_prs mouse.clicked system_woke
+if omv_flag_on github-prs; then
+  # Pull requests waiting for your review, counted with gh every 5 minutes. Hidden when none
+  # wait or GitHub can't be reached. Sits left of Claude's item; clicking it opens the card.
+  sketchybar --add item github_prs right \
+    --set github_prs drawing=off icon=󰊤 icon.padding_right=3 label.padding_left=3 update_freq=300 \
+      script="$PLUGIN_DIR/github_prs.sh" \
+    --subscribe github_prs mouse.clicked system_woke
+fi
 
-# Hidden until a reminder is set. Hammerspoon sets its label every second, and turns it
-# into a white pill when one is due. Clicking it lists the reminders, to cancel one.
-sketchybar --add item reminder right \
-  --set reminder drawing=off icon=󰔛 icon.padding_right=3 label.padding_left=3 \
-    background.drawing=off background.color=$WHITE \
-    background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleReminders()'"
+if omv_flag_on reminders; then
+  # Hidden until a reminder is set. Hammerspoon sets its label every second, and turns it
+  # into a white pill when one is due. Clicking it lists the reminders, to cancel one.
+  sketchybar --add item reminder right \
+    --set reminder drawing=off icon=󰔛 icon.padding_right=3 label.padding_left=3 \
+      background.drawing=off background.color=$WHITE \
+      background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleReminders()'"
+fi
 
-# Hidden until a meeting starts within the hour. Hammerspoon sets its label from
-# Calendar.app, and turns it into a white pill from 5 minutes before the start. Clicking
-# it joins the meeting's video call, or opens the calendar when there's none to join.
-sketchybar --add item meeting right \
-  --set meeting drawing=off icon=󰃭 icon.padding_right=3 label.padding_left=3 \
-    background.drawing=off background.color=$WHITE \
-    background.corner_radius=5 background.height=24 click_script="hs -c 'omvJoinMeeting()'"
+if omv_flag_on calendar; then
+  # Hidden until a meeting starts within the hour. Hammerspoon sets its label from
+  # Calendar.app, and turns it into a white pill from 5 minutes before the start. Clicking
+  # it joins the meeting's video call, or opens the calendar when there's none to join.
+  sketchybar --add item meeting right \
+    --set meeting drawing=off icon=󰃭 icon.padding_right=3 label.padding_left=3 \
+      background.drawing=off background.color=$WHITE \
+      background.corner_radius=5 background.height=24 click_script="hs -c 'omvJoinMeeting()'"
+fi
 
 # Hidden. Gives way on the right side of the bar before the notch; see bar_fit.sh.
 sketchybar --add event bar_fit \

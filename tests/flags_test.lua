@@ -19,4 +19,23 @@ check.that("should keep the defaults unchanged when a file turns a flag on", (fu
   return flags.DEFAULTS["file-search"] == false
 end)())
 
+-- Every feature has a flag, on unless turned off; file search alone starts off.
+local FEATURES = {
+  "weather", "battery", "bluetooth", "network", "sound", "calendar", "disk", "tailscale", "focus",
+  "clipboard", "snippets", "calculator", "translate", "capture", "reminders", "daily-note", "airdrop",
+  "copy-url", "keep-awake", "night-light", "mic-mute", "volume-popups", "processes", "lyrics",
+  "now-playing", "claude", "github-prs", "dev-layout", "drop-down-terminal", "long-command-notices",
+}
+local defaults = flags.read(nil)
+for _, name in ipairs(FEATURES) do
+  check.that("should have " .. name .. " on by default", defaults[name] == true)
+end
+check.that("should have a flag for every feature and file search, and nothing else", (function()
+  local count = 0
+  for _ in pairs(flags.DEFAULTS) do count = count + 1 end
+  return count == #FEATURES + 1
+end)())
+check.that("should turn a feature off when its line says off", flags.read("weather=off").weather == false)
+check.that("should leave the other features on when one is turned off", flags.read("weather=off").battery == true)
+
 check.finish()

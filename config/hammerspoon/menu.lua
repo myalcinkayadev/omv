@@ -36,8 +36,17 @@ local SCREENS = {
 local CONFIRMED = { logout = "Log out", restart = "Restart", shutdown = "Shut down" }
 local CONFIRMED_ICONS = { logout = "󰍃", restart = "󰜉", shutdown = "󰐥" }
 
-function menu.screen(id)
-  return SCREENS[id]
+-- A screen, without the rows hidden names: the ids of features turned off with their flags.
+function menu.screen(id, hidden)
+  local screen = SCREENS[id]
+  if not screen or not hidden or next(hidden) == nil then return screen end
+  local trimmed = {}
+  for key, value in pairs(screen) do trimmed[key] = value end
+  trimmed.rows = {}
+  for _, row in ipairs(screen.rows) do
+    if not hidden[row.id] then trimmed.rows[#trimmed.rows + 1] = row end
+  end
+  return trimmed
 end
 
 -- Whether a picked id opens another screen of this menu.

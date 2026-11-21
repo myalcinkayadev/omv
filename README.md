@@ -68,6 +68,7 @@ Before you trust it:
 - [**Share with AirDrop**](#share-with-airdrop): the files selected in Finder, or what you copied, in one key.
 - [**Translate**](#translate): Option+Y translates the selected text with Apple on the Mac, DeepL or Claude, and pastes it over the selection.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
+- [**Feature flags**](#feature-flags): turn off any feature you don't use, with its key, card and bar item.
 - [**Doctor**](#doctor): `omv doctor` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
 Every card shares one design: a black card with a gray border, a title that doubles as a search field, and Up, Down, Enter and Escape to drive it. With two displays, a card opens on the one the pointer is on, so a click on the bar opens it on that display. A card that belongs to a bar item, such as Agents, Wi-Fi or the calendar, opens just under that item.
@@ -169,7 +170,7 @@ In the palette they're listed under Snippets, by name with the start of the text
 omv flags file-search on
 ```
 
-That writes `file-search=on` to `~/.config/omv/flags` and reloads Hammerspoon. `omv flags` lists every flag and whether it's on.
+That writes `file-search=on` to `~/.config/omv/flags` and reloads Hammerspoon. `omv flags` lists every flag and whether it's on; [Feature flags](#feature-flags) has them all.
 
 Then, after 3 or more typed characters and a short pause, the palette lists up to 20 files whose names contain every typed word, under Files, names starting with the first word first, then the newest: files you opened or changed in the last 30 days, in your home folder, leaving out `Library`, `node_modules` and `.git`. Enter opens one with its app, Cmd+Enter shows it in Finder, and Cmd+C copies its path. It asks Spotlight (`mdfind`) in the background, one search at a time, so typing never waits for it. While the flag is off, no search runs.
 
@@ -533,6 +534,52 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
 - **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
+
+## Feature flags
+
+Every feature below can be turned off, and turned back on, with one command:
+
+```sh
+omv flags                  # every flag and whether it's on
+omv flags weather off      # turns the weather off, then reloads
+omv flags weather on
+```
+
+That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and the bar. A feature that's off isn't loaded at all: its key is free for your own bindings, its card, bar item and palette entries are gone, and nothing of it runs in the background. The desktop itself has no flags: tiling and workspaces, the palette, the key list, the system menu, themes and the clock. Every flag is on unless the table says otherwise. The two Ghostty flags apply on Ghostty's reload key, Cmd+Shift+Comma.
+
+| Flag | Turns off |
+|---|---|
+| `weather` | the temperature in the bar and the forecast card (Option+Shift+O) |
+| `battery` | the battery item and card (Option+Shift+B) |
+| `bluetooth` | the Bluetooth item and card (Option+Shift+Y) |
+| `network` | the Wi-Fi and Ethernet items and cards (Option+Shift+W, Option+Shift+E) |
+| `sound` | the volume item, the Sound card (Option+Shift+V), its row in the system menu, and Option+O |
+| `calendar` | the calendar on a click of the clock, the next meeting in the bar, and Option+Shift+C |
+| `disk` | the low-disk item and the Disk card (Option+Shift+X) |
+| `tailscale` | the Tailscale item and card |
+| `focus` | the Do Not Disturb item and its row in the system menu |
+| `clipboard` | clipboard history (Option+V) and its `paused` item |
+| `snippets` | your snippets in the palette |
+| `calculator` | sums and conversions in the palette |
+| `translate` | translating the selection (Option+Y) |
+| `capture` | the capture menu (Option+Shift+S) and the recording item |
+| `reminders` | reminders and Pomodoro (Option+Shift+M) and their item |
+| `daily-note` | the quick note (Option+Shift+D) |
+| `airdrop` | sharing with AirDrop (Option+Shift+Q) |
+| `copy-url` | copying the browser's URL (Option+Shift+U) |
+| `keep-awake` | keeping the Mac awake (Option+Shift+I) and its item |
+| `night-light` | night light (Option+Shift+Z), its item and its row in the system menu |
+| `mic-mute` | muting the mic (Option+M) and its item |
+| `volume-popups` | omv's volume and brightness pop-ups, and dimming an external display; macOS's own come back |
+| `processes` | hungry processes and ports (Option+Shift+P) |
+| `lyrics` | the lyrics window |
+| `now-playing` | the playing track in the bar |
+| `claude` | Claude Code's usage, the waiting pill, the Agents card and Option+Shift+A |
+| `github-prs` | pull requests waiting for your review (Option+Shift+G) and their item |
+| `dev-layout` | the dev layout and the agent grid |
+| `drop-down-terminal` | Ghostty's quick terminal (Option+\`) |
+| `long-command-notices` | Ghostty's notice when a long command finishes |
+| `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
 
 ## Keys
 

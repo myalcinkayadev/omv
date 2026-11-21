@@ -83,4 +83,11 @@ check.that("should not treat an action as a screen", not menu.opens("lock"))
 
 check.that("should keep other menu screens at the standard width", menu.screen("system").width == nil)
 
+-- A feature turned off with its flag leaves the system menu too.
+local trimmed = menu.screen("system", { focus = true, nightlight = true })
+check.that("should leave out the rows of features turned off", not labels(trimmed):find("Do Not Disturb") and not labels(trimmed):find("Night light"))
+check.that("should keep the other rows when features are turned off", labels(trimmed):find("Sound") ~= nil and labels(trimmed):find("Lock") ~= nil)
+check.that("should keep every row when none is turned off", labels(menu.screen("system", {})) == labels(menu.screen("system")))
+check.that("should keep the full menu after a trimmed one", labels(menu.screen("system")):find("Night light") ~= nil)
+
 check.finish()

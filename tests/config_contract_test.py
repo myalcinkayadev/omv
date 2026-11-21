@@ -41,6 +41,50 @@ APPROVED_FLOATING = {
 }
 # Finder names a Get Info window after the item, as in "report.txt Info".
 FINDER_INFO_TITLE = " Info$"
+FLAGS = REPO / "config/hammerspoon/flags.lua"
+SKETCHYBARRC = REPO / "config/sketchybar/.config/sketchybar/sketchybarrc"
+# The desktop itself, which every flag leaves loaded.
+CORE_FEATURES = {"menu", "keys", "windows", "theme", "permissions"}
+# Each optional feature module and the flag that loads it.
+FEATURE_FLAGS = {
+    "weather": "weather", "battery": "battery", "bluetooth": "bluetooth", "network": "network",
+    "sound": "sound", "calendar": "calendar", "disk": "disk", "tailscale": "tailscale",
+    "focus": "focus", "clipboard": "clipboard", "translate": "translate", "capture": "capture",
+    "reminders": "reminders", "note": "daily-note", "share": "airdrop", "nightshift": "night-light",
+    "micmute": "mic-mute", "osd": "volume-popups", "procs": "processes", "lyrics": "lyrics",
+    "agents": "claude", "waiting": "claude", "prs": "github-prs", "devlayout": "dev-layout",
+}
+
+# Each bar item a flag hides; the workspaces, mode, clock and bar_fit are the desktop's own.
+BAR_ITEM_FLAGS = {
+    "now_playing": "now-playing", "battery": "battery", "volume": "sound", "bluetooth": "bluetooth",
+    "wifi": "network", "ethernet": "network", "weather": "weather", "keep_awake": "keep-awake",
+    "disk": "disk", "clipboard_paused": "clipboard", "nightlight": "night-light", "mic_muted": "mic-mute",
+    "tailscale": "tailscale", "focus": "focus", "recording": "capture", "claude_waiting": "claude",
+    "claude_usage": "claude", "github_prs": "github-prs", "reminder": "reminders", "meeting": "calendar",
+}
+BAR_CORE_ITEMS = {"aerospace_listener", "mode", "clock", "bar_fit"}
+
+
+def bar_items_with_flags() -> dict[str, set[str]]:
+    """Each item sketchybarrc adds, with the flags of the if omv_flag_on blocks around it."""
+    found, stack = {}, []
+    for line in SKETCHYBARRC.read_text(encoding="utf-8").splitlines():
+        opened = re.match(r'\s*if omv_flag_on ([a-z-]+); then', line)
+        if opened:
+            stack.append(opened.group(1))
+        elif re.match(r'\s*if\b', line):
+            stack.append(None)
+        elif re.match(r'\s*fi\b', line):
+            stack.pop()
+        for item in re.findall(r'--add item "?([\w.$]+)"?', line):
+            found[item] = {flag for flag in stack if flag}
+    return found
+
+
+def flag_names() -> list[str]:
+    return re.findall(r'^\s*\["([a-z-]+)"\]\s*=\s*(?:true|false)', FLAGS.read_text(encoding="utf-8"), re.M)
+
 HAMMERSPOON_MODIFIERS = {"SUPER": "alt", "SUPER_SHIFT": "alt-shift"}
 HAMMERSPOON_KEYS = {"return": "enter", "44": "slash"}
 
@@ -556,6 +600,38 @@ class Leftovers(unittest.TestCase):
 
     def test_should_ignore_installed_spoons_when_hammerspoon_installs_one_into_the_repo(self) -> None:
         self.assertIn("config/hammerspoon/Spoons/", (REPO / ".gitignore").read_text(encoding="utf-8").splitlines())
+
+    def test_should_load_each_optional_feature_only_behind_its_flag(self) -> None:
+        source = HAMMERSPOON.read_text(encoding="utf-8")
+        flagged = dict((module, flag) for flag, module in re.findall(r'feature\("([a-z-]+)", "features\.(\w+)"\)', source))
+        self.assertEqual(flagged, FEATURE_FLAGS)
+
+    def test_should_load_only_the_core_features_without_a_flag(self) -> None:
+        source = HAMMERSPOON.read_text(encoding="utf-8")
+        self.assertEqual(set(re.findall(r'require\("features\.(\w+)"\)', source)), CORE_FEATURES)
+
+    def test_should_use_every_flag_somewhere(self) -> None:
+        users = [HAMMERSPOON, HAMMERSPOON.parent / "features/windows.lua", HAMMERSPOON.parent / "features/menu.lua", SKETCHYBARRC, REPO / "bin/omv"]
+        sources = "\n".join(path.read_text(encoding="utf-8") for path in users)
+        used = lambda name: any(f"{before}{name}" in sources for before in ('"', " ", "."))
+        unused = [name for name in flag_names() if not used(name)]
+        self.assertEqual(unused, [])
+
+    def test_should_add_each_optional_bar_item_only_behind_its_flag(self) -> None:
+        items = bar_items_with_flags()
+        self.assertEqual({item: items.get(item) for item in BAR_ITEM_FLAGS}, {item: {flag} for item, flag in BAR_ITEM_FLAGS.items()})
+
+    def test_should_add_the_bar_core_items_without_a_flag(self) -> None:
+        items = bar_items_with_flags()
+        self.assertEqual({item: items.get(item) for item in BAR_CORE_ITEMS}, {item: set() for item in BAR_CORE_ITEMS})
+
+    def test_should_open_the_calendar_from_the_clock_only_with_the_calendar_flag(self) -> None:
+        source = SKETCHYBARRC.read_text(encoding="utf-8")
+        self.assertRegex(source, r'if omv_flag_on calendar; then\s*\n\s*sketchybar --set clock click_script="hs -c \'omvToggleCalendar\(\)\'"')
+
+    def test_should_document_every_flag_in_the_readme(self) -> None:
+        readme = (REPO / "README.md").read_text(encoding="utf-8")
+        self.assertEqual([name for name in flag_names() if f"`{name}`" not in readme], [])
 
 
 if __name__ == "__main__":

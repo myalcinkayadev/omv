@@ -32,7 +32,13 @@ readonly UPDATE_TO=$STATE_DIR/update-to
 readonly UPDATE_MIGRATIONS=$STATE_DIR/update-migrations
 readonly MIGRATIONS_DONE=$STATE_DIR/migrations
 readonly FLAGS_FILE=$HOME/.config/omv/flags
-readonly FLAG_DEFAULTS=$REPO_DIR/config/hammerspoon/flags.lua
+readonly OMV_FLAG_DEFAULTS=$REPO_DIR/config/hammerspoon/flags.lua
+readonly OMV_FLAGS_FILE=$FLAGS_FILE
+# shellcheck source=../config/sketchybar/.config/sketchybar/flags.sh
+source "$REPO_DIR/config/sketchybar/.config/sketchybar/flags.sh"
+# Ghostty can't read flags, so the ones it has are written as Ghostty settings here, which
+# its config includes. Rewritten when a flag changes and on reload.
+readonly GHOSTTY_FLAGS=$STATE_DIR/ghostty-flags
 readonly THEMES_DIR=$HOME/.local/share/omv/themes
 
 usage() {
@@ -155,6 +161,7 @@ reload_all() {
 }
 
 reload() {
+  write_ghostty_flags
   reload_hammerspoon
   sketchybar --reload >/dev/null 2>&1 || true
 }
@@ -243,29 +250,23 @@ undo() {
   reload
 }
 
-flag_names() {
-  sed -n -E 's/^[[:space:]]*\["([a-z-]+)"\][[:space:]]*=[[:space:]]*(true|false).*/\1 \2/p' "$FLAG_DEFAULTS"
-}
-
-flag_value() {
-  local name=$1 default=$2 line
-  # The last line with on or off, as Hammerspoon reads it: a line with another value is ignored.
-  line=$(grep -E "^[[:space:]]*$name[[:space:]]*=[[:space:]]*(on|off)[[:space:]]*$" "$FLAGS_FILE" 2>/dev/null | tail -n 1 || true)
-  case $(echo "${line#*=}" | tr -d '[:space:]') in
-    on) echo on ;;
-    off) echo off ;;
-    *) [ "$default" = true ] && echo on || echo off ;;
-  esac
+write_ghostty_flags() {
+  mkdir -p "$STATE_DIR"
+  {
+    echo "# Written by omv from its feature flags; omv flags changes them."
+    omv_flag_on drop-down-terminal || echo 'keybind = global:alt+backquote=unbind'
+    omv_flag_on long-command-notices || echo 'notify-on-command-finish = never'
+  } > "$GHOSTTY_FLAGS"
 }
 
 flags() {
   local name default
   if [ "$#" -eq 0 ]; then
-    while read -r name default; do echo "$name  $(flag_value "$name" "$default")"; done < <(flag_names)
+    while read -r name default; do echo "$name  $(omv_flag_value "$name" "$default")"; done < <(omv_flag_names)
     return 0
   fi
   [ "$#" -eq 2 ] || usage
-  [[ $1 =~ ^[a-z][a-z0-9-]*$ ]] && flag_names | cut -d' ' -f1 | grep -qxF -- "$1" \
+  [[ $1 =~ ^[a-z][a-z0-9-]*$ ]] && omv_flag_names | cut -d' ' -f1 | grep -qxF -- "$1" \
     || die "no flag named $1; omv flags lists them"
   case $2 in on | off) ;; *) die "a flag is on or off, not $2" ;; esac
   mkdir -p "$(dirname "$FLAGS_FILE")"
@@ -275,7 +276,9 @@ flags() {
   else
     echo "$1=$2" >> "$FLAGS_FILE"
   fi
+  write_ghostty_flags
   reload_hammerspoon
+  sketchybar --reload >/dev/null 2>&1 || true
   echo "$1 is $2"
 }
 

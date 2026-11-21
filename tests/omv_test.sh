@@ -16,6 +16,8 @@ make_repo() {
   mkdir -p "$REPO/config/aerospace/.config/aerospace"
   printf '[gaps]\ninner.horizontal = 10\n' > "$REPO/config/aerospace/.config/aerospace/aerospace.toml"
   cp "$REPO_DIR/config/hammerspoon/flags.lua" "$REPO/config/hammerspoon/flags.lua"
+  mkdir -p "$REPO/config/sketchybar/.config/sketchybar"
+  cp "$REPO_DIR/config/sketchybar/.config/sketchybar/flags.sh" "$REPO/config/sketchybar/.config/sketchybar/flags.sh"
   local script
   for script in install uninstall doctor; do
     printf '#!/bin/sh\necho "%s.sh $*" >> "%s"\nexit $(cat "%s/%s-exit" 2>/dev/null || echo 0)\n' \
@@ -785,6 +787,45 @@ reloads_after_flag_change() {
   assert_called '^hs .*hs\.reload'
 }
 
+lists_every_flag() {
+  make_repo
+  local expected
+  expected=$(grep -cE '^[[:space:]]*\["[a-z-]+"\][[:space:]]*=' "$REPO_DIR/config/hammerspoon/flags.lua")
+  [ "$(omv flags | wc -l | tr -d ' ')" = "$expected" ] || fail "listed: $(omv flags | wc -l)"
+}
+
+readonly GHOSTTY_FLAGS=state/omv/ghostty-flags
+
+turns_drop_down_terminal_off_in_ghostty() {
+  make_repo
+  omv flags drop-down-terminal off >/dev/null
+  grep -qx 'keybind = global:alt+backquote=unbind' "$HOME_DIR/.local/$GHOSTTY_FLAGS" \
+    || fail "ghostty flags: $(cat "$HOME_DIR/.local/$GHOSTTY_FLAGS" 2>&1)"
+}
+
+turns_long_command_notices_off_in_ghostty() {
+  make_repo
+  omv flags long-command-notices off >/dev/null
+  grep -qx 'notify-on-command-finish = never' "$HOME_DIR/.local/$GHOSTTY_FLAGS" \
+    || fail "ghostty flags: $(cat "$HOME_DIR/.local/$GHOSTTY_FLAGS" 2>&1)"
+}
+
+leaves_ghostty_alone_with_its_flags_on() {
+  make_repo
+  omv flags drop-down-terminal off >/dev/null
+  omv flags drop-down-terminal on >/dev/null
+  ! grep -qE 'keybind|notify' "$HOME_DIR/.local/$GHOSTTY_FLAGS" || fail "ghostty flags: $(cat "$HOME_DIR/.local/$GHOSTTY_FLAGS")"
+}
+
+writes_ghostty_flags_on_reload() {
+  make_repo
+  mkdir -p "$HOME_DIR/.config/omv"
+  echo 'long-command-notices=off' > "$HOME_DIR/.config/omv/flags"
+  omv reload >/dev/null
+  grep -qx 'notify-on-command-finish = never' "$HOME_DIR/.local/$GHOSTTY_FLAGS" \
+    || fail "ghostty flags: $(cat "$HOME_DIR/.local/$GHOSTTY_FLAGS" 2>&1)"
+}
+
 applies_theme() {
   make_repo
   mkdir -p "$HOME_DIR/.local/share/omv/themes/nord"
@@ -1004,6 +1045,11 @@ run_case "should replace a flag's line and keep the others" replaces_existing_fl
 run_case 'should reject an unknown flag' rejects_unknown_flag
 run_case "should reject a flag value that isn't on or off" rejects_bad_flag_value
 run_case 'should reload Hammerspoon after a flag changes' reloads_after_flag_change
+run_case 'should list every flag' lists_every_flag
+run_case "should take the drop-down terminal's key out of Ghostty when its flag is off" turns_drop_down_terminal_off_in_ghostty
+run_case "should turn Ghostty's long-command notices off when their flag is off" turns_long_command_notices_off_in_ghostty
+run_case 'should leave Ghostty unchanged when its flags are on' leaves_ghostty_alone_with_its_flags_on
+run_case "should write Ghostty's flags when omv reloads" writes_ghostty_flags_on_reload
 run_case 'should apply a theme through Hammerspoon' applies_theme
 run_case 'should reject an unknown theme' rejects_unknown_theme
 run_case 'should list the themes, Vantablack included' lists_themes

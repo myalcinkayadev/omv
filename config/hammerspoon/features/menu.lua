@@ -3,6 +3,7 @@
 local shell = require("shell")
 local card = require("card")
 local menu = require("menu")
+local flags = require("flags")
 
 local feature = {}
 
@@ -25,10 +26,17 @@ local ACTIONS = {
 
 local menuStack = {}
 
+-- Rows for features turned off with their flags, read once at load like every flag.
+local enabled = flags.read(shell.readText(flags.PATH))
+local hiddenRows = { focus = not enabled.focus, nightlight = not enabled["night-light"], sound = not enabled.sound }
+for id, hidden in pairs(hiddenRows) do
+  if not hidden then hiddenRows[id] = nil end
+end
+
 local function screenFor(key)
   local confirmed = key:match("^confirm:(.+)$")
   if confirmed then return menu.confirm(confirmed) end
-  return menu.screen(key)
+  return menu.screen(key, hiddenRows)
 end
 
 local onMenuMessage

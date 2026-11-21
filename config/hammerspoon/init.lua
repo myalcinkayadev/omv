@@ -25,37 +25,50 @@ hs.uploadCrashData(false)
 hs.hotkey.setLogLevel("warning")
 
 local shell = require("shell")
+local flags = require("flags")
+-- Read once: a change to ~/.config/omv/flags takes a reload, which `omv flags` does.
+local enabled = flags.read(shell.readText(flags.PATH))
+
+-- A feature's module when its flag is on, else nil: then none of it loads, so its key stays
+-- free, its card is gone, and nothing of it runs in the background.
+local function feature(flag, module)
+  if enabled[flag] then return require(module) end
+  return nil
+end
+
+-- The desktop itself, which no flag turns off.
 local systemMenu = require("features.menu")
 local keys = require("features.keys")
 local windowList = require("features.windows")
-local pullRequests = require("features.prs")
-local captureMenu = require("features.capture")
-local reminderCards = require("features.reminders")
-local calendarCard = require("features.calendar")
-local networkCards = require("features.network")
-local soundCard = require("features.sound")
-local weatherCard = require("features.weather")
-local batteryCard = require("features.battery")
-local agentsCard = require("features.agents")
-local waitingClaude = require("features.waiting")
-local quickNote = require("features.note")
-local clipboardHistory = require("features.clipboard")
-local bluetoothCard = require("features.bluetooth")
 -- Loaded now, not only from the system menu, so the chosen theme colours the cards from the start.
 local themes = require("features.theme")
 -- Loaded now, so the Permissions card can open on its own the first time omv loads.
 require("features.permissions")
-local hungryProcesses = require("features.procs")
-local diskCard = require("features.disk")
-local lyricsWindow = require("features.lyrics")
-require("features.osd")
-local focusMode = require("features.focus")
-local tailscalePanel = require("features.tailscale")
-local nightLight = require("features.nightshift")
-local mic = require("features.micmute")
-local devLayout = require("features.devlayout")
-local airDrop = require("features.share")
-local translateSelection = require("features.translate")
+
+local pullRequests = feature("github-prs", "features.prs")
+local captureMenu = feature("capture", "features.capture")
+local reminderCards = feature("reminders", "features.reminders")
+local calendarCard = feature("calendar", "features.calendar")
+local networkCards = feature("network", "features.network")
+local soundCard = feature("sound", "features.sound")
+local weatherCard = feature("weather", "features.weather")
+local batteryCard = feature("battery", "features.battery")
+local agentsCard = feature("claude", "features.agents")
+local waitingClaude = feature("claude", "features.waiting")
+local quickNote = feature("daily-note", "features.note")
+local clipboardHistory = feature("clipboard", "features.clipboard")
+local bluetoothCard = feature("bluetooth", "features.bluetooth")
+local hungryProcesses = feature("processes", "features.procs")
+local diskCard = feature("disk", "features.disk")
+local lyricsWindow = feature("lyrics", "features.lyrics")
+feature("volume-popups", "features.osd")
+local focusMode = feature("focus", "features.focus")
+local tailscalePanel = feature("tailscale", "features.tailscale")
+local nightLight = feature("night-light", "features.nightshift")
+local mic = feature("mic-mute", "features.micmute")
+local devLayout = feature("dev-layout", "features.devlayout")
+local airDrop = feature("airdrop", "features.share")
+local translateSelection = feature("translate", "features.translate")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -86,52 +99,65 @@ end
 bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New " .. chosen.browser .. " window", "Apps", openOnWorkspace("3", { "-na", chosen.browser, "--args", "--new-window" }))
 bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open " .. chosen.editor, "Apps", openOnWorkspace("2", { "-a", chosen.editor }))
 bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", "Apps", open({ shell.HOME }))
--- No key: it's run from the palette or the key list.
-keys.launchers[#keys.launchers + 1] = { description = "Dev layout: " .. chosen.editor .. ", Claude Code and a shell",
-  group = "Apps", run = function() devLayout.open(chosen.editor) end, runs = true }
-keys.launchers[#keys.launchers + 1] = { description = "Agent grid: 2–4 Claude agents in worktrees",
-  group = "Apps", run = devLayout.openGrid, runs = true }
+if devLayout then
+  -- No key: it's run from the palette or the key list.
+  keys.launchers[#keys.launchers + 1] = { description = "Dev layout: " .. chosen.editor .. ", Claude Code and a shell",
+    group = "Apps", run = function() devLayout.open(chosen.editor) end, runs = true }
+  keys.launchers[#keys.launchers + 1] = { description = "Agent grid: 2–4 Claude agents in worktrees",
+    group = "Apps", run = devLayout.openGrid, runs = true }
+end
 bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", "Apps", run(shell.LAUNCH, { "1", shell.GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
-bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", "Tools", run(shell.SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
-bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy " .. chosen.browser .. "'s current URL", "Tools", copyUrl)
-bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", "Tools", captureMenu.toggle)
-bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", "Tools", reminderCards.new)
-bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", "Tools", quickNote.toggle)
-bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "PRs waiting for your review", "Tools", pullRequests.toggle)
-bindKey(SUPER_SHIFT, "p", "Option+Shift+P", "Hungry processes and ports", "Tools", hungryProcesses.toggle)
-bindKey(SUPER_SHIFT, "x", "Option+Shift+X", "Disk space and cleanup", "Tools", diskCard.toggle)
-bindKey(SUPER_SHIFT, "z", "Option+Shift+Z", "Night light on or off", "Tools", nightLight.toggle)
-bindKey(SUPER, "m", "Option+M", "Mute or unmute the mic", "Tools", mic.toggle)
-bindKey(SUPER, "o", "Option+O", "Next sound output", "Tools", soundCard.nextOutput)
-bindKey(SUPER, "y", "Option+Y", "Translate the selection", "Tools", translateSelection.selection)
-bindKey(SUPER_SHIFT, "q", "Option+Shift+Q", "Share with AirDrop", "Tools", airDrop.share)
-bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus)
-bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join)
+if enabled["keep-awake"] then
+  bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", "Tools", run(shell.SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
+end
+if enabled["copy-url"] then
+  bindKey(SUPER_SHIFT, "u", "Option+Shift+U", "Copy " .. chosen.browser .. "'s current URL", "Tools", copyUrl)
+end
+if captureMenu then bindKey(SUPER_SHIFT, "s", "Option+Shift+S", "Capture the screen", "Tools", captureMenu.toggle) end
+if reminderCards then bindKey(SUPER_SHIFT, "m", "Option+Shift+M", "Set a reminder", "Tools", reminderCards.new) end
+if quickNote then bindKey(SUPER_SHIFT, "d", "Option+Shift+D", "Note in today's daily note", "Tools", quickNote.toggle) end
+if pullRequests then bindKey(SUPER_SHIFT, "g", "Option+Shift+G", "PRs waiting for your review", "Tools", pullRequests.toggle) end
+if hungryProcesses then bindKey(SUPER_SHIFT, "p", "Option+Shift+P", "Hungry processes and ports", "Tools", hungryProcesses.toggle) end
+if diskCard then bindKey(SUPER_SHIFT, "x", "Option+Shift+X", "Disk space and cleanup", "Tools", diskCard.toggle) end
+if nightLight then bindKey(SUPER_SHIFT, "z", "Option+Shift+Z", "Night light on or off", "Tools", nightLight.toggle) end
+if mic then bindKey(SUPER, "m", "Option+M", "Mute or unmute the mic", "Tools", mic.toggle) end
+if soundCard then bindKey(SUPER, "o", "Option+O", "Next sound output", "Tools", soundCard.nextOutput) end
+if translateSelection then bindKey(SUPER, "y", "Option+Y", "Translate the selection", "Tools", translateSelection.selection) end
+if airDrop then bindKey(SUPER_SHIFT, "q", "Option+Shift+Q", "Share with AirDrop", "Tools", airDrop.share) end
+if waitingClaude then bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus) end
+if calendarCard then bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join) end
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", "Cards", run(shell.SKETCHYBAR, { "--bar", "hidden=toggle" }))
-bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi", "Cards", networkCards.toggleWifi)
-bindKey(SUPER_SHIFT, "y", "Option+Shift+Y", "Bluetooth", "Cards", bluetoothCard.toggle)
-bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet", "Cards", networkCards.toggleEthernet)
-bindKey(SUPER_SHIFT, "v", "Option+Shift+V", "Sound", "Cards", soundCard.toggle)
-bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather", "Cards", weatherCard.toggle)
-bindKey(SUPER_SHIFT, "b", "Option+Shift+B", "Battery", "Cards", batteryCard.toggle)
+if networkCards then
+  bindKey(SUPER_SHIFT, "w", "Option+Shift+W", "Wi-Fi", "Cards", networkCards.toggleWifi)
+  bindKey(SUPER_SHIFT, "e", "Option+Shift+E", "Ethernet", "Cards", networkCards.toggleEthernet)
+end
+if bluetoothCard then bindKey(SUPER_SHIFT, "y", "Option+Shift+Y", "Bluetooth", "Cards", bluetoothCard.toggle) end
+if soundCard then bindKey(SUPER_SHIFT, "v", "Option+Shift+V", "Sound", "Cards", soundCard.toggle) end
+if weatherCard then bindKey(SUPER_SHIFT, "o", "Option+Shift+O", "Weather", "Cards", weatherCard.toggle) end
+if batteryCard then bindKey(SUPER_SHIFT, "b", "Option+Shift+B", "Battery", "Cards", batteryCard.toggle) end
 bindKey(SUPER, "escape", "Option+Escape", "System menu", "Cards", systemMenu.toggle)
 bindKey(SUPER, "space", "Option+Space", "Windows, apps and commands", "Cards", windowList.toggle)
-bindKey(SUPER, "v", "Option+V", "Clipboard history", "Cards", clipboardHistory.toggle)
+if clipboardHistory then bindKey(SUPER, "v", "Option+V", "Clipboard history", "Cards", clipboardHistory.toggle) end
 
 -- Now playing: Music and Spotify announce every track and play-state change, so the bar
 -- and the lyrics window update only then. Global, so the watchers are never garbage-collected.
-local redrawBarTrack = run(shell.SKETCHYBAR, { "--trigger", "now_playing_change" })
+-- Only while the bar's track or the lyrics window is on.
+local redrawBarTrack = enabled["now-playing"] and run(shell.SKETCHYBAR, { "--trigger", "now_playing_change" }) or nil
 local function playerChanged()
-  redrawBarTrack()
-  lyricsWindow.playerChanged()
+  if redrawBarTrack then redrawBarTrack() end
+  if lyricsWindow then lyricsWindow.playerChanged() end
 end
-omvMediaWatchers = {
-  hs.distributednotifications.new(playerChanged, "com.apple.Music.playerInfo"):start(),
-  hs.distributednotifications.new(playerChanged, "com.spotify.client.PlaybackStateChanged"):start(),
-}
+if redrawBarTrack or lyricsWindow then
+  omvMediaWatchers = {
+    hs.distributednotifications.new(playerChanged, "com.apple.Music.playerInfo"):start(),
+    hs.distributednotifications.new(playerChanged, "com.spotify.client.PlaybackStateChanged"):start(),
+  }
+end
 
 -- Ghostty owns this key, so it is listed here rather than bound.
-keys.launchers[#keys.launchers + 1] = { label = "Option+`", description = "Drop-down terminal", group = "Apps" }
+if enabled["drop-down-terminal"] then
+  keys.launchers[#keys.launchers + 1] = { label = "Option+`", description = "Drop-down terminal", group = "Apps" }
+end
 
 -- 44 is the physical "/" key, so this stays the same key on the Turkish layout.
 bindKey(SUPER, 44, "Option+/", "Show or hide this list", "Cards", keys.toggle)
@@ -146,46 +172,59 @@ local function later(fn)
 end
 
 omvToggleSystemMenu = later(systemMenu.toggle)
-omvToggleSound = later(soundCard.toggle)
-omvToggleWifi = later(networkCards.toggleWifi)
-omvToggleBluetooth = later(bluetoothCard.toggle)
--- Answers at once, not later: the bar's plugin reads the answer.
-omvBluetoothPower = bluetoothCard.power
-omvToggleEthernet = later(networkCards.toggleEthernet)
-omvToggleWeather = later(weatherCard.toggle)
-omvToggleBattery = later(batteryCard.toggle)
-omvToggleAgents = later(agentsCard.toggle)
-omvToggleLyrics = later(lyricsWindow.toggle)
-omvStopRecording = later(captureMenu.stopRecording)
-omvToggleFocus = later(focusMode.toggle)
-omvToggleTailscale = later(tailscalePanel.toggle)
-omvToggleNightLight = later(nightLight.toggle)
-omvToggleMic = later(mic.toggle)
+omvToggleKeyList = later(keys.toggle)
+omvToggleWindows = later(windowList.toggle)
 -- omv theme <name>: later() takes no arguments, so the name is carried here.
 omvSetTheme = function(name) hs.timer.doAfter(0, function() themes.set(name) end) end
+-- The others only while their feature is on: a script calling one that's off gets an error.
+if soundCard then omvToggleSound = later(soundCard.toggle) end
+if networkCards then
+  omvToggleWifi = later(networkCards.toggleWifi)
+  omvToggleEthernet = later(networkCards.toggleEthernet)
+end
+if bluetoothCard then
+  omvToggleBluetooth = later(bluetoothCard.toggle)
+  -- Answers at once, not later: the bar's plugin reads the answer.
+  omvBluetoothPower = bluetoothCard.power
+end
+if weatherCard then omvToggleWeather = later(weatherCard.toggle) end
+if batteryCard then omvToggleBattery = later(batteryCard.toggle) end
+if agentsCard then omvToggleAgents = later(agentsCard.toggle) end
+if waitingClaude then omvFocusClaude = later(waitingClaude.focus) end
+if lyricsWindow then omvToggleLyrics = later(lyricsWindow.toggle) end
+if captureMenu then
+  omvToggleCapture = later(captureMenu.toggle)
+  omvStopRecording = later(captureMenu.stopRecording)
+end
+if focusMode then omvToggleFocus = later(focusMode.toggle) end
+if tailscalePanel then omvToggleTailscale = later(tailscalePanel.toggle) end
+if nightLight then omvToggleNightLight = later(nightLight.toggle) end
+if mic then omvToggleMic = later(mic.toggle) end
+if calendarCard then
+  omvToggleCalendar = later(calendarCard.toggle)
+  omvJoinMeeting = later(calendarCard.join)
+end
+if pullRequests then omvTogglePrs = later(pullRequests.toggle) end
+if clipboardHistory then
+  omvToggleClipboard = later(clipboardHistory.toggle)
+  omvResumeClipboard = later(clipboardHistory.resume)
+end
+if hungryProcesses then omvToggleProcesses = later(hungryProcesses.toggle) end
+if diskCard then omvToggleDisk = later(diskCard.toggle) end
+if reminderCards then
+  omvToggleReminders = later(reminderCards.toggle)
+  omvNewReminder = later(reminderCards.new)
+end
 
 -- SketchyBar's config calls this when it starts: a restarted bar has lost the items set
 -- here, and they are only sent again when they change.
 omvRedrawBar = later(function()
-  weatherCard.redrawBar()
-  calendarCard.redrawBar()
-  reminderCards.redrawBar()
-  clipboardHistory.redrawBar()
-  mic.redrawBar()
+  if weatherCard then weatherCard.redrawBar() end
+  if calendarCard then calendarCard.redrawBar() end
+  if reminderCards then reminderCards.redrawBar() end
+  if clipboardHistory then clipboardHistory.redrawBar() end
+  if mic then mic.redrawBar() end
 end)
-omvToggleKeyList = later(keys.toggle)
-omvToggleCalendar = later(calendarCard.toggle)
-omvJoinMeeting = later(calendarCard.join)
-omvToggleWindows = later(windowList.toggle)
-omvTogglePrs = later(pullRequests.toggle)
-omvToggleClipboard = later(clipboardHistory.toggle)
-omvResumeClipboard = later(clipboardHistory.resume)
-omvToggleProcesses = later(hungryProcesses.toggle)
-omvToggleDisk = later(diskCard.toggle)
-omvFocusClaude = later(waitingClaude.focus)
-omvToggleCapture = later(captureMenu.toggle)
-omvToggleReminders = later(reminderCards.toggle)
-omvNewReminder = later(reminderCards.new)
 
 -- Your own settings, from ~/.config/omv/hammerspoon.lua when it exists. Last, so it can
 -- change anything above; an error in it is shown, and omv's keys keep working.

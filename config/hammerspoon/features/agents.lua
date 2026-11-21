@@ -5,6 +5,7 @@
 -- view; picking one opens it with claude attach in a Ghostty window.
 
 local shell = require("shell")
+local flags = require("flags")
 local card = require("card")
 local agents = require("agents")
 local waiting = require("features.waiting")
@@ -248,6 +249,8 @@ local function planResetNotice()
   if not file then return end
   file:write(notice.at, "\n")
   file:close()
+  -- With reminders turned off, there's nowhere to show it.
+  if not flags.read(shell.readText(flags.PATH)).reminders then return end
   require("features.reminders").add(notice.at - now, notice.text)
 end
 

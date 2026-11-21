@@ -20,7 +20,8 @@ local RUN_DELAY = 0.15
 local MDFIND = "/usr/bin/mdfind"
 
 -- Read once at load: a change to ~/.config/omv/flags takes a reload.
-local fileSearch = flags.read(shell.readText(flags.PATH))["file-search"]
+local enabled = flags.read(shell.readText(flags.PATH))
+local fileSearch, withSnippets, withCalculator = enabled["file-search"], enabled.snippets, enabled.calculator
 local search = nil
 
 -- Stops the search still running, so typing fast leaves one mdfind at most.
@@ -158,11 +159,11 @@ end
 function feature.toggle()
   if shell.isOpen("windows") then return shell.close() end
   typingIn = shell.typingIn()
-  shownSnippets = snippets.parse(shell.readText(SNIPPETS_PATH))
+  shownSnippets = withSnippets and snippets.parse(shell.readText(SNIPPETS_PATH)) or {}
   hs.task.new(shell.AEROSPACE, function(code, output)
     local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY, snippets.rows(shownSnippets))
     shell.show("windows", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
-      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = true, files = fileSearch }), onPaletteMessage,
+      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = withCalculator, files = fileSearch }), onPaletteMessage,
       -- Closed any way, by Escape, Option+Space or losing focus, a running mdfind stops too.
       { onClose = stopSearch })
   end, { "list-windows", "--all", "--format", windows.FORMAT }):start()

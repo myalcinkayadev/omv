@@ -1,7 +1,11 @@
--- Feature flags: features that stay off unless turned on. The defaults are here, in the repo;
--- ~/.config/omv/flags turns them on or off on this Mac, one "name=on" or "name=off" per line,
--- with # for comments. Lines that aren't one of those, or name an unknown flag, are ignored.
--- Read when Hammerspoon loads, so a change takes a reload.
+-- Feature flags: each of omv's features can be turned off, and a few start off. The
+-- defaults are here, in the repo; ~/.config/omv/flags turns them on or off on this Mac, one
+-- "name=on" or "name=off" per line, with # for comments. Lines that aren't one of those, or
+-- name an unknown flag, are ignored. A feature that's off isn't loaded: its key is free, its
+-- card and bar item are gone, and nothing of it runs in the background. The desktop itself
+-- (tiling, the palette, the key list, the system menu, themes and the clock) has no flag.
+-- Read when Hammerspoon loads, so a change takes a reload; `omv flags <name> on|off` reloads.
+-- The bar and Ghostty read the same file through flags.sh, which reads the defaults below.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local flags = {}
@@ -9,8 +13,41 @@ local flags = {}
 flags.PATH = (os.getenv("HOME") or "") .. "/.config/omv/flags"
 
 flags.DEFAULTS = {
-  -- The palette also lists recent files matching what's typed (mdfind).
-  ["file-search"] = false,
+  -- Cards and their bar items.
+  ["weather"] = true, -- the temperature in the bar and the forecast card (Option+Shift+O)
+  ["battery"] = true, -- the battery item and card (Option+Shift+B)
+  ["bluetooth"] = true, -- the Bluetooth item and card (Option+Shift+Y)
+  ["network"] = true, -- the Wi-Fi and Ethernet items and cards (Option+Shift+W, Option+Shift+E)
+  ["sound"] = true, -- the volume item, the Sound card (Option+Shift+V) and the next output (Option+O)
+  ["calendar"] = true, -- the calendar on a click of the clock, the next meeting, and joining it (Option+Shift+C)
+  ["disk"] = true, -- the low-disk item and the Disk card (Option+Shift+X)
+  ["tailscale"] = true, -- the Tailscale item and card
+  ["focus"] = true, -- the Do Not Disturb item and its switch in the system menu
+  -- Tools.
+  ["clipboard"] = true, -- clipboard history (Option+V) and its paused item
+  ["snippets"] = true, -- your snippets in the palette
+  ["calculator"] = true, -- sums and conversions in the palette
+  ["translate"] = true, -- translating the selection (Option+Y)
+  ["capture"] = true, -- the capture menu (Option+Shift+S) and the recording item
+  ["reminders"] = true, -- reminders and Pomodoro (Option+Shift+M) and their item
+  ["daily-note"] = true, -- the quick note (Option+Shift+D)
+  ["airdrop"] = true, -- sharing with AirDrop (Option+Shift+Q)
+  ["copy-url"] = true, -- copying the browser's URL (Option+Shift+U)
+  ["keep-awake"] = true, -- keeping the Mac awake (Option+Shift+I) and its item
+  ["night-light"] = true, -- night light (Option+Shift+Z), its item and its switch in the system menu
+  ["mic-mute"] = true, -- muting the mic (Option+M) and its item
+  ["volume-popups"] = true, -- omv's volume and brightness pop-ups, and dimming an external display
+  ["processes"] = true, -- hungry processes and ports (Option+Shift+P)
+  ["lyrics"] = true, -- the lyrics window
+  ["now-playing"] = true, -- the playing track in the bar
+  -- For developers.
+  ["claude"] = true, -- Claude Code's usage, the waiting pill and the Agents card (Option+Shift+A)
+  ["github-prs"] = true, -- pull requests waiting for your review (Option+Shift+G) and their item
+  ["dev-layout"] = true, -- the dev layout and the agent grid
+  ["drop-down-terminal"] = true, -- Ghostty's quick terminal (Option+`)
+  ["long-command-notices"] = true, -- Ghostty's notice when a long command finishes
+  -- Off unless turned on.
+  ["file-search"] = false, -- the palette also lists recent files matching what's typed (mdfind)
 }
 
 -- text is the flags file's contents, or nil when there's none.

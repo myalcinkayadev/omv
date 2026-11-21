@@ -13,7 +13,11 @@ local shell = require("shell")
 local card = require("card")
 local devlayout = require("devlayout")
 local windows = require("windows")
-local agentsCard = require("features.agents")
+-- The projects Claude Code knows, from the Agents card, loaded only when a layout opens, so
+-- turning the claude flag off keeps the card from loading at all until then.
+local function projects()
+  return require("features.agents").projects()
+end
 local agentgrid = require("agentgrid")
 
 local feature = {}
@@ -120,7 +124,7 @@ end
 
 -- editor is the app the editor key opens, from ~/.config/omv/apps.
 function feature.open(editor)
-  showList("devlayout", "Dev layout for…", devlayout.rows(agentsCard.projects(), shell.HOME), function(folder)
+  showList("devlayout", "Dev layout for…", devlayout.rows(projects(), shell.HOME), function(folder)
     if not isRepo(folder) then return startClosed(function() start(folder, editor) end) end
     showList("devlayout-choice", folder:match("([^/]+)/*$") .. "…", devlayout.choices(true), function(choice)
       startClosed(function()
@@ -199,7 +203,7 @@ end
 
 function feature.openGrid()
   local running = runningGrids()
-  local rows = agentgrid.projectRows(devlayout.rows(agentsCard.projects(), shell.HOME), running)
+  local rows = agentgrid.projectRows(devlayout.rows(projects(), shell.HOME), running)
   showList("devlayout", "Agent grid for…", rows, function(folder)
     if running[agentgrid.sessionName(folder)] then return runningGrid(folder) end
     if not isRepo(folder) then
