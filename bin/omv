@@ -40,6 +40,9 @@ source "$REPO_DIR/config/sketchybar/.config/sketchybar/flags.sh"
 # its config includes. Rewritten when a flag changes and on reload.
 readonly GHOSTTY_FLAGS=$STATE_DIR/ghostty-flags
 readonly THEMES_DIR=$HOME/.local/share/omv/themes
+# hs -c can wait forever even with -t: a reload drops the call before it answers. So each
+# call gets this long. 5 unless a test sets it.
+readonly HS_SECONDS=${OMV_HS_SECONDS:-5}
 
 usage() {
   sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
@@ -62,9 +65,14 @@ require_clean_main() {
   [ "$(git_repo rev-parse --abbrev-ref HEAD)" = main ] || die "omv is not on main; switch to main first"
 }
 
+# hs, given up after HS_SECONDS.
+hs_call() {
+  perl -e "alarm $HS_SECONDS; exec @ARGV" hs "$@"
+}
+
 # hs -t ends the client cleanly when Hammerspoon is busy, rather than leaving it waiting.
 reload_hammerspoon() {
-  hs -t 3 -c 'hs.timer.doAfter(0.2, hs.reload)' >/dev/null 2>&1 || true
+  hs_call -t 3 -c 'hs.timer.doAfter(0.2, hs.reload)' >/dev/null 2>&1 || true
 }
 
 # Stow links files one by one, so a new file has no link until this runs again.
@@ -134,7 +142,7 @@ reload_aerospace() {
 # answer or predates that.
 hammerspoon_loaded_at() {
   local answer
-  answer=$(hs -t 1 -c 'return tostring(omvLoadedAt)' 2>/dev/null | tail -n 1 || true)
+  answer=$(hs_call -t 1 -c 'return tostring(omvLoadedAt)' 2>/dev/null | tail -n 1 || true)
   [ "$answer" = nil ] || echo "$answer"
 }
 
@@ -296,7 +304,7 @@ theme() {
   if [ "$#" -eq 0 ]; then theme_names; return 0; fi
   # A plain name only, as the theme card reads them: it goes into Lua below.
   [[ $1 =~ ^[A-Za-z0-9-]+$ ]] && theme_names | grep -qxF -- "$1" || die "no theme named $1; omv theme lists them"
-  hs -t 5 -c "omvSetTheme(\"$1\")" >/dev/null || die "Hammerspoon didn't answer; is it running?"
+  hs_call -t 5 -c "omvSetTheme(\"$1\")" >/dev/null || die "Hammerspoon didn't answer; is it running?"
   echo "theme: $1"
 }
 

@@ -781,6 +781,49 @@ rejects_bad_flag_value() {
   assert_exit_nonzero omv flags file-search yes
 }
 
+# hs never answers, as when Hammerspoon reloads before it can reply.
+hang_hammerspoon() {
+  printf '#!/bin/sh\necho "hs $*" >> "%s"\nexec sleep 30\n' "$CALL_LOG" > "$STUB_DIR/hs"
+  chmod +x "$STUB_DIR/hs"
+}
+
+omv_with_quick_hs() {
+  run_in_sandbox OMV_HS_SECONDS=1 "$REPO/bin/omv" "$@"
+}
+
+# Fails unless the command finishes within $1 seconds.
+assert_finishes_within() {
+  local limit=$1 start=$SECONDS
+  shift
+  "$@" >/dev/null 2>&1 || true
+  [ $((SECONDS - start)) -le "$limit" ] || fail "took $((SECONDS - start))s"
+}
+
+finishes_flag_change_when_hammerspoon_hangs() {
+  make_repo
+  hang_hammerspoon
+  assert_finishes_within 10 omv_with_quick_hs flags weather off
+}
+
+says_flag_changed_when_hammerspoon_hangs() {
+  make_repo
+  hang_hammerspoon
+  [ "$(omv_with_quick_hs flags weather off)" = 'weather is off' ] || fail "said: $(omv_with_quick_hs flags weather off)"
+}
+
+saves_flag_when_hammerspoon_hangs() {
+  make_repo
+  hang_hammerspoon
+  omv_with_quick_hs flags weather off >/dev/null 2>&1 || true
+  grep -qx 'weather=off' "$HOME_DIR/.config/omv/flags" || fail "flags: $(cat "$HOME_DIR/.config/omv/flags" 2>&1)"
+}
+
+finishes_reload_when_hammerspoon_hangs() {
+  make_repo
+  hang_hammerspoon
+  assert_finishes_within 20 omv_with_quick_hs reload
+}
+
 reloads_after_flag_change() {
   make_repo
   omv flags file-search on >/dev/null
@@ -1045,6 +1088,10 @@ run_case "should replace a flag's line and keep the others" replaces_existing_fl
 run_case 'should reject an unknown flag' rejects_unknown_flag
 run_case "should reject a flag value that isn't on or off" rejects_bad_flag_value
 run_case 'should reload Hammerspoon after a flag changes' reloads_after_flag_change
+run_case 'should finish a flag change when Hammerspoon never answers' finishes_flag_change_when_hammerspoon_hangs
+run_case 'should say the flag changed when Hammerspoon never answers' says_flag_changed_when_hammerspoon_hangs
+run_case 'should save the flag when Hammerspoon never answers' saves_flag_when_hammerspoon_hangs
+run_case 'should finish a reload when Hammerspoon never answers' finishes_reload_when_hammerspoon_hangs
 run_case 'should list every flag' lists_every_flag
 run_case "should take the drop-down terminal's key out of Ghostty when its flag is off" turns_drop_down_terminal_off_in_ghostty
 run_case "should turn Ghostty's long-command notices off when their flag is off" turns_long_command_notices_off_in_ghostty
