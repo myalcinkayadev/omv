@@ -1,6 +1,7 @@
--- Waiting Claude (Option+Shift+A, or a click on the bar's pill): focuses the session's
--- terminal, or with several waiting, lists them with the asking ones first, then the one
--- waiting longest. Working sessions are left out here; the Agents card lists them too.
+-- The agents' inbox (Option+Shift+A, or a click on the bar's pill): with one session waiting
+-- and nothing left from a break, it goes straight to that session's terminal. Otherwise one
+-- screen lists Needs you, Done, and While away after a break, with a count line under the
+-- title. Working sessions are left out here; the Agents card lists them too.
 -- While Ghostty is in front, the session in the terminal you're looking at is marked seen,
 -- so it leaves the pill until its state changes. A session that starts asking for approval
 -- elsewhere gets a notification.
@@ -10,6 +11,8 @@ local card = require("card")
 local claudewait = require("claudewait")
 local agentgrid = require("agentgrid")
 local quiet = require("quiet")
+local digest = require("digest")
+local apps = require("apps")
 
 local feature = {}
 
@@ -106,29 +109,72 @@ function feature.focusRow(row, after)
   end)
 end
 
-local function waitingRows()
-  local rows = {}
-  for _, row in ipairs(feature.rows()) do
-    if row.waiting then rows[#rows + 1] = row end
+-- What the away digest keeps from the last break, the While away rows, until each is cleared.
+feature.away = {}
+
+local INBOX_FOOTER = { { key = "Enter", text = "go to it" }, { key = "⌫", text = "clear" }, { key = "Esc", text = "close" } }
+
+local function inboxRows()
+  return digest.inbox(digest.liveRows(feature.liveSessions(), os.time()), feature.away)
+end
+
+-- The screen is sized to what its page needs once it has loaded; it may still be loading
+-- when asked, so it's asked a few times.
+local FIT_TRIES = 10
+
+local function fitInbox(tries)
+  if not shell.isOpen("claude") or tries <= 0 then return end
+  shell.view():evaluateJavaScript("typeof omvContentHeight === 'function' ? omvContentHeight() : 0", function(height)
+    if type(height) ~= "number" or height <= 0 then
+      return hs.timer.doAfter(0.05, function() fitInbox(tries - 1) end)
+    end
+    if shell.isOpen("claude") then shell.view():frame(shell.centered(shell.LIST_WIDTH, height)) end
+  end)
+end
+
+local function openRow(row)
+  -- Leave focus to the terminal or the browser, rather than handing it back to the app open before.
+  shell.leaveFocus()
+  shell.close()
+  if row.url then return shell.open({ "-a", apps.read(shell.readText(apps.PATH)).browser, row.url })() end
+  if row.tty then return feature.focusRow({ id = row.tty, pid = row.pid, label = row.label }) end
+end
+
+local showInbox
+
+local function onInboxMessage(message)
+  if message.type == "clear" then
+    feature.away = digest.clear(feature.away, message.id)
+    return showInbox()
   end
-  return rows
+  if message.type ~= "choose" then return shell.close() end
+  for _, row in ipairs(inboxRows()) do
+    if row.id == message.id then return openRow(row) end
+  end
+  shell.close()
+end
+
+showInbox = function()
+  local rows = inboxRows()
+  if #rows == 0 then return shell.close() end
+  shell.show("claude", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows, #rows) + 100),
+    card.html({ prompt = "Agents", sub = digest.summary(rows), rows = rows, footer = INBOX_FOOTER, clearable = true, compact = true }),
+    onInboxMessage)
+  fitInbox(FIT_TRIES)
+end
+
+-- Opens the screen whatever it holds, as unlocking after a break does.
+function feature.showInbox()
+  showInbox()
 end
 
 function feature.focus()
   if shell.isOpen("claude") then return shell.close() end
-  local rows = waitingRows()
-  if #rows == 0 then return shell.alert("No Claude session is waiting", 1.2) end
-  if #rows == 1 then return feature.focusRow(rows[1]) end
-  shell.show("claude", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows, #rows)),
-    card.html({ prompt = "Waiting…", rows = rows, compact = true }), function(message)
-      if message.type ~= "choose" then return shell.close() end
-      -- Leave focus to the terminal, rather than handing it back to the app open before.
-      shell.leaveFocus()
-      shell.close()
-      for _, row in ipairs(rows) do
-        if row.id == message.id then return feature.focusRow(row) end
-      end
-    end)
+  local live = digest.liveRows(feature.liveSessions(), os.time())
+  local action = digest.action(live, feature.away)
+  if not action then return shell.alert("No agent is waiting", 1.2) end
+  if action == "jump" then return feature.focusRow({ id = live[1].tty, pid = live[1].pid, label = live[1].label }) end
+  showInbox()
 end
 
 -- Seen sessions, read every 2 seconds while Ghostty is in front, and only then.

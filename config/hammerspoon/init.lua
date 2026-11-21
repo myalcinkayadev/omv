@@ -139,7 +139,7 @@ if mic then bindKey(SUPER, "m", "Option+M", "Mute or unmute the mic", "Tools", m
 if soundCard then bindKey(SUPER, "o", "Option+O", "Next sound output", "Tools", soundCard.nextOutput) end
 if translateSelection then bindKey(SUPER, "y", "Option+Y", "Translate the selection", "Tools", translateSelection.selection) end
 if airDrop then bindKey(SUPER_SHIFT, "q", "Option+Shift+Q", "Share with AirDrop", "Tools", airDrop.share) end
-if waitingClaude then bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus) end
+if waitingClaude then bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Agents waiting for you", "Tools", waitingClaude.focus) end
 if sendToAgent then bindKey(SUPER, "p", "Option+P", "Send the selection or a screenshot to an agent", "Tools", sendToAgent.toggle) end
 if calendarCard then bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join) end
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", "Cards", run(shell.SKETCHYBAR, { "--bar", "hidden=toggle" }))

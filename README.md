@@ -16,7 +16,7 @@ omv is a desktop for working alongside coding agents. Claude Code, Codex, OpenCo
 
 - **A pill when a session waits for you.** It shows the project, with `?` when the agent is blocked on your approval. Click it, or press Option+Shift+A, to land in that session's terminal, on any workspace or tab.
 - **Send to agent.** Option+P puts the selected text, what you copied, or a screenshot of a region into the prompt of an agent that finished and waits for you.
-- **Away digest.** Unlock the Mac after a break, and one card says which sessions finished, which ask for approval, and the pull requests you opened meanwhile.
+- **One inbox.** The pill and Option+Shift+A open one screen: what needs you, what's done, and after a break, which sessions ended and the pull requests you opened.
 - **The Agents card.** Claude's session and weekly limits, every live session with its state and how long it has been in it, background sessions, and one key to continue or start one.
 - **Dev layout.** Your editor, Claude Code and a shell side by side on their own workspace, optionally on a fresh git worktree, so a task can't collide with other work.
 - **Agent grid.** Two to four agents on one project, each on its own branch, as panes of one window.
@@ -296,7 +296,7 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - **pi** (`~/.pi/agent`): an extension, `omv-agent-state.ts`, is linked into its `extensions` folder. pi asks for no approvals, so its sessions are working or done.
 - `omv uninstall` removes all three, and `omv doctor` checks each agent that's set up.
 
-**Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder, as `? omv` when it asks for approval, since that one is blocked until you answer. It sits right next to Claude's logo and 5-hour limit, so the two read as one group, and the limit stays in view. Click it, or press Option+Shift+A, to go to the session's terminal, even in another tab or on another workspace. When several sessions wait, a list opens with the asking ones first, then the one waiting longest, and each row shows its state and how long it has waited. The pill goes when you answer, when a tool runs after your approval, or when the session ends. Working sessions never show in the pill, only in the Agents card.
+**Waiting sessions.** When Claude Code finishes or asks for approval, a white pill shows the session's folder, as `? omv` when it asks for approval, since that one is blocked until you answer. It sits right next to Claude's logo and 5-hour limit, so the two read as one group, and the limit stays in view. Click it, or press Option+Shift+A: with one session waiting, you land in its terminal, even in another tab or on another workspace. With more, the **agents' inbox** opens: a title with a count line, such as `1 asks · 2 done`, and at its right how many need you; then **Needs you** (●, with how long ago it asked) and **Done** (✓, with when it finished), the one waiting longest first in each, and **While away** after a break. Enter goes to a session's terminal, or opens a pull request. The pill goes when you answer, when a tool runs after your approval, or when the session ends. Working sessions never show in the pill, only in the Agents card.
 
 - **Seen sessions leave the pill.** While Ghostty is in front, the session in the terminal you're looking at is marked seen, so it leaves the pill until its state changes: a session that finishes, then asks, shows again. Ghostty is read every 2 seconds, and only while it's in front.
 - **A notification when a session asks.** A session that starts asking for approval in a terminal you're not looking at sends a notification, "omv · needs your approval". Clicking it goes to that session. A session that only finishes never notifies; the pill covers that.
@@ -317,11 +317,11 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - The clipboard is put back as it was half a second after the paste. Without Accessibility for Hammerspoon, or when the session's own terminal can't come forward, the text is only copied, for you to paste with Cmd+V.
 - Screenshots go to `~/.local/state/omv/agent-shots`, and those older than a day are removed when the next one is taken.
 
-**Away digest.** Unlock the screen after at least 5 minutes away, and a card lists what your agents did meanwhile: sessions that ask for approval first, then those that finished, started working or ended, each with when, and the pull requests you opened, from `gh`. Enter goes to a session's terminal, or opens a pull request. Nothing shows when nothing changed.
+**Away digest.** Unlock the screen after at least 5 minutes away, or the minutes set in `~/.config/omv/away-digest` such as `minutes = 10`, and if anything changed meanwhile, the agents' inbox opens on its own. Under its **While away · 25 min** section are the sessions that ended (–) and the pull requests you opened (↗), from `gh`; they stay until you clear each with Backspace. The sessions that wait are in Needs you and Done above it, from their live state.
 
 - It needs no more than the sessions' saved state: each one says when the session entered its state, so the sessions as they were at the lock and as they are now are compared. Nothing else is recorded, so it can't say which files changed.
 - The break starts when the screen locks or the Mac sleeps, and ends when you unlock it. A Mac that never asks for a password never unlocks, so it shows no digest.
-- `gh` gets 5 seconds; offline, or without `gh`, the card shows without pull requests.
+- `gh` gets 5 seconds; offline, or without `gh`, the inbox opens without pull requests.
 
 ## Battery
 
@@ -609,7 +609,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `now-playing` | the playing track in the bar |
 | `claude` | Claude Code's usage, the waiting pill, the Agents card and Option+Shift+A |
 | `send-to-agent` | sending the selection, the clipboard or a screenshot to an agent (Option+P); it needs `claude` on too |
-| `away-digest` | the card of what your agents did while the screen was locked; it needs `claude` on too |
+| `away-digest` | opening the agents' inbox on unlock after a break, and its While away section; it needs `claude` on too |
 | `github-prs` | pull requests waiting for your review (Option+Shift+G) and their item |
 | `github-ci` | the checks on your own open pull requests, their item and the notice when a failing one passes |
 | `dev-layout` | the dev layout and the agent grid |
@@ -656,7 +656,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | Option+Shift+M | Set a reminder | |
 | Option+Shift+D | Write a note into today's daily note | |
 | Option+Shift+C | Join the meeting that is starting | |
-| Option+Shift+A | Go to the Claude session waiting for you, or pick one when several wait | |
+| Option+Shift+A | Go to the agent waiting for you, or open the agents' inbox when several wait or a break left something | |
 | Option+P | Send the selection, the clipboard or a screenshot to an agent waiting for a prompt | |
 | Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+P | Hungry processes and listening ports: quit the busiest ones | |
@@ -781,6 +781,7 @@ Your own changes go in `~/.config/omv/`, outside the omv folder, so `omv update`
 | `nvim.lua` | Neovim | `vim.opt.number = true` |
 | `flags` | Feature flags | `file-search=on` (or `omv flags file-search on`) |
 | `apps` | The browser and editor omv's keys open | `browser = Google Chrome` |
+| `away-digest` | How long a break must be before unlocking opens the agents' inbox; read each time, so no reload | `minutes = 10`, or `minutes = 0` for every break |
 | `theme-clock` | A day theme and a night theme, switched at sunrise and sunset; read each time, so no reload | `day = catppuccin-latte` then `night = vantablack` |
 
 After editing one, run:
