@@ -22,7 +22,6 @@ local SECURITY = "/usr/bin/security"
 local KEYCHAIN = { "-s", "omv-deepl", "-a", "omv" }
 local DEEPL_KEYS_PAGE = "https://www.deepl.com/pro-api"
 local CLAUDE_PATHS = { shell.HOME .. "/.local/bin/claude", "/opt/homebrew/bin/claude", "/usr/local/bin/claude" }
-local COPY_WAIT_SECONDS = 0.5
 local HELPER_SECONDS = 10
 local CLAUDE_SECONDS = 45
 -- Long enough to download two languages on a slow connection.
@@ -30,30 +29,6 @@ local DOWNLOAD_SECONDS = 15 * 60
 local WIDTH = 520
 local PICKER_WIDTH = 420
 local QUOTE_HEIGHT = 24
-
--- Each copy of the clipboard's contents, so a copy for the translation can be undone.
-local function saveClipboard()
-  return hs.pasteboard.readAllData()
-end
-
-local function restoreClipboard(saved)
-  if saved and next(saved) then return hs.pasteboard.writeAllData(saved) end
-  hs.pasteboard.clearContents()
-end
-
--- Copies the selection with Cmd+C and hands its text to done, nil when nothing was copied.
-local function copySelection(done)
-  local saved, before = saveClipboard(), hs.pasteboard.changeCount()
-  local deadline = hs.timer.secondsSinceEpoch() + COPY_WAIT_SECONDS
-  hs.eventtap.keyStroke({ "cmd" }, "c", 0)
-  hs.timer.waitUntil(function()
-    return hs.pasteboard.changeCount() ~= before or hs.timer.secondsSinceEpoch() >= deadline
-  end, function()
-    local copied = hs.pasteboard.changeCount() ~= before and hs.pasteboard.getContents() or nil
-    restoreClipboard(saved)
-    done(copied)
-  end, 0.05)
-end
 
 -- Runs a program with input on stdin; one still running after seconds is stopped.
 local function runTask(program, arguments, input, done, seconds)
@@ -296,7 +271,7 @@ function feature.selection()
   if shell.isOpen("translate") then return shell.close() end
   typingIn = shell.typingIn()
   if typingIn == nil then return shell.alert("Translating needs Accessibility for Hammerspoon", 2) end
-  copySelection(function(copied)
+  shell.copySelection(function(copied)
     local text = translate.selection(copied)
     if not text then return shell.alert("Select some text first", 1.2) end
     translateText(text)

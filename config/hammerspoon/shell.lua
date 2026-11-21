@@ -125,6 +125,33 @@ function shell.pasteBack(typingIn, notice)
   end, 0.05)
 end
 
+-- Each copy of the clipboard's contents, so a copy made for omv can be undone.
+function shell.saveClipboard()
+  return hs.pasteboard.readAllData()
+end
+
+function shell.restoreClipboard(saved)
+  if saved and next(saved) then return hs.pasteboard.writeAllData(saved) end
+  hs.pasteboard.clearContents()
+end
+
+-- Copies the selection with Cmd+C and hands its text to done, nil when nothing was copied.
+-- The clipboard is put back as it was.
+local COPY_WAIT_SECONDS = 0.5
+
+function shell.copySelection(done)
+  local saved, before = shell.saveClipboard(), hs.pasteboard.changeCount()
+  local deadline = hs.timer.secondsSinceEpoch() + COPY_WAIT_SECONDS
+  hs.eventtap.keyStroke({ "cmd" }, "c", 0)
+  hs.timer.waitUntil(function()
+    return hs.pasteboard.changeCount() ~= before or hs.timer.secondsSinceEpoch() >= deadline
+  end, function()
+    local copied = hs.pasteboard.changeCount() ~= before and hs.pasteboard.getContents() or nil
+    shell.restoreClipboard(saved)
+    done(copied)
+  end, 0.05)
+end
+
 -- Whether the card named name is the one showing. With several names, any of them.
 function shell.isOpen(...)
   if not panel then return false end
