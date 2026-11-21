@@ -86,6 +86,9 @@ local clipPage = card.html({ prompt = "x", rows = {}, clip = "</script><script>a
 check.that("should put the clipboard into the page as a script string that can't close the script",
   clipPage:find("</script><script>alert", 1, true) == nil and clipPage:find("<\\/script>", 1, true) ~= nil)
 check.that("should add the clipboard actions to a card that has a clipboard", clipPage:find("function omvTransform", 1, true) ~= nil)
+check.that("should write the clipboard footer's keys as words",
+  clipPage:find("<kbd>Enter</kbd>copy", 1, true) ~= nil and clipPage:find("<kbd>Shift+Enter</kbd>paste where you were typing", 1, true) ~= nil
+    and clipPage:find("<kbd>Esc</kbd>close", 1, true) ~= nil)
 check.that("should leave the clipboard actions out of a card without one", card.html({ prompt = "x", rows = {} }):find("function omvTransform", 1, true) == nil)
 
 check.finish()

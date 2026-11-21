@@ -453,7 +453,7 @@ function card.html(screen)
     .. (screen.passage and ("<div class=passage>" .. card.escape(screen.passage) .. "</div>") or "")
     .. rowsOpen(screen.columns) .. table.concat(rows) .. (screen.files and "<div class=files></div>" or "") .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
     .. footerHtml(screen.footer)
-    .. (clip and ('<div class="foot clipfoot" hidden><span><kbd>⏎</kbd>copy</span><span><kbd>⇧⏎</kbd>paste where you were typing</span>'
+    .. (clip and ('<div class="foot clipfoot" hidden><span><kbd>Enter</kbd>copy</span><span><kbd>Shift+Enter</kbd>paste where you were typing</span>'
       .. "<span><kbd>Esc</kbd>close</span></div>") or "")
     .. (calc and ("<script>" .. CALC .. "</script>") or "")
     .. (clip and ("<script>window.omvClip = " .. (screen.clip and card.jsString(screen.clip) or "null") .. ";" .. TRANSFORM .. "</script>") or "")
