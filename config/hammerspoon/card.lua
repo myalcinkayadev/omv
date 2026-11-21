@@ -44,6 +44,7 @@ card.STYLE = [[
   .note { display: flex; align-items: center; height: 44px; padding: 0 12px; color: #7a7a7a; }
   .note .icon { width: 28px; font-size: 18px; }
   .note .label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .quote { padding: 0 12px 4px; font-size: 13px; line-height: 20px; color: #a6a6a6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 60px; overflow: hidden; }
   .passage { padding: 2px 12px 10px; font-size: 15px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; -webkit-user-select: text; }
   body.compact .note { height: 30px; }
   body.compact .row { height: 30px; }
@@ -213,6 +214,12 @@ local SCRIPT = [[
     const shown = visible();
     const typed = query;
     if (event.key === "Escape") return send("close");
+    // A row with data-key is picked by Cmd and its key, such as Cmd+C to copy.
+    const keyed = event.metaKey && !files && rows.find((row) => row.dataset.key === event.key.toLowerCase());
+    if (keyed) {
+      event.preventDefault();
+      return pick(keyed);
+    }
     // File search's actions: Cmd+Enter shows the selected file in Finder, Cmd+C copies its
     // path. Hammerspoon ignores them on any other row.
     if (files && event.metaKey && (event.key === "Enter" || event.key.toLowerCase() === "c")) {
@@ -275,7 +282,8 @@ local function rowHtml(row)
   return '<div class="row" data-id="' .. card.escape(row.id) .. '"'
     .. (row.group and (' data-group="' .. card.escape(row.group) .. '"') or "")
     .. (row.keywords and (' data-keywords="' .. card.escape(row.keywords) .. '"') or "")
-    .. (row.submenu and " data-submenu" or "") .. ">"
+    .. (row.submenu and " data-submenu" or "")
+    .. (row.key and (' data-key="' .. card.escape(row.key) .. '"') or "") .. ">"
     .. icon
     .. "<span class=label>" .. card.escape(row.label) .. "</span>"
     .. (hint and ("<span class=hint>" .. card.escape(hint) .. "</span>") or "")
@@ -305,10 +313,11 @@ local function rowsWithHeaders(screenRows)
   return lines
 end
 
--- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group, note } },
+-- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group, note, key } },
 --            selected = 1, compact = false, columns = 1, input = false, hint = "", passage = "" }
 -- An input card sends what was typed on Enter, and shows its hint under the prompt. A
--- passage is text shown whole above the rows, wrapped, such as a translation.
+-- passage is text shown whole above the rows, wrapped, such as a translation; a quote, smaller
+-- and grey above it, is what it came from. A row's key picks it with Cmd held.
 -- A card with calc = true, such as the palette, works out a typed sum in its first row.
 function card.html(screen)
   local rows = rowsWithHeaders(screen.rows)
@@ -322,6 +331,7 @@ function card.html(screen)
     .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "") .. ">"
     .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span><span class=caret></span>'
     .. (screen.files and "<span class=busy>Searching files…</span>" or "") .. "</div>"
+    .. (screen.quote and ("<div class=quote>" .. card.escape(screen.quote) .. "</div>") or "")
     .. (screen.passage and ("<div class=passage>" .. card.escape(screen.passage) .. "</div>") or "")
     .. rowsOpen(screen.columns) .. table.concat(rows) .. (screen.files and "<div class=files></div>" or "") .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
     .. (calc and ("<script>" .. CALC .. "</script>") or "")

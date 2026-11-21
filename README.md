@@ -66,7 +66,7 @@ Before you trust it:
 - [**Night light**](#night-light): macOS's Night Shift on a key, with a moon in the bar.
 - [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell on a workspace of their own, a new task in a git worktree, or a grid of agents.
 - [**Share with AirDrop**](#share-with-airdrop): the files selected in Finder, or what you copied, in one key.
-- [**Translate**](#translate): Option+Y translates the selected text on the Mac, and pastes it over the selection.
+- [**Translate**](#translate): Option+Y translates the selected text with Apple on the Mac, DeepL or Claude, and pastes it over the selection.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 - [**Doctor**](#doctor): `omv doctor` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
@@ -462,9 +462,19 @@ Option+Shift+Q opens macOS's AirDrop sheet for the files selected in Finder. Wit
 
 ## Translate
 
-Select text anywhere and press Option+Y. omv finds its language and translates it into your Mac's first language, or into English when it's in that language already. A card shows the translation: Enter pastes it over the selection, and Copy puts it on the clipboard. Your clipboard is left as it was before the translation.
+Select text anywhere and press Option+Y. omv finds its language on the Mac and translates it into the first of your Mac's languages, in System Settings → General → Language & Region, that it isn't in already, else into English. With English then Turkish there, Turkish text becomes English and English text becomes Turkish.
 
-Translation runs on the Mac with Apple's own models, so nothing is sent anywhere and it works offline. macOS needs each language downloaded once, in System Settings → General → Language & Region → Translation Languages; until then, the card says which ones and opens that page. Copying the selection and pasting need Accessibility for Hammerspoon. A small Swift helper, `translate.swift`, is built with `swiftc` the first time and kept in `~/.cache/omv/translate`.
+The first time, a card asks which service translates. The choice is kept, and the card's Another service (Cmd+K) changes it:
+
+| Service | Where | Setup |
+|---|---|---|
+| Apple (recommended) | On the Mac: nothing is sent anywhere, and it works offline | Each language is downloaded once. The card offers to, macOS's own sheet downloads it, and the selection is then translated. Languages are also managed in System Settings → General → Language & Region → Translation Languages. |
+| DeepL | Online: the selected text goes to DeepL | A key: the free plan covers 500,000 characters a month. The card opens DeepL's page; copy the key, then pick Use the copied key. It's kept in the macOS Keychain, never in a file. |
+| Claude | Online: the selected text goes to Claude, through Claude Code's `claude -p` on its fast model | Claude Code installed and signed in; it counts towards your plan. It keeps tone and formatting, and takes a few seconds. |
+
+The result card shows the service, your selection and its translation. Enter pastes the translation over the selection, Copy (Cmd+C) puts it on the clipboard, Translate back (Cmd+B) checks it by translating it back, and Another language (Cmd+L) lists the languages, those on the Mac first for Apple. The language you pick is kept for the next translations; pick Automatic to go back. Your clipboard is left as it was before the translation.
+
+Copying the selection and pasting need Accessibility for Hammerspoon. A small Swift helper, `translate.swift`, finds the language and runs Apple's translation; it's built with `swiftc` the first time and kept in `~/.cache/omv/translate`.
 
 ## Do Not Disturb
 
