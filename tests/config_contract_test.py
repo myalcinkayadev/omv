@@ -282,6 +282,14 @@ class ConfigContract(unittest.TestCase):
         source = (REPO / "config/hammerspoon/features/claudeprojects.lua").read_text(encoding="utf-8")
         self.assertNotRegex(source, r":start\(\)|doEvery|doAfter|watcher")
 
+    def test_should_stop_a_waiting_location_retry_before_starting_another(self) -> None:
+        source = (REPO / "config/hammerspoon/features/weather.lua").read_text(encoding="utf-8")
+        read = re.search(r"local function readWeather\(tries\)\n(.*?)\nend\n", source, re.S)
+        self.assertIsNotNone(read)
+        body = read.group(1)
+        self.assertLess(body.find("omvWeatherRetry:stop()"), body.find("omvWeatherRetry = hs.timer.doAfter"))
+        self.assertNotEqual(body.find("omvWeatherRetry:stop()"), -1)
+
     def test_should_keep_the_weather_location_retry_from_garbage_collection(self) -> None:
         # Hammerspoon collects a timer nothing refers to, so the retry would never run.
         source = (REPO / "config/hammerspoon/features/weather.lua").read_text(encoding="utf-8")

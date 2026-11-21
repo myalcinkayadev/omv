@@ -67,6 +67,11 @@ end
 
 local function readWeather(tries)
   tries = tries or 0
+  -- One read at a time: a new one replaces a retry still waiting.
+  if omvWeatherRetry then
+    omvWeatherRetry:stop()
+    omvWeatherRetry = nil
+  end
   local problem = locationProblem()
   if problem then
     weatherProblem = problem
