@@ -70,6 +70,8 @@ card.STYLE = [[
   .row.selected .hint.tone-ok { color: #1d7a52; }
   .row.selected .hint.tone-bad { color: #a33a2c; }
   .foot[hidden] { display: none; }
+  /* The palette's clipboard footer shows and hides with its row, so it reaches the card's edge itself. */
+  .foot.clipfoot { margin-bottom: -14px; }
   /* The away digest: a count line under the title, a status at its right, a key footer, and
      icons in a tone. Yellow and green aren't grays, so a theme leaves them as they are. */
   .status { float: right; font-size: 13px; margin-top: 3px; }
