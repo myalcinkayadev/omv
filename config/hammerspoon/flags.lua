@@ -49,6 +49,7 @@ flags.DEFAULTS = {
   ["drop-down-terminal"] = true, -- Ghostty's quick terminal (Option+`)
   ["long-command-notices"] = true, -- Ghostty's notice when a long command finishes
   -- Off unless turned on.
+  ["meeting-mode"] = false, -- Do Not Disturb, paused music and hidden chat apps while a meeting runs
   ["file-search"] = false, -- the palette also lists recent files matching what's typed (mdfind)
 }
 

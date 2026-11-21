@@ -56,6 +56,7 @@ Before you trust it:
 - [**Agents**](#agents): Claude Code's session and weekly limits, one click to continue or start a session, and a pill when a session waits for you.
 - [**Battery**](#battery): charge, time left, cycles and power draw.
 - [**Weather**](#weather): the temperature in the bar, and a three-day forecast for wherever the Mac is.
+- [**Meeting mode**](#meeting-mode): Do Not Disturb, paused music and hidden chat apps while a meeting runs, all back as they were when it ends.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
 - [**Disk**](#disk): free space in the bar once it runs low, and Mole's cleanups a key away.
@@ -357,6 +358,19 @@ Under the footer are today's events from Calendar.app, so every account added th
 - Events are read when Hammerspoon starts, every 5 minutes, when the Mac wakes, and when the card opens.
 - They're read by a small Swift helper, `agenda.swift`, built the first time into `~/.cache/omv/Agenda.app`. It runs as its own app because macOS asks the app that reads calendars for permission, and Hammerspoon can't ask. The first time, macOS asks to let "omv agenda" access your calendars. If you refuse, the card says so, and you can allow it later in System Settings > Privacy & Security > Calendars.
 
+## Meeting mode
+
+Off unless turned on, with `omv flags meeting-mode on`, since it pauses your music and hides apps on its own. While a meeting runs:
+
+- **Do Not Disturb** comes on, through the same "omv Do Not Disturb" shortcut as the [system menu's switch](#do-not-disturb). Without the shortcut, the Focus is left alone.
+- **Music or Spotify** pauses, if it plays.
+- **Agents' notices** wait: a session that starts asking for approval sends no notification. The bar's pill still shows it.
+- **The apps on workspaces 5 and 6**, such as Messages, WhatsApp, Discord and Spotify, are hidden, so a shared screen shows none of them.
+
+It starts when you join a meeting with Option+Shift+C or the bar's meeting item, or on its own when a Calendar event with a call link starts. It ends when that event ends. **Meeting mode on or off** in the key list and the palette ends it early, or starts it by hand: until the meeting running now ends, or for an hour.
+
+Leaving undoes only what meeting mode changed. A Focus you had on stays on, a Focus you switched off yourself stays off, a player you started again keeps playing, and an app you had hidden stays hidden. A meeting you left early doesn't start meeting mode again, and one that started more than 5 minutes ago, such as after a reload, doesn't start it on its own.
+
 ## Reminders and Pomodoro
 
 Option+Shift+M asks "Remind me…". Type a time, then what to remember, and press Enter.
@@ -544,7 +558,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
   <img src="docs/clipboard.png" alt="Clipboard history: Pause history and Clear history, then five copies newest first, each with its app and age" width="720">
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvSendToAgent()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleMeetingMode()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvSendToAgent()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Feature flags
 
@@ -592,6 +606,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `dev-layout` | the dev layout and the agent grid |
 | `drop-down-terminal` | Ghostty's quick terminal (Option+\`) |
 | `long-command-notices` | Ghostty's notice when a long command finishes |
+| `meeting-mode` | **off unless turned on:** Do Not Disturb, paused music, held-back agent notices and hidden chat and music apps while a meeting runs; see [Meeting mode](#meeting-mode) |
 | `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
 
 ## Keys

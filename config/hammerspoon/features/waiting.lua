@@ -9,6 +9,7 @@ local shell = require("shell")
 local card = require("card")
 local claudewait = require("claudewait")
 local agentgrid = require("agentgrid")
+local quiet = require("quiet")
 
 local feature = {}
 
@@ -171,13 +172,14 @@ feature.appWatcher = hs.application.watcher.new(function(_, event, app)
   end
 end):start()
 
--- A notification when a session starts asking, unless its terminal is the one in view.
--- Clicking it goes to that session.
+-- A notification when a session starts asking, unless its terminal is the one in view, or
+-- meeting mode holds notices back; the bar's pill still shows it. Clicking it goes to that
+-- session.
 local known = savedSessions()
 
 feature.stateWatcher = hs.pathwatcher.new(claudewait.STATE_DIR, function()
   local now = savedSessions()
-  for _, session in ipairs(claudewait.newlyAsking(known, now, viewedTty)) do
+  for _, session in ipairs(quiet.active and {} or claudewait.newlyAsking(known, now, viewedTty)) do
     local row = { id = session.tty, pid = session.pid, label = session.folder }
     hs.notify.new(function() feature.focusRow(row) end,
       { title = "omv · needs your approval", informativeText = session.folder, withdrawAfter = 0 }):send()

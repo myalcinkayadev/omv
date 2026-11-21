@@ -50,6 +50,12 @@ local checks = feature("github-ci", "features.ci")
 local captureMenu = feature("capture", "features.capture")
 local reminderCards = feature("reminders", "features.reminders")
 local calendarCard = feature("calendar", "features.calendar")
+-- Reads the calendar's meetings, so it loads only with it.
+local meetingMode = calendarCard and feature("meeting-mode", "features.meeting")
+if meetingMode then
+  meetingMode.setup(calendarCard)
+  calendarCard.onJoin = meetingMode.joined
+end
 local networkCards = feature("network", "features.network")
 local soundCard = feature("sound", "features.sound")
 local weatherCard = feature("weather", "features.weather")
@@ -108,6 +114,11 @@ if devLayout then
     group = "Apps", run = function() devLayout.open(chosen.editor) end, runs = true }
   keys.launchers[#keys.launchers + 1] = { description = "Agent grid: 2–4 Claude agents in worktrees",
     group = "Apps", run = devLayout.openGrid, runs = true }
+end
+if meetingMode then
+  -- No key: it's run from the palette or the key list.
+  keys.launchers[#keys.launchers + 1] = { description = "Meeting mode on or off",
+    group = "Tools", run = meetingMode.toggle, runs = true }
 end
 bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", "Apps", run(shell.LAUNCH, { "1", shell.GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
 if enabled["keep-awake"] then
@@ -209,6 +220,7 @@ if calendarCard then
   omvToggleCalendar = later(calendarCard.toggle)
   omvJoinMeeting = later(calendarCard.join)
 end
+if meetingMode then omvToggleMeetingMode = later(meetingMode.toggle) end
 if pullRequests then omvTogglePrs = later(pullRequests.toggle) end
 if checks then
   omvToggleCi = later(checks.toggle)

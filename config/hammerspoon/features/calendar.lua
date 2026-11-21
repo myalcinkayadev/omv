@@ -93,7 +93,7 @@ function feature.join()
   if shell.isOpen("join") then return shell.close() end
   local meetings = agendaDay and agenda.joinable(agendaDay.events, os.time()) or {}
   if #meetings == 0 then return feature.toggle() end
-  if #meetings == 1 then return shell.open({ meetings[1].link })() end
+  if #meetings == 1 then return feature.openCall(meetings[1].link) end
   local rows = agenda.joinRows(meetings)
   shell.show("join", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows, #rows)),
     card.html({ prompt = "Join…", rows = rows, compact = true }), function(message)
@@ -101,8 +101,21 @@ function feature.join()
       -- Leave focus to the call app, rather than handing it back to the app open before.
       shell.leaveFocus()
       shell.close()
-      shell.open({ message.id })()
+      feature.openCall(message.id)
     end)
+end
+
+-- Set by meeting mode, to hear which call was joined.
+feature.onJoin = nil
+
+function feature.openCall(link)
+  shell.open({ link })()
+  if feature.onJoin then feature.onJoin(link) end
+end
+
+-- Today's events as last read, for meeting mode.
+function feature.events()
+  return agendaDay and agendaDay.events or {}
 end
 
 -- A restarted bar has lost the item, so the meeting is sent again even if unchanged.
