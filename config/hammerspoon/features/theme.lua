@@ -63,6 +63,9 @@ local function apply(name)
   hs.task.new(shell.SKETCHYBAR, nil, { "--reload" }):start()
 end
 
+-- The theme in use, by name; Vantablack when none was chosen.
+feature.current = current
+
 -- Switches to a theme by name, as omv theme <name> does. An unknown name changes nothing.
 function feature.set(name)
   if not theme.plainName(name) then return end

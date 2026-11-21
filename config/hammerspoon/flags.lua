@@ -23,6 +23,7 @@ flags.DEFAULTS = {
   ["disk"] = true, -- the low-disk item and the Disk card (Option+Shift+X)
   ["tailscale"] = true, -- the Tailscale item and card
   ["focus"] = true, -- the Do Not Disturb item and its switch in the system menu
+  ["display-profiles"] = true, -- settings per display setup, from ~/.config/omv/displays
   -- Tools.
   ["clipboard"] = true, -- clipboard history (Option+V) and its paused item
   ["snippets"] = true, -- your snippets in the palette

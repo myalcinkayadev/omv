@@ -24,6 +24,7 @@ overwrites. Create a file there only when the change needs it.
 | `~/.config/omv/flags` | Feature flags | `name=on` or `name=off`; prefer `omv flags <name> on` |
 | `~/.config/omv/apps` | The browser and editor omv's keys open | `browser = Google Chrome`, `editor = Cursor` |
 | `~/.config/omv/snippets` | Text the palette pastes by name | `name = text` lines, `\n` for a line break |
+| `~/.config/omv/displays` | Display profiles: settings per display setup | `[desk]` sections with `when = DELL`, `layout = tiles`, `gaps = 10`, `font = 15` |
 | `~/.config/omv/away-digest` | How long a break opens the agents' inbox | `minutes = 10`; `0` for every break |
 | `~/.config/omv/theme-clock` | A day and a night theme, switched at sunrise and sunset | `day = catppuccin-latte`, `night = vantablack` |
 
@@ -57,6 +58,26 @@ of omv's keys another way, such as `[gaps.inner]` or `inner = { horizontal = 4 }
 refused with the line and the form to use. Before binding a key, check it isn't taken: omv's
 keys are in `config/aerospace/.config/aerospace/aerospace.toml` and
 `config/hammerspoon/init.lua`, and `Option+/` lists them all.
+
+**Display profiles.** Settings for one display setup, such as "tabs and tight gaps on the
+laptop, tiles at the desk", go in `~/.config/omv/displays`: one `[name]` section per profile,
+and the first whose `when` matches the plugged-in displays is used (a part of a display's name,
+comma-separated, or `built-in only`). A profile sets `layout`, `gaps`, `gaps.inner`,
+`gaps.outer`, `quiet`, `theme`, `font`, `bar`, `on-enter` and `on-leave`; README.md's
+"Display profiles" lists their values.
+
+```ini
+[desk]
+when   = DELL U2723QE
+layout = tiles
+gaps   = 12
+```
+
+Hammerspoon reads the file whenever displays change, on wake and when it reloads, so apply an
+edit with `omv reload`. Leaving a profile puts back what it changed. A profile's gaps win over
+the user's `aerospace.toml`, while the user's `~/.config/omv/ghostty` wins over its `font`.
+omv keeps the profile in use in `~/.local/state/omv/`, writing those files itself. `omv
+doctor` names a line in `displays` it can't read.
 
 **Other commands.** `omv theme` lists themes and `omv theme <name>` switches; `omv flags`
 lists feature flags; `omv update` pulls omv's own changes; `omv doctor --fix` clears a stuck

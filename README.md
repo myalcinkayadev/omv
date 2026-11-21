@@ -57,6 +57,7 @@ Before you trust it:
 - [**Agents**](#agents): Claude Code's session and weekly limits, one click to continue or start a session, and a pill when a session waits for you.
 - [**Battery**](#battery): charge, time left, cycles and power draw.
 - [**Weather**](#weather): the temperature in the bar, and a three-day forecast for wherever the Mac is.
+- [**Display profiles**](#display-profiles): tabs and tight gaps on the laptop, tiles and roomy gaps at the desk, switched as displays come and go.
 - [**Meeting mode**](#meeting-mode): Do Not Disturb, paused music and hidden chat apps while a meeting runs, all back as they were when it ends.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
@@ -223,6 +224,7 @@ Option+Escape opens a menu modeled on Omarchy's.
 | Do Not Disturb | Switches [Do Not Disturb](#do-not-disturb) on or off |
 | Sound | Opens the [Sound card](#sound) |
 | Theme | Opens the [theme picker](#themes) |
+| Display profile | Lists your [display profiles](#display-profiles), to pick one by hand |
 | Permissions | Each permission omv needs, ✓ granted, ✗ not, or ? to check by hand; Enter opens its System Settings pane. Opens on its own the first time omv loads |
 | Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
 
@@ -387,6 +389,41 @@ Under the footer are today's events from Calendar.app, so every account added th
 - **Joining:** from 5 minutes before a meeting until it ends, Option+Shift+C or a click on the meeting item opens its Zoom, Google Meet or Teams link. When several meetings can be joined, a card lists them, with the one starting next selected, else the one that started last. With none to join, the calendar card opens. The link comes from the event's URL, else its location, else its notes. Only those links are saved, never the notes themselves.
 - Events are read when Hammerspoon starts, every 5 minutes, when the Mac wakes, and when the card opens.
 - They're read by a small Swift helper, `agenda.swift`, built the first time into `~/.cache/omv/Agenda.app`. It runs as its own app because macOS asks the app that reads calendars for permission, and Hammerspoon can't ask. The first time, macOS asks to let "omv agenda" access your calendars. If you refuse, the card says so, and you can allow it later in System Settings > Privacy & Security > Calendars.
+
+## Display profiles
+
+A profile is a few settings for one display setup, such as tabs and tight gaps on the laptop alone, and tiles and roomy gaps at the desk. Write them in `~/.config/omv/displays`, one `[section]` each:
+
+```ini
+# The first profile whose displays are plugged in is used.
+[desk]
+when       = DELL U2723QE, LG UltraFine   # a display whose name contains any of these
+count      = 2                            # optional: exactly this many displays
+layout     = tiles                        # tiles, tabs or keep, for every workspace
+gaps       = 10                           # every gap; or set them apart:
+gaps.inner = 8
+gaps.outer = 12
+quiet      = off                          # Do Not Disturb: on, off or keep
+theme      = tokyo-night                  # any theme you have, or keep
+font       = 15                           # Ghostty's font size
+bar        = shown                        # shown, hidden or keep
+on-enter   = ~/bin/desk-on.sh             # your own command when the profile starts
+on-leave   = ~/bin/desk-off.sh            # and when it ends
+
+[laptop]
+when   = built-in only
+layout = tabs
+gaps   = 4
+```
+
+- **When it switches:** as displays connect or disconnect, and on wake, once they've settled. A notice names the profile and what it set, such as `desk · tiles · gaps 12 · tokyo-night · font 15`. With none matching, omv's own settings are back.
+- **Leaving a profile** puts back what it changed: omv's gaps and tiles, the theme you had, the font from your own Ghostty settings, Do Not Disturb as it was and the bar shown. A setting left out, or set to `keep`, is never touched.
+- **By hand:** Option+Escape, then **Display profile**, or the palette, lists your profiles. One picked by hand stays until the displays change; **Follow the displays** goes back to choosing by itself.
+- **The notch:** the built-in screen keeps its own top gap below the notch, whatever `gaps` says. On other displays the outer gap is measured below the bar.
+- **Ghostty** takes the font size in new windows, or after Cmd+Shift+,. A `font-size` in your own `~/.config/omv/ghostty` still wins.
+- **Gaps** are built into `aerospace.toml` after your own `~/.config/omv/aerospace.toml`, with `omv reload aerospace`.
+- **Your own code:** `~/.config/omv/hammerspoon.lua` can define `omvOnDisplayProfile(name)`, called with the profile's name on each switch, or nil when none is used.
+- **Mistakes:** a line omv can't read changes nothing; the notice names it, such as `~/.config/omv/displays line 3: layout must be tiles, tabs or keep`, and `omv doctor` reports it too. Without the file, display profiles do nothing; `omv flags display-profiles off` turns them off altogether.
 
 ## Meeting mode
 
@@ -588,7 +625,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
   <img src="docs/clipboard.png" alt="Clipboard history: Pause history and Clear history, then five copies newest first, each with its app and age" width="720">
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleMeetingMode()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvSendToAgent()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleMeetingMode()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvSendToAgent()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvDisplayProfiles()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Feature flags
 
@@ -638,6 +675,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `dev-layout` | the dev layout and the agent grid |
 | `drop-down-terminal` | Ghostty's quick terminal (Option+\`) |
 | `long-command-notices` | Ghostty's notice when a long command finishes |
+| `display-profiles` | display profiles from `~/.config/omv/displays`, and their row in the system menu; without the file they do nothing |
 | `meeting-mode` | **off unless turned on:** Do Not Disturb, paused music, held-back agent notices and hidden chat and music apps while a meeting runs; see [Meeting mode](#meeting-mode) |
 | `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
 
@@ -804,6 +842,7 @@ Your own changes go in `~/.config/omv/`, outside the omv folder, so `omv update`
 | `nvim.lua` | Neovim | `vim.opt.number = true` |
 | `flags` | Feature flags | `file-search=on` (or `omv flags file-search on`) |
 | `apps` | The browser and editor omv's keys open | `browser = Google Chrome` |
+| `displays` | Display profiles: settings for each display setup, applied as displays connect and disconnect | `[desk]` then `when = DELL U2723QE` and `layout = tiles` |
 | `away-digest` | How long a break must be before unlocking opens the agents' inbox; read each time, so no reload | `minutes = 10`, or `minutes = 0` for every break |
 | `theme-clock` | A day theme and a night theme, switched at sunrise and sunset; read each time, so no reload | `day = catppuccin-latte` then `night = vantablack` |
 

@@ -59,6 +59,12 @@ local function menuChoose(id)
   if id == "nightlight" then return require("features.nightshift").toggle() end
   if id == "sound" then return require("features.sound").open() end
   if id == "theme" then return require("features.theme").open() end
+  -- Loaded with its flag only, since it starts watching the displays when it loads.
+  if id == "displays" then
+    local profiles = package.loaded["features.displays"]
+    if type(profiles) ~= "table" then return shell.alert("Display profiles are off: omv flags display-profiles on", 2.5) end
+    return profiles.open()
+  end
   if id == "permissions" then return require("features.permissions").open() end
   if menu.opens(id) then
     menuStack[#menuStack + 1] = id

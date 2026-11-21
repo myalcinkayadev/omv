@@ -49,7 +49,7 @@ CORE_FEATURES = {"menu", "keys", "windows", "theme", "permissions"}
 FEATURE_FLAGS = {
     "weather": "weather", "battery": "battery", "bluetooth": "bluetooth", "network": "network",
     "sound": "sound", "calendar": "calendar", "disk": "disk", "tailscale": "tailscale",
-    "focus": "focus", "meeting": "meeting-mode", "clipboard": "clipboard", "translate": "translate", "capture": "capture",
+    "focus": "focus", "displays": "display-profiles", "meeting": "meeting-mode", "clipboard": "clipboard", "translate": "translate", "capture": "capture",
     "reminders": "reminders", "note": "daily-note", "share": "airdrop", "nightshift": "night-light",
     "micmute": "mic-mute", "osd": "volume-popups", "procs": "processes", "lyrics": "lyrics",
     "agents": "claude", "waiting": "claude", "sendto": "send-to-agent", "digest": "away-digest", "prs": "github-prs", "ci": "github-ci", "devlayout": "dev-layout",

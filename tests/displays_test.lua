@@ -1,0 +1,104 @@
+-- Behavior of display profiles: reading ~/.config/omv/displays, picking a profile for the
+-- displays plugged in, and what applying one changes. Run through displays_test.sh with luajit.
+
+local check = dofile(arg[1] .. "/tests/check.lua")
+local displays = require("displays")
+
+local FILE = [[
+# Profiles, first match wins.
+
+[desk]
+when = DELL U2723QE, LG UltraFine
+count = 2
+layout = tiles
+gaps = 10
+gaps.inner = 8
+quiet = off
+theme = tokyo-night
+font = 15
+bar = shown
+on-enter = ~/bin/desk-on.sh
+on-leave = ~/bin/desk-off.sh
+
+[laptop]
+when = built-in only
+layout = tabs
+gaps = 4
+theme = keep
+]]
+
+-- Parsing.
+local read = displays.parse(FILE)
+check.that("should read each section as a profile", #read.profiles == 2 and read.profiles[1].name == "desk")
+check.that("should keep the profiles in file order", read.profiles[2].name == "laptop")
+check.that("should ignore comments and blank lines", #read.problems == 0)
+check.that("should read when as a list split by commas",
+  read.profiles[1].when[1] == "DELL U2723QE" and read.profiles[1].when[2] == "LG UltraFine")
+check.that("should read count as a number", read.profiles[1].count == 2)
+check.that("should read built-in only", read.profiles[2].builtinOnly == true)
+check.that("should read gaps as both inner and outer", read.profiles[2].settings.gapsInner == 4 and read.profiles[2].settings.gapsOuter == 4)
+check.that("should let gaps.inner override gaps", read.profiles[1].settings.gapsInner == 8 and read.profiles[1].settings.gapsOuter == 10)
+check.that("should let gaps.outer override gaps",
+  displays.parse("[a]\nwhen = x\ngaps.outer = 3\ngaps = 9\n").profiles[1].settings.gapsOuter == 3)
+check.that("should read the commands to run", read.profiles[1].settings.onEnter == "~/bin/desk-on.sh" and read.profiles[1].settings.onLeave == "~/bin/desk-off.sh")
+check.that("should leave a keep setting out", read.profiles[2].settings.theme == nil)
+
+local broken = displays.parse("[a]\nwhen = x\nthis is not a setting\nlayout = grid\ncolour = red\n")
+check.that("should report a line it can't read, with its number", broken.problems[1] == "line 3: expected name = value")
+check.that("should report an invalid value", broken.problems[2] == "line 4: layout must be tiles, tabs or keep")
+check.that("should report an unknown setting by name", broken.problems[3] == "line 5: unknown setting colour")
+check.that("should report a setting outside any profile",
+  displays.parse("layout = tiles\n").problems[1] == "line 1: layout is outside a [profile]")
+check.that("should report a profile without when", displays.parse("[a]\nlayout = tiles\n").problems[1] == "profile a has no when line")
+check.that("should report a gap that isn't a whole number", displays.parse("[a]\nwhen = x\ngaps = -2\n").problems[1] == "line 3: gaps must be a whole number")
+check.that("should read no profiles without a file", #displays.parse(nil).profiles == 0)
+
+-- Matching.
+local builtIn = { name = "Built-in Retina Display", builtin = true }
+local dell = { name = "DELL U2723QE", builtin = false }
+check.that("should pick the first profile that matches, in file order",
+  displays.pick(displays.parse("[one]\nwhen = dell\n[two]\nwhen = dell\n").profiles, { builtIn, dell }).name == "one")
+check.that("should match when by part of a display's name, ignoring case",
+  displays.pick(displays.parse("[d]\nwhen = u2723\n").profiles, { dell }).name == "d")
+check.that("should match built-in only when the built-in screen is alone", displays.pick(read.profiles, { builtIn }).name == "laptop")
+check.that("should not match built-in only with another display plugged in",
+  displays.pick(displays.parse("[l]\nwhen = built-in only\n").profiles, { builtIn, dell }) == nil)
+check.that("should require count when it's given", displays.pick(read.profiles, { dell }) == nil)
+check.that("should match with the count it asks for", displays.pick(read.profiles, { builtIn, dell }).name == "desk")
+check.that("should pick nothing when no profile matches", displays.pick(read.profiles, { { name = "LG HDR 4K" }, builtIn }) == nil)
+
+-- Applying.
+local desk, laptop = read.profiles[1], read.profiles[2]
+local changes = displays.changes(nil, desk)
+check.that("should list only the settings a profile changes", changes.layout == "tiles" and changes.font == 15 and changes.quiet == "off")
+check.that("should leave a keep setting out of the changes", displays.changes(nil, laptop).theme == nil)
+local switching = displays.changes(desk, laptop)
+check.that("should undo the old profile's settings that the new one doesn't set", switching.font == "default" and switching.bar == "default")
+check.that("should apply the new profile's settings over the old ones", switching.layout == "tabs" and switching.gapsOuter == 4)
+check.that("should run the old profile's leave command", switching.onLeave == "~/bin/desk-off.sh")
+check.that("should not run the old profile's enter command again", switching.onEnter == nil)
+check.that("should undo everything when no profile matches any more", displays.changes(desk, nil).layout == "default")
+
+local toml = displays.aerospaceGaps({ gapsInner = 8, gapsOuter = 12 })
+check.that("should set AeroSpace's inner gaps", toml:find("inner.horizontal = 8", 1, true) ~= nil and toml:find("inner.vertical = 8", 1, true) ~= nil)
+check.that("should set AeroSpace's outer gaps on three sides", toml:find("outer.left = 12", 1, true) ~= nil and toml:find("outer.bottom = 12", 1, true) ~= nil)
+check.that("should keep the notch's top gap on the built-in screen and clear the bar elsewhere",
+  toml:find('outer.top = [{ monitor."built-in" = 14 }, 48]', 1, true) ~= nil)
+check.that("should write no gaps for a profile that sets none", displays.aerospaceGaps({}) == nil)
+
+-- Noticing an edit to the profile in use.
+check.that("should see a profile as unchanged when its settings are the same",
+  displays.sameSettings({ layout = "tabs", gapsInner = 4 }, { gapsInner = 4, layout = "tabs" }))
+check.that("should see a profile as changed when a setting's value changed", not displays.sameSettings({ gapsInner = 4 }, { gapsInner = 6 }))
+check.that("should see a profile as changed when a setting was added", not displays.sameSettings({ layout = "tabs" }, { layout = "tabs", font = 15 }))
+check.that("should see a profile as changed when a setting was removed", not displays.sameSettings({ layout = "tabs", font = 15 }, { layout = "tabs" }))
+check.that("should see no settings as the same as no settings", displays.sameSettings(nil, {}))
+
+-- Choosing by hand.
+local state = displays.choose({}, laptop, { builtIn, dell })
+check.that("should hold a profile picked by hand", displays.current(state, read.profiles, { builtIn, dell }).name == "laptop")
+check.that("should drop the hand-picked profile once the displays change",
+  displays.current(state, read.profiles, { builtIn }).name == "laptop" and displays.current(state, read.profiles, { builtIn }).picked ~= true)
+check.that("should follow the displays when follow is picked", displays.current(displays.choose(state, nil, { builtIn, dell }), read.profiles, { builtIn, dell }).name == "desk")
+
+check.finish()

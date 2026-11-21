@@ -73,6 +73,7 @@ local diskCard = feature("disk", "features.disk")
 local lyricsWindow = feature("lyrics", "features.lyrics")
 feature("volume-popups", "features.osd")
 local focusMode = feature("focus", "features.focus")
+local displayProfiles = feature("display-profiles", "features.displays")
 local tailscalePanel = feature("tailscale", "features.tailscale")
 local nightLight = feature("night-light", "features.nightshift")
 local mic = feature("mic-mute", "features.micmute")
@@ -115,6 +116,10 @@ if devLayout then
     group = "Apps", run = function() devLayout.open(chosen.editor) end, runs = true }
   keys.launchers[#keys.launchers + 1] = { description = "Agent grid: 2–4 Claude agents in worktrees",
     group = "Apps", run = devLayout.openGrid, runs = true }
+end
+if displayProfiles then
+  -- No key: it's run from the palette, the key list or the system menu.
+  keys.launchers[#keys.launchers + 1] = { description = "Display profile", group = "Tools", run = displayProfiles.open, runs = true }
 end
 if meetingMode then
   -- No key: it's run from the palette or the key list.
@@ -214,6 +219,7 @@ if captureMenu then
   omvStopRecording = later(captureMenu.stopRecording)
 end
 if focusMode then omvToggleFocus = later(focusMode.toggle) end
+if displayProfiles then omvDisplayProfiles = later(displayProfiles.open) end
 if tailscalePanel then omvToggleTailscale = later(tailscalePanel.toggle) end
 if nightLight then omvToggleNightLight = later(nightLight.toggle) end
 if mic then omvToggleMic = later(mic.toggle) end
