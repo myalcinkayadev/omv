@@ -15,6 +15,7 @@ omv is an independent project, not affiliated with Omarchy. Its themes come from
 omv is a desktop for working alongside coding agents. Claude Code, Codex, OpenCode and pi report to the bar, so you see every session without hunting through terminals:
 
 - **A pill when a session waits for you.** It shows the project, with `?` when the agent is blocked on your approval. Click it, or press Option+Shift+A, to land in that session's terminal, on any workspace or tab.
+- **Send to agent.** Option+P puts the selected text, what you copied, or a screenshot of a region into the prompt of an agent that finished and waits for you.
 - **The Agents card.** Claude's session and weekly limits, every live session with its state and how long it has been in it, background sessions, and one key to continue or start one.
 - **Dev layout.** Your editor, Claude Code and a shell side by side on their own workspace, optionally on a fresh git worktree, so a task can't collide with other work.
 - **Agent grid.** Two to four agents on one project, each on its own branch, as panes of one window.
@@ -306,6 +307,13 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 
 <img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, session and weekly limits, two live sessions and two background ones" width="400">
 
+**Send to agent (Option+P).** Select text anywhere, such as a stack trace in the browser, and press Option+P. A card lists every agent session that finished and waits for your next prompt; pick one, and its terminal comes forward with the text in the prompt. With nothing selected, it offers what you copied instead. Each session also has a **Screenshot** row: drag over a region, and the screenshot's path lands in the prompt, which Claude Code reads as an image.
+
+- Only sessions that are done are listed. One that asks for approval could take the paste as its answer, and one that works may start asking at any moment, so neither is offered, and a session that started again since the card opened gets a notice instead of the paste.
+- Enter is never pressed: you read what landed and send it yourself. Trailing newlines and control characters are dropped, so a paste can't send itself or break out of the terminal's paste.
+- The clipboard is put back as it was half a second after the paste. Without Accessibility for Hammerspoon, or when the session's own terminal can't come forward, the text is only copied, for you to paste with Cmd+V.
+- Screenshots go to `~/.local/state/omv/agent-shots`, and those older than a day are removed when the next one is taken.
+
 ## Battery
 
 Click the battery item, or press Option+Shift+B, for the Battery card: the charge, whether it's draining, charging or charged, the battery's size in Wh, the time left (or to full), the charge cycles and the power going in or out.
@@ -536,7 +544,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
   <img src="docs/clipboard.png" alt="Clipboard history: Pause history and Clear history, then five copies newest first, each with its app and age" width="720">
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvSendToAgent()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Feature flags
 
@@ -578,6 +586,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `lyrics` | the lyrics window |
 | `now-playing` | the playing track in the bar |
 | `claude` | Claude Code's usage, the waiting pill, the Agents card and Option+Shift+A |
+| `send-to-agent` | sending the selection, the clipboard or a screenshot to an agent (Option+P); it needs `claude` on too |
 | `github-prs` | pull requests waiting for your review (Option+Shift+G) and their item |
 | `github-ci` | the checks on your own open pull requests, their item and the notice when a failing one passes |
 | `dev-layout` | the dev layout and the agent grid |
@@ -624,6 +633,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | Option+Shift+D | Write a note into today's daily note | |
 | Option+Shift+C | Join the meeting that is starting | |
 | Option+Shift+A | Go to the Claude session waiting for you, or pick one when several wait | |
+| Option+P | Send the selection, the clipboard or a screenshot to an agent waiting for a prompt | |
 | Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+P | Hungry processes and listening ports: quit the busiest ones | |
 | Option+Shift+X | Disk card: free space and Mole's cleanups | |

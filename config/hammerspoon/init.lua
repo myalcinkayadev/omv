@@ -56,6 +56,8 @@ local weatherCard = feature("weather", "features.weather")
 local batteryCard = feature("battery", "features.battery")
 local agentsCard = feature("claude", "features.agents")
 local waitingClaude = feature("claude", "features.waiting")
+-- Pastes into the sessions the waiting feature finds, so it loads only with it.
+local sendToAgent = waitingClaude and feature("send-to-agent", "features.sendto")
 local quickNote = feature("daily-note", "features.note")
 local clipboardHistory = feature("clipboard", "features.clipboard")
 local bluetoothCard = feature("bluetooth", "features.bluetooth")
@@ -126,6 +128,7 @@ if soundCard then bindKey(SUPER, "o", "Option+O", "Next sound output", "Tools", 
 if translateSelection then bindKey(SUPER, "y", "Option+Y", "Translate the selection", "Tools", translateSelection.selection) end
 if airDrop then bindKey(SUPER_SHIFT, "q", "Option+Shift+Q", "Share with AirDrop", "Tools", airDrop.share) end
 if waitingClaude then bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus) end
+if sendToAgent then bindKey(SUPER, "p", "Option+P", "Send the selection or a screenshot to an agent", "Tools", sendToAgent.toggle) end
 if calendarCard then bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join) end
 bindKey(SUPER_SHIFT, "space", "Option+Shift+Space", "Show or hide the bar", "Cards", run(shell.SKETCHYBAR, { "--bar", "hidden=toggle" }))
 if networkCards then
@@ -192,6 +195,7 @@ if weatherCard then omvToggleWeather = later(weatherCard.toggle) end
 if batteryCard then omvToggleBattery = later(batteryCard.toggle) end
 if agentsCard then omvToggleAgents = later(agentsCard.toggle) end
 if waitingClaude then omvFocusClaude = later(waitingClaude.focus) end
+if sendToAgent then omvSendToAgent = later(sendToAgent.toggle) end
 if lyricsWindow then omvToggleLyrics = later(lyricsWindow.toggle) end
 if captureMenu then
   omvToggleCapture = later(captureMenu.toggle)

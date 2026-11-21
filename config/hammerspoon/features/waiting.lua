@@ -80,12 +80,18 @@ local function focusTmux(row, done)
 end
 
 -- Goes to the session's terminal, its tmux pane, else the app it runs in, or says where it runs.
-function feature.focusRow(row)
+-- after, when given, hears whether the session's own terminal or pane came forward: the app
+-- alone doesn't count, since macOS can't pick its window or pane.
+function feature.focusRow(row, after)
+  local function finish(focused)
+    if after then after(focused) end
+  end
   claudewait.focus(row.id, running, runScript, function(focused)
-    if focused then return end
+    if focused then return finish(true) end
     focusTmux(row, function(tmuxFocused)
-      if tmuxFocused or activateApp(row) then return end
-      shell.alert("Claude runs in " .. row.label .. ", which can't be brought forward", 2)
+      if tmuxFocused then return finish(true) end
+      if not activateApp(row) then shell.alert("Claude runs in " .. row.label .. ", which can't be brought forward", 2) end
+      finish(false)
     end)
   end)
 end
