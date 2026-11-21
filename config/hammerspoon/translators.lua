@@ -6,9 +6,9 @@
 local translators = {}
 
 translators.LIST = {
-  { id = "apple", name = "Apple", summary = "On this Mac · private · one download a language", online = false },
-  { id = "deepl", name = "DeepL", summary = "Online · natural wording · needs a free key", online = true },
-  { id = "claude", name = "Claude", summary = "Online · keeps tone · uses your Claude plan", online = true },
+  { id = "apple", name = "Apple", summary = "on this Mac · private", online = false },
+  { id = "deepl", name = "DeepL", summary = "online · needs a free key", online = true },
+  { id = "claude", name = "Claude", summary = "online · uses your Claude plan", online = true },
 }
 
 local ICONS = { apple = "󰇄", deepl = "󰌆", claude = "󰚩" }
@@ -31,7 +31,7 @@ function translators.chooserScreen()
   local rows = {}
   for index, service in ipairs(translators.LIST) do
     local hint = service.summary
-    if index == 1 then hint = "Recommended · " .. hint end
+    if index == 1 then hint = hint .. " · recommended" end
     rows[index] = { id = "service:" .. service.id, icon = ICONS[service.id], label = service.name, hint = hint }
   end
   return { prompt = "How should omv translate?", rows = rows, selected = 1 }
@@ -111,13 +111,14 @@ function translators.keyScreen()
   }
 end
 
--- `claude -p` with the instruction, on the fast model; the text to translate comes on stdin.
+-- `claude -p` with the instruction, on Sonnet, as quick as Haiku here and with fewer slips;
+-- the text to translate comes on stdin.
 function translators.claudeArguments(targetName)
   return {
     "-p",
     "Translate the text on stdin into " .. targetName .. ". Keep its tone and formatting. "
       .. "Reply with only the translation: no quotes, notes or explanations.",
-    "--model", "haiku",
+    "--model", "sonnet",
   }
 end
 

@@ -470,9 +470,9 @@ The first time, a card asks which service translates. The choice is kept, and th
 |---|---|---|
 | Apple (recommended) | On the Mac: nothing is sent anywhere, and it works offline | Each language is downloaded once. The card offers to, macOS's own sheet downloads it, and the selection is then translated. Languages are also managed in System Settings → General → Language & Region → Translation Languages. |
 | DeepL | Online: the selected text goes to DeepL | A key: the free plan covers 500,000 characters a month. The card opens DeepL's page; copy the key, then pick Use the copied key. It's kept in the macOS Keychain, never in a file. |
-| Claude | Online: the selected text goes to Claude, through Claude Code's `claude -p` on its fast model | Claude Code installed and signed in; it counts towards your plan. It keeps tone and formatting, and takes a few seconds. |
+| Claude | Online: the selected text goes to Claude, through Claude Code's `claude -p` on Sonnet | Claude Code installed and signed in; it counts towards your plan. It keeps tone and formatting, and takes a few seconds. |
 
-The result card shows the service, your selection and its translation. Enter pastes the translation over the selection, Copy (Cmd+C) puts it on the clipboard, Translate back (Cmd+B) checks it by translating it back, and Another language (Cmd+L) lists the languages, those on the Mac first for Apple. The language you pick is kept for the next translations; pick Automatic to go back. Your clipboard is left as it was before the translation.
+The result card shows the service, your selection and its translation. Enter pastes the translation over the selection, Copy (Cmd+C) puts it on the clipboard, Translate back (Cmd+B) checks it by translating it back, and Another language (Cmd+L) lists the languages, those on the Mac first for Apple. The language you pick is kept for the next translations; pick Automatic to go back. Copying the selection leaves your clipboard as it was; Replace and Copy put the translation on it.
 
 Copying the selection and pasting need Accessibility for Hammerspoon. A small Swift helper, `translate.swift`, finds the language and runs Apple's translation; it's built with `swiftc` the first time and kept in `~/.cache/omv/translate`.
 
