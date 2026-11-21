@@ -35,6 +35,7 @@ local reminders = require("reminders")
 local sound = require("sound")
 local tailscale = require("tailscale")
 local theme = require("theme")
+local translate = require("translate")
 local weather = require("weather")
 
 local shots = {}
@@ -283,6 +284,16 @@ local function noteShots(now)
   }
 end
 
+-- The translation card, as Option+Y shows it, with the height features/translate.lua gives it.
+local function translateShot()
+  local screen = translate.screen({
+    text = "I'll take a look at it today, thanks.", original = "Ich schaue es mir heute an, danke.",
+    from = "German", to = "English", service = "apple",
+  })
+  local height = menuHeight(screen) + translate.passageHeight(screen.passage) + 24
+  return { file = "translate.png", kind = "card", width = 520, height = height, html = card.html(screen) }
+end
+
 local function menuShots()
   local system = menu.screen("system")
   local rows, selected = theme.rows({ "catppuccin", "everforest", "gruvbox", "kanagawa", "nord", "rose-pine", "tokyo-night" }, "vantablack")
@@ -319,6 +330,7 @@ function shots.build(now, logo)
   add(list, waitingShot())
   add(list, devlayoutShot())
   add(list, noteShots(now))
+  add(list, translateShot())
   add(list, menuShots())
   add(list, { file = "key-list.png", kind = "live", feature = "features.keys", call = "toggle" })
   add(list, {

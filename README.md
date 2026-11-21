@@ -474,6 +474,8 @@ The first time, a card asks which service translates. The choice is kept, and th
 
 The result card shows the service, your selection and its translation. Enter pastes the translation over the selection, Copy (Cmd+C) puts it on the clipboard, Translate back (Cmd+B) checks it by translating it back, and Another language (Cmd+L) lists the languages, those on the Mac first for Apple. The language you pick is kept for the next translations; pick Automatic to go back. Copying the selection leaves your clipboard as it was; Replace and Copy put the translation on it.
 
+<img src="docs/translate.png" alt="The translation card: German to English with Apple, the selection above its translation, then Replace the selection, Copy, Translate back, Another language and Another service" width="520">
+
 Copying the selection and pasting need Accessibility for Hammerspoon. A small Swift helper, `translate.swift`, finds the language and runs Apple's translation; it's built with `swiftc` the first time and kept in `~/.cache/omv/translate`.
 
 ## Do Not Disturb
