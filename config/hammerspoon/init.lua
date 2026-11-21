@@ -55,6 +55,7 @@ local nightLight = require("features.nightshift")
 local mic = require("features.micmute")
 local devLayout = require("features.devlayout")
 local airDrop = require("features.share")
+local translateSelection = require("features.translate")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -102,6 +103,7 @@ bindKey(SUPER_SHIFT, "x", "Option+Shift+X", "Disk space and cleanup", "Tools", d
 bindKey(SUPER_SHIFT, "z", "Option+Shift+Z", "Night light on or off", "Tools", nightLight.toggle)
 bindKey(SUPER, "m", "Option+M", "Mute or unmute the mic", "Tools", mic.toggle)
 bindKey(SUPER, "o", "Option+O", "Next sound output", "Tools", soundCard.nextOutput)
+bindKey(SUPER, "y", "Option+Y", "Translate the selection", "Tools", translateSelection.selection)
 bindKey(SUPER_SHIFT, "q", "Option+Shift+Q", "Share with AirDrop", "Tools", airDrop.share)
 bindKey(SUPER_SHIFT, "a", "Option+Shift+A", "Claude session waiting for you", "Tools", waitingClaude.focus)
 bindKey(SUPER_SHIFT, "c", "Option+Shift+C", "Join the meeting starting now", "Tools", calendarCard.join)

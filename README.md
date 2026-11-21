@@ -66,6 +66,7 @@ Before you trust it:
 - [**Night light**](#night-light): macOS's Night Shift on a key, with a moon in the bar.
 - [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell on a workspace of their own, a new task in a git worktree, or a grid of agents.
 - [**Share with AirDrop**](#share-with-airdrop): the files selected in Finder, or what you copied, in one key.
+- [**Translate**](#translate): Option+Y translates the selected text on the Mac, and pastes it over the selection.
 - [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 - [**Doctor**](#doctor): `omv doctor` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
@@ -459,6 +460,12 @@ Option+Space, then **Agent grid**, starts 2, 3 or 4 Claude Code sessions on a pr
 
 Option+Shift+Q opens macOS's AirDrop sheet for the files selected in Finder. With nothing selected, it shares a file you copied, or else an image you copied, saved as a PNG. The first time, macOS asks to let Hammerspoon read Finder's selection. AirDrop needs Wi-Fi and Bluetooth on; the sheet says when they're off. A small Swift helper, `share.swift`, is built with `swiftc` the first time and kept in `~/.cache/omv/share`.
 
+## Translate
+
+Select text anywhere and press Option+Y. omv finds its language and translates it into your Mac's first language, or into English when it's in that language already. A card shows the translation: Enter pastes it over the selection, and Copy puts it on the clipboard. Your clipboard is left as it was before the translation.
+
+Translation runs on the Mac with Apple's own models, so nothing is sent anywhere and it works offline. macOS needs each language downloaded once, in System Settings → General → Language & Region → Translation Languages; until then, the card says which ones and opens that page. Copying the selection and pasting need Accessibility for Hammerspoon. A small Swift helper, `translate.swift`, is built with `swiftc` the first time and kept in `~/.cache/omv/translate`.
+
 ## Do Not Disturb
 
 While a Focus such as Do Not Disturb is on, the bar shows a moon and its name. Option+Escape, then **Do Not Disturb**, or a click on the moon, switches Do Not Disturb.
@@ -560,6 +567,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 | Option+Shift+Z | Night light on or off | |
 | Option+M | Mute or unmute the mic | |
 | Option+O | Next sound output | |
+| Option+Y | Translate the selected text | |
 | Option+Shift+Q | Share the Finder selection, or what you copied, with AirDrop | |
 | Option+Shift+Space | Show or hide the bar | |
 | Option+Shift+W | Wi-Fi card | |
