@@ -285,9 +285,25 @@ flags() {
     echo "$1=$2" >> "$FLAGS_FILE"
   fi
   write_ghostty_flags
-  reload_hammerspoon
-  sketchybar --reload >/dev/null 2>&1 || true
+  if flag_in_hammerspoon "$1"; then reload_hammerspoon; fi
+  if flag_in_bar "$1"; then sketchybar --reload >/dev/null 2>&1 || true; fi
   echo "$1 is $2"
+  if flag_in_ghostty "$1"; then echo "Ghostty applies it on its reload key, Cmd+Shift+Comma"; fi
+}
+
+# Whether Hammerspoon's config reads flag $1, outside the defaults: only then does it reload.
+flag_in_hammerspoon() {
+  grep -rqE --include='*.lua' --exclude=flags.lua -e "\"$1\"" -e "enabled\.$1([^a-z0-9_]|$)" \
+    "$REPO_DIR/config/hammerspoon"
+}
+
+# Whether the bar adds an item only with flag $1: only then does it reload.
+flag_in_bar() {
+  grep -qE "omv_flag_on $1( |;|$)" "$REPO_DIR/config/sketchybar/.config/sketchybar/sketchybarrc" 2>/dev/null
+}
+
+flag_in_ghostty() {
+  declare -f write_ghostty_flags | grep -qF "omv_flag_on $1 "
 }
 
 theme_names() {

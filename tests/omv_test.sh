@@ -781,6 +781,23 @@ rejects_bad_flag_value() {
   assert_exit_nonzero omv flags file-search yes
 }
 
+# The bar's and Hammerspoon's configs gate a flag's feature, as the real ones do.
+bar_uses_flag() {
+  printf 'if omv_flag_on %s; then\n  sketchybar --add item %s right\nfi\n' "$1" "$1" \
+    >> "$REPO/config/sketchybar/.config/sketchybar/sketchybarrc"
+}
+
+hammerspoon_uses_flag() {
+  mkdir -p "$REPO/config/hammerspoon/features"
+  printf 'local on = enabled["%s"]\n' "$1" >> "$REPO/config/hammerspoon/features/uses.lua"
+}
+
+# Copies the real bar and Hammerspoon configs, so the flags reach what they reach on a Mac.
+use_real_configs() {
+  cp "$REPO_DIR/config/sketchybar/.config/sketchybar/sketchybarrc" "$REPO/config/sketchybar/.config/sketchybar/"
+  cp -R "$REPO_DIR/config/hammerspoon/." "$REPO/config/hammerspoon/"
+}
+
 # hs never answers, as when Hammerspoon reloads before it can reply.
 hang_hammerspoon() {
   printf '#!/bin/sh\necho "hs $*" >> "%s"\nexec sleep 30\n' "$CALL_LOG" > "$STUB_DIR/hs"
@@ -799,20 +816,30 @@ assert_finishes_within() {
   [ $((SECONDS - start)) -le "$limit" ] || fail "took $((SECONDS - start))s"
 }
 
+reloads_after_flag_change() {
+  make_repo
+  hammerspoon_uses_flag file-search
+  omv flags file-search on >/dev/null
+  assert_called '^hs .*hs\.reload'
+}
+
 finishes_flag_change_when_hammerspoon_hangs() {
   make_repo
+  hammerspoon_uses_flag weather
   hang_hammerspoon
   assert_finishes_within 10 omv_with_quick_hs flags weather off
 }
 
 says_flag_changed_when_hammerspoon_hangs() {
   make_repo
+  hammerspoon_uses_flag weather
   hang_hammerspoon
   [ "$(omv_with_quick_hs flags weather off)" = 'weather is off' ] || fail "said: $(omv_with_quick_hs flags weather off)"
 }
 
 saves_flag_when_hammerspoon_hangs() {
   make_repo
+  hammerspoon_uses_flag weather
   hang_hammerspoon
   omv_with_quick_hs flags weather off >/dev/null 2>&1 || true
   grep -qx 'weather=off' "$HOME_DIR/.config/omv/flags" || fail "flags: $(cat "$HOME_DIR/.config/omv/flags" 2>&1)"
@@ -824,10 +851,67 @@ finishes_reload_when_hammerspoon_hangs() {
   assert_finishes_within 20 omv_with_quick_hs reload
 }
 
-reloads_after_flag_change() {
+reloads_bar_for_its_flag() {
   make_repo
-  omv flags file-search on >/dev/null
+  bar_uses_flag weather
+  omv flags weather off >/dev/null
+  assert_called '^sketchybar --reload$'
+}
+
+skips_bar_without_its_flag() {
+  make_repo
+  hammerspoon_uses_flag translate
+  omv flags translate off >/dev/null
+  assert_not_called '^sketchybar'
+}
+
+reloads_hammerspoon_for_its_flag() {
+  make_repo
+  hammerspoon_uses_flag translate
+  omv flags translate off >/dev/null
   assert_called '^hs .*hs\.reload'
+}
+
+skips_hammerspoon_for_ghostty_flag() {
+  make_repo
+  bar_uses_flag weather
+  omv flags long-command-notices off >/dev/null
+  assert_not_called '^hs '
+}
+
+writes_ghostty_flags_when_nothing_reloads() {
+  make_repo
+  omv flags translate off >/dev/null
+  [ -f "$HOME_DIR/.local/$GHOSTTY_FLAGS" ] || fail 'no ghostty flags file'
+}
+
+skips_reload_for_unknown_flag() {
+  make_repo
+  bar_uses_flag weather
+  omv flags nope off >/dev/null 2>&1 || true
+  assert_not_called '^(hs|sketchybar) '
+}
+
+reloads_hammerspoon_for_drop_down_terminal() {
+  make_repo
+  use_real_configs
+  omv flags drop-down-terminal off >/dev/null
+  assert_called '^hs .*hs\.reload'
+}
+
+# Each flag reaches the bar, Hammerspoon or Ghostty; one that reached none would do nothing.
+applies_every_flag_somewhere() {
+  make_repo
+  use_real_configs
+  local name default ghostty idle=()
+  ghostty=$(sed -n '/^write_ghostty_flags()/,/^}/p' "$REPO/bin/omv")
+  while read -r name default; do
+    : > "$CALL_LOG"
+    omv flags "$name" off >/dev/null
+    grep -qE '^(hs .*hs\.reload|sketchybar --reload$)' "$CALL_LOG" || [[ $ghostty == *"omv_flag_on $name "* ]] \
+      || idle+=("$name")
+  done < <(grep -oE '^[[:space:]]*\["[a-z-]+"\]' "$REPO/config/hammerspoon/flags.lua" | tr -d ' []"')
+  [ "${#idle[@]}" -eq 0 ] || fail "flags that change nothing: ${idle[*]}"
 }
 
 lists_every_flag() {
@@ -1092,6 +1176,14 @@ run_case 'should finish a flag change when Hammerspoon never answers' finishes_f
 run_case 'should say the flag changed when Hammerspoon never answers' says_flag_changed_when_hammerspoon_hangs
 run_case 'should save the flag when Hammerspoon never answers' saves_flag_when_hammerspoon_hangs
 run_case 'should finish a reload when Hammerspoon never answers' finishes_reload_when_hammerspoon_hangs
+run_case 'should reload the bar when the flag has a bar item' reloads_bar_for_its_flag
+run_case 'should not reload the bar when the flag has no bar item' skips_bar_without_its_flag
+run_case 'should reload Hammerspoon when its config uses the flag' reloads_hammerspoon_for_its_flag
+run_case 'should not reload Hammerspoon for a Ghostty-only flag' skips_hammerspoon_for_ghostty_flag
+run_case "should write Ghostty's flags when nothing else reloads" writes_ghostty_flags_when_nothing_reloads
+run_case 'should reload nothing for an unknown flag' skips_reload_for_unknown_flag
+run_case 'should reload Hammerspoon for the drop-down terminal flag' reloads_hammerspoon_for_drop_down_terminal
+run_case 'should apply every flag to the bar, Hammerspoon or Ghostty' applies_every_flag_somewhere
 run_case 'should list every flag' lists_every_flag
 run_case "should take the drop-down terminal's key out of Ghostty when its flag is off" turns_drop_down_terminal_off_in_ghostty
 run_case "should turn Ghostty's long-command notices off when their flag is off" turns_long_command_notices_off_in_ghostty
