@@ -43,6 +43,7 @@ flags.DEFAULTS = {
   -- For developers.
   ["claude"] = true, -- Claude Code's usage, the waiting pill and the Agents card (Option+Shift+A)
   ["github-prs"] = true, -- pull requests waiting for your review (Option+Shift+G) and their item
+  ["github-ci"] = true, -- the checks on your own open pull requests, their item and the passed notices
   ["dev-layout"] = true, -- the dev layout and the agent grid
   ["drop-down-terminal"] = true, -- Ghostty's quick terminal (Option+`)
   ["long-command-notices"] = true, -- Ghostty's notice when a long command finishes

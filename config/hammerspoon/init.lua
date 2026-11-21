@@ -46,6 +46,7 @@ local themes = require("features.theme")
 require("features.permissions")
 
 local pullRequests = feature("github-prs", "features.prs")
+local checks = feature("github-ci", "features.ci")
 local captureMenu = feature("capture", "features.capture")
 local reminderCards = feature("reminders", "features.reminders")
 local calendarCard = feature("calendar", "features.calendar")
@@ -205,6 +206,10 @@ if calendarCard then
   omvJoinMeeting = later(calendarCard.join)
 end
 if pullRequests then omvTogglePrs = later(pullRequests.toggle) end
+if checks then
+  omvToggleCi = later(checks.toggle)
+  omvCiPassed = later(checks.passed)
+end
 if clipboardHistory then
   omvToggleClipboard = later(clipboardHistory.toggle)
   omvResumeClipboard = later(clipboardHistory.resume)

@@ -24,7 +24,7 @@ local FEATURES = {
   "weather", "battery", "bluetooth", "network", "sound", "calendar", "disk", "tailscale", "focus",
   "clipboard", "snippets", "calculator", "translate", "capture", "reminders", "daily-note", "airdrop",
   "copy-url", "keep-awake", "night-light", "mic-mute", "volume-popups", "processes", "lyrics",
-  "now-playing", "claude", "github-prs", "dev-layout", "drop-down-terminal", "long-command-notices",
+  "now-playing", "claude", "github-prs", "github-ci", "dev-layout", "drop-down-terminal", "long-command-notices",
 }
 local defaults = flags.read(nil)
 for _, name in ipairs(FEATURES) do

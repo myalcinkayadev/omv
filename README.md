@@ -112,6 +112,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 |---|---|---|---|
 | Meeting | The next Calendar event's start time, from an hour before | Join its video call, or open the [calendar](#calendar-and-todays-events) | |
 | Reminder | Time left on the next reminder, plus `+N` for others | List them, to cancel one | |
+| Checks | The checks on your own open pull requests, checked with `gh` every 5 minutes: a white pill with how many fail, or a gray count of those still running. Hidden when all passed, when you have none open, or when `gh` is missing, logged out or offline | List them, failing first; Enter opens one in Helium | |
 | Pull requests | How many open pull requests ask for your review, checked with `gh` every 5 minutes. Hidden when none wait, or when `gh` is missing, logged out or offline | List them; Enter opens one in Helium | |
 | Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
 | Waiting Claude | A white pill right of Claude's limit, `omv`, while a Claude Code session waits for you, or `? omv` while it asks for approval, plus `+N` for others | Go to that session's terminal, or pick one when several wait | |
@@ -125,7 +126,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Battery | Charge | Open the [Battery card](#battery) | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
-**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, low disk space, the waiting Claude, the pull request count, the reminder and the status icons always stay, and everything comes back once there's room.
+**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, low disk space, the waiting Claude, the pull request count, the failing checks, the reminder and the status icons always stay, and everything comes back once there's room.
 
 **Claude usage** shows the 5-hour limit: gray under 70%, white from 70%, and a white pill from 90%. The 7-day limit is in the [Agents card](#agents).
 
@@ -134,6 +135,8 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 - Once the 5-hour limit reaches 90%, a reminder is set for its reset, "Claude's 5-hour limit has reset", once per reset.
 - `omv install` adds one line to `~/.claude/statusline-wrapper.sh` through `agents/claude-usage.sh`. If that file doesn't exist, the item stays hidden.
 - Only the four numbers are stored, in `~/.local/state/omv/claude-usage`.
+
+**Checks** follow your own open pull requests in every repository, with one `gh` search, so there's no repository to set up. A pull request whose checks went from failing to passing gets a notice; a click on it opens the pull request. The last answer is kept in `~/.local/state/omv/github-ci`, so the card opens at once, and a failed check stays failing while GitHub can't be reached.
 
 <img src="docs/prs.png" alt="The pull request list: three pull requests waiting for review, each with its repository and number" width="720">
 
@@ -533,7 +536,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
   <img src="docs/clipboard.png" alt="Clipboard history: Pause history and Clear history, then five copies newest first, each with its app and age" width="720">
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Feature flags
 
@@ -576,6 +579,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `now-playing` | the playing track in the bar |
 | `claude` | Claude Code's usage, the waiting pill, the Agents card and Option+Shift+A |
 | `github-prs` | pull requests waiting for your review (Option+Shift+G) and their item |
+| `github-ci` | the checks on your own open pull requests, their item and the notice when a failing one passes |
 | `dev-layout` | the dev layout and the agent grid |
 | `drop-down-terminal` | Ghostty's quick terminal (Option+\`) |
 | `long-command-notices` | Ghostty's notice when a long command finishes |

@@ -227,6 +227,17 @@ if omv_flag_on github-prs; then
     --subscribe github_prs mouse.clicked system_woke
 fi
 
+if omv_flag_on github-ci; then
+  # The checks on your own open pull requests, read with gh every 5 minutes: a pill with how
+  # many fail, or a gray count of those still running. Hidden when all passed. Sits left of
+  # the review count; clicking it opens the card.
+  sketchybar --add item github_ci right \
+    --set github_ci drawing=off icon.padding_right=3 label.padding_left=3 update_freq=300 \
+      background.drawing=off background.color=$WHITE background.corner_radius=5 background.height=24 \
+      script="$PLUGIN_DIR/github_ci.sh" \
+    --subscribe github_ci mouse.clicked system_woke
+fi
+
 if omv_flag_on reminders; then
   # Hidden until a reminder is set. Hammerspoon sets its label every second, and turns it
   # into a white pill when one is due. Clicking it lists the reminders, to cancel one.

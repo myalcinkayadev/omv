@@ -52,7 +52,7 @@ FEATURE_FLAGS = {
     "focus": "focus", "clipboard": "clipboard", "translate": "translate", "capture": "capture",
     "reminders": "reminders", "note": "daily-note", "share": "airdrop", "nightshift": "night-light",
     "micmute": "mic-mute", "osd": "volume-popups", "procs": "processes", "lyrics": "lyrics",
-    "agents": "claude", "waiting": "claude", "prs": "github-prs", "devlayout": "dev-layout",
+    "agents": "claude", "waiting": "claude", "prs": "github-prs", "ci": "github-ci", "devlayout": "dev-layout",
 }
 
 # Each bar item a flag hides; the workspaces, mode, clock and bar_fit are the desktop's own.
@@ -61,7 +61,7 @@ BAR_ITEM_FLAGS = {
     "wifi": "network", "ethernet": "network", "weather": "weather", "keep_awake": "keep-awake",
     "disk": "disk", "clipboard_paused": "clipboard", "nightlight": "night-light", "mic_muted": "mic-mute",
     "tailscale": "tailscale", "focus": "focus", "recording": "capture", "claude_waiting": "claude",
-    "claude_usage": "claude", "github_prs": "github-prs", "reminder": "reminders", "meeting": "calendar",
+    "claude_usage": "claude", "github_prs": "github-prs", "github_ci": "github-ci", "reminder": "reminders", "meeting": "calendar",
 }
 BAR_CORE_ITEMS = {"aerospace_listener", "mode", "clock", "bar_fit"}
 
@@ -410,9 +410,9 @@ class ConfigContract(unittest.TestCase):
 
     def test_should_check_the_fit_when_a_right_side_item_changes(self) -> None:
         plugins = REPO / "config/sketchybar/.config/sketchybar/plugins"
-        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh", "github_prs.sh", "claude_waiting.sh")]
+        triggers = ["--trigger bar_fit" in (plugins / name).read_text(encoding="utf-8") for name in ("claude_usage.sh", "keep_awake.sh", "github_prs.sh", "github_ci.sh", "claude_waiting.sh")]
         triggers.append('"bar_fit"' in hammerspoon_source())
-        self.assertEqual(triggers, [True, True, True, True, True])
+        self.assertEqual(triggers, [True, True, True, True, True, True])
 
     def test_should_bind_option_a_to_the_accordion_toggle(self) -> None:
         self.assertEqual(load_aerospace()["mode"]["main"]["binding"].get("alt-a"), "layout accordion tiles")
