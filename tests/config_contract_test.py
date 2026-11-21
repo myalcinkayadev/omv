@@ -273,6 +273,15 @@ class ConfigContract(unittest.TestCase):
         self.assertIsNotNone(redraw)
         self.assertIn("mic.redrawBar()", redraw.group(1))
 
+    def test_should_list_projects_for_the_dev_layout_without_loading_the_agents_feature(self) -> None:
+        # Loading the Agents feature starts its watchers, which the claude flag turns off.
+        source = (REPO / "config/hammerspoon/features/devlayout.lua").read_text(encoding="utf-8")
+        self.assertNotRegex(source, r'require\("features\.(agents|waiting)"\)')
+
+    def test_should_start_no_watcher_or_timer_when_the_projects_reader_loads(self) -> None:
+        source = (REPO / "config/hammerspoon/features/claudeprojects.lua").read_text(encoding="utf-8")
+        self.assertNotRegex(source, r":start\(\)|doEvery|doAfter|watcher")
+
     def test_should_keep_the_weather_location_retry_from_garbage_collection(self) -> None:
         # Hammerspoon collects a timer nothing refers to, so the retry would never run.
         source = (REPO / "config/hammerspoon/features/weather.lua").read_text(encoding="utf-8")

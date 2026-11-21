@@ -9,6 +9,7 @@ local flags = require("flags")
 local card = require("card")
 local agents = require("agents")
 local waiting = require("features.waiting")
+local claudeprojects = require("features.claudeprojects")
 
 local feature = {}
 
@@ -19,10 +20,6 @@ local CLAUDE_CONFIG = HOME .. "/.claude.json"
 local CLAUDE_LOGO = HOME .. "/.config/sketchybar/icons/claude.png"
 -- Where Claude Code's installer puts it. Without it, the card has no background section.
 local CLAUDE = HOME .. "/.local/bin/claude"
--- Enough recent sessions to fill the project list, without reading every one.
-local RECENT_SESSIONS = 60
--- A session's folder is near the start of its file, so only that much is read.
-local SESSION_HEAD_BYTES = 65536
 -- Claude Code writes a session's title again as it goes, so its end holds the latest one.
 -- Session files reach hundreds of megabytes together, too much to search while the card opens.
 local SESSION_TAIL_BYTES = 131072
@@ -45,20 +42,7 @@ local function logoUrl()
   return claudeLogo or nil
 end
 
--- The recent Claude Code sessions, newest first, as { id, path, cwd, modified }. The id is
--- the file's name, which claude --resume takes.
-local function recentSessions()
-  local listing = hs.execute("/bin/ls -t " .. HOME .. "/.claude/projects/*/*.jsonl 2>/dev/null | /usr/bin/head -n " .. RECENT_SESSIONS)
-  local sessions = {}
-  for path in listing:gmatch("[^\n]+") do
-    local cwd = agents.sessionCwd(shell.readText(path, SESSION_HEAD_BYTES))
-    if cwd then
-      sessions[#sessions + 1] = { id = path:match("([^/]+)%.jsonl$"), path = path, cwd = cwd,
-        modified = hs.fs.attributes(path, "modification") or 0 }
-    end
-  end
-  return sessions
-end
+local recentSessions = claudeprojects.recentSessions
 
 local function readTail(path, bytes)
   local file = io.open(path, "r")
@@ -77,9 +61,7 @@ local function backgroundSessions()
   return agents.background(ok and list or nil)
 end
 
-local function folderExists(path)
-  return hs.fs.attributes(path, "mode") == "directory"
-end
+local folderExists = claudeprojects.folderExists
 
 local function startClaude(folder, arguments)
   local command = CLAUDE_IN .. " " .. agents.shellQuote(folder) .. (arguments and (" " .. arguments) or "")
@@ -116,12 +98,6 @@ local function onProjectMessage(message)
   shell.leaveFocus()
   shell.close()
   startClaude(message.id)
-end
-
--- The folders of recent Claude Code sessions that still exist, the most recent first. The
--- dev layout lists them too.
-function feature.projects()
-  return agents.projects(recentSessions(), folderExists)
 end
 
 local function showProjects()

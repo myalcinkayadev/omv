@@ -13,11 +13,9 @@ local shell = require("shell")
 local card = require("card")
 local devlayout = require("devlayout")
 local windows = require("windows")
--- The projects Claude Code knows, from the Agents card, loaded only when a layout opens, so
--- turning the claude flag off keeps the card from loading at all until then.
-local function projects()
-  return require("features.agents").projects()
-end
+-- The projects Claude Code knows, read without loading the Agents card, so the claude flag
+-- keeps its watchers off.
+local projects = require("features.claudeprojects").projects
 local agentgrid = require("agentgrid")
 
 local feature = {}
