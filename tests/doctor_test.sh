@@ -286,6 +286,25 @@ reports_unreadable_user_aerospace() {
   expect_report '✗ ~/.config/omv/aerospace.toml line 1:'
 }
 
+reports_broken_displays_file() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '[desk]\nwhen = DELL\nlayout = grid\n' > "$HOME_DIR/.config/omv/displays"
+  expect_report '✗ ~/.config/omv/displays line 3: layout must be tiles, tabs or keep — fix: edit it'
+}
+
+passes_good_displays_file() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '[desk]\nwhen = DELL\nlayout = tiles\n' > "$HOME_DIR/.config/omv/displays"
+  expect_report '✓ ~/.config/omv/displays'
+}
+
+skips_missing_displays_file() {
+  complete_setup
+  expect_no_report 'omv/displays'
+}
+
 reports_linked_aerospace_folder() {
   complete_setup
   rm -rf "$HOME_DIR/.config/aerospace"
@@ -649,6 +668,9 @@ run_case 'should report ~/.config/aerospace still linked' reports_linked_aerospa
 run_case 'should report an aerospace.toml that is out of date' reports_outdated_aerospace
 run_case "should report an aerospace.toml omv didn't build" reports_foreign_aerospace
 run_case "should report a user aerospace.toml it can't read" reports_unreadable_user_aerospace
+run_case 'should report a broken line in the displays file' reports_broken_displays_file
+run_case 'should pass a displays file it can read' passes_good_displays_file
+run_case 'should say nothing about display profiles without the file' skips_missing_displays_file
 run_case "should report Hammerspoon not loading omv's config" reports_hammerspoon_config
 run_case "should accept Hammerspoon loading omv's config" accepts_hammerspoon_config
 run_case 'should open SwipeAeroSpace when --fix finds it not running' fix_opens_swipeaerospace

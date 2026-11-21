@@ -144,6 +144,18 @@ check_aerospace_built() {
   else problem 'aerospace.toml is out of date' 'omv reload'; fi
 }
 
+# ~/.config/omv/displays, the display profiles, when there is one: its first line Hammerspoon
+# can't read, as the notice on a display change names it.
+check_displays_file() {
+  local file=$HOME/.config/omv/displays first
+  [ -e "$file" ] || return 0
+  if first=$(luajit "$REPO_DIR/config/hammerspoon/displays.lua" check "$file" 2>&1); then
+    ok '~/.config/omv/displays'
+  else
+    problem "~/.config/omv/displays $(printf '%s\n' "$first" | head -n 1)" 'edit it'
+  fi
+}
+
 # A package is linked when each of its files, seen from $HOME, is the file in this repo.
 # That holds for a link per file and for a whole folder linked at once.
 check_links() {
@@ -156,6 +168,7 @@ check_links() {
   if [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ]; then ok "Hammerspoon loads omv's config"
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
   check_aerospace_built
+  check_displays_file
   if [ -e "$SETUP_BINARY" ]; then ok 'omv Setup is built'
   else problem "omv Setup isn't built" 'omv doctor --fix'; fi
   for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do
