@@ -81,7 +81,8 @@ local function readWeather(tries)
   end
   -- The first fix, or the permission answer, can take a few seconds.
   if tries < LOCATION_RETRIES then
-    hs.timer.doAfter(LOCATION_RETRY_SECONDS, function() readWeather(tries + 1) end)
+    -- A global, as Hammerspoon collects a timer nothing refers to before it fires.
+    omvWeatherRetry = hs.timer.doAfter(LOCATION_RETRY_SECONDS, function() readWeather(tries + 1) end)
   else
     hs.location.stop()
     weatherProblem = "Couldn't find your location"

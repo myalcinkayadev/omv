@@ -273,6 +273,11 @@ class ConfigContract(unittest.TestCase):
         self.assertIsNotNone(redraw)
         self.assertIn("mic.redrawBar()", redraw.group(1))
 
+    def test_should_keep_the_weather_location_retry_from_garbage_collection(self) -> None:
+        # Hammerspoon collects a timer nothing refers to, so the retry would never run.
+        source = (REPO / "config/hammerspoon/features/weather.lua").read_text(encoding="utf-8")
+        self.assertNotRegex(source, r"(?m)^\s*hs\.timer\.doAfter\(")
+
     def test_should_unmute_the_mic_when_its_bar_item_is_clicked(self) -> None:
         source = (REPO / "config/sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
         item = re.search(r"--add item mic_muted right[^\n]*\n[^\n]*", source)
