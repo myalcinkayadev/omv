@@ -203,6 +203,16 @@ local function paletteShot()
   return listShot("windows.png", LIST_WIDTH, { prompt = "Windows, apps, commands…", rows = palette.rows(windows, apps, launchers, "Option+Space"), calc = true })
 end
 
+-- The palette opened with JSON on the clipboard: its clipboard row on top, selected, with the
+-- footer naming its keys. The page works the row out itself, so it's cut to its body.
+local function clipboardActionsShot()
+  local windows = "12|Ghostty|1|~/omv — nvim\n21|Helium|2|Pull requests · GitHub\n31|Zed|3|omv — README.md\n"
+  local screen = { prompt = "Windows, apps, commands…", rows = palette.rows(windows, {}, {}, "Option+Space"), compact = true,
+    clipActions = true, clip = '{"id":42,"user":{"name":"Ada","roles":["admin","dev"]},"active":true}' }
+  return { file = "clipboard-actions.png", kind = "card", width = LIST_WIDTH, crop = "body", html = card.html(screen),
+    script = "document.documentElement.style.height='auto';document.body.style.height='auto';document.querySelector('.rows').style.flex='none'" }
+end
+
 local function bluetoothShot()
   local devices = bluetooth.devices({
     { address = "aa-bb-cc-dd-ee-01", name = "Magic Keyboard", connected = true, paired = true },
@@ -358,6 +368,7 @@ function shots.build(now, logo)
   add(list, calendarShot(now))
   add(list, reminderShots(now))
   add(list, paletteShot())
+  add(list, clipboardActionsShot())
   add(list, bluetoothShot())
   add(list, tailscaleShot())
   add(list, clipboardShot(now))

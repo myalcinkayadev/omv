@@ -169,6 +169,8 @@ It converts too, with Enter copying the result the same way:
 | Text with `%xx` escapes | `URL` the decoded text | the decoded text |
 | Base64 of readable text | `B64` the decoded text | the decoded text |
 
+<img src="docs/clipboard-actions.png" alt="The palette with JSON on the clipboard: a Clipboard row on top, JSON Pretty JSON, selected, then the open windows, and the keys to copy or paste it" width="720">
+
 Shift+Enter pastes it where you were typing instead, as [snippets](#snippets) do. Ordinary text gets no row, and typing anything else hides it.
 
 Type an action word to choose yourself: `json`, `jwt`, `b64`, `unb64`, `url`, `unurl` or `epoch`. On its own it works on the clipboard; with text after it, on that text, so `b64 hello` encodes and `epoch 1732190400` reads a date. Two letters list the words that match. Input that doesn't fit says so, such as `Not a JWT`.
