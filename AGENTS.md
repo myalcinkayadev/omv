@@ -24,6 +24,7 @@ overwrites. Create a file there only when the change needs it.
 | `~/.config/omv/flags` | Feature flags | `name=on` or `name=off`; prefer `omv flags <name> on` |
 | `~/.config/omv/apps` | The browser and editor omv's keys open | `browser = Google Chrome`, `editor = Cursor` |
 | `~/.config/omv/snippets` | Text the palette pastes by name | `name = text` lines, `\n` for a line break |
+| `~/.config/omv/theme-clock` | A day and a night theme, switched at sunrise and sunset | `day = catppuccin-latte`, `night = vantablack` |
 
 Then apply it:
 

@@ -7,6 +7,7 @@
 local shell = require("shell")
 local card = require("card")
 local theme = require("theme")
+local themeclock = require("themeclock")
 
 local feature = {}
 
@@ -94,6 +95,41 @@ function feature.open()
   end)
 end
 
+-- Theme by the clock, when ~/.config/omv/theme-clock names a day and a night theme. The
+-- theme switches only when day turns to night or back, so one picked by hand stays until
+-- the next sunrise or sunset. The file is read each time, so a change needs no reload.
+local CLOCK_PERIOD = STATE .. "/clock-period"
+local CLOCK_SECONDS = 5 * 60
+
+-- Where the Mac is, only when Hammerspoon may already know: the clock never asks.
+local function location()
+  if hs.location.authorizationStatus() ~= "authorized" then return nil end
+  hs.location.start()
+  local found = hs.location.get()
+  hs.location.stop()
+  return found
+end
+
+local function followClock()
+  local config = themeclock.parse(shell.readText(themeclock.PATH))
+  if not config then return end
+  local now, today = os.time(), os.date("*t")
+  local place = location()
+  local sunrise, sunset
+  if place then sunrise, sunset = themeclock.sun(today, place.latitude, place.longitude) end
+  local period = themeclock.period(now, sunrise, sunset, today)
+  if period == (shell.readText(CLOCK_PERIOD) or ""):match("^%a+") then return end
+  os.execute("/bin/mkdir -p '" .. STATE .. "'")
+  write(CLOCK_PERIOD, period .. "\n")
+  if config[period] ~= current() then feature.set(config[period]) end
+end
+
+-- Kept on the feature, so they aren't garbage-collected.
+feature.clockTimer = hs.timer.doEvery(CLOCK_SECONDS, followClock)
+feature.clockWake = hs.caffeinate.watcher.new(function(event)
+  if event == hs.caffeinate.watcher.systemDidWake then followClock() end
+end):start()
+
 -- The cards and the outline take the chosen theme as soon as this config loads; the bar's
 -- and Ghostty's files are already written.
 local chosen = current()
@@ -102,5 +138,6 @@ if chosen ~= "vantablack" then
   shell.setTheme(tokens)
   outline(tokens)
 end
+followClock()
 
 return feature

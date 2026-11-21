@@ -216,6 +216,7 @@ Option+Escape, then **Theme**, picks the colours for the cards, the bar, Ghostty
 - **Ghostty** takes them in new windows, or after its own config reload, Cmd+Shift+,.
 - **The focused window's outline** takes the theme's accent.
 - **The lyrics window** redraws in the new colours at once.
+- **By the clock:** name a day theme and a night theme in `~/.config/omv/theme-clock`, such as `day = catppuccin-latte` and `night = vantablack`, one a line. The theme switches at sunrise and sunset where the Mac is, worked out on the Mac from the location Hammerspoon already has for the [weather](#weather), so nothing is fetched and it never asks for the location itself. Without a location, or where the sun doesn't rise or set that day, day runs from 7:00 to 19:00. It switches only when day turns to night or back, checked every 5 minutes and on wake, so a theme you pick by hand stays until the next sunrise or sunset. A name that isn't a theme you have is skipped, so get Omarchy's themes first.
 - The choice is saved in `~/.local/state/omv/theme`, so it survives reloads and restarts. Neovim and btop keep their own colours.
 
 <img src="docs/themes.png" alt="The theme picker: Vantablack, the current one, then Omarchy's themes and Get Omarchy's themes" width="420">
@@ -772,6 +773,7 @@ Your own changes go in `~/.config/omv/`, outside the omv folder, so `omv update`
 | `nvim.lua` | Neovim | `vim.opt.number = true` |
 | `flags` | Feature flags | `file-search=on` (or `omv flags file-search on`) |
 | `apps` | The browser and editor omv's keys open | `browser = Google Chrome` |
+| `theme-clock` | A day theme and a night theme, switched at sunrise and sunset; read each time, so no reload | `day = catppuccin-latte` then `night = vantablack` |
 
 After editing one, run:
 
