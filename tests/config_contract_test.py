@@ -52,7 +52,7 @@ FEATURE_FLAGS = {
     "focus": "focus", "meeting": "meeting-mode", "clipboard": "clipboard", "translate": "translate", "capture": "capture",
     "reminders": "reminders", "note": "daily-note", "share": "airdrop", "nightshift": "night-light",
     "micmute": "mic-mute", "osd": "volume-popups", "procs": "processes", "lyrics": "lyrics",
-    "agents": "claude", "waiting": "claude", "sendto": "send-to-agent", "prs": "github-prs", "ci": "github-ci", "devlayout": "dev-layout",
+    "agents": "claude", "waiting": "claude", "sendto": "send-to-agent", "digest": "away-digest", "prs": "github-prs", "ci": "github-ci", "devlayout": "dev-layout",
 }
 
 # Each bar item a flag hides; the workspaces, mode, clock and bar_fit are the desktop's own.

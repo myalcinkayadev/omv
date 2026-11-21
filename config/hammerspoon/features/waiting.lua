@@ -45,6 +45,15 @@ local function runScript(script, answer)
   end)
 end
 
+-- The saved sessions whose agent still runs, each with its id.
+function feature.liveSessions()
+  local live = {}
+  for _, session in ipairs(savedSessions()) do
+    if alive(session.pid) then live[#live + 1] = session end
+  end
+  return live
+end
+
 -- Every live session's row, asking first, then done, then working.
 function feature.rows()
   return claudewait.rows(savedSessions(), alive, os.time())

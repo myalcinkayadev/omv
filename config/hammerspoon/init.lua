@@ -62,8 +62,9 @@ local weatherCard = feature("weather", "features.weather")
 local batteryCard = feature("battery", "features.battery")
 local agentsCard = feature("claude", "features.agents")
 local waitingClaude = feature("claude", "features.waiting")
--- Pastes into the sessions the waiting feature finds, so it loads only with it.
+-- Paste into, and read, the sessions the waiting feature finds, so they load only with it.
 local sendToAgent = waitingClaude and feature("send-to-agent", "features.sendto")
+if waitingClaude then feature("away-digest", "features.digest") end
 local quickNote = feature("daily-note", "features.note")
 local clipboardHistory = feature("clipboard", "features.clipboard")
 local bluetoothCard = feature("bluetooth", "features.bluetooth")

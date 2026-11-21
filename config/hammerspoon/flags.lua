@@ -43,6 +43,7 @@ flags.DEFAULTS = {
   -- For developers.
   ["claude"] = true, -- Claude Code's usage, the waiting pill and the Agents card (Option+Shift+A)
   ["send-to-agent"] = true, -- sending the selection or a screenshot to a waiting agent (Option+P)
+  ["away-digest"] = true, -- what your agents did while the screen was locked, shown when you unlock it
   ["github-prs"] = true, -- pull requests waiting for your review (Option+Shift+G) and their item
   ["github-ci"] = true, -- the checks on your own open pull requests, their item and the passed notices
   ["dev-layout"] = true, -- the dev layout and the agent grid

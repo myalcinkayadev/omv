@@ -16,6 +16,7 @@ omv is a desktop for working alongside coding agents. Claude Code, Codex, OpenCo
 
 - **A pill when a session waits for you.** It shows the project, with `?` when the agent is blocked on your approval. Click it, or press Option+Shift+A, to land in that session's terminal, on any workspace or tab.
 - **Send to agent.** Option+P puts the selected text, what you copied, or a screenshot of a region into the prompt of an agent that finished and waits for you.
+- **Away digest.** Unlock the Mac after a break, and one card says which sessions finished, which ask for approval, and the pull requests you opened meanwhile.
 - **The Agents card.** Claude's session and weekly limits, every live session with its state and how long it has been in it, background sessions, and one key to continue or start one.
 - **Dev layout.** Your editor, Claude Code and a shell side by side on their own workspace, optionally on a fresh git worktree, so a task can't collide with other work.
 - **Agent grid.** Two to four agents on one project, each on its own branch, as panes of one window.
@@ -316,6 +317,12 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - The clipboard is put back as it was half a second after the paste. Without Accessibility for Hammerspoon, or when the session's own terminal can't come forward, the text is only copied, for you to paste with Cmd+V.
 - Screenshots go to `~/.local/state/omv/agent-shots`, and those older than a day are removed when the next one is taken.
 
+**Away digest.** Unlock the screen after at least 5 minutes away, and a card lists what your agents did meanwhile: sessions that ask for approval first, then those that finished, started working or ended, each with when, and the pull requests you opened, from `gh`. Enter goes to a session's terminal, or opens a pull request. Nothing shows when nothing changed.
+
+- It needs no more than the sessions' saved state: each one says when the session entered its state, so the sessions as they were at the lock and as they are now are compared. Nothing else is recorded, so it can't say which files changed.
+- The break starts when the screen locks or the Mac sleeps, and ends when you unlock it. A Mac that never asks for a password never unlocks, so it shows no digest.
+- `gh` gets 5 seconds; offline, or without `gh`, the card shows without pull requests.
+
 ## Battery
 
 Click the battery item, or press Option+Shift+B, for the Battery card: the charge, whether it's draining, charging or charged, the battery's size in Wh, the time left (or to full), the charge cycles and the power going in or out.
@@ -602,6 +609,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `now-playing` | the playing track in the bar |
 | `claude` | Claude Code's usage, the waiting pill, the Agents card and Option+Shift+A |
 | `send-to-agent` | sending the selection, the clipboard or a screenshot to an agent (Option+P); it needs `claude` on too |
+| `away-digest` | the card of what your agents did while the screen was locked; it needs `claude` on too |
 | `github-prs` | pull requests waiting for your review (Option+Shift+G) and their item |
 | `github-ci` | the checks on your own open pull requests, their item and the notice when a failing one passes |
 | `dev-layout` | the dev layout and the agent grid |
