@@ -9,16 +9,18 @@ local card = {}
 
 -- The palette's calculator, read from beside this file. Empty when calc.js is missing: the
 -- palette then filters as before, with no calculator row.
-local function readCalc()
+local function readBeside(name)
   local folder = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
-  local file = io.open(folder .. "calc.js", "r")
+  local file = io.open(folder .. name, "r")
   if not file then return "" end
   local text = file:read("*a")
   file:close()
   return text
 end
 
-local CALC = readCalc()
+local CALC = readBeside("calc.js")
+-- The palette's clipboard actions, read the same way; empty leaves them out.
+local TRANSFORM = readBeside("transform.js")
 
 card.STYLE = [[
   * { box-sizing: border-box; }
@@ -57,6 +59,17 @@ card.STYLE = [[
     text-transform: uppercase; letter-spacing: 1px; }
   .lead { break-inside: avoid; }
   .group.hidden { display: none; }
+  /* The palette's clipboard rows: a short tag naming the kind, in the icon's place. Green and
+     red aren't grays, so a theme leaves them as they are. */
+  .row .icon.tag { flex: none; width: 40px; margin-right: 10px; font-size: 10px; letter-spacing: 0.5px; line-height: 16px;
+    text-align: center; border: 1px solid #2a2a2a; border-radius: 4px; color: #8d8d8d; }
+  .row.selected .icon.tag { border-color: #bbbbbb; color: #333333; }
+  .row .icon.tag.bad { color: #e88b7f; border-color: #e88b7f; }
+  .row .hint.tone-ok { color: #7fd1ae; }
+  .row .hint.tone-bad { color: #e88b7f; }
+  .row.selected .hint.tone-ok { color: #1d7a52; }
+  .row.selected .hint.tone-bad { color: #a33a2c; }
+  .foot[hidden] { display: none; }
   /* The away digest: a count line under the title, a status at its right, a key footer, and
      icons in a tone. Yellow and green aren't grays, so a theme leaves them as they are. */
   .status { float: right; font-size: 13px; margin-top: 3px; }
@@ -92,6 +105,10 @@ local SCRIPT = [[
 
   const send = (type, id) => window.webkit.messageHandlers.omv.postMessage({ type, id: id || "" });
   const visible = () => rows.filter((row) => !row.classList.contains("hidden"));
+  // The clipboard rows, first in the list: what the clipboard holds, or a typed action word's
+  // result. The footer naming their keys shows only while one of them is selected.
+  const clipRows = typeof omvTransform === "function" ? Array.from(document.querySelectorAll(".row.clip")) : [];
+  const clipFoot = document.querySelector(".foot.clipfoot");
   // The calculator row, first in the list: shown while the search is a whole sum.
   const calc = typeof omvCalc === "function" ? document.querySelector(".row.calc") : null;
   // File search, on in a card with data-files: after a pause in typing, Hammerspoon is asked
@@ -123,7 +140,7 @@ local SCRIPT = [[
     rows.forEach((row) => {
       // Spotlight already matched file rows to the typed text, ignoring accents, and they're
       // cleared whenever the text changes, so filtering them again would only hide matches.
-      if (row === calc || (files && files.contains(row))) return;
+      if (row === calc || row.classList.contains("clip") || (files && files.contains(row))) return;
       const haystack = ((row.dataset.group || "") + " " + (row.dataset.keywords || "") + " " + row.textContent).toLowerCase();
       row.classList.toggle("hidden", !words.every((word) => haystack.includes(word)));
     });
@@ -140,6 +157,22 @@ local SCRIPT = [[
       calc.querySelector(".label").textContent = "= " + (result || "");
       calc.querySelector(".hint").textContent = (note ? note + " · " : "") + "Enter copies";
     }
+    if (clipRows.length) {
+      const found = omvTransform(query, window.omvClip, Date.now());
+      clipRows.forEach((row, index) => {
+        const item = found[index];
+        row.classList.toggle("hidden", !item);
+        if (!item) return;
+        row.dataset.id = item.verb ? "verb:" + item.verb : item.value === null ? "none:" : "clip:" + item.value;
+        const tag = row.querySelector(".tag");
+        tag.textContent = item.kind;
+        tag.classList.toggle("bad", item.tone === "bad");
+        row.querySelector(".label").textContent = item.label;
+        const hint = row.querySelector(".hint");
+        hint.textContent = item.hint || "";
+        hint.className = "hint" + (item.tone ? " tone-" + item.tone : "");
+      });
+    }
     groups.forEach((group) => {
       const name = group.dataset.name;
       group.classList.toggle("hidden", !rows.some((row) => row.dataset.group === name && !row.classList.contains("hidden")));
@@ -152,6 +185,7 @@ local SCRIPT = [[
       shown[selected].scrollIntoView({ block: "nearest" });
     }
     none.style.display = (shown.length && !takesInput) || filesPending ? "none" : "block";
+    if (clipFoot) clipFoot.hidden = !(shown[selected] && (shown[selected].dataset.id || "").startsWith("clip:"));
     text.textContent = query;
     prompt.classList.toggle("empty", query === "");
   }
@@ -174,7 +208,13 @@ local SCRIPT = [[
   }
 
   function pick(row) {
-    if (row) send("choose", row.dataset.id);
+    if (!row) return;
+    const id = row.dataset.id || "";
+    // A half-typed action word completes to the whole one, applied to the clipboard.
+    if (id.startsWith("verb:")) { query = id.slice(5); selected = 0; return draw(); }
+    // An error row has nothing to copy.
+    if (id === "none:") return;
+    send("choose", id);
   }
 
   // WebKit reports a move when the card appears under a still pointer, so hover only
@@ -249,6 +289,11 @@ local SCRIPT = [[
     if (event.key === "ArrowDown" || (event.ctrlKey && event.key === "n")) selected = (selected + 1) % Math.max(1, shown.length);
     else if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) selected = (selected - 1 + shown.length) % Math.max(1, shown.length);
     else if (event.key === "Enter" && takesInput) return send("submit", query);
+    // Shift+Enter on a clipboard row pastes its result where you were typing.
+    else if (event.key === "Enter" && event.shiftKey && shown[selected] && (shown[selected].dataset.id || "").startsWith("clip:")) {
+      event.preventDefault();
+      return send("paste", shown[selected].dataset.id);
+    }
     else if (inColumns && event.key === "ArrowRight") sideways(1);
     else if (inColumns && event.key === "ArrowLeft") sideways(-1);
     else if (event.key === "Enter" || event.key === "ArrowRight") return pick(shown[selected]);
@@ -347,10 +392,12 @@ end
 
 -- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group, note, key, tone } },
 --            selected = 1, compact = false, columns = 1, input = false, hint = "", passage = "",
---            sub = { counts, status, tone }, footer = { { key, text } }, clearable = false }
+--            sub = { counts, status, tone }, footer = { { key, text } }, clearable = false,
+--            clipActions = false, clip = nil }
 -- sub is a count line under the title with a status at its right; footer lists keys; a
 -- clearable card sends clear and the selected row on Backspace. A row's tone, ask, ok or
--- muted, colours its icon.
+-- muted, colours its icon. A card with clipActions, such as the palette, shows the clipboard
+-- actions on top, for clip, the clipboard's text; Shift+Enter on one sends paste.
 -- An input card sends what was typed on Enter, and shows its hint under the prompt. A
 -- passage is text shown whole above the rows, wrapped, such as a translation; a quote, smaller
 -- and grey above it, is what it came from. A row's key picks it with Cmd held.
@@ -374,12 +421,23 @@ local function footerHtml(footer)
   return "<div class=foot>" .. table.concat(keys) .. "</div>"
 end
 
+-- Room for the most rows a half-typed action word can list.
+local CLIP_ROWS = 3
+
 function card.html(screen)
   local rows = rowsWithHeaders(screen.rows)
   local calc = screen.calc and CALC ~= ""
   if calc then
     table.insert(rows, 1, '<div class="row calc hidden" data-id="calc:"><span class=icon>󰃬</span>'
       .. "<span class=label></span><span class=hint>Enter copies</span></div>")
+  end
+  local clip = (screen.clipActions or screen.clip ~= nil) and TRANSFORM ~= ""
+  if clip then
+    for _ = 1, CLIP_ROWS do
+      table.insert(rows, 1, '<div class="row clip hidden" data-group="Clipboard" data-id="none:"><span class="icon tag"></span>'
+        .. "<span class=label></span><span class=hint></span></div>")
+    end
+    table.insert(rows, 1, '<div class=group data-name="Clipboard">Clipboard</div>')
   end
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. (screen.footer and " footed" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
@@ -393,7 +451,10 @@ function card.html(screen)
     .. (screen.passage and ("<div class=passage>" .. card.escape(screen.passage) .. "</div>") or "")
     .. rowsOpen(screen.columns) .. table.concat(rows) .. (screen.files and "<div class=files></div>" or "") .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
     .. footerHtml(screen.footer)
+    .. (clip and ('<div class="foot clipfoot" hidden><span><kbd>⏎</kbd>copy</span><span><kbd>⇧⏎</kbd>paste where you were typing</span>'
+      .. "<span><kbd>Esc</kbd>close</span></div>") or "")
     .. (calc and ("<script>" .. CALC .. "</script>") or "")
+    .. (clip and ("<script>window.omvClip = " .. (screen.clip and card.jsString(screen.clip) or "null") .. ";" .. TRANSFORM .. "</script>") or "")
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 

@@ -159,6 +159,22 @@ It converts too, with Enter copying the result the same way:
 - **Currencies:** `100 usd to eur` or `3 euro to lira`, with any two three-letter codes or the common names: euro, dollar, lira (or tl), yen, franc, yuan, ruble. Rates come from [Frankfurter](https://frankfurter.dev), free and keyless, and only once a currency is typed. They're saved in `~/.local/state/omv/rates.json` and fetched again once 4 hours old. The rate's date shows beside the result. Offline, the saved rates still work.
 - **Dates:** `today + 30 days`, `2027-01-31 + 1 month`, `in 3 weeks`, `days until 2026-12-25`, `days since 2026-11-10`. A month added to the 31st keeps to the last day of a shorter month.
 
+**Clipboard actions.** Open the palette with something on the clipboard that has a shape omv knows, and a **Clipboard** row comes first, already selected, its kind in a tag:
+
+| Copied | Row | Enter copies |
+|---|---|---|
+| JSON | `JSON` Pretty JSON · 12 lines | the JSON, indented |
+| A JWT | `JWT` JWT · HS256 · sub 1042, and `valid · 2 h left` in green or `expired 3 h ago` in red | its payload as JSON |
+| `1732190400`, or 13 digits | `TIME` the date, in your time zone | the date |
+| Text with `%xx` escapes | `URL` the decoded text | the decoded text |
+| Base64 of readable text | `B64` the decoded text | the decoded text |
+
+Shift+Enter pastes it where you were typing instead, as [snippets](#snippets) do. Ordinary text gets no row, and typing anything else hides it.
+
+Type an action word to choose yourself: `json`, `jwt`, `b64`, `unb64`, `url`, `unurl` or `epoch`. On its own it works on the clipboard; with text after it, on that text, so `b64 hello` encodes and `epoch 1732190400` reads a date. Two letters list the words that match. Input that doesn't fit says so, such as `Not a JWT`.
+
+Everything happens on the Mac, in the palette's page. The clipboard isn't read while clipboard history is paused, for a copy a password manager marks as concealed, or over 100 KB. `omv flags clipboard-actions off` turns it off.
+
 ### Snippets
 
 Text you type often, such as a reply or a sign-off, kept in `~/.config/omv/snippets`, one per line:
@@ -598,6 +614,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `clipboard` | clipboard history (Option+V) and its `paused` item |
 | `snippets` | your snippets in the palette |
 | `calculator` | sums and conversions in the palette |
+| `clipboard-actions` | the palette's clipboard row: pretty JSON, a JWT decoded, base64, URL escapes and epoch times |
 | `translate` | translating the selection (Option+Y) |
 | `capture` | the capture menu (Option+Shift+S) and the recording item |
 | `reminders` | reminders and Pomodoro (Option+Shift+M) and their item |

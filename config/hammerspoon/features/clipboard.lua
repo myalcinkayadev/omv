@@ -72,6 +72,11 @@ function feature.toggle()
   shell.show("clipboard", shell.centered(WIDTH, shell.listHeight(#rows, VISIBLE_ROWS)), card.html(screen), onMessage)
 end
 
+-- Whether history is paused, which also keeps the clipboard out of the palette's actions.
+function feature.isPaused()
+  return history.paused == true
+end
+
 -- The bar's paused item: a click turns history back on.
 function feature.resume()
   if history.paused then setPaused(false) end

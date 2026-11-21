@@ -61,7 +61,8 @@ function clipboard.isSecret(text)
   return false
 end
 
-local function marked(types)
+-- Whether a password manager marked the copy as one not to keep or show.
+function clipboard.isConcealed(types)
   for _, kind in ipairs(types or {}) do
     if SKIPPED_TYPES[kind] then return true end
   end
@@ -101,7 +102,7 @@ end
 -- as the newest, or a secret. Says whether it was kept.
 function clipboard.add(history, copy, now)
   prune(history, now)
-  if history.paused or marked(copy.types) or PASSWORD_MANAGERS[copy.bundle] then return false end
+  if history.paused or clipboard.isConcealed(copy.types) or PASSWORD_MANAGERS[copy.bundle] then return false end
   if type(copy.image) == "table" then return addImage(history, copy, now) end
   local text = copy.text
   if type(text) ~= "string" or not text:find("%S") or clipboard.isSecret(text) then return false end

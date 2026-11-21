@@ -27,6 +27,7 @@ flags.DEFAULTS = {
   ["clipboard"] = true, -- clipboard history (Option+V) and its paused item
   ["snippets"] = true, -- your snippets in the palette
   ["calculator"] = true, -- sums and conversions in the palette
+  ["clipboard-actions"] = true, -- JSON, JWT, base64, URL escapes and epoch times from the clipboard, in the palette
   ["translate"] = true, -- translating the selection (Option+Y)
   ["capture"] = true, -- the capture menu (Option+Shift+S) and the recording item
   ["reminders"] = true, -- reminders and Pomodoro (Option+Shift+M) and their item

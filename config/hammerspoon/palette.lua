@@ -1,9 +1,10 @@
 -- The Option+Space palette: open windows, installed apps and omv's own commands in one
 -- list, filtered as you type. Rows carry what to do as their id: window:<id>, app:<path> or
--- command:<index in the key list>. A typed sum adds calc:<result> on top, and file search
--- file:<path> rows at the end.
+-- command:<index in the key list>. A typed sum adds calc:<result> on top, a clipboard action
+-- clip:<result> above that, and file search file:<path> rows at the end.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
+local clipboard = require("clipboard")
 local windows = require("windows")
 
 local palette = {}
@@ -76,13 +77,23 @@ function palette.prompt(fileSearch)
   return fileSearch and "Windows, apps, commands, files…" or "Windows, apps, commands…"
 end
 
--- What a row does: "window", id; "app", path; "file", path; "calc", the result to copy; or
--- "command", index. nil for an unknown row.
+-- What a row does: "window", id; "app", path; "file", path; "calc" or "clip", the result to
+-- copy; or "command", index. nil for an unknown row.
 function palette.parse(id)
   local kind, value = id:match("^(%a+):(.+)$")
-  if kind == "window" or kind == "app" or kind == "calc" or kind == "file" then return kind, value end
+  if kind == "window" or kind == "app" or kind == "calc" or kind == "file" or kind == "clip" then return kind, value end
   if kind == "command" or kind == "snippet" then return kind, tonumber(value) end
   return nil
+end
+
+-- The clipboard's text for the clipboard actions, or nil to leave it out of the page: while
+-- clipboard history is paused, for a copy a password manager marked as concealed, or past
+-- 100 KB, which no action needs.
+palette.CLIP_LIMIT = 100 * 1024
+
+function palette.clipText(text, types, paused)
+  if paused or type(text) ~= "string" or #text > palette.CLIP_LIMIT or clipboard.isConcealed(types) then return nil end
+  return text
 end
 
 return palette

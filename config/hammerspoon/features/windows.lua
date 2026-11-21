@@ -1,5 +1,6 @@
 -- The palette (Option+Space): open windows on any workspace, installed apps, and every omv
--- command the key list can run, in one list filtered as you type. With the file-search flag
+-- command the key list can run, in one list filtered as you type. With clipboard actions on,
+-- what the clipboard holds, such as JSON or a JWT, gets a row on top; see transform.js. With the file-search flag
 -- on, files matching what's typed follow, found by mdfind in the background.
 
 local shell = require("shell")
@@ -22,6 +23,7 @@ local MDFIND = "/usr/bin/mdfind"
 -- Read once at load: a change to ~/.config/omv/flags takes a reload.
 local enabled = flags.read(shell.readText(flags.PATH))
 local fileSearch, withSnippets, withCalculator = enabled["file-search"], enabled.snippets, enabled.calculator
+local withClipActions = enabled["clipboard-actions"]
 local search = nil
 
 -- Stops the search still running, so typing fast leaves one mdfind at most.
@@ -124,6 +126,14 @@ local function onPaletteMessage(message)
     return shell.alert("Copied path", 1)
   end
   stopSearch()
+  -- Shift+Enter on a clipboard row: its result, pasted where you were typing.
+  if message.type == "paste" then
+    local kind, value = palette.parse(message.id)
+    if kind ~= "clip" then return shell.close() end
+    hs.pasteboard.setContents(value)
+    shell.close()
+    return shell.pasteBack(typingIn, "Copied")
+  end
   if message.type ~= "choose" then return shell.close() end
   local kind, value = palette.parse(message.id)
   if kind == "window" then
@@ -136,6 +146,11 @@ local function onPaletteMessage(message)
     hs.pasteboard.setContents(value)
     shell.close()
     return shell.alert("Copied " .. value, 1)
+  end
+  if kind == "clip" then
+    hs.pasteboard.setContents(value)
+    shell.close()
+    return shell.alert("Copied", 1)
   end
   if kind == "snippet" then
     local snippet = shownSnippets[value]
@@ -156,14 +171,27 @@ local function onPaletteMessage(message)
   if launcher and launcher.runs then hs.timer.doAfter(RUN_DELAY, launcher.run) end
 end
 
+-- The clipboard's text for the clipboard actions, nil when it must stay out of the page.
+-- Clipboard history is asked only when its feature is loaded.
+local function clipText()
+  if not withClipActions then return nil end
+  local history = package.loaded["features.clipboard"]
+  local paused = type(history) == "table" and history.isPaused and history.isPaused() or false
+  return palette.clipText(hs.pasteboard.getContents(), hs.pasteboard.contentTypes(), paused)
+end
+
 function feature.toggle()
   if shell.isOpen("windows") then return shell.close() end
   typingIn = shell.typingIn()
+  local clip = clipText()
   shownSnippets = withSnippets and snippets.parse(shell.readText(SNIPPETS_PATH)) or {}
   hs.task.new(shell.AEROSPACE, function(code, output)
     local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY, snippets.rows(shownSnippets))
-    shell.show("windows", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
-      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = withCalculator, files = fileSearch }), onPaletteMessage,
+    -- Room for the clipboard section's heading and row.
+    local height = shell.listHeight(#rows + (withClipActions and 2 or 0))
+    shell.show("windows", shell.centered(shell.LIST_WIDTH, height),
+      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = withCalculator, files = fileSearch,
+        clipActions = withClipActions, clip = clip }), onPaletteMessage,
       -- Closed any way, by Escape, Option+Space or losing focus, a running mdfind stops too.
       { onClose = stopSearch })
   end, { "list-windows", "--all", "--format", windows.FORMAT }):start()

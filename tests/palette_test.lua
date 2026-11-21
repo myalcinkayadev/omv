@@ -73,4 +73,19 @@ check.that("should copy a file's path on Cmd+C", copy ~= nil and copy.kind == "c
 check.that("should do nothing on Cmd+Enter for a window row", palette.action("reveal", "window:12") == nil)
 check.that("should do nothing for an unknown key", palette.action("nope", "file:/a") == nil)
 
+-- Clipboard actions.
+check.that("should read a clipboard row's result", select(2, palette.parse("clip:{\n  \"id\": 42\n}")) == '{\n  "id": 42\n}')
+check.that("should read a clipboard row as clip", palette.parse("clip:aGk=") == "clip")
+check.that("should hand the page the clipboard's text", palette.clipText("[1,2]", { "public.utf8-plain-text" }, false) == "[1,2]")
+check.that("should leave the clipboard out while history is paused", palette.clipText("[1,2]", {}, true) == nil)
+check.that("should leave out a copy a password manager marked as concealed",
+  palette.clipText("hunter2", { "org.nspasteboard.ConcealedType" }, false) == nil)
+check.that("should leave out a clipboard over 100 KB", palette.clipText(string.rep("a", 100 * 1024 + 1), {}, false) == nil)
+check.that("should leave out a clipboard that holds no text", palette.clipText(nil, {}, false) == nil)
+local clipPage = card.html({ prompt = "x", rows = {}, clip = "</script><script>alert(1)" })
+check.that("should put the clipboard into the page as a script string that can't close the script",
+  clipPage:find("</script><script>alert", 1, true) == nil and clipPage:find("<\\/script>", 1, true) ~= nil)
+check.that("should add the clipboard actions to a card that has a clipboard", clipPage:find("function omvTransform", 1, true) ~= nil)
+check.that("should leave the clipboard actions out of a card without one", card.html({ prompt = "x", rows = {} }):find("function omvTransform", 1, true) == nil)
+
 check.finish()
