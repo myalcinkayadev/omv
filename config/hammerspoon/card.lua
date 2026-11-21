@@ -57,6 +57,23 @@ card.STYLE = [[
     text-transform: uppercase; letter-spacing: 1px; }
   .lead { break-inside: avoid; }
   .group.hidden { display: none; }
+  /* The away digest: a count line under the title, a status at its right, a key footer, and
+     icons in a tone. Yellow and green aren't grays, so a theme leaves them as they are. */
+  .status { float: right; font-size: 13px; margin-top: 3px; }
+  .status.ask { color: #f2c94c; }
+  .status.ok { color: #7fd1ae; }
+  .sub { padding: 0 10px 8px; margin-top: -6px; color: #7a7a7a; font-size: 13px; }
+  .row.tone-ask .icon { color: #f2c94c; }
+  .row.selected.tone-ask .icon { color: #9a6a00; }
+  .row.tone-ok .icon { color: #7fd1ae; }
+  .row.tone-muted .icon { color: #7a7a7a; }
+  body.compact .row.tone-muted .label, .row.tone-muted .label { color: #7a7a7a; }
+  body.compact .row.selected.tone-muted .label { color: #000; }
+  /* A card with a footer ends with it, so the body's bottom padding goes. */
+  body.footed { padding-bottom: 0; }
+  .foot { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; border-top: 1px solid #2a2a2a;
+    margin: 8px -14px 0; padding: 10px 24px 12px; color: #7a7a7a; font-size: 12px; }
+  .foot kbd { font: inherit; color: #fff; border: 1px solid #2a2a2a; border-radius: 4px; padding: 0 6px; margin-right: 6px; }
 ]]
 
 local SCRIPT = [[
@@ -235,6 +252,7 @@ local SCRIPT = [[
     else if (inColumns && event.key === "ArrowRight") sideways(1);
     else if (inColumns && event.key === "ArrowLeft") sideways(-1);
     else if (event.key === "Enter" || event.key === "ArrowRight") return pick(shown[selected]);
+    else if (event.key === "Backspace" && query === "" && document.body.dataset.clear !== undefined) { event.preventDefault(); if (shown[selected]) send("clear", shown[selected].dataset.id); return; }
     else if (event.key === "ArrowLeft" || (event.key === "Backspace" && query === "")) return send("back");
     else if (event.key === "Backspace") query = query.slice(0, -1);
     else if (event.key.length === 1 && !event.metaKey && !event.ctrlKey) { query += event.key; selected = 0; }
@@ -245,6 +263,17 @@ local SCRIPT = [[
   });
 
   rows.forEach(wire);
+
+  // The height the page needs, without the rows stretching to fill the window: Hammerspoon
+  // sizes a card to fit it.
+  window.omvContentHeight = () => {
+    const root = document.documentElement.style, body = document.body.style, list = document.querySelector(".rows");
+    const saved = [root.height, body.height, list ? list.style.flex : ""];
+    root.height = "auto"; body.height = "auto"; if (list) list.style.flex = "none";
+    const height = Math.ceil(document.body.getBoundingClientRect().height);
+    root.height = saved[0]; body.height = saved[1]; if (list) list.style.flex = saved[2];
+    return height;
+  };
 
   draw();
 ]]
@@ -270,6 +299,9 @@ function card.escape(text)
   return (tostring(text or ""):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub('"', "&quot;"))
 end
 
+-- The tones a row's icon can take; any other value is left out of the page.
+local TONES = { ask = true, ok = true, muted = true }
+
 local function rowHtml(row)
   local icon = row.icon and ("<span class=icon>" .. card.escape(row.icon) .. "</span>") or ""
   -- A picture, such as a copied image's preview, takes the icon's place.
@@ -279,7 +311,7 @@ local function rowHtml(row)
     return "<div class=note>" .. icon .. "<span class=label>" .. card.escape(row.label) .. "</span></div>"
   end
   local hint = row.submenu and "›" or row.hint
-  return '<div class="row" data-id="' .. card.escape(row.id) .. '"'
+  return '<div class="row' .. (TONES[row.tone] and (" tone-" .. row.tone) or "") .. '" data-id="' .. card.escape(row.id) .. '"'
     .. (row.group and (' data-group="' .. card.escape(row.group) .. '"') or "")
     .. (row.keywords and (' data-keywords="' .. card.escape(row.keywords) .. '"') or "")
     .. (row.submenu and " data-submenu" or "")
@@ -313,12 +345,35 @@ local function rowsWithHeaders(screenRows)
   return lines
 end
 
--- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group, note, key } },
---            selected = 1, compact = false, columns = 1, input = false, hint = "", passage = "" }
+-- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group, note, key, tone } },
+--            selected = 1, compact = false, columns = 1, input = false, hint = "", passage = "",
+--            sub = { counts, status, tone }, footer = { { key, text } }, clearable = false }
+-- sub is a count line under the title with a status at its right; footer lists keys; a
+-- clearable card sends clear and the selected row on Backspace. A row's tone, ask, ok or
+-- muted, colours its icon.
 -- An input card sends what was typed on Enter, and shows its hint under the prompt. A
 -- passage is text shown whole above the rows, wrapped, such as a translation; a quote, smaller
 -- and grey above it, is what it came from. A row's key picks it with Cmd held.
 -- A card with calc = true, such as the palette, works out a typed sum in its first row.
+local function subHtml(sub)
+  if not sub then return "" end
+  return "<div class=sub>" .. card.escape(sub.counts) .. "</div>"
+end
+
+local function statusHtml(sub)
+  if not (sub and sub.status) then return "" end
+  return '<span class="status ' .. (TONES[sub.tone] and sub.tone or "") .. '">' .. card.escape(sub.status) .. "</span>"
+end
+
+local function footerHtml(footer)
+  if not footer then return "" end
+  local keys = {}
+  for _, entry in ipairs(footer) do
+    keys[#keys + 1] = "<span>" .. (entry.key and ("<kbd>" .. card.escape(entry.key) .. "</kbd>") or "") .. card.escape(entry.text) .. "</span>"
+  end
+  return "<div class=foot>" .. table.concat(keys) .. "</div>"
+end
+
 function card.html(screen)
   local rows = rowsWithHeaders(screen.rows)
   local calc = screen.calc and CALC ~= ""
@@ -327,13 +382,17 @@ function card.html(screen)
       .. "<span class=label></span><span class=hint>Enter copies</span></div>")
   end
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
-    .. '<body class="' .. (screen.compact and "compact" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
-    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "") .. ">"
-    .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span><span class=caret></span>'
-    .. (screen.files and "<span class=busy>Searching files…</span>" or "") .. "</div>"
+    .. '<body class="' .. (screen.compact and "compact" or "") .. (screen.footer and " footed" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
+    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "")
+    .. (screen.clearable and " data-clear" or "") .. ">"
+    .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span>'
+    .. "<span class=caret></span>"
+    .. (screen.files and "<span class=busy>Searching files…</span>" or "") .. statusHtml(screen.sub) .. "</div>"
+    .. subHtml(screen.sub)
     .. (screen.quote and ("<div class=quote>" .. card.escape(screen.quote) .. "</div>") or "")
     .. (screen.passage and ("<div class=passage>" .. card.escape(screen.passage) .. "</div>") or "")
     .. rowsOpen(screen.columns) .. table.concat(rows) .. (screen.files and "<div class=files></div>" or "") .. "<div class=none>" .. card.escape(screen.hint or "No matches") .. "</div></div>"
+    .. footerHtml(screen.footer)
     .. (calc and ("<script>" .. CALC .. "</script>") or "")
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
