@@ -141,6 +141,8 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 
 **Checks** follow your own open pull requests in every repository, with one `gh` search, so there's no repository to set up. A pull request whose checks went from failing to passing gets a notice; a click on it opens the pull request. The last answer is kept in `~/.local/state/omv/github-ci`, so the card opens at once, and a failed check stays failing while GitHub can't be reached.
 
+<img src="docs/ci.png" alt="The checks card: Fix login redirect loop failing first, then Document the release steps running, then Add dark mode to settings passed" width="720">
+
 <img src="docs/prs.png" alt="The pull request list: three pull requests waiting for review, each with its repository and number" width="720">
 
 Option+Shift+Space shows or hides the bar.
@@ -306,7 +308,7 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - Only Claude's PID, its tty, the folder name, the state and when the session entered it are saved, in `~/.local/state/omv/claude-sessions`. A session whose Claude has ended is dropped within 30 seconds.
 - A session in any other app, such as Zed's terminal, still shows. Since no terminal app has its tty, the app it runs in comes forward instead, found among Claude's parent processes; macOS can't pick the exact window or pane. The drop-down terminal can't be focused.
 
-<img src="docs/waiting.png" alt="The waiting list: api asking for approval for 1 min, then omv done for 4 min" width="720">
+<img src="docs/inbox.png" alt="The agents' inbox: 1 needs you; api asking for approval, web and omv done, and after a 25-minute break, notes ended and a pull request opened" width="720">
 
 <img src="docs/agents.png" alt="The Agents card: Claude Code on the Pro plan, session and weekly limits, two live sessions and two background ones" width="400">
 
@@ -316,6 +318,8 @@ Click Claude's item in the bar for the Agents card: Claude Code's plan, and bars
 - Enter is never pressed: you read what landed and send it yourself. Trailing newlines and control characters are dropped, so a paste can't send itself or break out of the terminal's paste.
 - The clipboard is put back as it was half a second after the paste. Without Accessibility for Hammerspoon, or when the session's own terminal can't come forward, the text is only copied, for you to paste with Cmd+V.
 - Screenshots go to `~/.local/state/omv/agent-shots`, and those older than a day are removed when the next one is taken.
+
+<img src="docs/sendto.png" alt="Send to agent with text selected: the selection to omv or web, then a screenshot to either; api, asking for approval, isn't offered" width="720">
 
 **Away digest.** Unlock the screen after at least 5 minutes away, or the minutes set in `~/.config/omv/away-digest` such as `minutes = 10`, and if anything changed meanwhile, the agents' inbox opens on its own. Under its **While away · 25 min** section are the sessions that ended (–) and the pull requests you opened (↗), from `gh`; they stay until you clear each with Backspace. The sessions that wait are in Needs you and Done above it, from their live state.
 

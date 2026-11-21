@@ -18,8 +18,10 @@ local bluetooth = require("bluetooth")
 local calendar = require("calendar")
 local capture = require("capture")
 local card = require("card")
+local ci = require("ci")
 local clipboard = require("clipboard")
 local devlayout = require("devlayout")
+local digest = require("digest")
 local disk = require("disk")
 local menu = require("menu")
 local network = require("network")
@@ -32,6 +34,7 @@ local procs = require("procs")
 local prs = require("prs")
 local quicknote = require("quicknote")
 local reminders = require("reminders")
+local sendto = require("sendto")
 local sound = require("sound")
 local tailscale = require("tailscale")
 local theme = require("theme")
@@ -256,11 +259,44 @@ local function prsShot()
   }) })
 end
 
-local function waitingShot()
-  return listShot("waiting.png", LIST_WIDTH, { prompt = "Waiting…", rows = {
-    { id = "1", icon = "󰚩", label = "api", hint = "asks · 1 min" },
-    { id = "2", icon = "󰚩", label = "omv", hint = "done · 4 min" },
-  } })
+-- The checks on your own pull requests, failing first, as the bar's item saves them.
+local function ciShot()
+  return listShot("ci.png", LIST_WIDTH, { prompt = "Checks…", rows = ci.rows(table.concat({
+    "SUCCESS\thttps://github.com/acme/web/pull/118\tacme/web#118\tAdd dark mode to settings",
+    "FAILURE\thttps://github.com/acme/api/pull/42\tacme/api#42\tFix login redirect loop",
+    "PENDING\thttps://github.com/acme/docs/pull/7\tacme/docs#7\tDocument the release steps",
+  }, "\n")) })
+end
+
+-- The agents' inbox after a 25-minute break: one session asking, two done, one that ended
+-- and a pull request opened meanwhile. It sizes itself, so the page is cut to its body.
+local function inboxShot(now)
+  local function session(id, folder, state, ago, agent)
+    return { id = id, tty = "/dev/ttys00" .. id, pid = 100, folder = folder, state = state, since = now - ago, agent = agent or "claude" }
+  end
+  local live = digest.liveRows({
+    session("1", "api", "asks", 6 * MINUTE),
+    session("2", "omv", "done", 4 * MINUTE),
+    session("3", "web", "done", 18 * MINUTE, "codex"),
+  }, now)
+  local away = digest.awayRows({ session("4", "notes", "working", 30 * MINUTE) }, {}, now - 25 * MINUTE, now, {
+    { number = 42, title = "Fix login redirect loop", url = "https://github.com/acme/api/pull/42", repository = { nameWithOwner = "acme/api" } },
+  })
+  local rows = digest.inbox(live, away)
+  local footer = { { key = "Enter", text = "go to it" }, { key = "⌫", text = "clear" }, { key = "Esc", text = "close" } }
+  return { file = "inbox.png", kind = "card", width = LIST_WIDTH, crop = "body",
+    html = card.html({ prompt = "Agents", sub = digest.summary(rows), rows = rows, footer = footer, clearable = true, compact = true }),
+    script = "document.documentElement.style.height='auto';document.body.style.height='auto';document.querySelector('.rows').style.flex='none'" }
+end
+
+-- Send to agent with text selected: the done sessions, each for the text and a screenshot.
+local function sendtoShot()
+  local rows = sendto.rows({
+    { id = "/dev/ttys002", label = "omv", state = "done" },
+    { id = "/dev/ttys003", label = "web", state = "done" },
+    { id = "/dev/ttys001", label = "api", state = "asks" },
+  }, "TypeError: Cannot read properties of undefined (reading 'user')", "Selection")
+  return listShot("sendto.png", LIST_WIDTH, { prompt = "Send to agent…", rows = rows })
 end
 
 local function devlayoutShot()
@@ -327,7 +363,9 @@ function shots.build(now, logo)
   add(list, clipboardShot(now))
   add(list, procsShot())
   add(list, prsShot())
-  add(list, waitingShot())
+  add(list, ciShot())
+  add(list, inboxShot(now))
+  add(list, sendtoShot())
   add(list, devlayoutShot())
   add(list, noteShots(now))
   add(list, translateShot())
