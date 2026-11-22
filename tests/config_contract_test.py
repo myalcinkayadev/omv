@@ -49,7 +49,7 @@ CORE_FEATURES = {"menu", "keys", "windows", "workspaces", "theme", "permissions"
 FEATURE_FLAGS = {
     "weather": "weather", "battery": "battery", "bluetooth": "bluetooth", "network": "network",
     "sound": "sound", "calendar": "calendar", "disk": "disk", "tailscale": "tailscale",
-    "focus": "focus", "displays": "display-profiles", "meeting": "meeting-mode", "clipboard": "clipboard", "translate": "translate", "capture": "capture",
+    "focus": "focus", "meeting": "meeting-mode", "clipboard": "clipboard", "translate": "translate", "capture": "capture",
     "reminders": "reminders", "note": "daily-note", "share": "airdrop", "nightshift": "night-light",
     "micmute": "mic-mute", "osd": "volume-popups", "procs": "processes", "lyrics": "lyrics",
     "agents": "claude", "waiting": "claude", "sendto": "send-to-agent", "digest": "away-digest", "prs": "github-prs", "ci": "github-ci", "devlayout": "dev-layout",
@@ -93,6 +93,17 @@ def load_aerospace() -> dict:
     return tomllib.loads(AEROSPACE.read_text(encoding="utf-8"))
 
 
+def load_built_aerospace() -> dict:
+    """aerospace.toml as omv builds it without a user file or workspaces file: omv's defaults."""
+    import subprocess
+    missing = str(REPO / "tests" / "no-such-file")
+    built = subprocess.run(
+        ["luajit", str(REPO / "install/aerospace_merge.lua"), str(AEROSPACE), missing, missing],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    return tomllib.loads(built)
+
+
 def load_swipe() -> dict:
     return tomllib.loads(SWIPE.read_text(encoding="utf-8"))
 
@@ -133,7 +144,7 @@ class ConfigContract(unittest.TestCase):
 
     def test_should_route_every_assigned_app_to_its_approved_workspace(self) -> None:
         routes = {}
-        for rule in load_aerospace()["on-window-detected"]:
+        for rule in load_built_aerospace()["on-window-detected"]:
             for command in commands_for(rule):
                 match = re.fullmatch(r"move-node-to-workspace (\w+)", command)
                 if match:

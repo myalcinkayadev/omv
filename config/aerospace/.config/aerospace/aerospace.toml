@@ -139,59 +139,8 @@ l = 'resize width +50'
 esc = ['mode main', 'exec-and-forget /opt/homebrew/bin/sketchybar --trigger aerospace_mode_change MODE=main']
 enter = ['mode main', 'exec-and-forget /opt/homebrew/bin/sketchybar --trigger aerospace_mode_change MODE=main']
 
-# Workspace 1: terminal
-[[on-window-detected]]
-if.app-id = 'com.mitchellh.ghostty'
-run = 'move-node-to-workspace 1'
-
-# Workspace 2: editor
-[[on-window-detected]]
-if.app-id = 'dev.zed.Zed'
-run = 'move-node-to-workspace 2'
-
-# Workspace 3: browser
-[[on-window-detected]]
-if.app-id = 'net.imput.helium'
-run = 'move-node-to-workspace 3'
-
-# Workspace 4: notes and planning
-[[on-window-detected]]
-if.app-id = 'md.obsidian'
-run = 'move-node-to-workspace 4'
-
-[[on-window-detected]]
-if.app-id = 'notion.id'
-run = 'move-node-to-workspace 4'
-
-[[on-window-detected]]
-if.app-id = 'com.linear'
-run = 'move-node-to-workspace 4'
-
-# Workspace 5: everything else
-[[on-window-detected]]
-if.app-id = 'com.apple.Notes'
-run = 'move-node-to-workspace 5'
-
-[[on-window-detected]]
-if.app-id = 'com.apple.MobileSMS'
-run = 'move-node-to-workspace 5'
-
-[[on-window-detected]]
-if.app-id = 'net.whatsapp.WhatsApp'
-run = 'move-node-to-workspace 5'
-
-[[on-window-detected]]
-if.app-id = 'com.hnc.Discord'
-run = 'move-node-to-workspace 5'
-
-# Workspace 6: music
-[[on-window-detected]]
-if.app-id = 'com.apple.Music'
-run = 'move-node-to-workspace 6'
-
-[[on-window-detected]]
-if.app-id = 'com.spotify.client'
-run = 'move-node-to-workspace 6'
+# Which workspace each app opens on is in ~/.config/omv/workspaces, or omv's defaults in
+# config/hammerspoon/workspaces.lua without it; the build puts those rules before these.
 
 # Floating, on whichever workspace is current
 # Finder tiles, but its Get Info windows, titled like "report.txt Info", float.

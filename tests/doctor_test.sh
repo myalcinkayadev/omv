@@ -258,7 +258,8 @@ fix_opens_no_missing_swipeaerospace() {
 build_aerospace_here() {
   mkdir -p "$HOME_DIR/.config/aerospace"
   luajit "$REPO_DIR/install/aerospace_merge.lua" "$REPO_DIR/config/aerospace/.config/aerospace/aerospace.toml" \
-    "$HOME_DIR/.config/omv/aerospace.toml" > "$HOME_DIR/.config/aerospace/aerospace.toml"
+    "$HOME_DIR/.config/omv/aerospace.toml" "$HOME_DIR/.config/omv/workspaces" "$HOME_DIR/.local/state/omv/aerospace-screens.toml" \
+    > "$HOME_DIR/.config/aerospace/aerospace.toml"
 }
 
 accepts_built_aerospace() {
@@ -286,43 +287,29 @@ reports_unreadable_user_aerospace() {
   expect_report '✗ ~/.config/omv/aerospace.toml line 1:'
 }
 
-reports_broken_displays_file() {
+reports_an_old_displays_file() {
   complete_setup
   mkdir -p "$HOME_DIR/.config/omv"
-  printf '[desk]\nwhen = DELL\nlayout = grid\n' > "$HOME_DIR/.config/omv/displays"
-  expect_report '✗ ~/.config/omv/displays line 3: layout must be tiles, tabs or keep — fix: edit it'
+  printf '[desk]\nwhen = DELL\n' > "$HOME_DIR/.config/omv/displays"
+  expect_report "✗ ~/.config/omv/displays isn't read any more"
 }
 
-passes_good_displays_file() {
+skips_missing_old_profile_files() {
   complete_setup
-  mkdir -p "$HOME_DIR/.config/omv"
-  printf '[desk]\nwhen = DELL\nlayout = tiles\n' > "$HOME_DIR/.config/omv/displays"
-  expect_report '✓ ~/.config/omv/displays'
-}
-
-reports_broken_profiles_file() {
-  complete_setup
-  mkdir -p "$HOME_DIR/.config/omv"
-  printf '[desk]\nwhen = laptop\nworkspace.12 = main\n' > "$HOME_DIR/.config/omv/profiles"
-  expect_report '✗ ~/.config/omv/profiles line 3: a workspace is a number from 1 to 9 — fix: edit it'
-}
-
-skips_missing_displays_file() {
-  complete_setup
-  expect_no_report 'omv/displays'
+  expect_no_report "isn't read any more"
 }
 
 reports_broken_workspaces_file() {
   complete_setup
   mkdir -p "$HOME_DIR/.config/omv"
-  printf '1 = main\n12 = main\n' > "$HOME_DIR/.config/omv/workspaces"
+  printf '[workspace 1]\n[workspace 12]\n' > "$HOME_DIR/.config/omv/workspaces"
   expect_report '✗ ~/.config/omv/workspaces line 2: a workspace is a number from 1 to 9 — fix: edit it'
 }
 
 passes_good_workspaces_file() {
   complete_setup
   mkdir -p "$HOME_DIR/.config/omv"
-  printf '1 = main\n8 = screen 2\n' > "$HOME_DIR/.config/omv/workspaces"
+  printf '[workspace 1]\n[workspace 8]\non = screen 2\n[screen laptop]\ngaps = 4\n' > "$HOME_DIR/.config/omv/workspaces"
   expect_report '✓ ~/.config/omv/workspaces'
 }
 
@@ -696,10 +683,8 @@ run_case 'should report ~/.config/aerospace still linked' reports_linked_aerospa
 run_case 'should report an aerospace.toml that is out of date' reports_outdated_aerospace
 run_case "should report an aerospace.toml omv didn't build" reports_foreign_aerospace
 run_case "should report a user aerospace.toml it can't read" reports_unreadable_user_aerospace
-run_case 'should report a broken line in the displays file' reports_broken_displays_file
-run_case 'should pass a displays file it can read' passes_good_displays_file
-run_case 'should report a broken line in the profiles file' reports_broken_profiles_file
-run_case 'should say nothing about display profiles without the file' skips_missing_displays_file
+run_case "should report a displays file that isn't read any more" reports_an_old_displays_file
+run_case 'should say nothing about old profile files without them' skips_missing_old_profile_files
 run_case 'should report a broken line in the workspaces file' reports_broken_workspaces_file
 run_case 'should pass a workspaces file it can read' passes_good_workspaces_file
 run_case 'should say nothing about workspaces without the file' skips_missing_workspaces_file

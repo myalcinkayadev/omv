@@ -21,7 +21,7 @@ end)())
 
 -- Every feature has a flag, on unless turned off; file search alone starts off.
 local FEATURES = {
-  "weather", "battery", "bluetooth", "network", "sound", "calendar", "disk", "tailscale", "focus", "display-profiles",
+  "weather", "battery", "bluetooth", "network", "sound", "calendar", "disk", "tailscale", "focus",
   "clipboard", "snippets", "calculator", "clipboard-actions", "translate", "capture", "reminders", "daily-note", "airdrop",
   "copy-url", "keep-awake", "night-light", "mic-mute", "volume-popups", "processes", "lyrics",
   "now-playing", "claude", "send-to-agent", "away-digest", "github-prs", "github-ci", "dev-layout", "drop-down-terminal", "long-command-notices",

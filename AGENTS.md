@@ -24,8 +24,7 @@ overwrites. Create a file there only when the change needs it.
 | `~/.config/omv/flags` | Feature flags | `name=on` or `name=off`; prefer `omv flags <name> on` |
 | `~/.config/omv/apps` | The browser and editor omv's keys open | `browser = Google Chrome`, `editor = Cursor` |
 | `~/.config/omv/snippets` | Text the palette pastes by name | `name = text` lines, `\n` for a line break |
-| `~/.config/omv/workspaces` | Which workspaces exist, 1 to 9, and each one's screen | `1 = main`, `4 = screen 2`, `8 = DELL`, `dev = 7` |
-| `~/.config/omv/profiles` | Profiles: workspaces, apps and settings per set of screens | `[desk]` sections with `when = laptop, DELL`, `workspace.1 = DELL, tiles, Zed`, `gaps.DELL = 10`, `font = 15` |
+| `~/.config/omv/workspaces` | Workspaces 1 to 9: their screens, apps, layout; each screen's gaps | `[workspace 1]` `on = DELL` `apps = Zed`; `[screen laptop]` `gaps = 4` |
 | `~/.config/omv/away-digest` | How long a break opens the agents' inbox | `minutes = 10`; `0` for every break |
 | `~/.config/omv/theme-clock` | A day and a night theme, switched at sunrise and sunset | `day = catppuccin-latte`, `night = vantablack` |
 
@@ -60,29 +59,30 @@ refused with the line and the form to use. Before binding a key, check it isn't 
 keys are in `config/aerospace/.config/aerospace/aerospace.toml` and
 `config/hammerspoon/init.lua`, and `Option+/` lists them all.
 
-**Profiles.** How one set of screens is used, such as "Zed and Helium on the DELL at the desk,
-tabs and tight gaps on the laptop", goes in `~/.config/omv/profiles` (formerly `displays`): one
-`[name]` section per profile, and the first whose `when` lists exactly the screens plugged in is
-used (`laptop` for the built-in screen, part of a display's name for each other,
-comma-separated), else the one with `when = any`. Which workspaces exist and their default
-screens are in `~/.config/omv/workspaces`; a profile's `workspace.N = screen, layout, apps…`
-overrides only the workspaces it lists. A profile also sets `open.N`, `layout`, `gaps`,
-`gaps.inner`, `gaps.outer`, `gaps.SCREEN`, `quiet`, `theme`, `font`, `bar`, `on-enter` and
-`on-leave`; README.md's "Profiles" lists their values.
+**Workspaces.** Where workspaces, apps and gaps go is all in `~/.config/omv/workspaces`, an INI
+file with two kinds of section. Edit only the lines the change needs; comments stay.
 
 ```ini
-[desk]
-when        = laptop, DELL U2723QE
-workspace.1 = DELL, tiles, Zed
-gaps.DELL   = 12
+dev = 7
+[workspace 1]
+on     = DELL, laptop      # screens to try in order; main is always last, never written
+apps   = Zed, Helium       # each app on one workspace only
+layout = tabs              # tiles or tabs
+open   = Zed               # opened when the workspace is switched to and empty
+
+[screen laptop]            # main, laptop, screen N, or part of a display's name
+gaps = 4                   # or gaps.inner / gaps.outer
+layout = tabs
 ```
 
-`omv displays` prints the names to use in `when`: the displays plugged in now and those seen
-before. Hammerspoon reads the file when it's saved, whenever displays change, on wake and when
-it reloads, so an edit applies on its own. Leaving a profile puts back what it changed. A profile's gaps win over
-the user's `aerospace.toml`, while the user's `~/.config/omv/ghostty` wins over its `font`.
-omv keeps the profile in use in `~/.local/state/omv/`, writing those files itself. `omv
-doctor` names a line in `profiles` it can't read.
+Without a `[workspace]` section, omv's seven apply with omv's apps (by bundle id, in
+`config/hammerspoon/workspaces.lua`), and a first `[workspace]` section replaces them all, apps
+included, so write each workspace and app the user keeps. `apps` takes names or bundle ids.
+Screen words: `main` has the menu bar, `screen 2` and on are the others from the left, `laptop`
+is the built-in one. `omv displays` prints display names for `on` and `[screen NAME]`. Saving
+the file applies it: Hammerspoon rebuilds `aerospace.toml` and moves the windows of apps whose
+workspace changed; no reload is needed. `[screen]` gaps win over the user's `aerospace.toml`.
+`omv doctor` names a line it can't read. README.md's "Your own workspaces" lists every value.
 
 **Other commands.** `omv theme` lists themes and `omv theme <name>` switches; `omv flags`
 lists feature flags; `omv update` pulls omv's own changes; `omv doctor --fix` clears a stuck

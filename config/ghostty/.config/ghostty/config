@@ -23,8 +23,5 @@ notify-on-command-finish-after = 10s
 # Features turned off with omv flags (drop-down-terminal, long-command-notices); omv writes it.
 config-file = ?~/.local/state/omv/ghostty-flags
 
-# The display profile in use, from ~/.config/omv/displays, such as its font size; omv writes it.
-config-file = ?~/.local/state/omv/ghostty-profile
-
 # Your own settings, from ~/.config/omv/ghostty when it exists. Last, so your lines win.
 config-file = ?~/.config/omv/ghostty

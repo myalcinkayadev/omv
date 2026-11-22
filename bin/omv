@@ -344,9 +344,13 @@ case $command in
   reload)
     case $# in
       0) reload_all ;;
-      # A display profile's gaps changed: only AeroSpace needs them, and Hammerspoon asks.
+      # The pins or gaps for the screens plugged in changed: only AeroSpace needs them, and
+      # Hammerspoon asks.
+      # AeroSpace reloads only when the built file changed: a reload lays out every window again.
       1) [ "$1" = aerospace ] || usage
+         before=$(cat "$AEROSPACE_BUILT" 2>/dev/null || true)
          build_aerospace || die "aerospace.toml wasn't rebuilt; the old one stays"
+         [ "$before" != "$(cat "$AEROSPACE_BUILT")" ] || exit 0
          reload_aerospace || die "AeroSpace didn't accept the built aerospace.toml; see its message above" ;;
       *) usage ;;
     esac
@@ -356,8 +360,8 @@ case $command in
   theme) theme "$@" ;;
   displays)
     [ "$#" -eq 0 ] || usage
-    luajit "$REPO_DIR/config/hammerspoon/displays.lua" names "$HOME/.local/state/omv/displays-seen"
-    printf '\nIn ~/.config/omv/profiles, when lists the screens of a setup: laptop, and part of each name.\n' ;;
+    (cd "$REPO_DIR/config/hammerspoon" && luajit workspaces.lua names "$HOME/.local/state/omv/displays-seen")
+    printf '\nIn ~/.config/omv/workspaces, on and [screen NAME] name screens: laptop, and part of each name.\n' ;;
   version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;
   *) usage ;;
 esac

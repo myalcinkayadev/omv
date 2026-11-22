@@ -8,10 +8,10 @@
 -- over lines while brackets are open; [table] and [[array]] headers; # comments. Brackets and
 -- # inside quotes don't count. It isn't a full TOML parser.
 --
--- Run: luajit aerospace_merge.lua <defaults> <user file> [<display profile file>
--- [<workspaces file> <screens file>]]. The workspaces file, ~/.config/omv/workspaces, replaces
--- omv's workspaces, keys and pins before anything else; the screens file, the pins Hammerspoon
--- worked out for the screens plugged in, goes after the user's file and before the profile's.
+-- Run: luajit aerospace_merge.lua <defaults> <user file> [<workspaces file> [<screens file>]].
+-- The workspaces file, ~/.config/omv/workspaces, replaces omv's workspaces, keys and pins
+-- before anything else, and its apps' rules go before omv's; the screens file, the pins and
+-- gaps Hammerspoon worked out for the screens plugged in, goes after the user's file.
 -- Prints the built file, or the user file's line it can't read on stderr and exits 1.
 
 local merge = {}
@@ -180,7 +180,7 @@ local function clash(omvItems, userItems)
 end
 
 -- The built text, or nil and the user file's "line N: reason". first puts user's [[array]]
--- entries before omv's instead of after, as a display profile's app rules need: AeroSpace
+-- entries before omv's instead of after, as the workspaces' app rules need: AeroSpace
 -- takes the first rule that matches.
 function merge.build(defaults, user, first)
   -- A byte order mark, as some editors write, isn't part of the first line.
@@ -294,16 +294,17 @@ if arg and arg[0] and arg[0]:match("aerospace_merge%.lua$") then
     io.stderr:write("~/.config/omv/aerospace.toml can't be read: " .. unreadable .. "\n")
     os.exit(1)
   end
-  -- The display profile's gaps, written by omv, when one is in use.
-  local profile = arg[3] and readFile(arg[3]) or nil
-  -- The workspaces, and their pins for the screens plugged in, when given.
-  local screens = nil
-  if arg[4] then
-    local workspaces = dofile(here .. "../config/hammerspoon/workspaces.lua")
-    defaults = workspaces.rewriteDefaults(defaults, workspaces.parse((readFile(arg[4]))))
-    screens = arg[5] and readFile(arg[5]) or nil
+  -- The workspaces, their apps' rules, and their pins and gaps for the screens plugged in.
+  local screens, rules = nil, nil
+  if arg[3] then
+    package.path = here .. "../config/hammerspoon/?.lua;" .. package.path
+    local workspaces = require("workspaces")
+    local list = workspaces.parse((readFile(arg[3])))
+    defaults = workspaces.rewriteDefaults(defaults, list)
+    rules = workspaces.appRules(list)
+    screens = arg[4] and readFile(arg[4]) or nil
   end
-  local text, problem = merge.buildAll(defaults, user, screens, profile and { text = profile, first = true })
+  local text, problem = merge.buildAll(defaults, user, screens, rules ~= "" and rules and { text = rules, first = true } or nil)
   if not text then
     io.stderr:write("~/.config/omv/aerospace.toml " .. problem .. "\n")
     os.exit(1)

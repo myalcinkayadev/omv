@@ -16,8 +16,10 @@ make_repo() {
   mkdir -p "$REPO/config/aerospace/.config/aerospace"
   printf '[gaps]\ninner.horizontal = 10\n' > "$REPO/config/aerospace/.config/aerospace/aerospace.toml"
   cp "$REPO_DIR/config/hammerspoon/flags.lua" "$REPO/config/hammerspoon/flags.lua"
-  cp "$REPO_DIR/config/hammerspoon/displays.lua" "$REPO/config/hammerspoon/displays.lua"
-  cp "$REPO_DIR/config/hammerspoon/workspaces.lua" "$REPO/config/hammerspoon/workspaces.lua"
+  local module
+  for module in inifile workspaces; do
+    cp "$REPO_DIR/config/hammerspoon/$module.lua" "$REPO/config/hammerspoon/$module.lua"
+  done
   mkdir -p "$REPO/config/sketchybar/.config/sketchybar"
   cp "$REPO_DIR/config/sketchybar/.config/sketchybar/flags.sh" "$REPO/config/sketchybar/.config/sketchybar/flags.sh"
   local script
@@ -430,12 +432,12 @@ refuses_extra_update_argument() {
   [ "$status" = 2 ] || fail "expected exit 2, got $status"
 }
 
-adds_profile_gaps_on_reload_aerospace() {
+adds_screen_gaps_on_reload_aerospace() {
   make_repo
   mkdir -p "$HOME_DIR/.local/state/omv"
-  printf '[gaps]\ninner.horizontal = 2\n' > "$HOME_DIR/.local/state/omv/aerospace-profile.toml"
+  printf '[gaps]\ninner.horizontal = 2\n' > "$HOME_DIR/.local/state/omv/aerospace-screens.toml"
   omv reload aerospace >/dev/null
-  [[ $(built_aerospace) == *'inner.horizontal = 2'* ]] || fail "profile gap missing in: $(built_aerospace)"
+  [[ $(built_aerospace) == *'inner.horizontal = 2'* ]] || fail "screen gap missing in: $(built_aerospace)"
 }
 
 reloads_aerospace_on_reload_aerospace() {
@@ -443,6 +445,15 @@ reloads_aerospace_on_reload_aerospace() {
   run_aerospace
   omv reload aerospace >/dev/null
   assert_called '^aerospace reload-config$'
+}
+
+skips_aerospace_reload_when_unchanged() {
+  make_repo
+  run_aerospace
+  omv reload aerospace >/dev/null
+  : > "$CALL_LOG"
+  omv reload aerospace >/dev/null
+  assert_not_called '^aerospace reload-config$'
 }
 
 lists_seen_displays() {
@@ -1167,9 +1178,10 @@ run_case 'should show the last valid value when a later flag line is invalid' sh
 run_case 'should run a migration in the omv folder when omv starts from another folder' runs_migrations_in_omv_folder
 run_case 'should show usage when update gets an extra argument' refuses_extra_update_argument
 run_case 'should show usage when reload gets an extra argument' refuses_extra_reload_argument
-run_case "should add the display profile's gaps on reload aerospace" adds_profile_gaps_on_reload_aerospace
+run_case "should add the screens' gaps on reload aerospace" adds_screen_gaps_on_reload_aerospace
 run_case 'should reload AeroSpace on reload aerospace' reloads_aerospace_on_reload_aerospace
 run_case 'should leave the bar alone on reload aerospace' skips_bar_on_reload_aerospace
+run_case "should skip AeroSpace's reload when the built file is unchanged" skips_aerospace_reload_when_unchanged
 run_case 'should list the displays plugged in and seen before on displays' lists_seen_displays
 run_case 'should say to plug a display in when none was seen on displays' says_to_plug_in_without_seen_displays
 run_case "should reload AeroSpace after updating when it's running" update_reloads_running_aerospace

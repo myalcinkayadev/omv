@@ -144,26 +144,21 @@ check_aerospace_built() {
   else problem 'aerospace.toml is out of date' 'omv reload'; fi
 }
 
-# ~/.config/omv/profiles, or the displays file it was called before, when there is one: its
-# first line Hammerspoon can't read, as the notice on a display change names it.
-check_displays_file() {
-  local name=profiles first
-  [ -e "$HOME/.config/omv/profiles" ] || name=displays
-  local file=$HOME/.config/omv/$name
-  [ -e "$file" ] || return 0
-  if first=$(luajit "$REPO_DIR/config/hammerspoon/displays.lua" check "$file" 2>&1); then
-    ok "~/.config/omv/$name"
-  else
-    problem "~/.config/omv/$name $(printf '%s\n' "$first" | head -n 1)" 'edit it'
-  fi
+# The display profile files omv read before ~/.config/omv/workspaces; nothing reads them now.
+check_old_profiles() {
+  local name
+  for name in displays profiles; do
+    [ -e "$HOME/.config/omv/$name" ] || continue
+    problem "~/.config/omv/$name isn't read any more" 'move what you need to [workspace] and [screen] in ~/.config/omv/workspaces, then delete it'
+  done
 }
 
-# ~/.config/omv/workspaces, which workspaces exist, when there is one: its first line omv
-# can't read. A file with one builds today's workspaces until it's fixed.
+# ~/.config/omv/workspaces, when there is one: its first line omv can't read, its workspaces
+# and screens. A file with one builds today's workspaces until it's fixed.
 check_workspaces_file() {
   local file=$HOME/.config/omv/workspaces first
   [ -e "$file" ] || return 0
-  if first=$(luajit "$REPO_DIR/config/hammerspoon/workspaces.lua" check "$file" 2>&1); then
+  if first=$(cd "$REPO_DIR/config/hammerspoon" && luajit workspaces.lua check "$file" 2>&1); then
     ok '~/.config/omv/workspaces'
   else
     problem "~/.config/omv/workspaces $(printf '%s\n' "$first" | head -n 1)" 'edit it'
@@ -182,7 +177,7 @@ check_links() {
   if [ "$(hammerspoon_config)" = "$HAMMERSPOON_CONFIG" ]; then ok "Hammerspoon loads omv's config"
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
   check_aerospace_built
-  check_displays_file
+  check_old_profiles
   check_workspaces_file
   if [ -e "$SETUP_BINARY" ]; then ok 'omv Setup is built'
   else problem "omv Setup isn't built" 'omv doctor --fix'; fi

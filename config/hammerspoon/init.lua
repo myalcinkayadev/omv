@@ -40,8 +40,8 @@ end
 local systemMenu = require("features.menu")
 local keys = require("features.keys")
 local windowList = require("features.windows")
--- Puts each workspace on its screen for the screens plugged in.
-require("features.workspaces")
+-- Puts each workspace on its screen for the screens plugged in, its apps on it, and its card.
+local workspaceCards = require("features.workspaces")
 -- Loaded now, not only from the system menu, so the chosen theme colours the cards from the start.
 local themes = require("features.theme")
 -- Loaded now, so the Permissions card can open on its own the first time omv loads.
@@ -75,7 +75,6 @@ local diskCard = feature("disk", "features.disk")
 local lyricsWindow = feature("lyrics", "features.lyrics")
 feature("volume-popups", "features.osd")
 local focusMode = feature("focus", "features.focus")
-local displayProfiles = feature("display-profiles", "features.displays")
 local tailscalePanel = feature("tailscale", "features.tailscale")
 local nightLight = feature("night-light", "features.nightshift")
 local mic = feature("mic-mute", "features.micmute")
@@ -97,8 +96,12 @@ local function bindKey(modifiers, key, label, description, group, action)
   keys.launchers[#keys.launchers + 1] = { label = label, description = description, group = group, run = action, runs = true }
 end
 
-local function openOnWorkspace(workspace, arguments)
-  return run(shell.LAUNCH, { workspace, "/usr/bin/open", table.unpack(arguments) })
+-- Opens app with open's arguments on the workspace ~/.config/omv/workspaces keeps it on, read
+-- when the key is pressed, or on the one you're on.
+local function openOnWorkspace(app, arguments)
+  return function()
+    run(shell.LAUNCH, { workspaceCards.homeOf(app), "/usr/bin/open", table.unpack(arguments) })()
+  end
 end
 
 -- Copy URL (Option+Shift+U)
@@ -109,8 +112,8 @@ local function copyUrl()
   end):start()
 end
 
-bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New " .. chosen.browser .. " window", "Apps", openOnWorkspace("3", { "-na", chosen.browser, "--args", "--new-window" }))
-bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open " .. chosen.editor, "Apps", openOnWorkspace("2", { "-a", chosen.editor }))
+bindKey(SUPER_SHIFT, "return", "Option+Shift+Enter", "New " .. chosen.browser .. " window", "Apps", openOnWorkspace(chosen.browser, { "-na", chosen.browser, "--args", "--new-window" }))
+bindKey(SUPER_SHIFT, "n", "Option+Shift+N", "Open " .. chosen.editor, "Apps", openOnWorkspace(chosen.editor, { "-a", chosen.editor }))
 bindKey(SUPER_SHIFT, "f", "Option+Shift+F", "Finder at home", "Apps", open({ shell.HOME }))
 if devLayout then
   -- No key: it's run from the palette or the key list.
@@ -119,18 +122,17 @@ if devLayout then
   keys.launchers[#keys.launchers + 1] = { description = "Agent grid: 2–4 Claude agents in worktrees",
     group = "Apps", run = devLayout.openGrid, runs = true }
 end
-if displayProfiles then
-  -- No key: it's run from the palette, the key list or the system menu.
-  keys.launchers[#keys.launchers + 1] = { description = "Profile", group = "Tools", run = displayProfiles.open, runs = true }
-  keys.launchers[#keys.launchers + 1] = { description = "Keep this app on this workspace", group = "Tools",
-    run = displayProfiles.keepAppHere, runs = true }
-end
+bindKey(SUPER, "w", "Option+W", "This window: keep its app on this workspace, or move it", "Windows", workspaceCards.window)
+-- No key: it's run from the palette, the key list or the system menu.
+keys.launchers[#keys.launchers + 1] = { description = "Workspaces and screens", group = "Tools", run = workspaceCards.open, runs = true }
 if meetingMode then
   -- No key: it's run from the palette or the key list.
   keys.launchers[#keys.launchers + 1] = { description = "Meeting mode on or off",
     group = "Tools", run = meetingMode.toggle, runs = true }
 end
-bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", "Apps", run(shell.LAUNCH, { "1", shell.GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" }))
+bindKey(SUPER_SHIFT, "t", "Option+Shift+T", "btop", "Apps", function()
+  run(shell.LAUNCH, { workspaceCards.homeOf("Ghostty"), shell.GHOSTTY_WINDOW, "/opt/homebrew/bin/btop" })()
+end)
 if enabled["keep-awake"] then
   bindKey(SUPER_SHIFT, "i", "Option+Shift+I", "Keep the Mac awake, or stop", "Tools", run(shell.SKETCHYBAR, { "--trigger", "keep_awake_toggle" }))
 end
@@ -223,12 +225,12 @@ if captureMenu then
   omvStopRecording = later(captureMenu.stopRecording)
 end
 if focusMode then omvToggleFocus = later(focusMode.toggle) end
-if displayProfiles then omvDisplayProfiles = later(displayProfiles.open) end
--- AeroSpace's workspace change, while the profile in use opens an app on an empty workspace.
-if displayProfiles then
-  omvWorkspaceChanged = function(workspace)
-    hs.timer.doAfter(0, function() displayProfiles.workspaceChanged(workspace) end)
-  end
+omvWorkspaces = later(workspaceCards.open)
+omvWindowCard = later(workspaceCards.window)
+-- AeroSpace's workspace change, while a workspace opens an app when it's empty. later() drops
+-- the arguments, so the workspace is passed on here.
+omvWorkspaceChanged = function(workspace)
+  hs.timer.doAfter(0, function() workspaceCards.workspaceChanged(workspace) end)
 end
 if tailscalePanel then omvToggleTailscale = later(tailscalePanel.toggle) end
 if nightLight then omvToggleNightLight = later(nightLight.toggle) end

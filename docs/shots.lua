@@ -23,7 +23,6 @@ local clipboard = require("clipboard")
 local devlayout = require("devlayout")
 local digest = require("digest")
 local disk = require("disk")
-local displays = require("displays")
 local menu = require("menu")
 local network = require("network")
 local notepad = require("notepad")
@@ -41,6 +40,8 @@ local tailscale = require("tailscale")
 local theme = require("theme")
 local translate = require("translate")
 local weather = require("weather")
+local workspacecards = require("workspacecards")
+local workspaces = require("workspaces")
 
 local shots = {}
 
@@ -310,23 +311,52 @@ local function sendtoShot()
   return listShot("sendto.png", LIST_WIDTH, { prompt = "Send to agent…", rows = rows })
 end
 
--- The display profile card before there are profiles: save the displays, or open the file.
-local function displaysShot()
-  local rows = displays.rows({}, {}, { { name = "DELL U2723QE", builtin = false }, { name = "Built-in Retina Display", builtin = true } })
-  return listShot("displays.png", LIST_WIDTH, { prompt = "Profile…", rows = rows })
+-- The Workspaces card for a desk: the laptop open beside a DELL, each workspace with where it
+-- is and its apps, and the screens with their gaps. It ends with a footer, so it's
+-- cut to its body.
+local DESK = [[
+dev = 7
+[workspace 1]
+on   = DELL
+apps = Zed
+[workspace 2]
+on     = DELL
+apps   = Helium, Arc
+layout = tabs
+[workspace 3]
+[workspace 4]
+on   = laptop
+apps = Slack
+open = Slack
+[workspace 7]
+[screen laptop]
+gaps = 4
+[screen DELL]
+gaps = 10
+]]
+local DESK_SCREENS = { { name = "Built-in Retina Display", builtin = true, main = false, x = -1512 }, { name = "DELL U2723QE", main = true, x = 0 } }
+local DESK_SEEN = { { name = "DELL U2723QE", now = true }, { name = "Built-in Retina Display", builtin = true, now = true } }
+
+local function bodyShot(file, prompt, rows, footer, options)
+  options = options or {}
+  local spec = { prompt = prompt, rows = rows, compact = true, footer = footer, step = options.step, selected = options.selected }
+  -- Taller than the usual frame, so a grouped card isn't cut before it's measured.
+  return { file = file, kind = "card", width = LIST_WIDTH, height = 1000, crop = "body", html = card.html(spec),
+    script = "document.documentElement.style.height='auto';document.body.style.height='auto';document.querySelector('.rows').style.flex='none'" }
 end
 
--- The profile editor on a desk profile, its gaps apart. It ends with a footer, so it's cut to its body.
-local function displayEditorShot()
-  local rows = displays.editRows({ when = "laptop, DELL U2723QE", layout = "tiles", font = 15, theme = "tokyo-night", quiet = "on",
-    workspaces = { ["1"] = { screen = "DELL", layout = "tiles", apps = { "Zed" } }, ["2"] = { screen = "DELL", layout = "tabs", apps = { "Helium", "Arc" } },
-      ["4"] = { screen = "laptop", apps = { "Slack" } } },
-    screenGaps = { DELL = { inner = 10, outer = 10 }, laptop = { inner = 4, outer = 4 } } }, "desk", "matches now", { "1", "2", "3", "4", "5", "6", "7" })
-  local footer = { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open › or save" }, { key = "Esc", text = "cancel" } }
-  -- Taller than the usual frame, so the grouped editor isn't cut before it's measured.
-  return { file = "display-editor.png", kind = "card", width = LIST_WIDTH, height = 1000, crop = "body",
-    html = card.html({ prompt = "Edit desk…", rows = rows, compact = true, step = true, footer = footer, selected = 4 }),
-    script = "document.documentElement.style.height='auto';document.body.style.height='auto';document.querySelector('.rows').style.flex='none'" }
+local function workspacesShots()
+  local list = workspaces.parse(DESK)
+  local main = workspacecards.mainRows(list, DESK_SCREENS, DESK_SEEN)
+  local window = workspacecards.windowRows({ app = "Zed", workspace = "1", kept = true, open = false, next = "5", nextScreen = "DELL" })
+  return {
+    bodyShot("workspaces.png", "Workspaces…", main,
+      { { key = "Enter", text = "open ›" }, { key = "⌫", text = "remove" }, { key = "Esc", text = "close" } }),
+    bodyShot("workspace-card.png", "Workspace 4…", workspacecards.workspaceRows(list.workspaces["4"]),
+      { { key = "Left/Right", text = "change" }, { key = "Enter", text = "add" }, { key = "⌫", text = "remove" }, { key = "Esc", text = "back" } },
+      { step = true, selected = 1 }),
+    listShot("window-card.png", LIST_WIDTH, { prompt = "Zed on workspace 1…", rows = window, compact = true }),
+  }
 end
 
 local function devlayoutShot()
@@ -397,8 +427,7 @@ function shots.build(now, logo)
   add(list, ciShot())
   add(list, inboxShot(now))
   add(list, sendtoShot())
-  add(list, displaysShot())
-  add(list, displayEditorShot())
+  add(list, workspacesShots())
   add(list, devlayoutShot())
   add(list, noteShots(now))
   add(list, translateShot())
