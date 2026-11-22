@@ -305,6 +305,25 @@ skips_missing_displays_file() {
   expect_no_report 'omv/displays'
 }
 
+reports_broken_workspaces_file() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '1 = main\n12 = main\n' > "$HOME_DIR/.config/omv/workspaces"
+  expect_report '✗ ~/.config/omv/workspaces line 2: a workspace is a number from 1 to 9 — fix: edit it'
+}
+
+passes_good_workspaces_file() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '1 = main\n8 = screen 2\n' > "$HOME_DIR/.config/omv/workspaces"
+  expect_report '✓ ~/.config/omv/workspaces'
+}
+
+skips_missing_workspaces_file() {
+  complete_setup
+  expect_no_report 'omv/workspaces'
+}
+
 reports_linked_aerospace_folder() {
   complete_setup
   rm -rf "$HOME_DIR/.config/aerospace"
@@ -673,6 +692,9 @@ run_case "should report a user aerospace.toml it can't read" reports_unreadable_
 run_case 'should report a broken line in the displays file' reports_broken_displays_file
 run_case 'should pass a displays file it can read' passes_good_displays_file
 run_case 'should say nothing about display profiles without the file' skips_missing_displays_file
+run_case 'should report a broken line in the workspaces file' reports_broken_workspaces_file
+run_case 'should pass a workspaces file it can read' passes_good_workspaces_file
+run_case 'should say nothing about workspaces without the file' skips_missing_workspaces_file
 run_case "should report Hammerspoon not loading omv's config" reports_hammerspoon_config
 run_case "should accept Hammerspoon loading omv's config" accepts_hammerspoon_config
 run_case 'should open SwipeAeroSpace when --fix finds it not running' fix_opens_swipeaerospace

@@ -10,12 +10,13 @@ readonly IDLE_STYLE='background.color=0x00000000 icon.color=0xff7a7a7a'
 
 # Answers only the two queries the plugin makes, so an unexpected query shows up as empty output.
 stub_aerospace() {
-  local focused=$1 visible=$2
+  local focused=$1 visible=$2 all=${3:-}
   cat > "$STUB_DIR/aerospace" <<EOF
 #!/bin/sh
 case "\$*" in
   "list-workspaces --focused") printf '%s\n' "$focused" ;;
   "list-workspaces --monitor all --visible") printf '%s\n' "$visible" ;;
+  "list-workspaces --all") printf '%s\n' "$all" ;;
 esac
 EOF
   chmod +x "$STUB_DIR/aerospace"
@@ -89,4 +90,15 @@ uses_the_theme_colors() {
 }
 
 run_case "should use the theme's colours when a theme was chosen" uses_the_theme_colors
+
+styles_the_workspaces_aerospace_keeps() {
+  stub_aerospace "" "8" "1
+2
+8"
+  run_in_sandbox FOCUSED_WORKSPACE=8 "$PLUGIN"
+  assert_called "--set space\.8 $FOCUSED_STYLE"
+  assert_not_called "space\.7"
+}
+
+run_case 'should style the workspaces AeroSpace keeps, such as 8' styles_the_workspaces_aerospace_keeps
 finish

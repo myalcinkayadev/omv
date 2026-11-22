@@ -156,6 +156,18 @@ check_displays_file() {
   fi
 }
 
+# ~/.config/omv/workspaces, which workspaces exist, when there is one: its first line omv
+# can't read. A file with one builds today's workspaces until it's fixed.
+check_workspaces_file() {
+  local file=$HOME/.config/omv/workspaces first
+  [ -e "$file" ] || return 0
+  if first=$(luajit "$REPO_DIR/config/hammerspoon/workspaces.lua" check "$file" 2>&1); then
+    ok '~/.config/omv/workspaces'
+  else
+    problem "~/.config/omv/workspaces $(printf '%s\n' "$first" | head -n 1)" 'edit it'
+  fi
+}
+
 # A package is linked when each of its files, seen from $HOME, is the file in this repo.
 # That holds for a link per file and for a whole folder linked at once.
 check_links() {
@@ -169,6 +181,7 @@ check_links() {
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
   check_aerospace_built
   check_displays_file
+  check_workspaces_file
   if [ -e "$SETUP_BINARY" ]; then ok 'omv Setup is built'
   else problem "omv Setup isn't built" 'omv doctor --fix'; fi
   for package in "${CONFIG_PACKAGES[@]}" "${AGENT_PACKAGES[@]}"; do

@@ -91,7 +91,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 | 6 | Apple Music, Spotify | Secondary, or main if there is only one |
 
 - **Each app opens on its workspace.** Finder tiles on the current workspace instead, though its Get Info windows float, and System Settings and Calculator float there.
-- **Seven workspaces in total,** not seven per monitor, because AeroSpace workspaces are global. The seventh is the [dev layout's](#dev-layout), on the main monitor. A pinned workspace always opens on its own monitor, so Option+4 from the main monitor moves focus to the secondary one. When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it's plugged back in.
+- **Seven workspaces in total,** not seven per monitor, because AeroSpace workspaces are global. The seventh is the [dev layout's](#dev-layout), on the main monitor. A pinned workspace always opens on its own monitor, so Option+4 from the main monitor moves focus to the secondary one. When the secondary display is unplugged, workspaces 4-6 move to the main one, and they return when it's plugged back in. [Your own workspaces](#your-own-workspaces) changes how many there are and where each sits.
 - **Focus border:** the focused window gets a 2pt gray outline, the same gray as the cards' border, drawn by [JankyBorders](https://github.com/FelixKratz/JankyBorders). It starts with AeroSpace. It's drawn at 1x (`hidpi=off`), which takes about 40 MB instead of up to 209 MB. For a sharper outline on Retina, change `hidpi=off` to `hidpi=on` in `aerospace.toml`, then run `pkill -x borders` and restart AeroSpace.
 - **Trackpad:** swipe three fingers left or right to move one workspace, wrapping around. A swipe stays on the focused monitor, so with two monitors it cycles 1-3 on the main one and 4-6 on the secondary.
 - **Option+Tab** goes back to the previous workspace.
@@ -389,6 +389,26 @@ Under the footer are today's events from Calendar.app, so every account added th
 - **Joining:** from 5 minutes before a meeting until it ends, Option+Shift+C or a click on the meeting item opens its Zoom, Google Meet or Teams link. When several meetings can be joined, a card lists them, with the one starting next selected, else the one that started last. With none to join, the calendar card opens. The link comes from the event's URL, else its location, else its notes. Only those links are saved, never the notes themselves.
 - Events are read when Hammerspoon starts, every 5 minutes, when the Mac wakes, and when the card opens.
 - They're read by a small Swift helper, `agenda.swift`, built the first time into `~/.cache/omv/Agenda.app`. It runs as its own app because macOS asks the app that reads calendars for permission, and Hammerspoon can't ask. The first time, macOS asks to let "omv agenda" access your calendars. If you refuse, the card says so, and you can allow it later in System Settings > Privacy & Security > Calendars.
+
+## Your own workspaces
+
+Option+Escape, then **Workspaces**, lists them, each with its screen. Left and Right change a workspace's screen, Backspace removes it, with **Bring back** in its place for a minute, and **Add workspace 8** adds the next one, up to 9. The card writes `~/.config/omv/workspaces`, which you can also edit, then `omv reload`:
+
+```ini
+1 = main
+2 = main
+3 = screen 2
+4 = screen 2
+5 = screen 3
+6 = laptop
+7 = main
+dev = 7          # the dev layout's workspace
+```
+
+- **Screens:** `main` is the display with the menu bar; `screen 2`, `screen 3` and so on are the others, counted from the left without the main one, for as many as are plugged in, as arranged in System Settings > Displays; `laptop` is the built-in screen; anything else is part of a display's name, such as `DELL`. A screen that isn't plugged in falls back to the one before it, then to `main`. `secondary`, AeroSpace's word for the other screen when there are two, means `screen 2`.
+- **Keys and bar follow:** each workspace gets Option+N, Option+Shift+N and the numpad's, and a number in the bar. A removed one frees its keys, and its windows move to the lowest workspace left.
+- **Without the file,** the seven above apply. A line omv can't read keeps them until it's fixed; `omv doctor` names it.
+- **dev** is the dev layout's workspace; when it isn't one of them, the last is used.
 
 ## Display profiles
 
@@ -705,7 +725,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | Option+A | Toggle tabbed or tiled |
 | Option+B | Make window sizes even |
 | Option+Shift+R | Enter resize mode |
-| Option+1-7, or Option and the numpad's 1-7 | Go to that workspace; 7 is the dev workspace |
+| Option+1-7, or Option and the numpad's 1-7 | Go to that workspace; 7 is the dev workspace. [Your own workspaces](#your-own-workspaces) can add 8 and 9 or remove some |
 | Option+Shift+1-7, or with the numpad | Send the window to that workspace, and stay where you are |
 | Option+Tab | Go back to the previous workspace |
 | Option+, / Option+. | Focus the left / right monitor |

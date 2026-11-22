@@ -37,7 +37,8 @@ default=(
 )
 sketchybar --default "${default[@]}"
 
-for number in 1 2 3 4 5 6 7; do
+# One item per workspace AeroSpace keeps, which omv builds from ~/.config/omv/workspaces.
+for number in $("$PLUGIN_DIR/workspaces.sh"); do
   sketchybar --add item "space.$number" left \
     --set "space.$number" icon="$number" icon.font="$FONT:Regular:14.0" icon.color=$MUTED \
       label.drawing=off background.color=0x00000000 background.corner_radius=5 \
@@ -46,7 +47,7 @@ for number in 1 2 3 4 5 6 7; do
     --subscribe "space.$number" mouse.scrolled
 done
 
-# Hidden controller: one script updates all seven items per event.
+# Hidden controller: one script updates every workspace item per event.
 sketchybar --add event aerospace_workspace_change \
   --add item aerospace_listener left \
   --set aerospace_listener drawing=off script="$PLUGIN_DIR/aerospace.sh" \

@@ -59,6 +59,7 @@ local function menuChoose(id)
   if id == "nightlight" then return require("features.nightshift").toggle() end
   if id == "sound" then return require("features.sound").open() end
   if id == "theme" then return require("features.theme").open() end
+  if id == "workspaces" then return require("features.workspaces").open() end
   -- Loaded with its flag only, since it starts watching the displays when it loads.
   if id == "displays" then
     local profiles = package.loaded["features.displays"]

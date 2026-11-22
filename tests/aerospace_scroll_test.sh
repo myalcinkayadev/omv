@@ -10,6 +10,7 @@ stub_focused() {
 #!/bin/sh
 echo "aerospace \$*" >> "$CALL_LOG"
 [ "\$*" = "list-workspaces --focused" ] && echo $1
+[ "\$*" = "list-workspaces --all" ] && printf '%s\n' ${2:-}
 exit 0
 STUB
   chmod +x "$STUB_DIR/aerospace"
@@ -97,4 +98,19 @@ run_case 'should do nothing when the scroll delta is a decimal zero' ignores_dec
 run_case 'should ignore a second scroll within 300ms' ignores_second_scroll_within_limit
 run_case 'should accept a scroll after the limit' accepts_scroll_after_limit
 run_case 'should do nothing when the focused workspace is unknown' ignores_unknown_focus
+
+skips_to_the_next_workspace_kept() {
+  stub_focused 2 "1 2 8"
+  scroll 3
+  assert_called '^aerospace workspace 8$'
+}
+
+wraps_over_the_workspaces_kept() {
+  stub_focused 1 "1 2 8"
+  scroll -3
+  assert_called '^aerospace workspace 8$'
+}
+
+run_case 'should skip to the next workspace AeroSpace keeps, from 2 to 8' skips_to_the_next_workspace_kept
+run_case 'should wrap from 1 to the last workspace kept, 8' wraps_over_the_workspaces_kept
 finish

@@ -24,6 +24,7 @@ overwrites. Create a file there only when the change needs it.
 | `~/.config/omv/flags` | Feature flags | `name=on` or `name=off`; prefer `omv flags <name> on` |
 | `~/.config/omv/apps` | The browser and editor omv's keys open | `browser = Google Chrome`, `editor = Cursor` |
 | `~/.config/omv/snippets` | Text the palette pastes by name | `name = text` lines, `\n` for a line break |
+| `~/.config/omv/workspaces` | Which workspaces exist, 1 to 9, and each one's screen | `1 = main`, `4 = screen 2`, `8 = DELL`, `dev = 7` |
 | `~/.config/omv/displays` | Display profiles: settings per display setup | `[desk]` sections with `when = laptop, DELL`, `layout = tiles`, `gaps = 10`, `font = 15` |
 | `~/.config/omv/away-digest` | How long a break opens the agents' inbox | `minutes = 10`; `0` for every break |
 | `~/.config/omv/theme-clock` | A day and a night theme, switched at sunrise and sunset | `day = catppuccin-latte`, `night = vantablack` |

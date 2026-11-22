@@ -8,23 +8,29 @@
 -- over lines while brackets are open; [table] and [[array]] headers; # comments. Brackets and
 -- # inside quotes don't count. It isn't a full TOML parser.
 --
--- Run: luajit aerospace_merge.lua <defaults> <user file> [<display profile file>]. Prints the
--- built file, or the user file's line it can't read on stderr and exits 1.
+-- Run: luajit aerospace_merge.lua <defaults> <user file> [<display profile file>
+-- [<workspaces file> <screens file>]]. The workspaces file, ~/.config/omv/workspaces, replaces
+-- omv's workspaces, keys and pins before anything else; the screens file, the pins Hammerspoon
+-- worked out for the screens plugged in, goes after the user's file and before the profile's.
+-- Prints the built file, or the user file's line it can't read on stderr and exits 1.
 
 local merge = {}
+
+-- The folder this file is in, following a link to it: files kept beside it are found there.
+local here = (function()
+  local source = debug.getinfo(1, "S").source:gsub("^@", "")
+  local folder = source:match("^(.*/)") or "./"
+  if io.open(folder .. "aerospace-header.txt", "r") then return folder end
+  local resolve = io.popen("/usr/bin/readlink -f '" .. source:gsub("'", "'\\''") .. "'")
+  local real = resolve:read("*l") or ""
+  resolve:close()
+  return real:match("^(.*/)") or "./"
+end)()
 
 -- The first line of the built file, kept in aerospace-header.txt beside this file, which the
 -- shell side reads too.
 merge.HEADER = (function()
-  local source = debug.getinfo(1, "S").source:gsub("^@", "")
-  local file = io.open((source:match("^(.*/)") or "./") .. "aerospace-header.txt", "r")
-  if not file then
-    -- Run through a link to this file: the header sits beside the file the link leads to.
-    local resolve = io.popen("/usr/bin/readlink -f '" .. source:gsub("'", "'\\''") .. "'")
-    local real = resolve:read("*l") or ""
-    resolve:close()
-    file = assert(io.open((real:match("^(.*/)") or "./") .. "aerospace-header.txt", "r"))
-  end
+  local file = assert(io.open(here .. "aerospace-header.txt", "r"))
   local header = file:read("*l")
   file:close()
   return header
@@ -277,7 +283,14 @@ if arg and arg[0] and arg[0]:match("aerospace_merge%.lua$") then
   end
   -- The display profile's gaps, written by omv, when one is in use.
   local profile = arg[3] and readFile(arg[3]) or nil
-  local text, problem = merge.buildAll(defaults, user, profile)
+  -- The workspaces, and their pins for the screens plugged in, when given.
+  local screens = nil
+  if arg[4] then
+    local workspaces = dofile(here .. "../config/hammerspoon/workspaces.lua")
+    defaults = workspaces.rewriteDefaults(defaults, workspaces.parse((readFile(arg[4]))))
+    screens = arg[5] and readFile(arg[5]) or nil
+  end
+  local text, problem = merge.buildAll(defaults, user, screens, profile)
   if not text then
     io.stderr:write("~/.config/omv/aerospace.toml " .. problem .. "\n")
     os.exit(1)

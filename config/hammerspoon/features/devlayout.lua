@@ -1,6 +1,6 @@
 -- Dev layout (Option+Space, then Dev layout): pick a recent Claude Code project, then open
 -- it or start a new task in a git worktree. Its editor, Claude Code and a shell open side by
--- side on the dev workspace, 7, on the main monitor: the editor on the left half, Claude
+-- side on the dev workspace, 7 unless ~/.config/omv/workspaces says otherwise: the editor on the left half, Claude
 -- over the shell on the right.
 -- Agent grid (Option+Space, then Agent grid): 2 to 4 Claude sessions on a project, each in
 -- its own worktree, as panes of one tmux session in a window on the dev workspace. Closing
@@ -17,8 +17,12 @@ local windows = require("windows")
 -- keeps its watchers off.
 local projects = require("features.claudeprojects").projects
 local agentgrid = require("agentgrid")
+local workspaces = require("workspaces")
 
 local feature = {}
+
+-- The dev workspace from ~/.config/omv/workspaces, read when omv reloads.
+devlayout.WORKSPACE = workspaces.devWorkspace(workspaces.parse(shell.readText(workspaces.PATH)))
 
 local TOOLS = {
   ghosttyWindow = shell.GHOSTTY_WINDOW,

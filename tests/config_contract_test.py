@@ -44,7 +44,7 @@ FINDER_INFO_TITLE = " Info$"
 FLAGS = REPO / "config/hammerspoon/flags.lua"
 SKETCHYBARRC = REPO / "config/sketchybar/.config/sketchybar/sketchybarrc"
 # The desktop itself, which every flag leaves loaded.
-CORE_FEATURES = {"menu", "keys", "windows", "theme", "permissions"}
+CORE_FEATURES = {"menu", "keys", "windows", "workspaces", "theme", "permissions"}
 # Each optional feature module and the flag that loads it.
 FEATURE_FLAGS = {
     "weather": "weather", "battery": "battery", "bluetooth": "bluetooth", "network": "network",
@@ -233,9 +233,13 @@ class ConfigContract(unittest.TestCase):
             [True, True],
         )
 
-    def test_should_draw_seven_workspace_items_in_the_bar(self) -> None:
+    def test_should_draw_an_item_per_workspace_aerospace_keeps(self) -> None:
         source = (REPO / "config/sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
-        self.assertIn("for number in 1 2 3 4 5 6 7; do", source)
+        self.assertIn('for number in $("$PLUGIN_DIR/workspaces.sh"); do', source)
+
+    def test_should_fall_back_to_seven_workspace_items_in_the_bar(self) -> None:
+        source = (REPO / "config/sketchybar/.config/sketchybar/plugins/workspaces.sh").read_text(encoding="utf-8")
+        self.assertIn("numbers='1 2 3 4 5 6 7 '", source)
 
     def test_should_bind_workspace_6_keys(self) -> None:
         self.assertEqual(

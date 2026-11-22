@@ -1,5 +1,5 @@
 #!/bin/sh
-# Styles all seven workspace items with one sketchybar call. Workspaces are global,
+# Styles every workspace item with one sketchybar call. Workspaces are global,
 # so every bar shows the same items: the focused one, the one visible on the other
 # monitor, and the rest.
 
@@ -10,15 +10,16 @@ WHITE=0xffffffff MUTED=0xff7a7a7a BLACK=0xff000000 GRAY=0xff3a3a3a
 
 focused=${FOCUSED_WORKSPACE:-$(aerospace list-workspaces --focused 2>/dev/null)}
 
-case $focused in
-  1 | 2 | 3 | 4 | 5 | 6 | 7) ;;
+numbers=$("$(dirname "$0")/workspaces.sh")
+case " $numbers " in
+  *" $focused "*) [ -n "$focused" ] || exit 0 ;;
   *) exit 0 ;;
 esac
 
 visible=$(aerospace list-workspaces --monitor all --visible 2>/dev/null)
 
 set --
-for number in 1 2 3 4 5 6 7; do
+for number in $numbers; do
   if [ "$number" = "$focused" ]; then
     style="background.color=$WHITE icon.color=$BLACK"
   elif printf '%s\n' "$visible" | grep -qx "$number"; then

@@ -40,6 +40,8 @@ end
 local systemMenu = require("features.menu")
 local keys = require("features.keys")
 local windowList = require("features.windows")
+-- Puts each workspace on its screen for the screens plugged in.
+require("features.workspaces")
 -- Loaded now, not only from the system menu, so the chosen theme colours the cards from the start.
 local themes = require("features.theme")
 -- Loaded now, so the Permissions card can open on its own the first time omv loads.
