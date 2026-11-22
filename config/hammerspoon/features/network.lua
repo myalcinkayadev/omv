@@ -28,48 +28,85 @@ local function ipv4(interface)
   return nil
 end
 
-local function routeFor(interface)
+-- route, networksetup and ifconfig run in the background: networksetup takes long enough to
+-- freeze the cards, and refreshCards runs on each change of the signal.
+
+local function routeFor(interface, done)
   local scope = interface and ("-ifscope " .. interface .. " ") or ""
-  return network.parseRoute(hs.execute("/sbin/route -n get " .. scope .. "default 2>/dev/null"))
+  shell.execute("/sbin/route -n get " .. scope .. "default 2>/dev/null", function(output)
+    done(network.parseRoute(output))
+  end)
 end
 
--- The network name needs Location for Hammerspoon; without it ssid is nil.
-local function wifiInfo()
+-- Hands done the Wi-Fi's state. The network name needs Location for Hammerspoon; without it
+-- ssid is nil.
+local function wifiInfo(done)
   local details = hs.wifi.interfaceDetails() or {}
   local interface = details.interface or "en0"
   local channel = details.wlanChannel or {}
-  return {
-    power = details.power == true,
-    ssid = details.ssid,
-    rssi = details.rssi,
-    ip = ipv4(interface),
-    router = routeFor(interface).gateway,
-    channel = channel.number,
-    band = channel.band,
-  }
+  routeFor(interface, function(route)
+    done({
+      power = details.power == true,
+      ssid = details.ssid,
+      rssi = details.rssi,
+      ip = ipv4(interface),
+      router = route.gateway,
+      channel = channel.number,
+      band = channel.band,
+    })
+  end)
 end
 
--- The wired port with an address, preferring the one the default route leaves by.
-local function ethernetInfo()
-  local default = routeFor(nil).interface
-  local chosen = nil
-  for _, port in ipairs(network.wiredPorts(hs.execute("/usr/sbin/networksetup -listallhardwareports"))) do
-    local media = network.parseMedia(hs.execute("/sbin/ifconfig " .. port .. " 2>/dev/null"))
+-- The Mac's wired ports, read once: networksetup is slow, and they change only with hardware.
+local wiredPorts = nil
+
+local function readWiredPorts(done)
+  if wiredPorts then return done(wiredPorts) end
+  shell.execute("/usr/sbin/networksetup -listallhardwareports", function(output)
+    wiredPorts = network.wiredPorts(output)
+    done(wiredPorts)
+  end)
+end
+
+-- Hands done the first port of ports, from index on, that is active with an address,
+-- preferring the one the default route leaves by.
+local function activePort(ports, default, done, chosen, index)
+  index = index or 1
+  local port = ports[index]
+  if not port then return done(chosen) end
+  shell.execute("/sbin/ifconfig " .. port .. " 2>/dev/null", function(output)
+    local media = network.parseMedia(output)
     local ip = ipv4(port)
     if media.active and ip and (not chosen or port == default) then
       chosen = { port = port, ip = ip, mbps = media.mbps, duplex = media.duplex }
     end
-  end
-  if chosen then chosen.router = routeFor(chosen.port).gateway end
-  return chosen
+    activePort(ports, default, done, chosen, index + 1)
+  end)
+end
+
+-- Hands done the wired port with an address, or nil without one.
+local function ethernetInfo(done)
+  routeFor(nil, function(route)
+    readWiredPorts(function(ports)
+      activePort(ports, route.interface, function(chosen)
+        if not chosen then return done(nil) end
+        routeFor(chosen.port, function(portRoute)
+          chosen.router = portRoute.gateway
+          done(chosen)
+        end)
+      end)
+    end)
+  end)
 end
 
 local onNetworkMessage
 
 local function showWifi()
-  shell.show("wifi", shell.anchored(network.WIDTH, network.HEIGHT, "wifi"), network.html(network.wifiModel(wifiInfo(), speed)), onNetworkMessage,
-    { onClose = function() feature.signalWatcher:stop() end })
-  feature.signalWatcher:start()
+  wifiInfo(function(info)
+    shell.show("wifi", shell.anchored(network.WIDTH, network.HEIGHT, "wifi"), network.html(network.wifiModel(info, speed)), onNetworkMessage,
+      { onClose = function() feature.signalWatcher:stop() end })
+    feature.signalWatcher:start()
+  end)
 end
 
 local function showEthernet(info)
@@ -117,7 +154,7 @@ onNetworkMessage = function(message)
   if message.type ~= "choose" then return shell.close() end
   if message.id == "network.speedtest" then return speedTest() end
   if message.id == "wifi.power" then
-    hs.wifi.setPower(not wifiInfo().power)
+    hs.wifi.setPower(not ((hs.wifi.interfaceDetails() or {}).power == true))
     redrawWifi()
     hs.timer.doAfter(WIFI_JOIN_SECONDS, redrawWifi)
     return
@@ -134,9 +171,10 @@ end
 
 function feature.toggleEthernet()
   if shell.isOpen("ethernet") then return shell.close() end
-  local info = ethernetInfo()
-  if not info then return shell.alert("No cable connected", 1.5) end
-  showEthernet(info)
+  ethernetInfo(function(info)
+    if not info then return shell.alert("No cable connected", 1.5) end
+    showEthernet(info)
+  end)
 end
 
 -- Wi-Fi and the cable are watched, not polled: a change redraws the bar's icons at once,
@@ -149,14 +187,20 @@ end)
 
 -- The open card in place, keeping its selected button.
 refreshCards = function()
-  if shell.isOpen("wifi") then shell.view():evaluateJavaScript(network.update(network.wifiModel(wifiInfo(), speed))) end
+  if shell.isOpen("wifi") then
+    wifiInfo(function(info)
+      if shell.isOpen("wifi") then shell.view():evaluateJavaScript(network.update(network.wifiModel(info, speed))) end
+    end)
+  end
   if shell.isOpen("ethernet") then
-    local info = ethernetInfo()
-    if not info then
-      shell.close()
-      return shell.alert("Cable disconnected", 1.5)
-    end
-    shell.view():evaluateJavaScript(network.update(network.ethernetModel(info, speed)))
+    ethernetInfo(function(info)
+      if not shell.isOpen("ethernet") then return end
+      if not info then
+        shell.close()
+        return shell.alert("Cable disconnected", 1.5)
+      end
+      shell.view():evaluateJavaScript(network.update(network.ethernetModel(info, speed)))
+    end)
   end
 end
 
