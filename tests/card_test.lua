@@ -37,4 +37,10 @@ check.that("should escape the footer", check.contains(hostile, "<kbd>&lt;k&gt;</
 check.that("should refuse a tone that isn't one of the card's",
   not check.contains(card.html({ prompt = "x", rows = { { id = "y", label = "y", tone = 'x" onclick="z' } } }), "onclick"))
 
+-- Step mode, for the display profile editor.
+check.that("should mark a card in step mode, so Left and Right step its row",
+  check.contains(card.html({ prompt = "Edit dell…", rows = { { id = "layout", label = "Layout" } }, step = true }), " data-step"))
+check.that("should leave a card without step mode unmarked, so Right still picks",
+  not check.contains(card.html({ prompt = "Pick…", rows = { { id = "a", label = "A" } } }), " data-step"))
+
 check.finish()

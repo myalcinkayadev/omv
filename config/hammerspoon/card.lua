@@ -287,7 +287,17 @@ local SCRIPT = [[
       return;
     }
     // A card that asks for Tab, such as the process card switching its sort, hears it.
-    if (event.key === "Tab" && document.body.dataset.tab !== undefined) { event.preventDefault(); return send("tab"); }
+    if (event.key === "Tab" && document.body.dataset.tab !== undefined) {
+      event.preventDefault();
+      return send("tab", shown[selected] ? shown[selected].dataset.id : "");
+    }
+    // A card in step mode, the display profile editor, steps the row's value with Left and Right,
+    // sent as "1:layout" or "-1:layout".
+    if ((event.key === "ArrowRight" || event.key === "ArrowLeft") && document.body.dataset.step !== undefined) {
+      event.preventDefault();
+      if (shown[selected]) send("step", (event.key === "ArrowRight" ? "1:" : "-1:") + shown[selected].dataset.id);
+      return;
+    }
     if (event.key === "ArrowDown" || (event.ctrlKey && event.key === "n")) selected = (selected + 1) % Math.max(1, shown.length);
     else if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) selected = (selected - 1 + shown.length) % Math.max(1, shown.length);
     else if (event.key === "Enter" && takesInput) return send("submit", query);
@@ -395,7 +405,7 @@ end
 -- screen = { prompt = "System…", rows = { { id, icon, label, hint, submenu, group, note, key, tone } },
 --            selected = 1, compact = false, columns = 1, input = false, hint = "", passage = "",
 --            sub = { counts, status, tone }, footer = { { key, text } }, clearable = false,
---            clipActions = false, clip = nil }
+--            clipActions = false, clip = nil, tab = false, step = false }
 -- sub is a count line under the title with a status at its right; footer lists keys; a
 -- clearable card sends clear and the selected row on Backspace. A row's tone, ask, ok or
 -- muted, colours its icon. A card with clipActions, such as the palette, shows the clipboard
@@ -404,6 +414,8 @@ end
 -- passage is text shown whole above the rows, wrapped, such as a translation; a quote, smaller
 -- and grey above it, is what it came from. A row's key picks it with Cmd held.
 -- A card with calc = true, such as the palette, works out a typed sum in its first row.
+-- A card with tab sends tab and the selected row on Tab. A card with step, the display
+-- profile editor, sends step on Left and Right instead of picking or going back.
 local function subHtml(sub)
   if not sub then return "" end
   return "<div class=sub>" .. card.escape(sub.counts) .. "</div>"
@@ -443,7 +455,7 @@ function card.html(screen)
   end
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. (screen.footer and " footed" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
-    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "")
+    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (screen.step and " data-step" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "")
     .. (screen.clearable and " data-clear" or "") .. ">"
     .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span>'
     .. "<span class=caret></span>"
