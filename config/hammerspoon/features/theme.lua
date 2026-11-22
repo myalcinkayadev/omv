@@ -66,6 +66,9 @@ end
 -- The theme in use, by name; Vantablack when none was chosen.
 feature.current = current
 
+-- The themes installed, by name, as the theme card lists them.
+feature.names = names
+
 -- Switches to a theme by name, as omv theme <name> does. An unknown name changes nothing.
 function feature.set(name)
   if not theme.plainName(name) then return end

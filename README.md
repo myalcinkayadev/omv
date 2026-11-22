@@ -394,7 +394,7 @@ Under the footer are today's events from Calendar.app, so every account added th
 
 A profile is a few settings for one display setup, such as tabs and tight gaps on the laptop alone, and tiles and roomy gaps at the desk. To start, Option+Escape, then **Display profile**:
 
-- **Save these displays as a profile** adds one for the displays plugged in now, named after the first that isn't built in, such as `[dell]`, then opens the file. Its settings are comments: remove a `#`, rename it to anything, and save.
+- **Save these displays as a profile** adds one for the displays plugged in now, named after the first that isn't built in, such as `[dell]`, then opens it in the profile editor. Its name is yours to change, in the editor or the file.
 - **Open the profiles file** opens `~/.config/omv/displays` in the editor from `~/.config/omv/apps`, or TextEdit. Without the file it writes one first: the displays omv has seen, what each setting does, and examples left as comments.
 
 <img src="docs/displays.png" alt="The display profile card before any profile: Save these displays as a profile, for DELL U2723QE and the built-in display, then Open the profiles file, with examples" width="720">
@@ -402,10 +402,9 @@ A profile is a few settings for one display setup, such as tabs and tight gaps o
 Saving the file applies it; there's no need to reload. `omv displays` prints the names of the displays plugged in now and those seen before, for a profile's `when`. The file holds one `[section]` each:
 
 ```ini
-# The first profile whose displays are plugged in is used.
+# The first profile whose screens are exactly those plugged in is used.
 [desk]
-when       = DELL U2723QE, LG UltraFine   # a display whose name contains any of these
-count      = 2                            # optional: exactly this many displays
+when       = laptop, DELL U2723QE, LG     # the laptop open beside a DELL and an LG, nothing else
 layout     = tiles                        # tiles, tabs or keep, for every workspace
 gaps       = 10                           # every gap; or set them apart:
 gaps.inner = 8
@@ -418,7 +417,7 @@ on-enter   = ~/bin/desk-on.sh             # your own command when the profile st
 on-leave   = ~/bin/desk-off.sh            # and when it ends
 
 [laptop]
-when   = built-in only
+when   = laptop                           # the laptop's own screen alone
 layout = tabs
 gaps   = 4
 ```
@@ -426,10 +425,12 @@ gaps   = 4
 - **When it switches:** as displays connect or disconnect, and on wake, once they've settled. A notice names the profile and what it set, such as `desk · tiles · gaps 12 · tokyo-night · font 15`. With none matching, omv's own settings are back.
 - **Leaving a profile** puts back what it changed: omv's gaps and tiles, the theme you had, the font from your own Ghostty settings, Do Not Disturb as it was and the bar shown. A setting left out, or set to `keep`, is never touched.
 - **By hand:** Option+Escape, then **Display profile**, or the palette, lists your profiles. One picked by hand stays until the displays change; **Follow the displays** goes back to choosing by itself.
+- **The profile editor:** Tab on a profile opens it. Enter on **Name** renames it. Enter on **When** lists the laptop screen and every display omv has seen, to tick the screens of the setup, or type part of a name; it also says whether the profile is used now, or which one comes first. Left and Right change the selected setting. **All gaps** sets both kinds; **Gaps between windows** and **Gaps at the screen edges** set one. Enter writes only the lines that changed, keeping your comments, and the profile applies as on any save; Esc changes nothing. Backspace on a profile deletes it from the file, with the comment saving it wrote above it; **Bring back** in its place undoes that while the card is open, and for a minute after. A setting on `keep` isn't in the file. The terminal font size shows in new Ghostty windows. `on-enter` and `on-leave` are set in the file.
 - **The notch:** the built-in screen keeps its own top gap below the notch, whatever `gaps` says. On other displays the outer gap is measured below the bar.
 - **Ghostty** takes the font size in new windows, or after Cmd+Shift+,. A `font-size` in your own `~/.config/omv/ghostty` still wins.
 - **Gaps** are built into `aerospace.toml` after your own `~/.config/omv/aerospace.toml`, with `omv reload aerospace`.
 - **Your own code:** `~/.config/omv/hammerspoon.lua` can define `omvOnDisplayProfile(name)`, called with the profile's name on each switch, or nil when none is used.
+- **When:** `when` lists exactly the screens of the setup, with a comma between: `laptop` for the laptop's own, and part of a display's name, in any case, for each of the others. `laptop, DELL` is the laptop open beside a DELL; `DELL` alone is the DELL with the lid closed. Two of a make take two names: `DELL, DELL`. `built-in only`, from before, still means `laptop`, and `count` still works.
 - **Names:** a profile's name can be anything without `[`, `]` or `#`, spaces too, such as `[Home desk]`. Two profiles can't share a name, whatever their case.
 - **Mistakes:** a line omv can't read changes nothing; the notice names it, such as `~/.config/omv/displays line 3: layout must be tiles, tabs or keep`, and `omv doctor` reports it too. Without the file, display profiles do nothing; `omv flags display-profiles off` turns them off altogether. Each check is logged in `~/.local/state/omv/display-profile.log`: why it ran, such as `load` or `saved`, and what it did.
 
@@ -855,7 +856,7 @@ Your own changes go in `~/.config/omv/`, outside the omv folder, so `omv update`
 | `nvim.lua` | Neovim | `vim.opt.number = true` |
 | `flags` | Feature flags | `file-search=on` (or `omv flags file-search on`) |
 | `apps` | The browser and editor omv's keys open | `browser = Google Chrome` |
-| `displays` | Display profiles: settings for each display setup, applied as displays connect and disconnect | `[desk]` then `when = DELL U2723QE` and `layout = tiles` |
+| `displays` | Display profiles: settings for each display setup, applied as displays connect and disconnect | `[desk]` then `when = laptop, DELL U2723QE` and `layout = tiles` |
 | `away-digest` | How long a break must be before unlocking opens the agents' inbox; read each time, so no reload | `minutes = 10`, or `minutes = 0` for every break |
 | `theme-clock` | A day theme and a night theme, switched at sunrise and sunset; read each time, so no reload | `day = catppuccin-latte` then `night = vantablack` |
 

@@ -39,7 +39,8 @@ end
 -- Fills profile from one name = value line; gives a problem, or nil.
 local function setting(profile, name, value, gapsGiven)
   if name == "when" then
-    if value:lower() == "built-in only" then profile.builtinOnly = true else profile.when = list(value) end
+    -- built-in only is what when said before laptop named the built-in screen.
+    profile.when = value:lower() == "built-in only" and { "laptop" } or list(value)
     return nil
   end
   if value == "keep" and name ~= "count" then return nil end
@@ -68,7 +69,7 @@ local function setting(profile, name, value, gapsGiven)
   return "unknown setting " .. name
 end
 
--- The file's text, or nil when there's none: { profiles = { { name, when, builtinOnly, count,
+-- The file's text, or nil when there's none: { profiles = { { name, when, count,
 -- settings } }, problems = { "line 3: …" } }. A bad line is skipped and named in problems; so is
 -- a section with a bad or repeated name, with its lines.
 function displays.parse(text)
@@ -81,7 +82,7 @@ function displays.parse(text)
     -- gaps.inner and gaps.outer win over gaps, wherever they are in the section.
     current.settings.gapsInner = current.settings.gapsInner or gaps.inner
     current.settings.gapsOuter = current.settings.gapsOuter or gaps.outer
-    if not current.when and not current.builtinOnly then problems[#problems + 1] = "profile " .. current.name .. " has no when line" end
+    if not current.when or #current.when == 0 then problems[#problems + 1] = "profile " .. current.name .. " has no when line" end
     profiles[#profiles + 1] = current
   end
   local number = 0
@@ -114,15 +115,33 @@ function displays.parse(text)
   return { profiles = profiles, problems = problems }
 end
 
-local function matches(profile, screens)
-  if profile.count and #screens ~= profile.count then return false end
-  if profile.builtinOnly then return #screens == 1 and screens[1].builtin == true end
-  for _, wanted in ipairs(profile.when or {}) do
-    for _, screen in ipairs(screens) do
-      if tostring(screen.name or ""):lower():find(wanted:lower(), 1, true) then return true end
+-- Whether a screen is the one a part of when names: laptop is the built-in screen; anything
+-- else is part of a display's name, in any case.
+local function fits(item, screen)
+  if item:lower() == "laptop" then return screen.builtin == true end
+  return tostring(screen.name or ""):lower():find(item:lower(), 1, true) ~= nil
+end
+
+-- Whether each part of when from index on can have a screen of its own among those not used.
+local function assign(items, screens, index, used)
+  if index > #items then return true end
+  for position, screen in ipairs(screens) do
+    if not used[position] and fits(items[index], screen) then
+      used[position] = true
+      if assign(items, screens, index + 1, used) then return true end
+      used[position] = nil
     end
   end
   return false
+end
+
+-- A profile is for exactly the screens its when names, each part a screen of its own: laptop,
+-- DELL is the laptop open beside a DELL, and nothing else plugged in.
+local function matches(profile, screens)
+  if profile.count and #screens ~= profile.count then return false end
+  local items = profile.when or {}
+  if #items == 0 or #items ~= #screens then return false end
+  return assign(items, screens, 1, {})
 end
 
 -- The first profile whose displays are plugged in, in file order; nil when none is.
@@ -225,32 +244,331 @@ function displays.summary(profile)
   return table.concat(parts, " · ")
 end
 
--- The displays plugged in, as the save row's hint, or the profile that already matches them.
-local function screensHint(profiles, screens)
-  local found = displays.pick(profiles, screens)
-  if found then return "already: " .. found.name end
-  local outside, builtin = {}, false
-  for _, screen in ipairs(screens or {}) do
-    if screen.builtin then builtin = true else outside[#outside + 1] = tostring(screen.name) end
+-- Whether profiles has name, in any case.
+local function taken(profiles, name)
+  for _, profile in ipairs(profiles or {}) do
+    if profile.name:lower() == name:lower() then return true end
   end
-  if builtin then outside[#outside + 1] = "built-in" end
-  return table.concat(outside, " + ")
+  return false
 end
 
 -- The card's rows: each profile, the one in use marked, and Follow the displays; then saving
 -- the displays as a profile and opening the file, which are all it has without profiles.
--- state is { active, picked }: the profile in use, and whether it was picked by hand.
+-- state is { active, picked, deleted }: the profile in use, whether it was picked by hand,
+-- and one just deleted, { name, index }, offered back in its place.
 function displays.rows(profiles, state, screens)
   local rows = {}
   for _, profile in ipairs(profiles or {}) do
     local hint = profile.name == state.active and ("in use" .. (state.picked and " · picked" or "")) or displays.summary(profile)
+    if hint == "" then hint = "nothing set" end
     rows[#rows + 1] = { id = "profile:" .. profile.name, icon = "󰍹", label = profile.name, hint = hint }
   end
-  local any = #rows > 0
+  -- A deleted profile is offered back only while its name is free.
+  if state.deleted and not taken(profiles, state.deleted.name) then
+    table.insert(rows, math.min(state.deleted.index, #rows + 1),
+      { id = "undo", icon = "󰕌", label = "Bring back " .. state.deleted.name, hint = "deleted just now" })
+  end
+  local any = #(profiles or {}) > 0
   if any then rows[#rows + 1] = { id = "follow", icon = "󰑐", label = "Follow the displays", hint = "automatic" } end
-  rows[#rows + 1] = { id = "save", icon = "󰐕", label = "Save these displays as a profile", hint = screensHint(profiles, screens) }
+  local found = displays.pick(profiles, screens)
+  rows[#rows + 1] = { id = "save", icon = "󰐕", label = "Save these displays as a profile",
+    hint = found and ("already: " .. found.name) or "then edit it here" }
   rows[#rows + 1] = { id = "file", icon = "󰷈", label = "Open the profiles file", hint = any and "applies on save" or "with examples" }
   return rows
+end
+
+-- The profile editor: Left and Right step each setting; keep is nil, a setting not set.
+local GAP_STEPS = { 0, 2, 4, 6, 8, 10, 12, 16, 20, 24 }
+local FONT_STEPS = { 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 }
+local WORDS = { layout = { "tiles", "tabs" }, bar = { "shown", "hidden" }, quiet = { "on", "off" } }
+-- Each editor row's setting field; gaps sets both.
+local FIELDS = { layout = "layout", ["gaps.inner"] = "gapsInner", ["gaps.outer"] = "gapsOuter", font = "font",
+  theme = "theme", bar = "bar", quiet = "quiet" }
+
+local function copy(settings)
+  local copied = {}
+  for key, value in pairs(settings or {}) do copied[key] = value end
+  return copied
+end
+
+-- Words wrap around through keep; value nil is keep.
+local function stepWord(words, value, direction)
+  local position = 0
+  for index, word in ipairs(words) do
+    if word == value then position = index end
+  end
+  return words[(position + direction) % (#words + 1)]
+end
+
+-- Numbers stop at keep and at the largest; one off the list goes to the nearest that way.
+local function stepNumber(steps, value, direction)
+  if direction > 0 then
+    if value == nil then return steps[1] end
+    for _, number in ipairs(steps) do
+      if number > value then return number end
+    end
+    return value
+  end
+  if value == nil then return nil end
+  for index = #steps, 1, -1 do
+    if steps[index] < value then return steps[index] end
+  end
+  return nil
+end
+
+-- settings with the row id stepped one way: 1 for Right, -1 for Left. themes are the names
+-- the theme row goes through. All gaps sets both: from the larger going right, the smaller left.
+function displays.step(settings, id, direction, themes)
+  local stepped = copy(settings)
+  if id == "gaps" then
+    local inner, outer = stepped.gapsInner, stepped.gapsOuter
+    local from = inner
+    if inner ~= outer and direction > 0 then from = (inner and outer) and math.max(inner, outer) or inner or outer
+    elseif inner ~= outer then from = (inner and outer) and math.min(inner, outer) or nil end
+    local value = stepNumber(GAP_STEPS, from, direction)
+    stepped.gapsInner, stepped.gapsOuter = value, value
+    return stepped
+  end
+  local field = FIELDS[id]
+  if not field then return stepped end
+  local value = stepped[field]
+  if WORDS[id] then stepped[field] = stepWord(WORDS[id], value, direction)
+  elseif id == "theme" then stepped[field] = stepWord(themes or {}, value, direction)
+  elseif id == "font" then stepped[field] = stepNumber(FONT_STEPS, value, direction)
+  else stepped[field] = stepNumber(GAP_STEPS, value, direction) end
+  return stepped
+end
+
+local function shown(value)
+  return "‹  " .. (value == nil and "keep" or tostring(value)) .. "  ›"
+end
+
+-- The editor's rows for profile name's settings: its name, when it's used, with status saying
+-- whether it is now, then a row per setting. Name and When open a card on Enter, so carry a ›.
+function displays.editRows(settings, name, status)
+  settings = settings or {}
+  local inner, outer = settings.gapsInner, settings.gapsOuter
+  local all = inner == outer and inner or ((inner or "keep") .. " · " .. (outer or "keep"))
+  return {
+    { id = "name", icon = "󰑕", label = "Name", hint = tostring(name or "") .. "  ›" },
+    { id = "when", icon = "󰍹", label = "When", hint = tostring(settings.when or "") .. (status and (" · " .. status) or "") .. "  ›" },
+    { id = "layout", icon = "󰕰", label = "Layout", hint = shown(settings.layout) },
+    { id = "gaps", icon = "󰘖", label = "All gaps", hint = shown(all) },
+    { id = "gaps.inner", icon = "󰤼", label = "Gaps between windows", hint = shown(inner) },
+    { id = "gaps.outer", icon = "󰢡", label = "Gaps at the screen edges", hint = shown(outer) },
+    { id = "font", icon = "󰛖", label = "Terminal font size", hint = shown(settings.font) .. "   new windows" },
+    { id = "theme", icon = "󰏘", label = "Theme", hint = shown(settings.theme) },
+    { id = "bar", icon = "󰍜", label = "Bar", hint = shown(settings.bar) },
+    { id = "quiet", icon = "󰂛", label = "Do Not Disturb", hint = shown(settings.quiet) },
+  }
+end
+
+local function splitLines(text)
+  local lines = {}
+  for line in (tostring(text or "") .. "\n"):gmatch("([^\n]*)\n") do lines[#lines + 1] = line end
+  if lines[#lines] == "" then lines[#lines] = nil end
+  return lines
+end
+
+-- The first and last line of profile name's section: it ends before the next section, a
+-- commented one included, so an example section after it is never taken as its own.
+local function sectionBounds(lines, name)
+  local first
+  for index, line in ipairs(lines) do
+    local plain = trim((line:gsub("#.*$", "")))
+    local header = plain:match("^%[(.*)%]$")
+    if first then
+      if header or line:match("^%s*#%s*%[.*%]") then return first, index - 1 end
+    elseif header and trim(header) == name then
+      first = index
+    end
+  end
+  return first, first and #lines or nil
+end
+
+local function keyPattern(key)
+  return "^%s*" .. key:gsub("%p", "%%%0") .. "%s*="
+end
+
+-- The line with value in place of its own, keeping how it's aligned and its comment.
+local function replaced(line, value)
+  local head, rest = line:match("^(%s*[%w%.%-]+%s*=%s*)(.-)$")
+  local comment = rest:match("(%s+#.*)$") or ""
+  return head .. value .. comment
+end
+
+-- lines with key set to value in the section from first to last, or its line removed for nil;
+-- gives the section's new last line.
+local function setLine(lines, first, last, key, value)
+  local pattern = keyPattern(key)
+  for index = first + 1, last do
+    if lines[index]:match(pattern) then
+      if value == nil then
+        table.remove(lines, index)
+        return last - 1
+      end
+      lines[index] = replaced(lines[index], tostring(value))
+      return last
+    end
+  end
+  if value == nil then return last end
+  for index = first + 1, last do
+    local commented = lines[index]:match("^%s*#%s*(.*)$")
+    if commented and commented:match(pattern) then
+      lines[index] = replaced(commented, tostring(value))
+      return last
+    end
+  end
+  local after = last
+  while after > first and trim(lines[after]) == "" do after = after - 1 end
+  table.insert(lines, after + 1, key .. " = " .. tostring(value))
+  return last + 1
+end
+
+-- The file's text with profile name's section changed from settings before to after: only the
+-- lines of settings that changed. Equal gaps are one gaps line; different ones, gaps.inner and
+-- gaps.outer.
+function displays.writeSettings(text, name, before, after)
+  local lines = splitLines(text)
+  local first, last = sectionBounds(lines, name)
+  if not first then return text end
+  before, after = before or {}, after or {}
+  for _, key in ipairs({ "when", "layout", "font", "theme", "bar", "quiet" }) do
+    if before[key] ~= after[key] then last = setLine(lines, first, last, key, after[key]) end
+  end
+  if before.gapsInner ~= after.gapsInner or before.gapsOuter ~= after.gapsOuter then
+    local inner, outer = after.gapsInner, after.gapsOuter
+    local equal = inner == outer
+    last = setLine(lines, first, last, "gaps", equal and inner or nil)
+    last = setLine(lines, first, last, "gaps.inner", (not equal) and inner or nil)
+    setLine(lines, first, last, "gaps.outer", (not equal) and outer or nil)
+  end
+  return table.concat(lines, "\n") .. "\n"
+end
+
+-- The file's text without profile name, and the lines taken out: its section, and the comment
+-- saving it wrote just above, so the sections around it keep one blank line between them.
+function displays.removeProfile(text, name)
+  local lines = splitLines(text)
+  local first, last = sectionBounds(lines, name)
+  if not first then return text end
+  while last > first and trim(lines[last]) == "" do last = last - 1 end
+  if first > 1 and lines[first - 1]:match("^# Saved .* Rename it to anything%.$") then first = first - 1 end
+  while last < #lines and trim(lines[last + 1]) == "" do last = last + 1 end
+  local removed = {}
+  for _ = first, last do removed[#removed + 1] = table.remove(lines, first) end
+  while #removed > 0 and trim(removed[#removed]) == "" do removed[#removed] = nil end
+  return table.concat(lines, "\n") .. (#lines > 0 and "\n" or ""), table.concat(removed, "\n") .. "\n"
+end
+
+-- Bringing back a deleted profile: the file as it was when it hasn't changed since the delete,
+-- or the deleted block added at the end when it has.
+function displays.restoreProfile(current, afterDelete, before, block)
+  if current == afterDelete then return before end
+  return tostring(current or ""):gsub("\n*$", "") .. "\n\n" .. block
+end
+
+-- The file's text with profile old named new, its comment after the name kept.
+function displays.renameProfile(text, old, new)
+  local lines = splitLines(text)
+  local first = sectionBounds(lines, old)
+  if not first then return text end
+  lines[first] = lines[first]:gsub("^(%s*)%[[^%]]*%]", function(space) return space .. "[" .. new .. "]" end, 1)
+  return table.concat(lines, "\n") .. "\n"
+end
+
+-- The name typed for profile current: trimmed, or current when empty; nil and a problem for
+-- one the file can't hold or another profile has.
+function displays.checkName(typed, profiles, current)
+  local name = trim(tostring(typed or ""))
+  if name == "" then return current end
+  if name:find("[%[%]#]") then return nil, "a profile's name can't have [, ] or #" end
+  for _, profile in ipairs(profiles or {}) do
+    if profile.name ~= current and profile.name:lower() == name:lower() then return nil, name .. " is taken" end
+  end
+  return name
+end
+
+-- When a profile is used: { items }, the screens it's for, laptop or parts of display names.
+function displays.parseWhen(text)
+  text = trim(tostring(text or ""))
+  if text:lower() == "built-in only" then return { items = { "laptop" } } end
+  return { items = list(text) }
+end
+
+function displays.whenText(when)
+  return table.concat(when.items, ", ")
+end
+
+local function whenIndex(when, item)
+  for index, existing in ipairs(when.items) do
+    if existing:lower() == item:lower() then return index end
+  end
+  return nil
+end
+
+local function copyWhen(when)
+  local items = {}
+  for _, item in ipairs(when.items) do items[#items + 1] = item end
+  return { items = items }
+end
+
+-- when with item, laptop or a display's name, ticked or unticked.
+function displays.toggleWhen(when, item)
+  local toggled = copyWhen(when)
+  local index = whenIndex(toggled, item)
+  if index then table.remove(toggled.items, index) else toggled.items[#toggled.items + 1] = item end
+  return toggled
+end
+
+-- when with a typed part of a display's name added, ticked.
+function displays.addWhen(when, typed)
+  local added = copyWhen(when)
+  local item = trim(tostring(typed or ""))
+  if item == "" or whenIndex(added, item) then return added end
+  added.items[#added.items + 1] = item
+  return added
+end
+
+-- The when line's text, or nil and a problem when nothing is ticked.
+function displays.doneWhen(when)
+  if #when.items == 0 then return nil, "pick at least one display" end
+  return displays.whenText(when)
+end
+
+local TICKED, UNTICKED = "󰄵", "󰄱"
+
+-- The When picker's rows: the laptop screen, each display seen but the built-in one, parts
+-- typed that omv hasn't seen, ticked when in when; then typing a part, and Done.
+function displays.whenRows(when, seen)
+  local rows = { { id = "display:laptop", icon = whenIndex(when, "laptop") and TICKED or UNTICKED, label = "Laptop screen", hint = "built-in" } }
+  local known = { laptop = true }
+  for _, entry in ipairs(seen or {}) do
+    if not entry.builtin then
+      known[entry.name:lower()] = true
+      rows[#rows + 1] = { id = "display:" .. entry.name, icon = whenIndex(when, entry.name) and TICKED or UNTICKED,
+        label = entry.name, hint = entry.now and "plugged in" or ("last seen " .. tostring(entry.last)) }
+    end
+  end
+  for _, item in ipairs(when.items) do
+    if not known[item:lower()] then rows[#rows + 1] = { id = "display:" .. item, icon = TICKED, label = item, hint = "typed" } end
+  end
+  local done, problem = displays.doneWhen(when)
+  rows[#rows + 1] = { id = "type", icon = "󰌌", label = "Type part of a name…", hint = "for a display not seen yet" }
+  rows[#rows + 1] = { id = "done", icon = "󰄬", label = "Done", hint = done or problem }
+  return rows
+end
+
+-- Whether profile name is used with screens: the first profile in the file to match wins.
+function displays.matchStatus(name, profiles, screens)
+  local winner = displays.pick(profiles, screens)
+  if winner and winner.name == name then return "matches now" end
+  for _, profile in ipairs(profiles or {}) do
+    if profile.name == name and matches(profile, screens) then
+      return "matches now, but " .. winner.name .. " comes first"
+    end
+  end
+  return "not plugged in"
 end
 
 -- Each check is logged, so a check that didn't happen shows: the load's line without one after.
@@ -335,7 +653,7 @@ end
 
 local STARTER_HEAD = [[
 # Display profiles: settings that follow the displays you plug in.
-# One [section] per profile; the first whose `when` matches is used.
+# One [section] per profile; the first whose `when` matches the screens plugged in is used.
 # Leaving a profile puts back what it changed. Save, and omv applies it.
 #
 ]]
@@ -343,8 +661,8 @@ local STARTER_HEAD = [[
 local STARTER_BODY = [[
 #
 # Settings; leave one out to keep omv's own:
-#   when     part of a display's name, comma for any; or: built-in only
-#   count    how many displays are plugged in
+#   when     exactly the screens plugged in, comma between: laptop for the
+#            laptop's own, and part of a display's name for the others
 #   layout   tiles | tabs
 #   gaps     pixels; gaps.inner and gaps.outer set one kind
 #   quiet    on | off            Do Not Disturb while it's used
@@ -356,17 +674,17 @@ local STARTER_BODY = [[
 # Remove the # in front of a section's lines to use it. Name a profile anything.
 
 # [desk]
-# when   = DELL U2723QE          # a display whose name contains this
+# when   = laptop, DELL U2723QE  # the laptop open beside a DELL, nothing else
 # layout = tiles
 # gaps   = 10
 
 # [presenting]
-# when   = projector, mirrored
+# when   = laptop, projector
 # layout = tiles
 # quiet  = on                   # Do Not Disturb while it's in use
 
 # [laptop]
-# when   = built-in only
+# when   = laptop
 # layout = tabs
 # gaps   = 4
 ]]
@@ -379,14 +697,7 @@ function displays.starter(seen)
   return STARTER_HEAD .. table.concat(names, "\n") .. "\n" .. STARTER_BODY
 end
 
-local function taken(profiles, name)
-  for _, profile in ipairs(profiles or {}) do
-    if profile.name:lower() == name:lower() then return true end
-  end
-  return false
-end
-
--- text with a profile added for the displays in screens, and the profile's name: the first
+-- text with a profile added for exactly the screens plugged in, and the profile's name: the first
 -- word of the first display that isn't built in, or laptop, numbered when profiles has it.
 -- Its settings are left as comments, so it matches but changes nothing until edited.
 function displays.addProfile(text, screens, profiles, date)
@@ -400,10 +711,15 @@ function displays.addProfile(text, screens, profiles, date)
     name = base .. " " .. number
     number = number + 1
   end
+  local plugged = {}
+  for _, screen in ipairs(screens or {}) do
+    if screen.builtin then plugged[1] = "laptop" end
+  end
+  for _, display in ipairs(outside) do plugged[#plugged + 1] = display end
   local lines = {
-    "# Saved " .. date .. " for: " .. (#outside > 0 and table.concat(outside, ", ") or "the built-in display") .. ". Rename it to anything.",
+    "# Saved " .. date .. " for: " .. table.concat(plugged, ", ") .. ". Rename it to anything.",
     "[" .. name .. "]",
-    "when = " .. (#outside > 0 and table.concat(outside, ", ") or "built-in only"),
+    "when = " .. table.concat(plugged, ", "),
     "# layout = tiles",
     "# gaps   = 10",
     "# font   = 15",

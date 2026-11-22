@@ -357,7 +357,7 @@ case $command in
   displays)
     [ "$#" -eq 0 ] || usage
     luajit "$REPO_DIR/config/hammerspoon/displays.lua" names "$HOME/.local/state/omv/displays-seen"
-    printf '\nUse a part of a name in when, in ~/.config/omv/displays.\n' ;;
+    printf '\nIn ~/.config/omv/displays, when lists the screens of a setup: laptop, and part of each name.\n' ;;
   version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;
   *) usage ;;
 esac
