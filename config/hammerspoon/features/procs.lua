@@ -12,7 +12,6 @@ local feature = {}
 local WIDTH = 720
 local VISIBLE_ROWS = 14
 local QUIT_WAIT_SECONDS = 3
-local USER_ID = (hs.execute("/usr/bin/id -u") or ""):match("%d+") or "0"
 
 local sortBy = "cpu"
 local shown = {}
@@ -22,39 +21,53 @@ local function alive(pid)
   return os.execute("/bin/kill -0 " .. pid .. " 2>/dev/null") == true
 end
 
-local function readFolders(pids)
-  if #pids == 0 then return {} end
-  return procs.folders(hs.execute("/usr/sbin/lsof -a -d cwd -Fpn -p " .. table.concat(pids, ",") .. " 2>/dev/null"), shell.HOME)
+-- ps and lsof run in the background: lsof can take a second or more, which would freeze the
+-- cards while it reads.
+
+local function readFolders(pids, done)
+  if #pids == 0 then return done({}) end
+  shell.execute("/usr/sbin/lsof -a -d cwd -Fpn -p " .. table.concat(pids, ",") .. " 2>/dev/null", function(output)
+    done(procs.folders(output, shell.HOME))
+  end)
 end
 
-local function readProcesses()
-  return procs.parse(hs.execute("/bin/ps -U " .. USER_ID .. " -o pid=,pcpu=,rss=,comm="), hs.processInfo.processID)
+local function readProcesses(done)
+  shell.execute("/bin/ps -U \"$(/usr/bin/id -u)\" -o pid=,pcpu=,rss=,comm=", function(output)
+    done(procs.parse(output, hs.processInfo.processID))
+  end)
 end
 
--- The busiest processes, as card rows, each process kept by its row's id.
-local function readBusiest()
-  local list = procs.sorted(readProcesses(), sortBy)
-  local pids, byId = {}, {}
-  for index, process in ipairs(list) do
-    pids[index] = process.pid
-    byId[tostring(process.pid)] = process
-  end
-  return procs.rows(list, readFolders(pids), sortBy), byId
-end
-
--- Your listening TCP ports, as card rows. lsof lists only your own processes without sudo,
--- and Hammerspoon's own ports are never offered.
-local function readPorts()
-  local ports, byPid, pids, byId = {}, {}, {}, {}
-  for _, process in ipairs(readProcesses()) do byPid[process.pid] = process end
-  for _, entry in ipairs(procs.ports(hs.execute("/usr/sbin/lsof -nP -iTCP -sTCP:LISTEN -Fpcn 2>/dev/null"))) do
-    if entry.pid ~= hs.processInfo.processID then
-      ports[#ports + 1] = entry
-      pids[#pids + 1] = entry.pid
-      byId[entry.pid .. ":" .. entry.port] = byPid[entry.pid] or { pid = entry.pid, name = entry.name }
+-- Hands done the busiest processes, as card rows, and each process by its row's id.
+local function readBusiest(done)
+  readProcesses(function(processes)
+    local list = procs.sorted(processes, sortBy)
+    local pids, byId = {}, {}
+    for index, process in ipairs(list) do
+      pids[index] = process.pid
+      byId[tostring(process.pid)] = process
     end
-  end
-  return procs.portRows(ports, byPid, readFolders(pids)), byId
+    readFolders(pids, function(folders) done(procs.rows(list, folders, sortBy), byId) end)
+  end)
+end
+
+-- Hands done your listening TCP ports, as card rows, and each process by its row's id. lsof
+-- lists only your own processes without sudo, and Hammerspoon's own ports are never offered.
+local function readPorts(done)
+  readProcesses(function(processes)
+    local byPid = {}
+    for _, process in ipairs(processes) do byPid[process.pid] = process end
+    shell.execute("/usr/sbin/lsof -nP -iTCP -sTCP:LISTEN -Fpcn 2>/dev/null", function(output)
+      local ports, pids, byId = {}, {}, {}
+      for _, entry in ipairs(procs.ports(output)) do
+        if entry.pid ~= hs.processInfo.processID then
+          ports[#ports + 1] = entry
+          pids[#pids + 1] = entry.pid
+          byId[entry.pid .. ":" .. entry.port] = byPid[entry.pid] or { pid = entry.pid, name = entry.name }
+        end
+      end
+      readFolders(pids, function(folders) done(procs.portRows(ports, byPid, folders), byId) end)
+    end)
+  end)
 end
 
 local PROMPTS = { cpu = "Processes by CPU…", memory = "Processes by memory…", ports = "Listening ports…" }
@@ -87,9 +100,10 @@ showConfirm = function(process, quitFailed)
   end)
 end
 
-showList = function()
-  local rows
-  if sortBy == "ports" then rows, shown = readPorts() else rows, shown = readBusiest() end
+-- Counts the lists asked for, so only the last one asked is drawn when Tab is pressed quickly.
+local asked = 0
+
+local function drawList(rows)
   local screen = { prompt = PROMPTS[sortBy], rows = rows, compact = true, tab = true, hint = EMPTY[sortBy] }
   shell.show("procs", shell.centered(WIDTH, shell.listHeight(math.max(1, #screen.rows), VISIBLE_ROWS)), card.html(screen), function(message)
     if message.type == "tab" then
@@ -99,6 +113,17 @@ showList = function()
     if message.type ~= "choose" then return shell.close() end
     local process = shown[message.id]
     if process then showConfirm(process, false) end
+  end)
+end
+
+showList = function()
+  asked = asked + 1
+  local this = asked
+  local read = sortBy == "ports" and readPorts or readBusiest
+  read(function(rows, byId)
+    if this ~= asked then return end
+    shown = byId
+    drawList(rows)
   end)
 end
 
