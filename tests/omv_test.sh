@@ -17,6 +17,7 @@ make_repo() {
   printf '[gaps]\ninner.horizontal = 10\n' > "$REPO/config/aerospace/.config/aerospace/aerospace.toml"
   cp "$REPO_DIR/config/hammerspoon/flags.lua" "$REPO/config/hammerspoon/flags.lua"
   cp "$REPO_DIR/config/hammerspoon/displays.lua" "$REPO/config/hammerspoon/displays.lua"
+  cp "$REPO_DIR/config/hammerspoon/workspaces.lua" "$REPO/config/hammerspoon/workspaces.lua"
   mkdir -p "$REPO/config/sketchybar/.config/sketchybar"
   cp "$REPO_DIR/config/sketchybar/.config/sketchybar/flags.sh" "$REPO/config/sketchybar/.config/sketchybar/flags.sh"
   local script
