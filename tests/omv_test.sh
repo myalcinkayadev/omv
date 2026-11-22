@@ -16,6 +16,7 @@ make_repo() {
   mkdir -p "$REPO/config/aerospace/.config/aerospace"
   printf '[gaps]\ninner.horizontal = 10\n' > "$REPO/config/aerospace/.config/aerospace/aerospace.toml"
   cp "$REPO_DIR/config/hammerspoon/flags.lua" "$REPO/config/hammerspoon/flags.lua"
+  cp "$REPO_DIR/config/hammerspoon/displays.lua" "$REPO/config/hammerspoon/displays.lua"
   mkdir -p "$REPO/config/sketchybar/.config/sketchybar"
   cp "$REPO_DIR/config/sketchybar/.config/sketchybar/flags.sh" "$REPO/config/sketchybar/.config/sketchybar/flags.sh"
   local script
@@ -441,6 +442,23 @@ reloads_aerospace_on_reload_aerospace() {
   run_aerospace
   omv reload aerospace >/dev/null
   assert_called '^aerospace reload-config$'
+}
+
+lists_seen_displays() {
+  make_repo
+  mkdir -p "$HOME_DIR/.local/state/omv"
+  printf '2026-11-22\t0\t1\tDELL U2723QE\n2026-11-18\t0\t0\tEpson EB-W49\n' > "$HOME_DIR/.local/state/omv/displays-seen"
+  local output
+  output=$(omv displays)
+  [[ $output == *'Plugged in now:'*'DELL U2723QE'*'Seen before:'*'Epson EB-W49'*'last seen 2026-11-18'* ]] \
+    || fail "expected both lists, got: $output"
+}
+
+says_to_plug_in_without_seen_displays() {
+  make_repo
+  local output
+  output=$(omv displays) || fail "expected exit 0"
+  [[ $output == *'plug one in'* ]] || fail "expected the plug-in hint, got: $output"
 }
 
 skips_bar_on_reload_aerospace() {
@@ -1151,6 +1169,8 @@ run_case 'should show usage when reload gets an extra argument' refuses_extra_re
 run_case "should add the display profile's gaps on reload aerospace" adds_profile_gaps_on_reload_aerospace
 run_case 'should reload AeroSpace on reload aerospace' reloads_aerospace_on_reload_aerospace
 run_case 'should leave the bar alone on reload aerospace' skips_bar_on_reload_aerospace
+run_case 'should list the displays plugged in and seen before on displays' lists_seen_displays
+run_case 'should say to plug a display in when none was seen on displays' says_to_plug_in_without_seen_displays
 run_case "should reload AeroSpace after updating when it's running" update_reloads_running_aerospace
 run_case "should not reload AeroSpace after updating when it isn't running" update_skips_stopped_aerospace
 run_case 'should wait for Hammerspoon to answer before the doctor runs after updating' waits_for_hammerspoon_before_doctor

@@ -2,13 +2,15 @@
 -- ~/.config/omv/displays whose displays are plugged in applies: AeroSpace's layout and gaps, Do
 -- Not Disturb, the theme, Ghostty's font size and the bar. Leaving a profile puts back what it
 -- changed. A notice names the profile; a mistake in the file is named instead, and nothing
--- else changes. The system menu and the palette can pick one by hand.
--- Without the file, none of this does anything.
+-- else changes. The system menu and the palette can pick one by hand, save the displays
+-- plugged in as a profile, or open the file in the editor; saving the file applies it.
+-- Without the file, none of this does anything but remember the displays seen.
 
 local shell = require("shell")
 local card = require("card")
 local displays = require("displays")
 local focus = require("focus")
+local apps = require("apps")
 
 local feature = {}
 
@@ -22,6 +24,8 @@ local GHOSTTY_PROFILE = shell.STATE_DIR .. "/ghostty-profile"
 local STATE = shell.STATE_DIR .. "/display-profile.json"
 -- Displays often connect in steps; the profile is worked out once they've settled.
 local SETTLE_SECONDS = 1.5
+-- An editor can save a few times in a row; the file is read once they've stopped.
+local SAVED_SECONDS = 1.0
 
 local function readState()
   -- hs.json.read logs an error for a file that isn't there, so that's checked first.
@@ -144,21 +148,72 @@ function feature.check()
   apply(profile, saved)
 end
 
--- The card: each profile, the one in use marked, and Follow the displays.
+-- Remembers the displays plugged in now, for the file's header and omv displays.
+local function recordSeen()
+  local seen = displays.recordSeen(displays.parseSeen(shell.readText(displays.SEEN_PATH)), screens(), os.date("%Y-%m-%d"))
+  os.execute("/bin/mkdir -p '" .. shell.STATE_DIR .. "'")
+  writeFile(displays.SEEN_PATH, displays.formatSeen(seen))
+  return seen
+end
+
+-- Opens the file in the editor from ~/.config/omv/apps, or macOS's text editor without it.
+local function openFile()
+  local editor = apps.read(shell.readText(apps.PATH)).editor
+  hs.task.new("/usr/bin/open", function(code)
+    if code ~= 0 then hs.task.new("/usr/bin/open", nil, { "-t", displays.PATH }):start() end
+  end, { "-a", editor, displays.PATH }):start()
+end
+
+-- Writes the starter file when there's none, so the editor opens on what to write.
+local function ensureFile()
+  if shell.readText(displays.PATH) then return end
+  os.execute("/bin/mkdir -p '" .. shell.HOME .. "/.config/omv'")
+  writeFile(displays.PATH, displays.starter(recordSeen()))
+end
+
+local function saveDisplays(profiles)
+  ensureFile()
+  local text, name = displays.addProfile(shell.readText(displays.PATH), screens(), profiles, os.date("%Y-%m-%d"))
+  writeFile(displays.PATH, text)
+  openFile()
+  shell.alert("Saved as " .. name .. ": add its settings, then save", 3)
+end
+
+-- The displays plugged in, as the save row's hint: DELL U2723QE + built-in.
+local function screensHint(profiles)
+  local found = displays.pick(profiles, screens())
+  if found then return "already: " .. found.name end
+  local outside, builtin = {}, false
+  for _, screen in ipairs(screens()) do
+    if screen.builtin then builtin = true else outside[#outside + 1] = screen.name end
+  end
+  if builtin then outside[#outside + 1] = "built-in" end
+  return table.concat(outside, " + ")
+end
+
+-- The card: each profile, the one in use marked, and Follow the displays; then saving the
+-- displays as a profile and opening the file, which is all it shows without profiles.
 function feature.open()
   local read = displays.parse(shell.readText(displays.PATH))
-  if #read.profiles == 0 then return shell.alert("No profiles yet: add them to ~/.config/omv/displays", 3) end
   local saved = readState()
   local rows = {}
   for _, profile in ipairs(read.profiles) do
     local hint = profile.name == saved.active and ("in use" .. ((saved.choice or {}).picked and " · picked" or "")) or summary(profile)
     rows[#rows + 1] = { id = "profile:" .. profile.name, icon = "󰍹", label = profile.name, hint = hint }
   end
-  rows[#rows + 1] = { id = "follow", icon = "󰑐", label = "Follow the displays", hint = "automatic" }
+  if #read.profiles > 0 then rows[#rows + 1] = { id = "follow", icon = "󰑐", label = "Follow the displays", hint = "automatic" } end
+  rows[#rows + 1] = { id = "save", icon = "󰐕", label = "Save these displays as a profile", hint = screensHint(read.profiles) }
+  rows[#rows + 1] = { id = "file", icon = "󰷈", label = "Open the profiles file",
+    hint = #read.profiles > 0 and "applies on save" or "with examples" }
   shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
     card.html({ prompt = "Display profile…", rows = rows, compact = true }), function(message)
       if message.type ~= "choose" then return shell.close() end
       shell.close()
+      if message.id == "save" then return saveDisplays(read.profiles) end
+      if message.id == "file" then
+        ensureFile()
+        return openFile()
+      end
       local state = readState()
       local name = message.id:match("^profile:(.+)$")
       local chosen = nil
@@ -171,10 +226,20 @@ function feature.open()
     end)
 end
 
-local pending = hs.timer.delayed.new(SETTLE_SECONDS, feature.check)
+local pending = hs.timer.delayed.new(SETTLE_SECONDS, function()
+  recordSeen()
+  feature.check()
+end)
+local edited = hs.timer.delayed.new(SAVED_SECONDS, feature.check)
 
 -- Kept on the feature, so they aren't garbage-collected.
 feature.screens = hs.screen.watcher.new(function() pending:start() end):start()
+-- The folder, not the file: an editor often saves by replacing the file, and it may not exist yet.
+feature.file = hs.pathwatcher.new(shell.HOME .. "/.config/omv", function(paths)
+  for _, path in ipairs(paths) do
+    if path:match("/displays$") then return edited:start() end
+  end
+end):start()
 feature.wake = hs.caffeinate.watcher.new(function(event)
   if event == hs.caffeinate.watcher.systemDidWake then pending:start() end
 end):start()

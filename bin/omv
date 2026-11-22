@@ -10,6 +10,7 @@
 #   omv reload aerospace                  rebuild aerospace.toml and reload AeroSpace only
 #   omv flags [<name> on|off]             list feature flags, or turn one on or off
 #   omv theme [<name>]                    list themes, or switch to one
+#   omv displays                          the display names a display profile's when can use
 #   omv version                           the commit omv is at
 
 # -E lets the ERR trap that offers undo reach into functions.
@@ -46,8 +47,8 @@ readonly THEMES_DIR=$HOME/.local/share/omv/themes
 readonly HS_SECONDS=${OMV_HS_SECONDS:-5}
 
 usage() {
-  sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
-  echo "usage: omv <install|update|doctor|uninstall|setup|reload|flags|theme|version>" >&2
+  sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  echo "usage: omv <install|update|doctor|uninstall|setup|reload|flags|theme|displays|version>" >&2
   exit 2
 }
 
@@ -353,6 +354,10 @@ case $command in
   setup) [ "$#" -eq 0 ] || usage; open_setup_app || exit 1 ;;
   flags) flags "$@" ;;
   theme) theme "$@" ;;
+  displays)
+    [ "$#" -eq 0 ] || usage
+    luajit "$REPO_DIR/config/hammerspoon/displays.lua" names "$HOME/.local/state/omv/displays-seen"
+    printf '\nUse a part of a name in when, in ~/.config/omv/displays.\n' ;;
   version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;
   *) usage ;;
 esac

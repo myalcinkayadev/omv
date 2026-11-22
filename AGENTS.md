@@ -73,8 +73,9 @@ layout = tiles
 gaps   = 12
 ```
 
-Hammerspoon reads the file whenever displays change, on wake and when it reloads, so apply an
-edit with `omv reload`. Leaving a profile puts back what it changed. A profile's gaps win over
+`omv displays` prints the names to use in `when`: the displays plugged in now and those seen
+before. Hammerspoon reads the file when it's saved, whenever displays change, on wake and when
+it reloads, so an edit applies on its own. Leaving a profile puts back what it changed. A profile's gaps win over
 the user's `aerospace.toml`, while the user's `~/.config/omv/ghostty` wins over its `font`.
 omv keeps the profile in use in `~/.local/state/omv/`, writing those files itself. `omv
 doctor` names a line in `displays` it can't read.

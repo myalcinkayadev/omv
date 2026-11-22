@@ -392,7 +392,12 @@ Under the footer are today's events from Calendar.app, so every account added th
 
 ## Display profiles
 
-A profile is a few settings for one display setup, such as tabs and tight gaps on the laptop alone, and tiles and roomy gaps at the desk. Write them in `~/.config/omv/displays`, one `[section]` each:
+A profile is a few settings for one display setup, such as tabs and tight gaps on the laptop alone, and tiles and roomy gaps at the desk. To start, Option+Escape, then **Display profile**:
+
+- **Save these displays as a profile** adds one for the displays plugged in now, named after the first that isn't built in, such as `[dell]`, then opens the file. Its settings are comments: remove a `#`, rename it to anything, and save.
+- **Open the profiles file** opens `~/.config/omv/displays` in the editor from `~/.config/omv/apps`, or TextEdit. Without the file it writes one first: the displays omv has seen, what each setting does, and examples left as comments.
+
+Saving the file applies it; there's no need to reload. `omv displays` prints the names of the displays plugged in now and those seen before, for a profile's `when`. The file holds one `[section]` each:
 
 ```ini
 # The first profile whose displays are plugged in is used.
@@ -423,6 +428,7 @@ gaps   = 4
 - **Ghostty** takes the font size in new windows, or after Cmd+Shift+,. A `font-size` in your own `~/.config/omv/ghostty` still wins.
 - **Gaps** are built into `aerospace.toml` after your own `~/.config/omv/aerospace.toml`, with `omv reload aerospace`.
 - **Your own code:** `~/.config/omv/hammerspoon.lua` can define `omvOnDisplayProfile(name)`, called with the profile's name on each switch, or nil when none is used.
+- **Names:** a profile's name can be anything without `[`, `]` or `#`, spaces too, such as `[Home desk]`. Two profiles can't share a name, whatever their case.
 - **Mistakes:** a line omv can't read changes nothing; the notice names it, such as `~/.config/omv/displays line 3: layout must be tiles, tabs or keep`, and `omv doctor` reports it too. Without the file, display profiles do nothing; `omv flags display-profiles off` turns them off altogether.
 
 ## Meeting mode
@@ -808,6 +814,7 @@ It also puts the `omv` command on your PATH, next to Homebrew's commands. From t
 omv doctor            # check the setup; omv doctor --fix clears a jam
 omv flags             # list feature flags; omv flags <name> on|off
 omv theme             # list themes; omv theme <name> switches
+omv displays          # the display names a display profile's when can use
 omv version           # the commit omv is at
 ```
 

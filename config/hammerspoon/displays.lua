@@ -69,12 +69,15 @@ local function setting(profile, name, value, gapsGiven)
 end
 
 -- The file's text, or nil when there's none: { profiles = { { name, when, builtinOnly, count,
--- settings } }, problems = { "line 3: …" } }. A bad line is skipped and named in problems.
+-- settings } }, problems = { "line 3: …" } }. A bad line is skipped and named in problems; so is
+-- a section with a bad or repeated name, with its lines.
 function displays.parse(text)
   local profiles, problems = {}, {}
   local current, gaps = nil, nil
+  -- Each name's line, by its lowercase form, so Laptop and laptop are one name.
+  local named = {}
   local function close()
-    if not current then return end
+    if not current or current.skipped then return end
     -- gaps.inner and gaps.outer win over gaps, wherever they are in the section.
     current.settings.gapsInner = current.settings.gapsInner or gaps.inner
     current.settings.gapsOuter = current.settings.gapsOuter or gaps.outer
@@ -85,10 +88,19 @@ function displays.parse(text)
   for line in (tostring(text or "") .. "\n"):gmatch("([^\n]*)\n") do
     number = number + 1
     local plain = trim((line:gsub("#.*$", "")))
-    local section = plain:match("^%[([%w%-_]+)%]$")
-    if section then
+    if plain:sub(1, 1) == "[" then
       close()
+      local section = trim(plain:match("^%[([^%[%]]*)%]$") or "")
       current, gaps = { name = section, settings = {} }, {}
+      local problem
+      -- A # starts a comment, so a name with one has lost its ] by now.
+      if section == "" then problem = "a profile's name can't have [, ] or #"
+      elseif named[section:lower()] then problem = "a profile named " .. section .. " is already on line " .. named[section:lower()]
+      else named[section:lower()] = number end
+      if problem then
+        problems[#problems + 1] = "line " .. number .. ": " .. problem
+        current.skipped = true
+      end
     elseif plain ~= "" then
       local name, value = plain:match("^([%w%-%.]+)%s*=%s*(.-)$")
       local problem
@@ -200,6 +212,161 @@ function displays.current(state, profiles, screens)
     end
   end
   return displays.pick(profiles, screens)
+end
+
+-- Every display omv has seen, so a profile can name one that isn't plugged in now. One line
+-- each: the date last seen, 1 when built in, 1 when plugged in now, and the name.
+displays.SEEN_PATH = (os.getenv("HOME") or "") .. "/.local/state/omv/displays-seen"
+
+-- seen is { { name, last, builtin, now } }; screens are the displays plugged in on date.
+function displays.recordSeen(seen, screens, date)
+  local recorded, byName = {}, {}
+  for _, entry in ipairs(seen or {}) do
+    recorded[#recorded + 1] = { name = entry.name, last = entry.last, builtin = entry.builtin, now = false }
+    byName[entry.name] = recorded[#recorded]
+  end
+  for _, screen in ipairs(screens or {}) do
+    local name = tostring(screen.name or "")
+    local entry = byName[name]
+    if not entry then
+      entry = { name = name }
+      recorded[#recorded + 1] = entry
+      byName[name] = entry
+    end
+    entry.last, entry.builtin, entry.now = date, screen.builtin == true, true
+  end
+  return recorded
+end
+
+function displays.formatSeen(seen)
+  local lines = {}
+  for _, entry in ipairs(seen or {}) do
+    lines[#lines + 1] = table.concat({ entry.last, entry.builtin and "1" or "0", entry.now and "1" or "0", entry.name }, "\t")
+  end
+  return #lines > 0 and (table.concat(lines, "\n") .. "\n") or ""
+end
+
+function displays.parseSeen(text)
+  local seen = {}
+  for line in tostring(text or ""):gmatch("[^\n]+") do
+    local last, builtin, now, name = line:match("^([^\t]*)\t([01])\t([01])\t(.+)$")
+    if name then seen[#seen + 1] = { name = name, last = last, builtin = builtin == "1", now = now == "1" } end
+  end
+  return seen
+end
+
+-- The names to write a when line with: those plugged in now, then those seen before.
+function displays.nameLines(seen)
+  local now, before = {}, {}
+  for _, entry in ipairs(seen or {}) do
+    if entry.now then
+      now[#now + 1] = (string.format("  %-26s%s", entry.name, entry.builtin and "(built-in)" or "")):gsub("%s+$", "")
+    else
+      before[#before + 1] = string.format("  %-26slast seen %s", entry.name, entry.last)
+    end
+  end
+  if #now == 0 and #before == 0 then return { "No display seen yet: plug one in once while Hammerspoon runs." } end
+  local lines = { "Plugged in now:" }
+  for _, line in ipairs(now) do lines[#lines + 1] = line end
+  if #before > 0 then
+    lines[#lines + 1] = "Seen before:"
+    for _, line in ipairs(before) do lines[#lines + 1] = line end
+  end
+  return lines
+end
+
+local STARTER_HEAD = [[
+# Display profiles: settings that follow the displays you plug in.
+# One [section] per profile; the first whose `when` matches is used.
+# Leaving a profile puts back what it changed. Save, and omv applies it.
+#
+]]
+
+local STARTER_BODY = [[
+#
+# Settings; leave one out to keep omv's own:
+#   when     part of a display's name, comma for any; or: built-in only
+#   count    how many displays are plugged in
+#   layout   tiles | tabs
+#   gaps     pixels; gaps.inner and gaps.outer set one kind
+#   quiet    on | off            Do Not Disturb while it's used
+#   theme    a name from `omv theme`
+#   font     Ghostty's font size
+#   bar      shown | hidden
+#   on-enter, on-leave           a shell command
+#
+# Remove the # in front of a section's lines to use it. Name a profile anything.
+
+# [desk]
+# when   = DELL U2723QE          # a display whose name contains this
+# layout = tiles
+# gaps   = 10
+
+# [presenting]
+# when   = projector, mirrored
+# layout = tiles
+# quiet  = on                   # Do Not Disturb while it's in use
+
+# [laptop]
+# when   = built-in only
+# layout = tabs
+# gaps   = 4
+]]
+
+-- The file written when there's none: what each setting does, the displays omv knows, and
+-- examples left as comments, so it changes nothing until one is used.
+function displays.starter(seen)
+  local names = {}
+  for _, line in ipairs(displays.nameLines(seen)) do names[#names + 1] = "# " .. line end
+  return STARTER_HEAD .. table.concat(names, "\n") .. "\n" .. STARTER_BODY
+end
+
+local function taken(profiles, name)
+  for _, profile in ipairs(profiles or {}) do
+    if profile.name:lower() == name:lower() then return true end
+  end
+  return false
+end
+
+-- text with a profile added for the displays in screens, and the profile's name: the first
+-- word of the first display that isn't built in, or laptop, numbered when profiles has it.
+-- Its settings are left as comments, so it matches but changes nothing until edited.
+function displays.addProfile(text, screens, profiles, date)
+  local outside = {}
+  for _, screen in ipairs(screens or {}) do
+    if not screen.builtin then outside[#outside + 1] = tostring(screen.name) end
+  end
+  local base = #outside > 0 and (outside[1]:match("^[^%s%(%)%[%]#,]+") or "display"):lower() or "laptop"
+  local name, number = base, 2
+  while taken(profiles, name) do
+    name = base .. " " .. number
+    number = number + 1
+  end
+  local lines = {
+    "# Saved " .. date .. " for: " .. (#outside > 0 and table.concat(outside, ", ") or "the built-in display") .. ". Rename it to anything.",
+    "[" .. name .. "]",
+    "when = " .. (#outside > 0 and table.concat(outside, ", ") or "built-in only"),
+    "# layout = tiles",
+    "# gaps   = 10",
+    "# font   = 15",
+  }
+  text = tostring(text or "")
+  if text ~= "" then text = text:gsub("\n*$", "") .. "\n\n" end
+  return text .. table.concat(lines, "\n") .. "\n", name
+end
+
+local function readFile(path)
+  local file = io.open(path, "r")
+  if not file then return nil end
+  local text = file:read("*a")
+  file:close()
+  return text
+end
+
+-- Run as a script by omv displays: prints the displays omv has seen.
+if arg and arg[0] and arg[0]:match("displays%.lua$") and arg[1] == "names" then
+  print(table.concat(displays.nameLines(displays.parseSeen(readFile(arg[2] or displays.SEEN_PATH))), "\n"))
+  os.exit(0)
 end
 
 -- Run as a script by omv doctor: prints each problem in the file, and fails when there's one.

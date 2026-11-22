@@ -102,7 +102,67 @@ check.that("should drop the hand-picked profile once the displays change",
 check.that("should follow the displays when follow is picked", displays.current(displays.choose(state, nil, { builtIn, dell }), read.profiles, { builtIn, dell }).name == "desk")
 
 -- AeroSpace's layout command.
-check.that("should lay out a whole workspace from its root as tabs", table.concat(displays.layoutArgs("3", "tabs"), " ") == "layout --workspace 3 --root accordion")
+local layoutArgs = table.concat(displays.layoutArgs("3", "tabs"), " ")
+check.that("should lay out a whole workspace from its root as tabs", layoutArgs == "layout --workspace 3 --root accordion")
 check.that("should lay out a whole workspace from its root as tiles", table.concat(displays.layoutArgs("3", "tiles"), " ") == "layout --workspace 3 --root tiles")
+
+-- Profile names.
+check.that("should read a profile named with a space", displays.parse("[Home desk]\nwhen = x\n").profiles[1].name == "Home desk")
+check.that("should read a profile named with Turkish letters", displays.parse("[Ev masası]\nwhen = x\n").profiles[1].name == "Ev masası")
+check.that("should trim the spaces around a profile's name", displays.parse("[ Home desk ]\nwhen = x\n").profiles[1].name == "Home desk")
+check.that("should report the line when a profile's name has a ]",
+  displays.parse("[a]b]\nwhen = x\n").problems[1] == "line 1: a profile's name can't have [, ] or #")
+check.that("should report the line when a profile's name has a #",
+  displays.parse("[a#b]\nwhen = x\n").problems[1] == "line 1: a profile's name can't have [, ] or #")
+check.that("should report a second profile with the same name, ignoring case",
+  displays.parse("[Laptop]\nwhen = x\n\n[laptop]\nwhen = y\n").problems[1] == "line 4: a profile named laptop is already on line 1")
+
+-- Displays seen.
+local seen = displays.recordSeen({}, { dell, builtIn }, "2026-11-20")
+check.that("should record a display seen for the first time, with the date",
+  seen[1].name == "DELL U2723QE" and seen[1].last == "2026-11-20" and seen[1].now == true)
+local again = displays.recordSeen(seen, { dell }, "2026-11-22")
+local dellEntries = 0
+for _, entry in ipairs(again) do if entry.name == dell.name then dellEntries = dellEntries + 1 end end
+check.that("should keep one entry for a display seen again", dellEntries == 1)
+check.that("should move a display's date when it's seen again", again[1].last == "2026-11-22")
+check.that("should mark a display that isn't plugged in any more as not now", again[2].name == builtIn.name and again[2].now == false)
+check.that("should read back the seen list it writes",
+  displays.parseSeen(displays.formatSeen(again))[2].last == "2026-11-20" and displays.parseSeen(displays.formatSeen(again))[2].builtin == true)
+local namesNow = table.concat(displays.nameLines(seen), "\n")
+check.that("should leave out seen before when every display is plugged in", not check.contains(namesNow, "Seen before"))
+local namesLater = table.concat(displays.nameLines(again), "\n")
+check.that("should list a display that isn't plugged in under seen before, with its date",
+  check.contains(namesLater, "Seen before:\n  Built-in Retina Display") and check.contains(namesLater, "last seen 2026-11-20"))
+check.that("should mark the built-in display", check.contains(namesNow, "(built-in)"))
+check.that("should say to plug a display in when none was seen", check.contains(table.concat(displays.nameLines({}), "\n"), "plug"))
+
+-- The starter file.
+local starter = displays.starter(seen)
+check.that("should give no profiles in the starter file", #displays.parse(starter).profiles == 0)
+check.that("should give no problems in the starter file", #displays.parse(starter).problems == 0)
+check.that("should name each plugged-in display in the starter file", check.contains(starter, "#   DELL U2723QE"))
+check.that("should still be a valid starter file when no display was seen",
+  #displays.parse(displays.starter({})).problems == 0 and check.contains(displays.starter({}), "plug"))
+
+-- Saving the displays as a profile.
+local added, name = displays.addProfile("", { builtIn, dell }, {}, "2026-11-22")
+local addedRead = displays.parse(added)
+check.that("should add a profile whose when is the external display", addedRead.profiles[1].when[1] == "DELL U2723QE" and #addedRead.profiles[1].when == 1)
+check.that("should name the profile after the external display", name == "dell")
+check.that("should add a profile that matches the displays", displays.pick(addedRead.profiles, { builtIn, dell }).name == "dell")
+check.that("should put a comment naming the displays above the profile",
+  check.contains(added, "# Saved 2026-11-22 for: DELL U2723QE. Rename it to anything.\n[dell]"))
+local laptopOnly = displays.parse((displays.addProfile("", { builtIn }, {}, "2026-11-22")))
+check.that("should name a profile for the built-in display alone laptop", laptopOnly.profiles[1].name == "laptop")
+check.that("should use built-in only for the built-in display alone", laptopOnly.profiles[1].builtinOnly == true)
+local _, taken = displays.addProfile("", { builtIn, dell }, displays.parse("[Dell]\nwhen = x\n").profiles, "2026-11-22")
+check.that("should number the name when it's taken", taken == "dell 2")
+local _, lg = displays.addProfile("", { { name = "LG HDR 4K (2)", builtin = false } }, {}, "2026-11-22")
+check.that("should name a profile with the display's first word in lowercase", lg == "lg")
+local kept = displays.parse((displays.addProfile("[laptop]\nwhen = built-in only\ngaps = 4", { builtIn, dell }, {}, "2026-11-22")))
+check.that("should keep the profiles already in the file", kept.profiles[1].name == "laptop" and kept.profiles[1].settings.gapsInner == 4)
+check.that("should start the added profile on its own line when the file has no last newline",
+  #kept.problems == 0 and kept.profiles[2].name == "dell")
 
 check.finish()
