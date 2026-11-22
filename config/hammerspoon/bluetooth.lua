@@ -31,6 +31,16 @@ function bluetooth.readPower(output)
   return nil
 end
 
+-- The bar's icons, Nerd Font glyphs: on, and off.
+bluetooth.ICON_ON = "\243\176\130\175"
+bluetooth.ICON_OFF = "\243\176\130\178"
+
+-- The bar item's properties for power, as readPower gives it: hidden when it can't be read.
+function bluetooth.barProperties(power)
+  if power == nil then return { "drawing=off" } end
+  return { "drawing=on", "icon=" .. (power and bluetooth.ICON_ON or bluetooth.ICON_OFF) }
+end
+
 -- Devices from a decoded `blueutil --inquiry --format json`, left out when already paired.
 -- The search finds classic Bluetooth only: Bluetooth Low Energy devices pair in Settings.
 function bluetooth.found(list, paired)

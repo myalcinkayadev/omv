@@ -98,12 +98,11 @@ if omv_flag_on sound; then
 fi
 
 if omv_flag_on bluetooth; then
-  # Bluetooth, on or off, drawn only when blueutil is installed. The card redraws it with the
-  # bluetooth_change event after a change; the timer catches changes made elsewhere.
-  sketchybar --add event bluetooth_change \
-    --add item bluetooth right \
-    --set bluetooth "${STATUS_ICON[@]}" label.drawing=off update_freq=60 script="$PLUGIN_DIR/bluetooth.sh" \
-    --subscribe bluetooth bluetooth_change system_woke mouse.clicked
+  # Bluetooth, on or off, drawn only when blueutil is installed. Hammerspoon sets the icon,
+  # since only it has Bluetooth access; hidden until it does.
+  sketchybar --add item bluetooth right \
+    --set bluetooth "${STATUS_ICON[@]}" label.drawing=off drawing=off script="$PLUGIN_DIR/bluetooth.sh" \
+    --subscribe bluetooth mouse.clicked
 fi
 
 if omv_flag_on network; then

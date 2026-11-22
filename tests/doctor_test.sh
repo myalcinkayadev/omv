@@ -131,7 +131,7 @@ reports_hanging_hammerspoon() {
 
 reports_stuck_call() {
   complete_setup
-  stuck_call '4242 01:01 hs -c return omvBluetoothPower()'
+  stuck_call '4242 01:01 hs -c omvRedrawBar()'
   expect_report '✗ 1 stuck hs call — fix: omv doctor --fix'
 }
 

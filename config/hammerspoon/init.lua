@@ -214,8 +214,6 @@ if networkCards then
 end
 if bluetoothCard then
   omvToggleBluetooth = later(bluetoothCard.toggle)
-  -- Answers at once, not later: the bar's plugin reads the answer.
-  omvBluetoothPower = bluetoothCard.power
 end
 if weatherCard then omvToggleWeather = later(weatherCard.toggle) end
 if batteryCard then omvToggleBattery = later(batteryCard.toggle) end
@@ -267,6 +265,7 @@ omvRedrawBar = later(function()
   if reminderCards then reminderCards.redrawBar() end
   if clipboardHistory then clipboardHistory.redrawBar() end
   if mic then mic.redrawBar() end
+  if bluetoothCard then bluetoothCard.redrawBar() end
 end)
 
 -- Your own settings, from ~/.config/omv/hammerspoon.lua when it exists. Last, so it can

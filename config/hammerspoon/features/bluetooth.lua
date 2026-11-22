@@ -2,6 +2,8 @@
 -- on or off, and connects or disconnects paired devices, connected ones first. It reads and
 -- changes Bluetooth through blueutil (brew install blueutil); without it, the card says so.
 -- The first time, macOS asks to let Hammerspoon use Bluetooth.
+-- It also draws the bar's Bluetooth icon: only Hammerspoon has Bluetooth access, so the bar
+-- can't read it itself.
 
 local shell = require("shell")
 local card = require("card")
@@ -13,8 +15,11 @@ local BLUEUTIL = "/opt/homebrew/bin/blueutil"
 local WIDTH = 420
 local VISIBLE_ROWS = 14
 
-local function blueutil(arguments)
-  return hs.execute(BLUEUTIL .. " " .. arguments .. " 2>/dev/null") or ""
+-- Hands done blueutil's output. In the background: blueutil hangs while Bluetooth is slow.
+local function blueutil(arguments, done)
+  shell.execute(BLUEUTIL .. " " .. arguments .. " 2>/dev/null", function(output)
+    if done then done(output) end
+  end)
 end
 
 -- What the card shows while it's open: the search, a device's progress (busy), what failed,
@@ -24,22 +29,45 @@ local function freshSession()
 end
 local session = freshSession()
 
-local function paired()
-  local ok, list = pcall(hs.json.decode, blueutil("--paired --format json"))
-  return bluetooth.devices(ok and list or nil)
+local function paired(done)
+  blueutil("--paired --format json", function(output)
+    local ok, list = pcall(hs.json.decode, output)
+    done(bluetooth.devices(ok and list or nil))
+  end)
 end
 
-local function state()
-  if not hs.fs.attributes(BLUEUTIL) then return { installed = false } end
-  local power = bluetooth.readPower(blueutil("--power"))
-  if power == nil then return { installed = true, denied = true } end
-  return { installed = true, power = power, devices = power and paired() or {}, search = session.search,
-    busy = session.busy, connectFailed = session.connectFailed, pairFailures = session.pairFailures }
+-- Hands done the power as readPower reads it: nil without blueutil or Bluetooth access.
+local function readPower(done)
+  if not hs.fs.attributes(BLUEUTIL) then return done(nil) end
+  blueutil("--power", function(output) done(bluetooth.readPower(output)) end)
 end
 
--- The bar's icon redraws on this event.
+local function state(done)
+  if not hs.fs.attributes(BLUEUTIL) then return done({ installed = false }) end
+  readPower(function(power)
+    if power == nil then return done({ installed = true, denied = true }) end
+    local function withDevices(devices)
+      done({ installed = true, power = power, devices = devices, search = session.search,
+        busy = session.busy, connectFailed = session.connectFailed, pairFailures = session.pairFailures })
+    end
+    if not power then return withDevices({}) end
+    paired(withDevices)
+  end)
+end
+
+-- The bar's icon as last set, so an unchanged one isn't sent again.
+local iconShown = nil
+
 local function redrawIcon()
-  hs.task.new(shell.SKETCHYBAR, nil, { "--trigger", "bluetooth_change" }):start()
+  readPower(function(power)
+    local properties = bluetooth.barProperties(power)
+    local key = table.concat(properties, "\n")
+    if key == iconShown then return end
+    iconShown = key
+    local arguments = { "--set", "bluetooth" }
+    for _, property in ipairs(properties) do arguments[#arguments + 1] = property end
+    hs.task.new(shell.SKETCHYBAR, nil, arguments):start()
+  end)
 end
 
 local show
@@ -99,13 +127,16 @@ local function searchRound()
   searchTask = hs.task.new(BLUEUTIL, function(_, output)
     if mine ~= generation then return end
     local ok, list = pcall(hs.json.decode, output or "")
-    session.search = bluetooth.searchStep(session.search, { type = "round", list = ok and list or nil, paired = paired() })
-    if session.search.searching then
-      searchRound()
-    else
-      stopSearch()
-    end
-    redraw()
+    paired(function(devices)
+      if mine ~= generation then return end
+      session.search = bluetooth.searchStep(session.search, { type = "round", list = ok and list or nil, paired = devices })
+      if session.search.searching then
+        searchRound()
+      else
+        stopSearch()
+      end
+      redraw()
+    end)
   end, { "--inquiry", tostring(bluetooth.SEARCH_SECONDS), "--format", "json" })
   searchTask:start()
 end
@@ -172,14 +203,17 @@ local function onMessage(message)
   if id == "power.on" or id == "power.off" then
     stopSearch()
     session = freshSession()
-    blueutil("--power " .. (id == "power.on" and "1" or "0"))
-    redrawIcon()
-    return show()
+    return blueutil("--power " .. (id == "power.on" and "1" or "0"), function()
+      redrawIcon()
+      redraw()
+    end)
   end
   local address = id:match("^device:(.+)$")
-  for _, device in ipairs(state().devices or {}) do
-    if device.address == address then return toggleDevice(device) end
-  end
+  state(function(current)
+    for _, device in ipairs(current.devices or {}) do
+      if device.address == address then return toggleDevice(device) end
+    end
+  end)
 end
 
 local function onClose()
@@ -198,24 +232,32 @@ local function linesOf(rows)
 end
 
 show = function()
-  local rows = bluetooth.rows(state())
-  local screen = { prompt = "Bluetooth…", rows = rows, compact = true, selected = bluetooth.indexOf(rows, session.selected) }
-  local height = shell.listHeight(linesOf(rows), VISIBLE_ROWS)
-  shell.show("bluetooth", shell.anchored(WIDTH, height, "bluetooth"), card.html(screen), onMessage, { onClose = onClose })
-end
-
--- For the bar's icon: "1" when on, "0" when off, "" when it can't be read. SketchyBar asks
--- through hs -c, since only Hammerspoon has Bluetooth access.
-function feature.power()
-  if not hs.fs.attributes(BLUEUTIL) then return "" end
-  local power = bluetooth.readPower(blueutil("--power"))
-  if power == nil then return "" end
-  return power and "1" or "0"
+  state(function(current)
+    local rows = bluetooth.rows(current)
+    local screen = { prompt = "Bluetooth…", rows = rows, compact = true, selected = bluetooth.indexOf(rows, session.selected) }
+    local height = shell.listHeight(linesOf(rows), VISIBLE_ROWS)
+    shell.show("bluetooth", shell.anchored(WIDTH, height, "bluetooth"), card.html(screen), onMessage, { onClose = onClose })
+  end)
 end
 
 function feature.toggle()
   if shell.isOpen("bluetooth") then return shell.close() end
   show()
 end
+
+-- A restarted bar has lost the icon, so it is sent again.
+function feature.redrawBar()
+  iconShown = nil
+  redrawIcon()
+end
+
+-- Bluetooth can be turned on or off elsewhere, so the icon is read again each minute and
+-- on wake. Kept on the feature, so they aren't garbage-collected.
+local ICON_SECONDS = 60
+feature.iconTimer = hs.timer.doEvery(ICON_SECONDS, redrawIcon)
+feature.wakeWatcher = hs.caffeinate.watcher.new(function(event)
+  if event == hs.caffeinate.watcher.systemDidWake then redrawIcon() end
+end):start()
+redrawIcon()
 
 return feature

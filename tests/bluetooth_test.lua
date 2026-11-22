@@ -34,6 +34,11 @@ local REFUSED = "Error: Received abort signal, it may be due to absence of acces
 check.that("should read power 1 as on", bluetooth.readPower("1\n") == true)
 check.that("should read power 0 as off", bluetooth.readPower("0\n") == false)
 check.that("should read a refusal as no access", bluetooth.readPower(REFUSED) == nil)
+local function joined(power) return table.concat(bluetooth.barProperties(power), " ") end
+check.that("should draw the on icon when Bluetooth is on", joined(true) == "drawing=on icon=" .. bluetooth.ICON_ON)
+check.that("should draw the off icon when Bluetooth is off", joined(false) == "drawing=on icon=" .. bluetooth.ICON_OFF)
+check.that("should hide the icon when the power can't be read", joined(nil) == "drawing=off")
+check.that("should use the bar's on glyph", bluetooth.ICON_ON == "\243\176\130\175")
 local refused = bluetooth.rows({ installed = true, denied = true })
 check.that("should say to allow Bluetooth for Hammerspoon when blueutil is refused",
   #refused == 1 and refused[1].label:find("Allow Bluetooth for Hammerspoon", 1, true) ~= nil)
