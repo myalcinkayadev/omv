@@ -223,6 +223,14 @@ check.that("should set a screen's gaps as one line when equal, and remove the ki
   check.contains(workspaces.setScreenGaps(FILE, "DELL", 6, 6), "[screen DELL]\ngaps = 6\n") and not check.contains(workspaces.setScreenGaps(FILE, "DELL", 6, 6), "gaps.inner"))
 check.that("should set each kind of a screen's gaps when they differ",
   check.contains(workspaces.setScreenGaps(FILE, "laptop", 2, 8), "gaps.inner = 2") and check.contains(workspaces.setScreenGaps(FILE, "laptop", 2, 8), "gaps.outer = 8"))
+check.that("should remove a screen's section once its gaps go back to omv's",
+  not check.contains(workspaces.setScreenGaps("[workspace 1]\n\n[screen DELL]\ngaps = 4\n", "DELL", nil, nil), "[screen DELL]"))
+check.that("should keep a screen's section that still sets its layout",
+  check.contains(workspaces.setScreenGaps("[screen DELL]\ngaps = 4\nlayout = tabs\n", "DELL", nil, nil), "[screen DELL]\nlayout = tabs\n"))
+check.that("should remove a screen's section once its layout goes back to omv's",
+  not check.contains(workspaces.setScreenLayout("[workspace 1]\n[screen laptop]\nlayout = tabs\n", "laptop", nil), "[screen laptop]"))
+check.that("should keep a screen's section that has a comment", check.contains(
+  workspaces.setScreenGaps("[screen DELL]\n# the desk\ngaps = 4\n", "DELL", nil, nil), "[screen DELL]\n# the desk\n"))
 
 -- Apps taken off a workspace go back where the rules in aerospace.toml send them.
 local BUILT = [==[

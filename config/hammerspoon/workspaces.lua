@@ -696,18 +696,24 @@ function workspaces.setWorkspace(text, list, workspace, key, value)
   return inifile.set(materialize(text, list), "workspace " .. workspace, key, value)
 end
 
+-- text without section when nothing is left under it, so omv's own values leave no header.
+local function withoutEmpty(text, section)
+  if not inifile.isEmpty(text, section) then return text end
+  return (inifile.removeSection(text, section))
+end
+
 -- text with screen's gaps set: one gaps line when they're equal, each kind otherwise.
 function workspaces.setScreenGaps(text, screen, inner, outer)
   local section = "screen " .. screen
   local equal = inner ~= nil and inner == outer
   text = inifile.set(text, section, "gaps", equal and inner or nil)
   text = inifile.set(text, section, "gaps.inner", (not equal) and inner or nil)
-  return inifile.set(text, section, "gaps.outer", (not equal) and outer or nil)
+  return withoutEmpty(inifile.set(text, section, "gaps.outer", (not equal) and outer or nil), section)
 end
 
 -- text with screen's layout set, or removed for nil.
 function workspaces.setScreenLayout(text, screen, layout)
-  return inifile.set(text, "screen " .. screen, "layout", layout)
+  return withoutEmpty(inifile.set(text, "screen " .. screen, "layout", layout), "screen " .. screen)
 end
 
 -- Every display omv has seen, so a workspace or a screen can name one that isn't plugged in now.

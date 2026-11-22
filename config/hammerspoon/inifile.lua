@@ -1,5 +1,5 @@
 -- Changes ~/.config/omv/workspaces' [section] lines in place: a key's value, a section added,
--- renamed or removed. Only the lines asked for change; comments and the rest stay as written.
+-- or removed. Only the lines asked for change; comments and the rest stay as written.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local inifile = {}
@@ -94,6 +94,17 @@ end
 
 function inifile.hasSection(text, section)
   return bounds(splitLines(text), section) ~= nil
+end
+
+-- Whether section exists with nothing under its header, not even a comment.
+function inifile.isEmpty(text, section)
+  local lines = splitLines(text)
+  local first, last = bounds(lines, section)
+  if not first then return false end
+  for index = first + 1, last do
+    if trim(lines[index]) ~= "" then return false end
+  end
+  return true
 end
 
 return inifile

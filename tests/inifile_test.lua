@@ -29,6 +29,9 @@ local without, block = inifile.removeSection(TEXT, "workspace 1")
 check.that("should remove a section", not check.contains(without, "[workspace 1]") and check.contains(without, "[workspace 2]"))
 check.that("should give back the removed lines", check.contains(block, "[workspace 1]\non   = DELL, main"))
 check.that("should keep one blank line between the sections around a removed one", without == "# mine\n[workspace 2]\napps = Helium\n")
+check.that("should find a section with nothing under its header empty",
+  inifile.isEmpty("[screen DELL]\n\n[workspace 1]\non = main\n", "screen DELL") and not inifile.isEmpty("[screen DELL]\n# mine\n", "screen DELL")
+  and not inifile.isEmpty("", "screen DELL"))
 check.that("should say whether a section exists", inifile.hasSection(TEXT, "workspace 2") and not inifile.hasSection(TEXT, "workspace 3"))
 
 check.finish()
