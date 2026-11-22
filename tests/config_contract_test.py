@@ -138,7 +138,24 @@ def finder_title_filters() -> list[str]:
     ]
 
 
+# Features that run their commands with hs.task: hs.execute and hs.osascript.applescript wait
+# on Hammerspoon's only thread, which freezes every card and key until the command finishes.
+NON_BLOCKING_FEATURES = ("agents", "claudeprojects", "devlayout", "meeting", "procs", "network", "bluetooth", "waiting", "workspaces")
+BLOCKING_CALL = re.compile(r"hs\.execute\(|hs\.osascript\.applescript\(|:waitUntilExit\(")
+
+
+def blocking_calls(feature: str) -> list[str]:
+    path = REPO / "config/hammerspoon/features" / f"{feature}.lua"
+    return [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+            if BLOCKING_CALL.search(line) and not line.lstrip().startswith("--")]
+
+
 class ConfigContract(unittest.TestCase):
+    def test_should_run_no_blocking_call_when_a_feature_was_made_non_blocking(self) -> None:
+        for feature in NON_BLOCKING_FEATURES:
+            with self.subTest(feature=feature):
+                self.assertEqual(blocking_calls(feature), [])
+
     def test_should_bind_each_key_only_once_when_aerospace_and_hammerspoon_are_compared(self) -> None:
         self.assertEqual(aerospace_keys() & set(hammerspoon_keys()), set())
 
