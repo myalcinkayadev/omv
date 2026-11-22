@@ -149,4 +149,12 @@ check.that("should start a file built with a profile with one header line", sele
 check.that("should build as before without a profile", merge.buildAll(DEFAULTS, nil, nil) == built(nil))
 check.that("should build as before with only the user's file", merge.buildAll(DEFAULTS, "[gaps]\ninner.vertical = 7\n", nil) == built("[gaps]\ninner.vertical = 7\n"))
 
+-- A profile's app rules go before omv's and the user's, since AeroSpace takes the first that matches.
+local RULE = "[[on-window-detected]]\nif.app-name-regex-substring = '(?i)^Zed$'\nrun = 'move-node-to-workspace 1'\n"
+local ruled = merge.buildAll(DEFAULTS, "[[on-window-detected]]\nif.app-id = 'mine'\nrun = 'layout floating'\n", { text = RULE, first = true })
+local profileAt, omvAt, userAt = ruled:find("(?i)^Zed$", 1, true), ruled:find("if.app-id = 'x'", 1, true), ruled:find("if.app-id = 'mine'", 1, true)
+check.that("should put a layer's rules first when it asks to", profileAt and omvAt and userAt and profileAt < omvAt and omvAt < userAt)
+check.that("should still append a layer's rules by default",
+  merge.buildAll(DEFAULTS, RULE):find("(?i)^Zed$", 1, true) > merge.buildAll(DEFAULTS, RULE):find("if.app-id = 'x'", 1, true))
+
 check.finish()

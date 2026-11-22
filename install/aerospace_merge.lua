@@ -179,8 +179,10 @@ local function clash(omvItems, userItems)
   end
 end
 
--- The built text, or nil and the user file's "line N: reason".
-function merge.build(defaults, user)
+-- The built text, or nil and the user file's "line N: reason". first puts user's [[array]]
+-- entries before omv's instead of after, as a display profile's app rules need: AeroSpace
+-- takes the first rule that matches.
+function merge.build(defaults, user, first)
   -- A byte order mark, as some editors write, isn't part of the first line.
   if user then user = user:gsub("^\239\187\191", "") end
   if not user or trim(user) == "" then return merge.HEADER .. "\n" .. defaults end
@@ -208,8 +210,20 @@ function merge.build(defaults, user)
     end
   end
 
+  local function addArrays()
+    for _, entry in ipairs(arrays) do
+      out[#out + 1] = ""
+      append(out, entry)
+    end
+    arrays = {}
+  end
+
   if not last[""] then addNew("") end
   for index, item in ipairs(omvItems) do
+    if first and item.kind == "header" and item.array and #arrays > 0 then
+      addArrays()
+      out[#out + 1] = ""
+    end
     local mine = item.kind == "key" and keys[item.section] and keys[item.section].byKey[item.key]
     if mine and not item.section:find("^%[%[") then
       append(out, mine)
@@ -227,23 +241,22 @@ function merge.build(defaults, user)
       addNew(section)
     end
   end
-  for _, entry in ipairs(arrays) do
-    out[#out + 1] = ""
-    append(out, entry)
-  end
+  addArrays()
   return table.concat(out, "\n") .. "\n"
 end
 
 -- defaults with each layer applied in turn, such as the user's file and then a display
--- profile's gaps; a nil layer is skipped. The header starts the result once. nil and the
--- problem when a layer can't be read, as build gives.
+-- profile's gaps; a nil layer is skipped. A layer can be { text, first } to put its [[array]]
+-- entries before omv's. The header starts the result once. nil and the problem when a layer
+-- can't be read, as build gives.
 function merge.buildAll(defaults, ...)
   local headerLine = "^" .. merge.HEADER:gsub("%p", "%%%0") .. "\n"
-  local text = defaults
+  local text, first = defaults, false
   for index = 1, select("#", ...) do
     local layer = select(index, ...)
+    if type(layer) == "table" then layer, first = layer.text, layer.first else first = false end
     if layer ~= nil then
-      local built, problem = merge.build(text, layer)
+      local built, problem = merge.build(text, layer, first)
       if not built then return nil, problem end
       -- Each pass adds the header; the next one starts from the text without it.
       text = built:gsub(headerLine, "", 1)
@@ -290,7 +303,7 @@ if arg and arg[0] and arg[0]:match("aerospace_merge%.lua$") then
     defaults = workspaces.rewriteDefaults(defaults, workspaces.parse((readFile(arg[4]))))
     screens = arg[5] and readFile(arg[5]) or nil
   end
-  local text, problem = merge.buildAll(defaults, user, screens, profile)
+  local text, problem = merge.buildAll(defaults, user, screens, profile and { text = profile, first = true })
   if not text then
     io.stderr:write("~/.config/omv/aerospace.toml " .. problem .. "\n")
     os.exit(1)
