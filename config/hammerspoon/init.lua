@@ -121,7 +121,9 @@ if devLayout then
 end
 if displayProfiles then
   -- No key: it's run from the palette, the key list or the system menu.
-  keys.launchers[#keys.launchers + 1] = { description = "Display profile", group = "Tools", run = displayProfiles.open, runs = true }
+  keys.launchers[#keys.launchers + 1] = { description = "Profile", group = "Tools", run = displayProfiles.open, runs = true }
+  keys.launchers[#keys.launchers + 1] = { description = "Keep this app on this workspace", group = "Tools",
+    run = displayProfiles.keepAppHere, runs = true }
 end
 if meetingMode then
   -- No key: it's run from the palette or the key list.
@@ -222,6 +224,12 @@ if captureMenu then
 end
 if focusMode then omvToggleFocus = later(focusMode.toggle) end
 if displayProfiles then omvDisplayProfiles = later(displayProfiles.open) end
+-- AeroSpace's workspace change, while the profile in use opens an app on an empty workspace.
+if displayProfiles then
+  omvWorkspaceChanged = function(workspace)
+    hs.timer.doAfter(0, function() displayProfiles.workspaceChanged(workspace) end)
+  end
+end
 if tailscalePanel then omvToggleTailscale = later(tailscalePanel.toggle) end
 if nightLight then omvToggleNightLight = later(nightLight.toggle) end
 if mic then omvToggleMic = later(mic.toggle) end

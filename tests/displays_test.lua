@@ -244,10 +244,15 @@ local function editHints(settings)
   for _, row in ipairs(displays.editRows(settings)) do found[row.id] = row.hint end
   return found
 end
+local function gapHints(inner, outer)
+  local found = {}
+  for _, row in ipairs(displays.gapRows(inner, outer)) do found[row.id] = row.hint end
+  return found
+end
 local editHint = editHints({ layout = "tabs", gapsInner = 4, gapsOuter = 4 })
-check.that("should show each setting's value", check.contains(editHint.layout, "tabs") and check.contains(editHint.gaps, "4"))
+check.that("should show each setting's value", check.contains(editHint.layout, "tabs") and check.contains(gapHints(4, 4).gaps, "4"))
 check.that("should show keep for a setting the profile doesn't set", check.contains(editHint.theme, "keep"))
-check.that("should show both values on all gaps when they differ", check.contains(editHints({ gapsInner = 8, gapsOuter = 12 }).gaps, "8 · 12"))
+check.that("should show both values on all gaps when they differ", check.contains(gapHints(8, 12).gaps, "8 · 12"))
 check.that("should say the font shows in new terminal windows", check.contains(editHint.font, "new windows"))
 
 -- The profile editor: writing the file.
@@ -374,7 +379,7 @@ check.that("should replace the when line when when changed",
   check.contains(displays.writeSettings("[a]\nwhen = x\nlayout = tabs\n", "a", { when = "x" }, { when = "DELL U2723QE, LG" }), "[a]\nwhen = DELL U2723QE, LG\nlayout = tabs\n"))
 local whenEditRows = displays.editRows({ when = "DELL U2723QE" }, "dell", "matches now")
 check.that("should hint the when and its status on the When row", whenEditRows[2].id == "when" and whenEditRows[2].hint == "DELL U2723QE · matches now  ›")
-check.that("should leave count out of the editor", whenEditRows[3].id == "layout")
+check.that("should leave count out of the editor", not check.contains(table.concat((function() local ids = {} for _, row in ipairs(whenEditRows) do ids[#ids + 1] = row.id end return ids end)(), " "), "count"))
 
 -- Whether a profile is used with the displays plugged in.
 local matchProfiles = displays.parse("[laptop]\nwhen = built-in only\n\n[dell]\nwhen = laptop, DELL\n\n[desk]\nwhen = laptop, DELL\n").profiles
@@ -397,5 +402,185 @@ local againRows = displays.rows(displays.parse(afterDelete .. "\n[laptop 2]\nwhe
 local offered = false
 for _, row in ipairs(againRows) do if row.id == "undo" then offered = true end end
 check.that("should leave out Bring back when a profile has the deleted name again", not offered)
+
+-- Profiles: workspaces, apps, screens' gaps and the fallback.
+local PROFILE = [[
+[desk]
+when        = laptop, DELL, LG
+workspace.1 = DELL, tiles, Zed
+workspace.2 = DELL, tabs, Helium, Arc
+workspace.4 = default, Slack
+open.2      = Helium
+gaps.DELL   = 10
+gaps.laptop.outer = 4
+theme       = tokyo-night
+
+[everywhere]
+when        = any
+workspace.1 = default, Zed
+]]
+local desk = displays.parse(PROFILE).profiles[1]
+check.that("should read no problems in a profile with workspaces", #displays.parse(PROFILE).problems == 0)
+check.that("should read a workspace's screen, layout and apps",
+  desk.settings.workspaces["2"].screen == "DELL" and desk.settings.workspaces["2"].layout == "tabs"
+  and table.concat(desk.settings.workspaces["2"].apps, ",") == "Helium,Arc")
+check.that("should read a workspace without a layout", desk.settings.workspaces["1"].layout == "tiles" and desk.settings.workspaces["4"].layout == nil)
+check.that("should read default as no screen of the profile's own", desk.settings.workspaces["4"].screen == nil and desk.settings.workspaces["4"].apps[1] == "Slack")
+check.that("should read the app to open when a workspace is empty", desk.settings.open["2"] == "Helium")
+check.that("should read a screen's gaps, both kinds", desk.settings.screenGaps["DELL"].inner == 10 and desk.settings.screenGaps["DELL"].outer == 10)
+check.that("should read one kind of a screen's gaps", desk.settings.screenGaps["laptop"].outer == 4 and desk.settings.screenGaps["laptop"].inner == nil)
+check.that("should keep gaps.inner meaning every screen", displays.parse("[a]\nwhen = x\ngaps.inner = 6\n").profiles[1].settings.gapsInner == 6)
+check.that("should report a workspace outside 1 to 9",
+  displays.parse("[a]\nwhen = x\nworkspace.12 = main\n").problems[1] == "line 3: a workspace is a number from 1 to 9")
+check.that("should report an app placed on two workspaces in one profile",
+  displays.parse("[a]\nwhen = x\nworkspace.1 = main, Zed\nworkspace.2 = main, Zed\n").problems[1] == "line 4: Zed is already on workspace 1")
+check.that("should report a screen's gaps that aren't a whole number",
+  displays.parse("[a]\nwhen = x\ngaps.DELL = wide\n").problems[1] == "line 3: gaps.DELL must be a whole number")
+
+local fallbackProfiles = displays.parse(PROFILE).profiles
+check.that("should mark when = any as the fallback", fallbackProfiles[2].any == true)
+check.that("should pick the fallback when no other profile matches", displays.pick(fallbackProfiles, { builtIn }).name == "everywhere")
+check.that("should pick a matching profile over the fallback, even after it in the file",
+  displays.pick(displays.parse("[e]\nwhen = any\n\n[l]\nwhen = laptop\n").profiles, { builtIn }).name == "l")
+check.that("should report a second when = any with the first one's line",
+  displays.parse("[a]\nwhen = any\n\n[b]\nwhen = any\n").problems[1] == "line 5: only one profile can be when = any; the first is on line 2")
+
+check.that("should see nested settings as the same when they are",
+  displays.sameSettings({ workspaces = { ["1"] = { screen = "DELL", apps = { "Zed" } } } }, { workspaces = { ["1"] = { screen = "DELL", apps = { "Zed" } } } }))
+check.that("should see a changed app inside a workspace as a change",
+  not displays.sameSettings({ workspaces = { ["1"] = { apps = { "Zed" } } } }, { workspaces = { ["1"] = { apps = { "Arc" } } } }))
+
+check.that("should read the profiles file when it exists",
+  displays.pathFor(function(path) return path:match("/profiles$") ~= nil end):match("/profiles$") ~= nil)
+check.that("should read the old displays file when only it exists",
+  displays.pathFor(function(path) return path:match("/displays$") ~= nil end):match("/displays$") ~= nil)
+check.that("should use the profiles file when neither exists", displays.pathFor(function() return false end):match("/profiles$") ~= nil)
+
+-- Applying a profile: layouts per workspace, app rules, moving open windows, gaps per screen.
+local plan = displays.layoutPlan({}, { layout = "tiles", workspaces = { ["2"] = { layout = "tabs", apps = {} } } }, { "1", "2", "3" })
+check.that("should give each workspace the profile's layout", plan["1"] == "tiles" and plan["3"] == "tiles")
+check.that("should give a workspace its own layout over the profile's", plan["2"] == "tabs")
+local back = displays.layoutPlan({ workspaces = { ["2"] = { layout = "tabs", apps = {} } } }, {}, { "1", "2" })
+check.that("should put tiles back on a workspace the old profile laid out", back["2"] == "tiles" and back["1"] == nil)
+
+local rules = displays.appRules({ workspaces = { ["1"] = { apps = { "Zed" } }, ["2"] = { apps = { "Helium", "Visual Studio Code" } } } })
+check.that("should write one rule per app, in workspace order",
+  rules == "[[on-window-detected]]\nif.app-name-regex-substring = '(?i)^Zed$'\nrun = 'move-node-to-workspace 1'\n\n"
+    .. "[[on-window-detected]]\nif.app-name-regex-substring = '(?i)^Helium$'\nrun = 'move-node-to-workspace 2'\n\n"
+    .. "[[on-window-detected]]\nif.app-name-regex-substring = '(?i)^Visual Studio Code$'\nrun = 'move-node-to-workspace 2'\n")
+check.that("should write no rules for a profile without apps", displays.appRules({}) == "")
+
+local WINDOWS = "11|Zed|3\n12|Helium|2\n13|Ghostty|1\n14|Ghostty|4\n15|Arc|5\n"
+local moves = displays.appMoves({ workspaces = { ["1"] = { apps = { "zed", "Ghostty" } }, ["2"] = { apps = { "Helium", "Arc" } } } }, WINDOWS)
+local function moved(id) for _, move in ipairs(moves) do if move.id == id then return move.to end end end
+check.that("should move an open window of a listed app to its workspace", moved("11") == "1" and moved("15") == "2")
+check.that("should leave a window already on its workspace", moved("12") == nil)
+check.that("should leave an app whose windows are on several workspaces", moved("13") == nil and moved("14") == nil)
+
+local laptopScreen = { name = "Built-in Retina Display", builtin = true, main = false, x = -1512 }
+local dellScreen = { name = "DELL U2723QE", main = true, x = 0 }
+local lgScreen = { name = "LG HDR 4K", main = false, x = 2560 }
+local perScreen = displays.aerospaceGaps({ screenGaps = { DELL = { inner = 12, outer = 12 }, laptop = { outer = 4 } } }, { laptopScreen, dellScreen })
+check.that("should give a screen its own gaps between windows, the rest omv's",
+  check.contains(perScreen, 'inner.horizontal = [{ monitor."DELL" = 12 }, 10]'))
+check.that("should give each screen its own edge gaps, the rest omv's",
+  check.contains(perScreen, 'outer.left = [{ monitor."DELL" = 12 }, { monitor."built-in" = 4 }, 10]'))
+check.that("should keep the notch's top gap on the laptop screen and clear the bar on the others",
+  check.contains(perScreen, 'outer.top = [{ monitor."built-in" = 14 }, { monitor."DELL" = 48 }, 46]'))
+local nth = displays.aerospaceGaps({ gapsInner = 6, screenGaps = { ["screen 2"] = { inner = 2 } } }, { laptopScreen, dellScreen, lgScreen })
+check.that("should find screen 2 by its name, the leftmost screen that isn't the main one",
+  check.contains(nth, 'inner.horizontal = [{ monitor."Built\\\\-in Retina Display" = 2 }, 6]'))
+check.that("should leave out a screen's gaps when that screen isn't plugged in",
+  not check.contains(displays.aerospaceGaps({ screenGaps = { ["screen 3"] = { inner = 2 } }, gapsInner = 6 }, { dellScreen }), "monitor"))
+
+-- The grouped editor: workspaces, screens, and settings for everywhere.
+check.that("should write a workspace's line: screen, layout, apps", displays.workspaceLine({ screen = "DELL", layout = "tabs", apps = { "Helium", "Arc" } }) == "DELL, tabs, Helium, Arc")
+check.that("should write default for a workspace without a screen of its own", displays.workspaceLine({ apps = { "Slack" } }) == "default, Slack")
+check.that("should write no line for a workspace the profile leaves alone", displays.workspaceLine({ apps = {} }) == nil and displays.workspaceLine(nil) == nil)
+
+local WS_FILE = "[desk]\nwhen = laptop, DELL\nworkspace.2 = DELL, Helium\n"
+local wsBefore = displays.parse(WS_FILE).profiles[1].settings
+local function wsWritten(change)
+  local after = {}
+  for key, value in pairs(wsBefore) do after[key] = value end
+  for key, value in pairs(change) do after[key] = value end
+  return displays.writeSettings(WS_FILE, "desk", wsBefore, after)
+end
+check.that("should change a workspace's line", check.contains(wsWritten({ workspaces = { ["2"] = { screen = "DELL", layout = "tabs", apps = { "Helium" } } } }), "workspace.2 = DELL, tabs, Helium\n"))
+check.that("should add a workspace's line",
+  check.contains(wsWritten({ workspaces = { ["2"] = { screen = "DELL", apps = { "Helium" } }, ["4"] = { apps = { "Slack" } } } }), "workspace.4 = default, Slack\n"))
+check.that("should remove a workspace's line when the profile leaves it alone", not check.contains(wsWritten({ workspaces = {} }), "workspace.2"))
+check.that("should add and remove the app opened when a workspace is empty",
+  check.contains(wsWritten({ open = { ["2"] = "Helium" } }), "open.2 = Helium\n")
+  and not check.contains(displays.writeSettings("[a]\nwhen = x\nopen.2 = Helium\n", "a", { open = { ["2"] = "Helium" } }, { open = {} }), "open.2"))
+check.that("should write one line for a screen's equal gaps", check.contains(wsWritten({ screenGaps = { DELL = { inner = 8, outer = 8 } } }), "gaps.DELL = 8\n"))
+local apartScreen = wsWritten({ screenGaps = { DELL = { inner = 8, outer = 12 } } })
+check.that("should write each kind of a screen's gaps when they differ",
+  check.contains(apartScreen, "gaps.DELL.inner = 8\n") and check.contains(apartScreen, "gaps.DELL.outer = 12\n") and not check.contains(apartScreen, "gaps.DELL = "))
+local backRead = displays.parse(wsWritten({ workspaces = { ["1"] = { screen = "laptop", apps = { "Zed" } } }, open = { ["1"] = "Zed" }, screenGaps = { DELL = { inner = 8, outer = 12 } } }))
+check.that("should give a file that reads back as the edited workspaces, apps and gaps",
+  #backRead.problems == 0 and backRead.profiles[1].settings.workspaces["1"].screen == "laptop"
+  and backRead.profiles[1].settings.open["1"] == "Zed" and backRead.profiles[1].settings.screenGaps["DELL"].outer == 12)
+
+local grouped = displays.editRows({ when = "laptop, DELL", workspaces = { ["2"] = { screen = "DELL", layout = "tabs", apps = { "Helium", "Arc" } } },
+  screenGaps = { DELL = { inner = 10, outer = 10 } }, theme = "nord" }, "desk", "matches now", { "1", "2" })
+local function groupedRow(id) for _, row in ipairs(grouped) do if row.id == id then return row end end end
+check.that("should list each workspace under Workspaces", groupedRow("workspace:1").group == "Workspaces" and groupedRow("workspace:2").group == "Workspaces")
+check.that("should sum up a workspace's screen, layout and apps", groupedRow("workspace:2").hint == "DELL · tabs · Helium, Arc  ›")
+check.that("should mark a workspace the profile leaves alone default", groupedRow("workspace:1").hint == "default  ›")
+check.that("should list all screens and each screen in when under Screens",
+  groupedRow("screen:all").group == "Screens" and groupedRow("screen:laptop").group == "Screens" and groupedRow("screen:DELL").hint == "gaps 10  ›")
+check.that("should mark a screen without gaps of its own", groupedRow("screen:laptop").hint == "omv's gaps  ›")
+check.that("should put the layout, theme and the rest under Everywhere", groupedRow("theme").group == "Everywhere" and groupedRow("layout").group == "Everywhere")
+
+local wsRows = displays.workspaceRows({ screen = "DELL", layout = "tabs", apps = { "Helium", "Arc" } }, "Helium", "2")
+local function wsRow(id) for _, row in ipairs(wsRows) do if row.id == id then return row end end end
+check.that("should show a workspace's screen and layout", check.contains(wsRow("screen").hint, "DELL") and check.contains(wsRow("layout").hint, "tabs"))
+check.that("should list a workspace's apps, each removable", wsRow("app:Helium").group == "Apps" and check.contains(wsRow("app:Arc").hint, "remove"))
+check.that("should offer to add an app and to open one when empty", wsRow("add") ~= nil and check.contains(wsRow("open").hint, "Helium"))
+check.that("should step a workspace's screen through default, the screens and laptop",
+  displays.stepWorkspaceScreen(nil, 1, { "laptop", "DELL" }) == "main" and displays.stepWorkspaceScreen("main", -1, { "laptop", "DELL" }) == nil
+  and displays.stepWorkspaceScreen("main", 1, { "laptop", "DELL" }) == "laptop" and displays.stepWorkspaceScreen("laptop", 1, { "laptop", "DELL" }) == "DELL")
+check.that("should step the app opened when empty through keep and the workspace's apps",
+  displays.stepOpen(nil, 1, { "Helium", "Arc" }) == "Helium" and displays.stepOpen("Arc", 1, { "Helium", "Arc" }) == nil)
+
+local choices = displays.appChoices({ { name = "Zed", workspace = "1" }, { name = "Safari", workspace = "3" }, { name = "Helium", workspace = "2" } },
+  { workspaces = { ["1"] = { apps = { "Zed" } }, ["2"] = { apps = { "Helium" } } } }, "2")
+local function choice(id) for _, row in ipairs(choices) do if row.id == id then return row end end end
+check.that("should offer the apps open now, with where the profile puts them", choice("app:Zed").hint == "on workspace 1" and choice("app:Safari").hint == "open now")
+check.that("should leave out an app already on this workspace", choice("app:Helium") == nil)
+check.that("should end with typing an app's name", choices[#choices].id == "type")
+local movedApp = displays.placeApp({ workspaces = { ["1"] = { apps = { "Zed" } } } }, "zed", "2")
+check.that("should take an app off its old workspace when it's added to another",
+  #movedApp.workspaces["1"].apps == 0 and movedApp.workspaces["2"].apps[1] == "zed")
+
+-- The fallback in the editor and the When picker.
+local withAny = displays.parse("[l]\nwhen = laptop\n\n[e]\nwhen = any\n").profiles
+check.that("should say a fallback is used when nothing else matches", displays.matchStatus("e", withAny, { builtIn, dell }) == "used now, as nothing else matches")
+check.that("should say a fallback waits while another profile matches", displays.matchStatus("e", withAny, { builtIn }) == "when nothing else matches")
+local anyTicked = displays.toggleWhen(when("laptop, DELL"), "any")
+check.that("should untick every screen when Any screens is ticked", table.concat(anyTicked.items, ",") == "any")
+check.that("should untick Any screens when a screen is ticked", table.concat(displays.toggleWhen(anyTicked, "laptop").items, ",") == "laptop")
+check.that("should write when = any for Any screens", displays.doneWhen(anyTicked) == "any")
+local anyRows = displays.whenRows(when("any"), {})
+local anyRow
+for _, row in ipairs(anyRows) do if row.id == "display:any" then anyRow = row end end
+check.that("should offer Any screens, ticked when when is any", anyRow and anyRow.label == "Any screens" and anyRow.icon == "󰄵")
+
+-- Open when empty.
+local opening = { open = { ["2"] = "Helium" } }
+check.that("should open the workspace's app when it's empty", displays.openOnEmpty(opening, "2", 0) == "Helium")
+check.that("should open nothing when the workspace has windows", displays.openOnEmpty(opening, "2", 1) == nil)
+check.that("should open nothing on a workspace without an app to open", displays.openOnEmpty(opening, "3", 0) == nil and displays.openOnEmpty(nil, "2", 0) == nil)
+
+-- A screen's gaps found under a shorter or longer name for the same display.
+local named = displays.editRows({ when = "laptop, DELL U2723QE", screenGaps = { DELL = { inner = 10, outer = 10 } } }, "desk", nil, {})
+local screenIds = {}
+for _, row in ipairs(named) do if row.group == "Screens" then screenIds[#screenIds + 1] = row.id .. "=" .. row.hint end end
+check.that("should show a screen's gaps on its when row when one name holds the other, without a second row",
+  table.concat(screenIds, ";") == "screen:all=omv's gaps  ›;screen:laptop=omv's gaps  ›;screen:DELL U2723QE=gaps 10  ›")
+check.that("should find the gaps key for a screen whose gaps are under a shorter name",
+  displays.gapsKey({ screenGaps = { DELL = { inner = 1 } } }, "DELL U2723QE") == "DELL"
+  and displays.gapsKey({ screenGaps = {} }, "DELL U2723QE") == "DELL U2723QE")
 
 check.finish()

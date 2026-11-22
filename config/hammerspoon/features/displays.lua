@@ -10,16 +10,18 @@ local shell = require("shell")
 local card = require("card")
 local displays = require("displays")
 local focus = require("focus")
+local workspaces = require("workspaces")
 local apps = require("apps")
 
 local feature = {}
 
-local REPO = hs.configdir:gsub("/config/hammerspoon/?$", "")
-local OMV = REPO .. "/bin/omv"
 local SHORTCUTS = "/usr/bin/shortcuts"
 local DND_DB = shell.HOME .. "/Library/DoNotDisturb/DB/Assertions.json"
 local AEROSPACE_PROFILE = shell.STATE_DIR .. "/aerospace-profile.toml"
 local GHOSTTY_PROFILE = shell.STATE_DIR .. "/ghostty-profile"
+-- There while the profile in use has an app to open on an empty workspace; AeroSpace's
+-- workspace change tells Hammerspoon only then.
+local OPEN_WHEN_EMPTY = shell.STATE_DIR .. "/open-when-empty"
 -- What's in use, kept across reloads, so a reload doesn't apply the same profile twice.
 local STATE = shell.STATE_DIR .. "/display-profile.json"
 -- Each check and the load, so a check that didn't run shows; see displays.logLine.
@@ -58,11 +60,14 @@ local function writeFile(path, text)
 end
 
 -- { { name, builtin } } for each display plugged in.
+-- { name, builtin, main, x } for each display plugged in: main is the one with the menu bar,
+-- and x orders them left to right, for screen 2 and on.
 local function screens()
+  local primary = hs.screen.primaryScreen()
   local found = {}
   for _, screen in ipairs(hs.screen.allScreens()) do
     local name = screen:name() or ""
-    found[#found + 1] = { name = name, builtin = name:find("Built%-in") ~= nil }
+    found[#found + 1] = { name = name, builtin = name:find("Built%-in") ~= nil, main = screen == primary, x = screen:fullFrame().x }
   end
   return found
 end
@@ -80,11 +85,36 @@ local function setQuiet(on)
   end, { "list" }):start()
 end
 
-local function setLayout(layout)
-  local output = hs.execute(shell.AEROSPACE .. " list-workspaces --all") or ""
-  for workspace in output:gmatch("[^\n]+") do
+-- Sets each workspace's layout as the move from settings before to after plans it.
+local function setLayouts(before, after)
+  local numbers = workspaces.numbers(workspaces.parse(shell.readText(workspaces.PATH)))
+  for workspace, layout in pairs(displays.layoutPlan(before, after, numbers)) do
     hs.task.new(shell.AEROSPACE, nil, displays.layoutArgs(workspace, layout)):start()
   end
+end
+
+-- Moves the open windows of the profile's apps to their workspaces.
+local function moveApps(settings)
+  local output = hs.execute(shell.AEROSPACE .. " list-windows --all --format '%{window-id}|%{app-name}|%{workspace}'") or ""
+  for _, move in ipairs(displays.appMoves(settings, output)) do
+    hs.execute(shell.AEROSPACE .. " move-node-to-workspace --window-id " .. move.id .. " " .. move.to)
+  end
+end
+
+-- The profile's part of aerospace.toml: its gaps, then its app rules; nil when it has neither.
+local function aerospaceLayer(settings)
+  local gaps, rules = displays.aerospaceGaps(settings, screens()) or "", displays.appRules(settings)
+  local layer = gaps .. ((gaps ~= "" and rules ~= "") and "\n" or "") .. rules
+  return layer ~= "" and layer or nil
+end
+
+-- Writes the profile's part of aerospace.toml when it changed and rebuilds AeroSpace's config,
+-- then moves the open windows of its apps, once the rules are in.
+local function applyAerospace(settings)
+  local layer = aerospaceLayer(settings)
+  if layer == shell.readText(AEROSPACE_PROFILE) then return moveApps(settings) end
+  writeFile(AEROSPACE_PROFILE, layer)
+  require("features.aerospacebuild").request(function() moveApps(settings) end)
 end
 
 local function run(command)
@@ -98,13 +128,10 @@ local function apply(profile, saved, silent)
   local before = saved.active and { name = saved.active, settings = saved.settings or {} } or nil
   local changes = displays.changes(before, profile)
   run(changes.onLeave)
-  if changes.layout then setLayout(changes.layout == "default" and "tiles" or changes.layout) end
-  if changes.gapsInner or changes.gapsOuter then
-    writeFile(AEROSPACE_PROFILE, profile and displays.aerospaceGaps(profile.settings) or nil)
-    -- Hammerspoon's tasks get a bare PATH; omv needs Homebrew's luajit and aerospace.
-    hs.task.new(OMV, nil, { "reload", "aerospace" })
-      :setEnvironment({ HOME = shell.HOME, PATH = "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" }):start()
-  end
+  local afterSettings = profile and profile.settings or {}
+  setLayouts(before and before.settings or {}, afterSettings)
+  applyAerospace(afterSettings)
+  writeFile(OPEN_WHEN_EMPTY, next(afterSettings.open or {}) and "on\n" or nil)
   if changes.quiet then
     if changes.quiet == "default" then setQuiet(saved.quietBefore == true)
     else
@@ -129,15 +156,46 @@ local function apply(profile, saved, silent)
   saved.active = profile and profile.name or nil
   saved.settings = profile and profile.settings or nil
   writeState(saved)
+  -- The profile's screens for its workspaces, laid over ~/.config/omv/workspaces.
+  local workspaceScreens = package.loaded["features.workspaces"]
+  if type(workspaceScreens) == "table" then workspaceScreens.check() end
   if type(omvOnDisplayProfile) == "function" then pcall(omvOnDisplayProfile, saved.active) end
   if silent then return end
   if profile then shell.alert(profile.name .. (displays.summary(profile) ~= "" and ("  ·  " .. displays.summary(profile)) or ""), 2)
-  elseif before then shell.alert("No display profile", 1.5) end
+  elseif before then shell.alert("No profile", 1.5) end
 end
 
 local function log(reason, result)
   os.execute("/bin/mkdir -p '" .. shell.STATE_DIR .. "'")
   writeFile(LOG, displays.appendLog(shell.readText(LOG), displays.logLine(os.time(), reason, result)))
+end
+
+-- Adds the focused app to its workspace in the profile in use, as the editor would, so it
+-- goes there from now on with this profile.
+function feature.keepAppHere()
+  local saved = readState()
+  if not saved.active then return shell.alert("No profile in use: make one in Profile first", 3) end
+  local output = hs.execute(shell.AEROSPACE .. " list-windows --focused --format '%{app-name}|%{workspace}'") or ""
+  local app, workspace = output:match("^([^|\n]+)|(%S+)")
+  if not app then return shell.alert("No window is focused", 2) end
+  local text = shell.readText(displays.PATH)
+  local read = displays.parse(text)
+  if #read.problems > 0 then return shell.alert(read.problems[1] .. ": fix it first", 4) end
+  for _, profile in ipairs(read.profiles) do
+    if profile.name == saved.active then
+      local after = displays.placeApp(profile.settings, app, workspace)
+      writeFile(displays.PATH, displays.writeSettings(text, profile.name, profile.settings, after))
+      return shell.alert(app .. " stays on workspace " .. workspace .. " in " .. profile.name, 2.5)
+    end
+  end
+end
+
+-- Opens the profile's app for workspace when it was just switched to and is empty.
+function feature.workspaceChanged(workspace)
+  local saved = readState()
+  local count = tonumber((hs.execute(shell.AEROSPACE .. " list-windows --workspace " .. tostring(workspace):gsub("[^%w]", "") .. " --count") or ""):match("%d+"))
+  local app = displays.openOnEmpty(saved.settings, tostring(workspace), count)
+  if app then hs.task.new("/usr/bin/open", nil, { "-a", app }):start() end
 end
 
 -- Works out the profile for the displays now, and applies it when it isn't the one in use, or
@@ -180,6 +238,16 @@ local function ensureFile()
   if shell.readText(displays.PATH) then return end
   os.execute("/bin/mkdir -p '" .. shell.HOME .. "/.config/omv'")
   writeFile(displays.PATH, displays.starter(recordSeen()))
+end
+
+-- How many lines a list's rows take: one each, and one per group header.
+local function lineCount(rows)
+  local lines, last = #rows, nil
+  for _, row in ipairs(rows) do
+    if row.group and row.group ~= last then lines = lines + 1 end
+    last = row.group
+  end
+  return lines
 end
 
 -- The profile being edited: its name, and its settings in the file and as edited. Nothing
@@ -237,6 +305,7 @@ local function editedStatus()
   for _, profile in ipairs(profiles) do
     if profile.name == editing.name then
       profile.when = displays.parseWhen(editing.edited.when).items
+      profile.any = editing.edited.when == "any"
     end
   end
   return displays.matchStatus(editing.name, profiles, screens())
@@ -258,7 +327,7 @@ end
 -- The When picker: Enter ticks or unticks a display; Done takes the ticks back to the editor.
 function showWhen(selected)
   local rows = displays.whenRows(editing.when, displays.parseSeen(shell.readText(displays.SEEN_PATH)))
-  shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows) + FOOTER_HEIGHT),
+  shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(lineCount(rows)) + FOOTER_HEIGHT),
     card.html({ prompt = "When " .. (editing.newName or editing.name) .. " is used…", rows = rows, compact = true,
       footer = WHEN_FOOTER, selected = selected }), function(message)
       if not editing then return shell.close() end
@@ -280,25 +349,151 @@ function showWhen(selected)
     end, { onEscape = function() showEditor(2) end })
 end
 
+local WORKSPACE_FOOTER = { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open ›" }, { key = "⌫", text = "remove app" },
+  { key = "Esc", text = "back" } }
+local SCREEN_FOOTER = { { key = "Left/Right", text = "change" }, { key = "Esc", text = "back" } }
+
+local function indexOf(rows, id)
+  for index, row in ipairs(rows) do
+    if row.id == id then return index end
+  end
+  return 1
+end
+
+local function workspaceNumbers()
+  return workspaces.numbers(workspaces.parse(shell.readText(workspaces.PATH)))
+end
+
+local function editorRows()
+  return displays.editRows(editing.edited, editing.newName or editing.name, editedStatus(), workspaceNumbers())
+end
+
+-- The apps open now, each with the workspace its first window is on.
+local function runningApps()
+  local output = hs.execute(shell.AEROSPACE .. " list-windows --all --format '%{app-name}|%{workspace}'") or ""
+  local found, seen = {}, {}
+  for app, workspace in output:gmatch("([^|\n]+)|(%S+)") do
+    if not seen[app] then
+      seen[app] = true
+      found[#found + 1] = { name = app, workspace = workspace }
+    end
+  end
+  table.sort(found, function(a, b) return a.name:lower() < b.name:lower() end)
+  return found
+end
+
+local showWorkspace
+
+-- Asks for an app's name, for one that isn't open; Enter adds it to the workspace.
+local function showTypeApp(workspace)
+  shell.show("displays", shell.centered(shell.LIST_WIDTH, 28 + 46 + 44 + 4),
+    card.html({ prompt = "An app's name, for workspace " .. workspace .. "…", rows = {}, input = true,
+      hint = "as macOS names it, such as Visual Studio Code · Esc goes back" }), function(message)
+      if not editing then return shell.close() end
+      local typed = message.type == "submit" and (message.id or ""):gsub("^%s+", ""):gsub("%s+$", "") or ""
+      if typed ~= "" then editing.edited = displays.placeApp(editing.edited, typed, workspace) end
+      showWorkspace(workspace)
+    end, { onEscape = function() showWorkspace(workspace) end })
+end
+
+-- The apps open now, to add one to workspace; it moves off another workspace it was on.
+local function showAddApp(workspace)
+  local rows = displays.appChoices(runningApps(), editing.edited, workspace)
+  shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
+    card.html({ prompt = "Add an app to workspace " .. workspace .. "…", rows = rows, compact = true }), function(message)
+      if not editing then return shell.close() end
+      if message.type ~= "choose" then return showWorkspace(workspace) end
+      if message.id == "type" then return showTypeApp(workspace) end
+      local app = (message.id or ""):match("^app:(.+)$")
+      if app then editing.edited = displays.placeApp(editing.edited, app, workspace) end
+      showWorkspace(workspace)
+    end, { onEscape = function() showWorkspace(workspace) end })
+end
+
+-- A workspace's card: Left/Right change its screen, layout and the app opened when it's empty;
+-- Backspace takes an app off; Add an app lists the apps open now.
+function showWorkspace(workspace, selected)
+  local entry = (editing.edited.workspaces or {})[workspace] or { apps = {} }
+  local open = (editing.edited.open or {})[workspace]
+  local rows = displays.workspaceRows(entry, open, workspace)
+  local back = function() showEditor(indexOf(editorRows(), "workspace:" .. workspace)) end
+  shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(lineCount(rows)) + FOOTER_HEIGHT),
+    card.html({ prompt = "Workspace " .. workspace .. " in " .. (editing.newName or editing.name) .. "…", rows = rows,
+      compact = true, step = true, clearable = true, footer = WORKSPACE_FOOTER, selected = selected }), function(message)
+      if not editing then return shell.close() end
+      local id = message.id or ""
+      local edited = displays.copySettings(editing.edited)
+      edited.workspaces[workspace] = edited.workspaces[workspace] or { apps = {} }
+      local own = edited.workspaces[workspace]
+      if message.type == "step" then
+        local direction, row = id:match("^(%-?1):(.+)$")
+        direction = tonumber(direction)
+        if row == "screen" then own.screen = displays.stepWorkspaceScreen(own.screen, direction, displays.profileScreens(edited))
+        elseif row == "layout" then own.layout = displays.step({ layout = own.layout }, "layout", direction).layout
+        elseif row == "open" then edited.open[workspace] = displays.stepOpen(edited.open[workspace], direction, own.apps)
+        else return end
+        editing.edited = edited
+        return showWorkspace(workspace, indexOf(rows, row))
+      end
+      if message.type == "clear" then
+        local app = id:match("^app:(.+)$")
+        if not app then return end
+        edited = displays.placeApp(edited, app, nil)
+        if edited.open[workspace] == app then edited.open[workspace] = nil end
+        editing.edited = edited
+        return showWorkspace(workspace, indexOf(rows, id))
+      end
+      if message.type == "choose" and id == "add" then return showAddApp(workspace) end
+      back()
+    end, { onEscape = back })
+end
+
+-- A screen's card, or all screens': its three gap rows, Left/Right to change them.
+local function showScreen(screen, selected)
+  local all = screen == "all"
+  -- A screen's gaps may be under a shorter name for the same display, such as DELL.
+  local key = not all and displays.gapsKey(editing.edited, screen) or nil
+  local gaps = all and { inner = editing.edited.gapsInner, outer = editing.edited.gapsOuter }
+    or ((editing.edited.screenGaps or {})[key] or {})
+  local rows = displays.gapRows(gaps.inner, gaps.outer)
+  local back = function() showEditor(indexOf(editorRows(), "screen:" .. screen)) end
+  shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(lineCount(rows)) + FOOTER_HEIGHT),
+    card.html({ prompt = (all and "All screens" or screen) .. " in " .. (editing.newName or editing.name) .. "…", rows = rows,
+      compact = true, step = true, footer = SCREEN_FOOTER, selected = selected }), function(message)
+      if not editing then return shell.close() end
+      if message.type ~= "step" then return back() end
+      local direction, row = (message.id or ""):match("^(%-?1):(.+)$")
+      local stepped = displays.step({ gapsInner = gaps.inner, gapsOuter = gaps.outer }, row, tonumber(direction), {})
+      local edited = displays.copySettings(editing.edited)
+      if all then edited.gapsInner, edited.gapsOuter = stepped.gapsInner, stepped.gapsOuter
+      else
+        edited.screenGaps[key] = (stepped.gapsInner or stepped.gapsOuter) and { inner = stepped.gapsInner, outer = stepped.gapsOuter } or nil
+      end
+      editing.edited = edited
+      showScreen(screen, indexOf(rows, row))
+    end, { onEscape = back })
+end
+
 function showEditor(selected)
-  local rows = displays.editRows(editing.edited, editing.newName or editing.name, editedStatus())
-  shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows) + FOOTER_HEIGHT),
+  local rows = editorRows()
+  shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(lineCount(rows)) + FOOTER_HEIGHT),
     card.html({ prompt = "Edit " .. (editing.newName or editing.name) .. "…", rows = rows, compact = true, step = true, footer = EDIT_FOOTER,
       selected = selected }), function(message)
       if message.type == "step" then
         local direction, id = message.id:match("^(%-?1):(.+)$")
         if not editing or not id then return end
         editing.edited = displays.step(editing.edited, id, tonumber(direction), themeNames())
-        for index, row in ipairs(rows) do
-          if row.id == id then selected = index end
-        end
-        return showEditor(selected)
+        return showEditor(indexOf(rows, id))
       end
       if message.type == "choose" and message.id == "name" then return showRename() end
       if message.type == "choose" and message.id == "when" then
         editing.when = displays.parseWhen(editing.edited.when)
         return showWhen(1)
       end
+      local workspace = message.type == "choose" and (message.id or ""):match("^workspace:(%d)$")
+      if workspace then return showWorkspace(workspace) end
+      local screen = message.type == "choose" and (message.id or ""):match("^screen:(.+)$")
+      if screen then return showScreen(screen) end
       if message.type == "choose" then return saveEdits() end
       editing = nil
       shell.close()
@@ -308,13 +503,13 @@ end
 -- Opens the editor on profile name; a file with a line it can't read is fixed first.
 local function openEditor(name)
   local read = displays.parse(shell.readText(displays.PATH))
-  if #read.problems > 0 then return shell.alert("~/.config/omv/displays " .. read.problems[1] .. ": fix it to edit", 5) end
+  if #read.problems > 0 then return shell.alert(displays.PATH:gsub("^.*/%.config", "~/.config") .. " " .. read.problems[1] .. ": fix it to edit", 5) end
   local found = nil
   for _, profile in ipairs(read.profiles) do
     if profile.name == name then found = profile end
   end
   if not found then return end
-  local settings = { when = displays.whenText({ items = found.when or {} }) }
+  local settings = { when = found.any and "any" or displays.whenText({ items = found.when or {} }) }
   for key, value in pairs(found.settings) do
     if key ~= "onEnter" and key ~= "onLeave" then settings[key] = value end
   end
@@ -362,7 +557,7 @@ function feature.open(selected)
     deleted = deleted and { name = deleted.name, index = deleted.index } }, screens())
   local footer = #read.profiles > 0 and LIST_FOOTER or nil
   shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows) + (footer and FOOTER_HEIGHT or 0)),
-    card.html({ prompt = "Display profile…", rows = rows, compact = true, tab = true, clearable = true,
+    card.html({ prompt = "Profile…", rows = rows, compact = true, tab = true, clearable = true,
       footer = footer, selected = selected }), function(message)
       if message.type == "clear" then
         local name = (message.id or ""):match("^profile:(.+)$")
@@ -415,7 +610,7 @@ end):start()
 -- The folder, not the file: an editor often saves by replacing the file, and it may not exist yet.
 feature.file = hs.pathwatcher.new(shell.HOME .. "/.config/omv", function(paths)
   for _, path in ipairs(paths) do
-    if path:match("/displays$") then return edited:start() end
+    if path:match("/displays$") or path:match("/profiles$") then return edited:start() end
   end
 end):start()
 feature.wake = hs.caffeinate.watcher.new(function(event)

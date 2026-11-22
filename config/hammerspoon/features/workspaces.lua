@@ -1,5 +1,6 @@
 -- Workspaces: puts each workspace from ~/.config/omv/workspaces on its screen for the screens
--- plugged in, as displays come and go, and moves windows off a workspace that was removed.
+-- plugged in, or on the screen the display profile in use gives it, as displays come and go,
+-- and moves windows off a workspace that was removed.
 -- screen 2, screen 3 and screen 4 only mean a monitor once the screens are known, so the pins
 -- are worked out here and written for the aerospace.toml build, which reloads AeroSpace.
 -- The Workspaces card, in the system menu, adds and removes workspaces and sets their screens.
@@ -10,8 +11,6 @@ local workspaces = require("workspaces")
 
 local feature = {}
 
-local REPO = hs.configdir:gsub("/config/hammerspoon/?$", "")
-local OMV = REPO .. "/bin/omv"
 -- The pins for the screens plugged in, read by install/aerospace_merge.lua.
 local SCREENS = shell.STATE_DIR .. "/aerospace-screens.toml"
 -- Displays often connect in steps; the pins are worked out once they've settled.
@@ -25,6 +24,16 @@ local FOOTER_HEIGHT = 24
 
 local function list()
   return workspaces.parse(shell.readText(workspaces.PATH))
+end
+
+-- The display profile in use's workspaces, which can move some to other screens.
+local PROFILE_STATE = shell.STATE_DIR .. "/display-profile.json"
+
+local function profileWorkspaces()
+  -- hs.json.read logs an error for a file that isn't there, so that's checked first.
+  if not hs.fs.attributes(PROFILE_STATE) then return nil end
+  local ok, saved = pcall(hs.json.read, PROFILE_STATE)
+  return ok and type(saved) == "table" and type(saved.settings) == "table" and saved.settings.workspaces or nil
 end
 
 -- { name, builtin, main, x } for each screen. main is the screen macOS puts the menu bar on,
@@ -53,7 +62,7 @@ end
 -- then moves windows off removed workspaces and calls done.
 function feature.check(done)
   if type(done) ~= "function" then done = nil end
-  local current = list()
+  local current = workspaces.overlay(list(), profileWorkspaces())
   local text = workspaces.assignmentToml(workspaces.resolve(current, screens()), current)
   if text == shell.readText(SCREENS) then return moveStrays(done) end
   os.execute("/bin/mkdir -p '" .. shell.STATE_DIR .. "'")
@@ -61,9 +70,7 @@ function feature.check(done)
   if not file then return end
   file:write(text)
   file:close()
-  -- Hammerspoon's tasks get a bare PATH; omv needs Homebrew's luajit and aerospace.
-  hs.task.new(OMV, function() moveStrays(done) end, { "reload", "aerospace" })
-    :setEnvironment({ HOME = shell.HOME, PATH = "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" }):start()
+  require("features.aerospacebuild").request(function() moveStrays(done) end)
 end
 
 local pending = hs.timer.delayed.new(SETTLE_SECONDS, feature.check)
@@ -72,11 +79,10 @@ local pending = hs.timer.delayed.new(SETTLE_SECONDS, feature.check)
 -- the screens plugged in, which moves windows off a removed workspace.
 local apply = hs.timer.delayed.new(APPLY_SECONDS, function()
   require("devlayout").WORKSPACE = workspaces.devWorkspace(list())
-  hs.task.new(OMV, function()
+  require("features.aerospacebuild").request(function()
     -- The bar is redrawn last, once no window is left on a removed workspace.
     feature.check(function() hs.task.new(shell.SKETCHYBAR, nil, { "--reload" }):start() end)
-  end, { "reload", "aerospace" })
-    :setEnvironment({ HOME = shell.HOME, PATH = "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" }):start()
+  end)
 end)
 
 local function save(changed)

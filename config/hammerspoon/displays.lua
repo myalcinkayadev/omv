@@ -7,7 +7,21 @@
 
 local displays = {}
 
-displays.PATH = (os.getenv("HOME") or "") .. "/.config/omv/displays"
+local HOME = os.getenv("HOME") or ""
+
+-- The profiles file: ~/.config/omv/profiles, or the displays file it was called before, while
+-- only that one exists. exists says whether a path is there.
+function displays.pathFor(exists)
+  local profiles, old = HOME .. "/.config/omv/profiles", HOME .. "/.config/omv/displays"
+  if exists(profiles) or not exists(old) then return profiles end
+  return old
+end
+
+displays.PATH = displays.pathFor(function(path)
+  local file = io.open(path, "r")
+  if file then file:close() end
+  return file ~= nil
+end)
 
 -- The built-in screen's top gap: macOS already keeps windows clear of the notch there. The bar
 -- on other displays is this tall, so the outer gap goes below it.
@@ -36,8 +50,76 @@ local function list(text)
   return items
 end
 
--- Fills profile from one name = value line; gives a problem, or nil.
-local function setting(profile, name, value, gapsGiven)
+-- A screen word in one spelling, as the workspaces file writes it: main, screen N, laptop, or
+-- a display's name as written; secondary is screen 2.
+local function screenWord(value)
+  local lower = value:lower()
+  if lower == "main" or lower == "laptop" then return lower end
+  if lower == "secondary" then return "screen 2" end
+  local nth = lower:match("^screen%s+(%d)$")
+  if nth then return "screen " .. nth end
+  return value
+end
+
+-- workspace.N = screen (or default), then tiles or tabs, then the apps that live there.
+local function workspaceSetting(profile, workspace, value)
+  local number = tonumber(workspace)
+  if number < 1 or number > 9 then return "a workspace is a number from 1 to 9" end
+  local items = list(value)
+  local entry, start = { apps = {} }, 2
+  if items[1] and items[1]:lower() ~= "default" then entry.screen = screenWord(items[1]) end
+  if items[2] and (items[2]:lower() == "tiles" or items[2]:lower() == "tabs") then
+    entry.layout, start = items[2]:lower(), 3
+  end
+  profile.appsOn = profile.appsOn or {}
+  for index = start, #items do
+    local app = items[index]
+    local already = profile.appsOn[app:lower()]
+    if already then return app .. " is already on workspace " .. already end
+    profile.appsOn[app:lower()] = tostring(number)
+    entry.apps[#entry.apps + 1] = app
+  end
+  profile.settings.workspaces = profile.settings.workspaces or {}
+  profile.settings.workspaces[tostring(number)] = entry
+  return nil
+end
+
+-- gaps.SCREEN, gaps.SCREEN.inner or gaps.SCREEN.outer: one screen's gaps. raw keeps the
+-- screen's name as written.
+local function screenGapsSetting(profile, raw, value)
+  local screen, kind = raw:match("^[Gg][Aa][Pp][Ss]%.(.+)%.([Ii][Nn][Nn][Ee][Rr])$")
+  if not screen then screen, kind = raw:match("^[Gg][Aa][Pp][Ss]%.(.+)%.([Oo][Uu][Tt][Ee][Rr])$") end
+  if not screen then screen = raw:match("^[Gg][Aa][Pp][Ss]%.(.+)$") end
+  local number = value:match("^%d+$") and tonumber(value)
+  if not number then return raw .. " must be a whole number" end
+  screen = screenWord(screen)
+  profile.settings.screenGaps = profile.settings.screenGaps or {}
+  local gaps = profile.settings.screenGaps[screen] or {}
+  if not kind or kind:lower() == "inner" then gaps.inner = number end
+  if not kind or kind:lower() == "outer" then gaps.outer = number end
+  profile.settings.screenGaps[screen] = gaps
+  return nil
+end
+
+-- Fills profile from one name = value line; gives a problem, or nil. raw is the name as
+-- written, for a display's name inside it.
+local function setting(profile, name, value, gapsGiven, raw)
+  if name == "when" and value:lower() == "any" then
+    profile.any = true
+    return nil
+  end
+  local workspace = name:match("^workspace%.(%d+)$")
+  if workspace then return workspaceSetting(profile, workspace, value) end
+  local open = name:match("^open%.(%d+)$")
+  if open then
+    if tonumber(open) < 1 or tonumber(open) > 9 then return "a workspace is a number from 1 to 9" end
+    profile.settings.open = profile.settings.open or {}
+    profile.settings.open[tostring(tonumber(open))] = value
+    return nil
+  end
+  if name:match("^gaps%..+") and name ~= "gaps.inner" and name ~= "gaps.outer" then
+    return screenGapsSetting(profile, raw or name, value)
+  end
   if name == "when" then
     -- built-in only is what when said before laptop named the built-in screen.
     profile.when = value:lower() == "built-in only" and { "laptop" } or list(value)
@@ -77,12 +159,15 @@ function displays.parse(text)
   local current, gaps = nil, nil
   -- Each name's line, by its lowercase form, so Laptop and laptop are one name.
   local named = {}
+  -- The line of the profile with when = any; there can be one.
+  local anyLine = nil
   local function close()
     if not current or current.skipped then return end
     -- gaps.inner and gaps.outer win over gaps, wherever they are in the section.
     current.settings.gapsInner = current.settings.gapsInner or gaps.inner
     current.settings.gapsOuter = current.settings.gapsOuter or gaps.outer
-    if not current.when or #current.when == 0 then problems[#problems + 1] = "profile " .. current.name .. " has no when line" end
+    current.appsOn = nil
+    if not current.any and (not current.when or #current.when == 0) then problems[#problems + 1] = "profile " .. current.name .. " has no when line" end
     profiles[#profiles + 1] = current
   end
   local number = 0
@@ -103,11 +188,16 @@ function displays.parse(text)
         current.skipped = true
       end
     elseif plain ~= "" then
-      local name, value = plain:match("^([%w%-%.]+)%s*=%s*(.-)$")
+      local name, value = plain:match("^([%w%-%.][%w%-%. ]-)%s*=%s*(.-)$")
       local problem
       if not name or value == "" then problem = "expected name = value"
       elseif not current then problem = name .. " is outside a [profile]"
-      else problem = setting(current, name:lower(), value, gaps) end
+      elseif name:lower() == "when" and value:lower() == "any" and anyLine then
+        problem = "only one profile can be when = any; the first is on line " .. anyLine
+      else
+        problem = setting(current, name:lower(), value, gaps, name)
+        if not problem and name:lower() == "when" and value:lower() == "any" then anyLine = number end
+      end
       if problem then problems[#problems + 1] = "line " .. number .. ": " .. problem end
     end
   end
@@ -144,13 +234,15 @@ local function matches(profile, screens)
   return assign(items, screens, 1, {})
 end
 
--- The first profile whose displays are plugged in, in file order; nil when none is.
--- screens is { { name, builtin } } for each display.
+-- The first profile whose displays are plugged in, in file order; else the when = any one;
+-- nil when there's neither. screens is { { name, builtin } } for each display.
 function displays.pick(profiles, screens)
+  local fallback = nil
   for _, profile in ipairs(profiles or {}) do
-    if matches(profile, screens) then return profile end
+    if profile.any then fallback = fallback or profile
+    elseif matches(profile, screens) then return profile end
   end
-  return nil
+  return fallback
 end
 
 local SETTINGS = { "layout", "gapsInner", "gapsOuter", "quiet", "theme", "font", "bar" }
@@ -176,11 +268,15 @@ function displays.layoutArgs(workspace, layout)
   return { "layout", "--workspace", workspace, "--root", layout == "tabs" and "accordion" or "tiles" }
 end
 
--- Whether two profiles' settings are the same, so an edit to the profile in use is noticed.
+-- Whether two profiles' settings are the same, so an edit to the profile in use is noticed;
+-- workspaces and screens' gaps are compared all the way down.
 function displays.sameSettings(a, b)
   a, b = a or {}, b or {}
   for key, value in pairs(a) do
-    if b[key] ~= value then return false end
+    local other = b[key]
+    if type(value) == "table" and type(other) == "table" then
+      if not displays.sameSettings(value, other) then return false end
+    elseif other ~= value then return false end
   end
   for key in pairs(b) do
     if a[key] == nil then return false end
@@ -188,23 +284,138 @@ function displays.sameSettings(a, b)
   return true
 end
 
--- The [gaps] table AeroSpace builds in after the user's own settings, or nil when the profile
--- sets no gaps. The built-in screen keeps the notch's top gap; other displays clear the bar.
-function displays.aerospaceGaps(settings)
-  local inner, outer = settings.gapsInner, settings.gapsOuter
-  if not inner and not outer then return nil end
-  local lines = { "[gaps]" }
-  if inner then
-    lines[#lines + 1] = "inner.horizontal = " .. inner
-    lines[#lines + 1] = "inner.vertical = " .. inner
+-- omv's own gaps, used for the screens a profile doesn't name.
+local DEFAULT_GAP = 10
+
+-- A display's name as a pattern inside a TOML basic string: regex characters escaped, then
+-- the backslashes doubled.
+local function monitorName(name)
+  return (tostring(name):gsub('"', ""):gsub("[%^%$%(%)%.%[%]%*%+%-%?%{%}%|\\]", "\\%0"):gsub("\\", "\\\\"))
+end
+
+-- AeroSpace's monitor pattern for a screen word, for the screens plugged in; nil for a
+-- screen N that isn't plugged in. screen N is the Nth screen from the left that isn't main.
+local function monitorPattern(screen, screens)
+  if screen == "main" then return "main" end
+  if screen == "laptop" then return "built-in" end
+  local nth = tonumber(screen:match("^screen (%d)$") or "")
+  if not nth then return monitorName(screen) end
+  local others = {}
+  for _, candidate in ipairs(screens or {}) do
+    if not candidate.main then others[#others + 1] = candidate end
   end
-  if outer then
-    lines[#lines + 1] = "outer.left = " .. outer
-    lines[#lines + 1] = "outer.right = " .. outer
-    lines[#lines + 1] = "outer.bottom = " .. outer
-    lines[#lines + 1] = 'outer.top = [{ monitor."built-in" = ' .. NOTCH_TOP .. " }, " .. (BAR_HEIGHT + outer) .. "]"
+  table.sort(others, function(a, b) return (a.x or 0) < (b.x or 0) end)
+  return others[nth - 1] and monitorName(others[nth - 1].name) or nil
+end
+
+-- A gap's TOML value: per-screen entries first, then the value for every other screen.
+local function perScreen(entries, fallback)
+  if #entries == 0 then return tostring(fallback) end
+  local parts = {}
+  for _, entry in ipairs(entries) do parts[#parts + 1] = '{ monitor."' .. entry.pattern .. '" = ' .. entry.value .. " }" end
+  parts[#parts + 1] = tostring(fallback)
+  return "[" .. table.concat(parts, ", ") .. "]"
+end
+
+-- The [gaps] table AeroSpace builds in after the user's own settings, or nil when the profile
+-- sets no gaps: its gaps for every screen, and screens' own (screenGaps) for the screens
+-- plugged in. The built-in screen keeps the notch's top gap; other displays clear the bar.
+function displays.aerospaceGaps(settings, screens)
+  local inner, outer = settings.gapsInner, settings.gapsOuter
+  local names = {}
+  for screen in pairs(settings.screenGaps or {}) do names[#names + 1] = screen end
+  table.sort(names)
+  local innerEntries, outerEntries = {}, {}
+  for _, screen in ipairs(names) do
+    local gaps, pattern = settings.screenGaps[screen], monitorPattern(screen, screens)
+    if pattern and gaps.inner then innerEntries[#innerEntries + 1] = { pattern = pattern, value = gaps.inner } end
+    if pattern and gaps.outer then outerEntries[#outerEntries + 1] = { pattern = pattern, value = gaps.outer } end
+  end
+  if not inner and not outer and #innerEntries == 0 and #outerEntries == 0 then return nil end
+  local lines = { "[gaps]" }
+  if inner or #innerEntries > 0 then
+    local value = perScreen(innerEntries, inner or DEFAULT_GAP)
+    lines[#lines + 1] = "inner.horizontal = " .. value
+    lines[#lines + 1] = "inner.vertical = " .. value
+  end
+  if outer or #outerEntries > 0 then
+    local value = perScreen(outerEntries, outer or DEFAULT_GAP)
+    lines[#lines + 1] = "outer.left = " .. value
+    lines[#lines + 1] = "outer.right = " .. value
+    lines[#lines + 1] = "outer.bottom = " .. value
+    local top = { { pattern = "built-in", value = NOTCH_TOP } }
+    for _, entry in ipairs(outerEntries) do
+      if entry.pattern ~= "built-in" then top[#top + 1] = { pattern = entry.pattern, value = BAR_HEIGHT + entry.value } end
+    end
+    lines[#lines + 1] = "outer.top = " .. perScreen(top, BAR_HEIGHT + (outer or DEFAULT_GAP))
   end
   return table.concat(lines, "\n") .. "\n"
+end
+
+local function sortedWorkspaces(workspaces)
+  local numbers = {}
+  for workspace in pairs(workspaces or {}) do numbers[#numbers + 1] = workspace end
+  table.sort(numbers, function(a, b) return tonumber(a) < tonumber(b) end)
+  return numbers
+end
+
+-- Each workspace's layout when moving from settings before to after: a workspace's own, else
+-- the profile's; tiles for one the old profile laid out and the new one doesn't. numbers are
+-- the workspaces there are.
+function displays.layoutPlan(before, after, numbers)
+  before, after = before or {}, after or {}
+  local plan = {}
+  for _, workspace in ipairs(numbers or {}) do
+    local own = after.workspaces and after.workspaces[workspace]
+    local old = before.workspaces and before.workspaces[workspace]
+    local layout = (own and own.layout) or after.layout
+    if layout then plan[workspace] = layout
+    elseif (old and old.layout) or before.layout then plan[workspace] = "tiles" end
+  end
+  return plan
+end
+
+-- The AeroSpace rules that send each app in the profile's workspaces there when it opens a
+-- window, in workspace order; "" without apps. The profile layer puts them before omv's own.
+function displays.appRules(settings)
+  local blocks = {}
+  for _, workspace in ipairs(sortedWorkspaces(settings.workspaces)) do
+    for _, app in ipairs(settings.workspaces[workspace].apps or {}) do
+      local pattern = app:gsub("'", ""):gsub("[%^%$%(%)%.%[%]%*%+%?%{%}%|\\]", "\\%0")
+      blocks[#blocks + 1] = "[[on-window-detected]]\nif.app-name-regex-substring = '(?i)^" .. pattern .. "$'\n"
+        .. "run = 'move-node-to-workspace " .. workspace .. "'\n"
+    end
+  end
+  return table.concat(blocks, "\n")
+end
+
+-- The open windows of the profile's apps that aren't on their workspace, from aerospace
+-- list-windows lines of "<id>|<app>|<workspace>": { { id, to } }. An app with windows on more
+-- than one workspace is left where it is.
+function displays.appMoves(settings, text)
+  local target = {}
+  for _, workspace in ipairs(sortedWorkspaces(settings.workspaces)) do
+    for _, app in ipairs(settings.workspaces[workspace].apps or {}) do target[app:lower()] = workspace end
+  end
+  local windows, places = {}, {}
+  for id, app, workspace in tostring(text or ""):gmatch("(%d+)|([^|\n]*)|(%S+)") do
+    local key = app:lower()
+    if target[key] then
+      windows[key] = windows[key] or {}
+      windows[key][#windows[key] + 1] = id
+      places[key] = places[key] or {}
+      places[key][workspace] = true
+    end
+  end
+  local moves = {}
+  for app, ids in pairs(windows) do
+    local count, only = 0, nil
+    for workspace in pairs(places[app]) do count, only = count + 1, workspace end
+    if count == 1 and only ~= target[app] then
+      for _, id in ipairs(ids) do moves[#moves + 1] = { id = id, to = target[app] } end
+    end
+  end
+  return moves
 end
 
 local function screensKey(screens)
@@ -343,24 +554,205 @@ local function shown(value)
   return "‹  " .. (value == nil and "keep" or tostring(value)) .. "  ›"
 end
 
--- The editor's rows for profile name's settings: its name, when it's used, with status saying
--- whether it is now, then a row per setting. Name and When open a card on Enter, so carry a ›.
-function displays.editRows(settings, name, status)
-  settings = settings or {}
-  local inner, outer = settings.gapsInner, settings.gapsOuter
+-- The three gap rows, for every screen or for one: inner and outer as they're set, nil for keep.
+function displays.gapRows(inner, outer)
   local all = inner == outer and inner or ((inner or "keep") .. " · " .. (outer or "keep"))
   return {
-    { id = "name", icon = "󰑕", label = "Name", hint = tostring(name or "") .. "  ›" },
-    { id = "when", icon = "󰍹", label = "When", hint = tostring(settings.when or "") .. (status and (" · " .. status) or "") .. "  ›" },
-    { id = "layout", icon = "󰕰", label = "Layout", hint = shown(settings.layout) },
     { id = "gaps", icon = "󰘖", label = "All gaps", hint = shown(all) },
     { id = "gaps.inner", icon = "󰤼", label = "Gaps between windows", hint = shown(inner) },
     { id = "gaps.outer", icon = "󰢡", label = "Gaps at the screen edges", hint = shown(outer) },
-    { id = "font", icon = "󰛖", label = "Terminal font size", hint = shown(settings.font) .. "   new windows" },
+  }
+end
+
+local function gapsSummary(inner, outer)
+  if inner == nil and outer == nil then return "omv's gaps" end
+  if inner == outer then return "gaps " .. inner end
+  return "gaps " .. (inner or "keep") .. " · " .. (outer or "keep")
+end
+
+-- A workspace's line in the file: its screen or default, its layout, its apps; nil when the
+-- profile leaves the workspace alone.
+function displays.workspaceLine(entry)
+  if not entry then return nil end
+  local apps = entry.apps or {}
+  if not entry.screen and not entry.layout and #apps == 0 then return nil end
+  local items = { entry.screen or "default" }
+  if entry.layout then items[#items + 1] = entry.layout end
+  for _, app in ipairs(apps) do items[#items + 1] = app end
+  return table.concat(items, ", ")
+end
+
+-- Whether two screen names are one display: the same, or one part of the other, in any case.
+local function sameScreen(a, b)
+  a, b = a:lower(), b:lower()
+  return a == b or a:find(b, 1, true) ~= nil or b:find(a, 1, true) ~= nil
+end
+
+-- The key screen's gaps are under in screenGaps: its own name, or a shorter or longer name for
+-- the same display; screen itself when it has none yet.
+function displays.gapsKey(settings, screen)
+  if (settings.screenGaps or {})[screen] then return screen end
+  local keys = {}
+  for key in pairs(settings.screenGaps or {}) do keys[#keys + 1] = key end
+  table.sort(keys)
+  for _, key in ipairs(keys) do
+    if screen ~= "laptop" and key ~= "laptop" and sameScreen(key, screen) then return key end
+  end
+  return screen
+end
+
+-- The screens a profile's editor lists: those in its when, then any other it gives gaps to.
+local function profileScreens(settings)
+  local found = {}
+  local function add(screen)
+    if not screen or screen == "" or screen:lower() == "any" then return end
+    for _, listed in ipairs(found) do
+      if listed:lower() == screen:lower() or (screen ~= "laptop" and listed ~= "laptop" and sameScreen(listed, screen)) then return end
+    end
+    found[#found + 1] = screen
+  end
+  for _, item in ipairs(list(tostring(settings.when or ""))) do add(item) end
+  local extra = {}
+  for screen in pairs(settings.screenGaps or {}) do extra[#extra + 1] = screen end
+  table.sort(extra)
+  for _, screen in ipairs(extra) do add(screen) end
+  return found
+end
+displays.profileScreens = profileScreens
+
+-- The editor's rows for profile name's settings: its name and when it's used, with status
+-- saying whether it is now; then each workspace in numbers; then all screens and each one;
+-- then what applies everywhere. Name, When, workspaces and screens open a card on Enter.
+function displays.editRows(settings, name, status, numbers)
+  settings = settings or {}
+  local rows = {
+    { id = "name", icon = "󰑕", label = "Name", hint = tostring(name or "") .. "  ›" },
+    { id = "when", icon = "󰍹", label = "When", hint = tostring(settings.when or "") .. (status and (" · " .. status) or "") .. "  ›" },
+  }
+  for _, workspace in ipairs(numbers or {}) do
+    local entry = (settings.workspaces or {})[workspace]
+    local parts = { entry and entry.screen or "default" }
+    if entry and entry.layout then parts[#parts + 1] = entry.layout end
+    if entry and entry.apps and #entry.apps > 0 then parts[#parts + 1] = table.concat(entry.apps, ", ") end
+    rows[#rows + 1] = { id = "workspace:" .. workspace, group = "Workspaces", icon = "󰕰", label = workspace,
+      hint = table.concat(parts, " · ") .. "  ›" }
+  end
+  rows[#rows + 1] = { id = "screen:all", group = "Screens", icon = "󰍹", label = "All screens",
+    hint = gapsSummary(settings.gapsInner, settings.gapsOuter) .. "  ›" }
+  for _, screen in ipairs(profileScreens(settings)) do
+    local gaps = (settings.screenGaps or {})[displays.gapsKey(settings, screen)] or {}
+    rows[#rows + 1] = { id = "screen:" .. screen, group = "Screens", icon = "󰍹", label = screen, hint = gapsSummary(gaps.inner, gaps.outer) .. "  ›" }
+  end
+  local everywhere = {
+    { id = "layout", icon = "󰕰", label = "Layout", hint = shown(settings.layout) },
     { id = "theme", icon = "󰏘", label = "Theme", hint = shown(settings.theme) },
+    { id = "font", icon = "󰛖", label = "Terminal font size", hint = shown(settings.font) .. "   new windows" },
     { id = "bar", icon = "󰍜", label = "Bar", hint = shown(settings.bar) },
     { id = "quiet", icon = "󰂛", label = "Do Not Disturb", hint = shown(settings.quiet) },
   }
+  for _, row in ipairs(everywhere) do
+    row.group = "Everywhere"
+    rows[#rows + 1] = row
+  end
+  return rows
+end
+
+-- A workspace's card: its screen, its layout, its apps, and the app to open when it's empty.
+function displays.workspaceRows(entry, open, workspace)
+  entry = entry or { apps = {} }
+  local rows = {
+    { id = "screen", icon = "󰍹", label = "Screen", hint = "‹  " .. (entry.screen or "default") .. "  ›" },
+    { id = "layout", icon = "󰕰", label = "Layout", hint = shown(entry.layout) },
+  }
+  for _, app in ipairs(entry.apps or {}) do
+    rows[#rows + 1] = { id = "app:" .. app, group = "Apps", icon = "󰀻", label = app, hint = "⌫ remove" }
+  end
+  rows[#rows + 1] = { id = "add", group = "Apps", icon = "󰐕", label = "Add an app…", hint = "from the apps open now" }
+  rows[#rows + 1] = { id = "open", group = "Apps", icon = "󰐊", label = "Open when empty", hint = "‹  " .. (open or "off") .. "  ›" }
+  return rows
+end
+
+-- A workspace's screen after or before current: default (nil), main, then the profile's screens.
+function displays.stepWorkspaceScreen(current, direction, screens)
+  local steps = { "default", "main" }
+  for _, screen in ipairs(screens or {}) do
+    if screen:lower() ~= "main" then steps[#steps + 1] = screen end
+  end
+  local position = 1
+  for index, step in ipairs(steps) do
+    if step == (current or "default") then position = index end
+  end
+  local next = steps[(position - 1 + direction) % #steps + 1]
+  return next ~= "default" and next or nil
+end
+
+-- The app to open when the workspace is empty, after or before current: off (nil), then its apps.
+function displays.stepOpen(current, direction, apps)
+  return stepWord(apps or {}, current, direction)
+end
+
+-- The apps open now to add to workspace, each with where the profile puts it, if anywhere;
+-- those already on it are left out; then typing a name. running is { { name, workspace } }.
+function displays.appChoices(running, settings, workspace)
+  local placed = {}
+  for _, number in ipairs(sortedWorkspaces(settings.workspaces)) do
+    for _, app in ipairs(settings.workspaces[number].apps or {}) do placed[app:lower()] = number end
+  end
+  local rows, seen = {}, {}
+  for _, app in ipairs(running or {}) do
+    local key = app.name:lower()
+    if not seen[key] and placed[key] ~= workspace then
+      seen[key] = true
+      rows[#rows + 1] = { id = "app:" .. app.name, icon = "󰀻", label = app.name,
+        hint = placed[key] and ("on workspace " .. placed[key]) or "open now" }
+    end
+  end
+  rows[#rows + 1] = { id = "type", icon = "󰌌", label = "Type an app's name…", hint = "for one that isn't open" }
+  return rows
+end
+
+local function copyWorkspaces(workspaces)
+  local copied = {}
+  for number, entry in pairs(workspaces or {}) do
+    local apps = {}
+    for _, app in ipairs(entry.apps or {}) do apps[#apps + 1] = app end
+    copied[number] = { screen = entry.screen, layout = entry.layout, apps = apps }
+  end
+  return copied
+end
+
+-- The app to open on workspace when it's just been switched to with count windows on it:
+-- the profile's open app for it when it's empty; nil otherwise.
+function displays.openOnEmpty(settings, workspace, count)
+  if count ~= 0 or not settings or not settings.open then return nil end
+  return settings.open[workspace]
+end
+
+-- A copy of settings whose workspaces, apps, open apps and screens' gaps can be changed
+-- without changing settings.
+function displays.copySettings(settings)
+  local copied = copy(settings)
+  copied.workspaces = copyWorkspaces(settings.workspaces)
+  copied.open = copy(settings.open)
+  copied.screenGaps = {}
+  for screen, gaps in pairs(settings.screenGaps or {}) do copied.screenGaps[screen] = copy(gaps) end
+  return copied
+end
+
+-- settings with app on workspace, taken off any other; with workspace nil, only taken off.
+function displays.placeApp(settings, app, workspace)
+  local placed = copy(settings)
+  placed.workspaces = copyWorkspaces(settings.workspaces)
+  for _, entry in pairs(placed.workspaces) do
+    for index = #entry.apps, 1, -1 do
+      if entry.apps[index]:lower() == app:lower() then table.remove(entry.apps, index) end
+    end
+  end
+  if workspace then
+    placed.workspaces[workspace] = placed.workspaces[workspace] or { apps = {} }
+    table.insert(placed.workspaces[workspace].apps, app)
+  end
+  return placed
 end
 
 local function splitLines(text)
@@ -435,6 +827,31 @@ function displays.writeSettings(text, name, before, after)
   before, after = before or {}, after or {}
   for _, key in ipairs({ "when", "layout", "font", "theme", "bar", "quiet" }) do
     if before[key] ~= after[key] then last = setLine(lines, first, last, key, after[key]) end
+  end
+  local function keys(a, b)
+    local found, seen = {}, {}
+    for key in pairs(a or {}) do if not seen[key] then seen[key] = true; found[#found + 1] = key end end
+    for key in pairs(b or {}) do if not seen[key] then seen[key] = true; found[#found + 1] = key end end
+    table.sort(found)
+    return found
+  end
+  for _, workspace in ipairs(keys(before.workspaces, after.workspaces)) do
+    local old = displays.workspaceLine((before.workspaces or {})[workspace])
+    local new = displays.workspaceLine((after.workspaces or {})[workspace])
+    if old ~= new then last = setLine(lines, first, last, "workspace." .. workspace, new) end
+  end
+  for _, workspace in ipairs(keys(before.open, after.open)) do
+    local old, new = (before.open or {})[workspace], (after.open or {})[workspace]
+    if old ~= new then last = setLine(lines, first, last, "open." .. workspace, new) end
+  end
+  for _, screen in ipairs(keys(before.screenGaps, after.screenGaps)) do
+    local old, new = (before.screenGaps or {})[screen] or {}, (after.screenGaps or {})[screen] or {}
+    if old.inner ~= new.inner or old.outer ~= new.outer then
+      local equal = new.inner ~= nil and new.inner == new.outer
+      last = setLine(lines, first, last, "gaps." .. screen, equal and new.inner or nil)
+      last = setLine(lines, first, last, "gaps." .. screen .. ".inner", (not equal) and new.inner or nil)
+      last = setLine(lines, first, last, "gaps." .. screen .. ".outer", (not equal) and new.outer or nil)
+    end
   end
   if before.gapsInner ~= after.gapsInner or before.gapsOuter ~= after.gapsOuter then
     local inner, outer = after.gapsInner, after.gapsOuter
@@ -516,6 +933,13 @@ end
 -- when with item, laptop or a display's name, ticked or unticked.
 function displays.toggleWhen(when, item)
   local toggled = copyWhen(when)
+  -- Any screens stands alone: ticking it unticks the screens, and ticking a screen unticks it.
+  if item:lower() == "any" then
+    toggled.items = whenIndex(toggled, "any") and {} or { "any" }
+    return toggled
+  end
+  local anyAt = whenIndex(toggled, "any")
+  if anyAt then table.remove(toggled.items, anyAt) end
   local index = whenIndex(toggled, item)
   if index then table.remove(toggled.items, index) else toggled.items[#toggled.items + 1] = item end
   return toggled
@@ -542,7 +966,9 @@ local TICKED, UNTICKED = "󰄵", "󰄱"
 -- typed that omv hasn't seen, ticked when in when; then typing a part, and Done.
 function displays.whenRows(when, seen)
   local rows = { { id = "display:laptop", icon = whenIndex(when, "laptop") and TICKED or UNTICKED, label = "Laptop screen", hint = "built-in" } }
-  local known = { laptop = true }
+  rows[#rows + 1] = { id = "display:any", icon = whenIndex(when, "any") and TICKED or UNTICKED, label = "Any screens",
+    hint = "when nothing else matches" }
+  local known = { laptop = true, any = true }
   for _, entry in ipairs(seen or {}) do
     if not entry.builtin then
       known[entry.name:lower()] = true
@@ -562,6 +988,11 @@ end
 -- Whether profile name is used with screens: the first profile in the file to match wins.
 function displays.matchStatus(name, profiles, screens)
   local winner = displays.pick(profiles, screens)
+  for _, profile in ipairs(profiles or {}) do
+    if profile.name == name and profile.any then
+      return (winner and winner.name == name) and "used now, as nothing else matches" or "when nothing else matches"
+    end
+  end
   if winner and winner.name == name then return "matches now" end
   for _, profile in ipairs(profiles or {}) do
     if profile.name == name and matches(profile, screens) then
@@ -652,8 +1083,9 @@ function displays.nameLines(seen)
 end
 
 local STARTER_HEAD = [[
-# Display profiles: settings that follow the displays you plug in.
-# One [section] per profile; the first whose `when` matches the screens plugged in is used.
+# Profiles: where workspaces and apps go, and how things look, for each set of screens.
+# One [section] per profile; the first whose `when` matches the screens plugged in is used,
+# else the one with when = any.
 # Leaving a profile puts back what it changed. Save, and omv applies it.
 #
 ]]
@@ -662,9 +1094,14 @@ local STARTER_BODY = [[
 #
 # Settings; leave one out to keep omv's own:
 #   when     exactly the screens plugged in, comma between: laptop for the
-#            laptop's own, and part of a display's name for the others
-#   layout   tiles | tabs
-#   gaps     pixels; gaps.inner and gaps.outer set one kind
+#            laptop's own, and part of a display's name for the others;
+#            or any, for when nothing else matches
+#   workspace.N  its screen (or default), then tiles or tabs, then its apps:
+#            workspace.2 = DELL, tabs, Helium, Arc
+#   open.N   the app to open when you go to workspace N and it's empty
+#   layout   tiles | tabs, for the workspaces without their own
+#   gaps     pixels; gaps.inner and gaps.outer set one kind;
+#            gaps.DELL, gaps.laptop.outer and so on set one screen's
 #   quiet    on | off            Do Not Disturb while it's used
 #   theme    a name from `omv theme`
 #   font     Ghostty's font size
@@ -674,9 +1111,10 @@ local STARTER_BODY = [[
 # Remove the # in front of a section's lines to use it. Name a profile anything.
 
 # [desk]
-# when   = laptop, DELL U2723QE  # the laptop open beside a DELL, nothing else
-# layout = tiles
-# gaps   = 10
+# when        = laptop, DELL U2723QE   # the laptop open beside a DELL, nothing else
+# workspace.1 = DELL, tiles, Zed
+# workspace.2 = DELL, tabs, Helium
+# gaps.DELL   = 10
 
 # [presenting]
 # when   = laptop, projector

@@ -25,7 +25,7 @@ overwrites. Create a file there only when the change needs it.
 | `~/.config/omv/apps` | The browser and editor omv's keys open | `browser = Google Chrome`, `editor = Cursor` |
 | `~/.config/omv/snippets` | Text the palette pastes by name | `name = text` lines, `\n` for a line break |
 | `~/.config/omv/workspaces` | Which workspaces exist, 1 to 9, and each one's screen | `1 = main`, `4 = screen 2`, `8 = DELL`, `dev = 7` |
-| `~/.config/omv/displays` | Display profiles: settings per display setup | `[desk]` sections with `when = laptop, DELL`, `layout = tiles`, `gaps = 10`, `font = 15` |
+| `~/.config/omv/profiles` | Profiles: workspaces, apps and settings per set of screens | `[desk]` sections with `when = laptop, DELL`, `workspace.1 = DELL, tiles, Zed`, `gaps.DELL = 10`, `font = 15` |
 | `~/.config/omv/away-digest` | How long a break opens the agents' inbox | `minutes = 10`; `0` for every break |
 | `~/.config/omv/theme-clock` | A day and a night theme, switched at sunrise and sunset | `day = catppuccin-latte`, `night = vantablack` |
 
@@ -60,18 +60,21 @@ refused with the line and the form to use. Before binding a key, check it isn't 
 keys are in `config/aerospace/.config/aerospace/aerospace.toml` and
 `config/hammerspoon/init.lua`, and `Option+/` lists them all.
 
-**Display profiles.** Settings for one display setup, such as "tabs and tight gaps on the
-laptop, tiles at the desk", go in `~/.config/omv/displays`: one `[name]` section per profile,
-and the first whose `when` lists exactly the screens plugged in is used (`laptop` for the
-built-in screen, part of a display's name for each other, comma-separated). A profile sets `layout`, `gaps`, `gaps.inner`,
-`gaps.outer`, `quiet`, `theme`, `font`, `bar`, `on-enter` and `on-leave`; README.md's
-"Display profiles" lists their values.
+**Profiles.** How one set of screens is used, such as "Zed and Helium on the DELL at the desk,
+tabs and tight gaps on the laptop", goes in `~/.config/omv/profiles` (formerly `displays`): one
+`[name]` section per profile, and the first whose `when` lists exactly the screens plugged in is
+used (`laptop` for the built-in screen, part of a display's name for each other,
+comma-separated), else the one with `when = any`. Which workspaces exist and their default
+screens are in `~/.config/omv/workspaces`; a profile's `workspace.N = screen, layout, apps…`
+overrides only the workspaces it lists. A profile also sets `open.N`, `layout`, `gaps`,
+`gaps.inner`, `gaps.outer`, `gaps.SCREEN`, `quiet`, `theme`, `font`, `bar`, `on-enter` and
+`on-leave`; README.md's "Profiles" lists their values.
 
 ```ini
 [desk]
-when   = laptop, DELL U2723QE
-layout = tiles
-gaps   = 12
+when        = laptop, DELL U2723QE
+workspace.1 = DELL, tiles, Zed
+gaps.DELL   = 12
 ```
 
 `omv displays` prints the names to use in `when`: the displays plugged in now and those seen
@@ -79,7 +82,7 @@ before. Hammerspoon reads the file when it's saved, whenever displays change, on
 it reloads, so an edit applies on its own. Leaving a profile puts back what it changed. A profile's gaps win over
 the user's `aerospace.toml`, while the user's `~/.config/omv/ghostty` wins over its `font`.
 omv keeps the profile in use in `~/.local/state/omv/`, writing those files itself. `omv
-doctor` names a line in `displays` it can't read.
+doctor` names a line in `profiles` it can't read.
 
 **Other commands.** `omv theme` lists themes and `omv theme <name>` switches; `omv flags`
 lists feature flags; `omv update` pulls omv's own changes; `omv doctor --fix` clears a stuck

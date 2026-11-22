@@ -300,6 +300,13 @@ passes_good_displays_file() {
   expect_report '✓ ~/.config/omv/displays'
 }
 
+reports_broken_profiles_file() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf '[desk]\nwhen = laptop\nworkspace.12 = main\n' > "$HOME_DIR/.config/omv/profiles"
+  expect_report '✗ ~/.config/omv/profiles line 3: a workspace is a number from 1 to 9 — fix: edit it'
+}
+
 skips_missing_displays_file() {
   complete_setup
   expect_no_report 'omv/displays'
@@ -691,6 +698,7 @@ run_case "should report an aerospace.toml omv didn't build" reports_foreign_aero
 run_case "should report a user aerospace.toml it can't read" reports_unreadable_user_aerospace
 run_case 'should report a broken line in the displays file' reports_broken_displays_file
 run_case 'should pass a displays file it can read' passes_good_displays_file
+run_case 'should report a broken line in the profiles file' reports_broken_profiles_file
 run_case 'should say nothing about display profiles without the file' skips_missing_displays_file
 run_case 'should report a broken line in the workspaces file' reports_broken_workspaces_file
 run_case 'should pass a workspaces file it can read' passes_good_workspaces_file

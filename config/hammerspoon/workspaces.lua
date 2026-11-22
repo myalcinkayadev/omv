@@ -223,6 +223,16 @@ local function copy(list)
   return { screens = screens, dev = list.dev, problems = {} }
 end
 
+-- list with a profile's screens laid over it: each workspace the profile gives a screen moves
+-- there; the rest keep their defaults. Workspaces the list doesn't have are ignored.
+function workspaces.overlay(list, profileWorkspaces)
+  local laid = copy(list)
+  for workspace, entry in pairs(profileWorkspaces or {}) do
+    if laid.screens[workspace] and entry.screen then laid.screens[workspace] = entry.screen end
+  end
+  return laid
+end
+
 -- The screen after or before screen in the card: main, screen 2 up to as many screens as are
 -- plugged in (count, at least two), then laptop. A display's name, or a screen beyond those
 -- plugged in, steps on to main.

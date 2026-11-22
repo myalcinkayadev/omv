@@ -57,7 +57,7 @@ Before you trust it:
 - [**Agents**](#agents): Claude Code's session and weekly limits, one click to continue or start a session, and a pill when a session waits for you.
 - [**Battery**](#battery): charge, time left, cycles and power draw.
 - [**Weather**](#weather): the temperature in the bar, and a three-day forecast for wherever the Mac is.
-- [**Display profiles**](#display-profiles): tabs and tight gaps on the laptop, tiles and roomy gaps at the desk, switched as displays come and go.
+- [**Profiles**](#profiles): which screen each workspace is on, which apps live where, and how things look, for each set of screens, switched as displays come and go.
 - [**Meeting mode**](#meeting-mode): Do Not Disturb, paused music and hidden chat apps while a meeting runs, all back as they were when it ends.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
@@ -224,7 +224,8 @@ Option+Escape opens a menu modeled on Omarchy's.
 | Do Not Disturb | Switches [Do Not Disturb](#do-not-disturb) on or off |
 | Sound | Opens the [Sound card](#sound) |
 | Theme | Opens the [theme picker](#themes) |
-| Display profile | Lists your [display profiles](#display-profiles), to pick one by hand |
+| Workspaces | [Your own workspaces](#your-own-workspaces): add, remove, and pick each one's screen |
+| Profile | Lists your [profiles](#profiles), to pick, edit or delete one |
 | Permissions | Each permission omv needs, ✓ granted, ✗ not, or ? to check by hand; Enter opens its System Settings pane. Opens on its own the first time omv loads |
 | Reload › | Reloads AeroSpace, SketchyBar, Hammerspoon, or all three |
 
@@ -410,22 +411,27 @@ dev = 7          # the dev layout's workspace
 - **Without the file,** the seven above apply. A line omv can't read keeps them until it's fixed; `omv doctor` names it.
 - **dev** is the dev layout's workspace; when it isn't one of them, the last is used.
 
-## Display profiles
+## Profiles
 
-A profile is a few settings for one display setup, such as tabs and tight gaps on the laptop alone, and tiles and roomy gaps at the desk. To start, Option+Escape, then **Display profile**:
+A profile is how one set of screens is used: which screen each workspace is on, which apps live on which workspace, and how things look, such as tabs and tight gaps on the laptop alone, and Zed and Helium on the DELL at the desk. To start, Option+Escape, then **Profile**:
 
 - **Save these displays as a profile** adds one for the displays plugged in now, named after the first that isn't built in, such as `[dell]`, then opens it in the profile editor. Its name is yours to change, in the editor or the file.
-- **Open the profiles file** opens `~/.config/omv/displays` in the editor from `~/.config/omv/apps`, or TextEdit. Without the file it writes one first: the displays omv has seen, what each setting does, and examples left as comments.
+- **Open the profiles file** opens `~/.config/omv/profiles` in the editor from `~/.config/omv/apps`, or TextEdit. Without the file it writes one first: the displays omv has seen, what each setting does, and examples left as comments.
 
-<img src="docs/displays.png" alt="The display profile card before any profile: Save these displays as a profile, then edit it here; Open the profiles file, with examples" width="720">
+<img src="docs/displays.png" alt="The profile card before any profile: Save these displays as a profile, then edit it here; Open the profiles file, with examples" width="720">
 
 Saving the file applies it; there's no need to reload. `omv displays` prints the names of the displays plugged in now and those seen before, for a profile's `when`. The file holds one `[section]` each:
 
 ```ini
-# The first profile whose screens are exactly those plugged in is used.
+# The first profile whose screens are exactly those plugged in is used, else when = any.
 [desk]
-when       = laptop, DELL U2723QE, LG     # the laptop open beside a DELL and an LG, nothing else
-layout     = tiles                        # tiles, tabs or keep, for every workspace
+when        = laptop, DELL U2723QE, LG    # the laptop open beside a DELL and an LG, nothing else
+workspace.1 = DELL, tiles, Zed            # its screen, then tiles or tabs, then the apps that live there
+workspace.2 = DELL, tabs, Helium, Arc
+workspace.4 = default, Slack              # default: the screen ~/.config/omv/workspaces gives it
+open.2      = Helium                      # opened when you go to workspace 2 and it's empty
+gaps.DELL   = 12                          # one screen's gaps; gaps.DELL.inner and .outer set one kind
+layout     = tiles                        # tiles, tabs or keep, for workspaces without their own
 gaps       = 10                           # every gap; or set them apart:
 gaps.inner = 8
 gaps.outer = 12
@@ -440,14 +446,23 @@ on-leave   = ~/bin/desk-off.sh            # and when it ends
 when   = laptop                           # the laptop's own screen alone
 layout = tabs
 gaps   = 4
+
+[everywhere]
+when        = any                         # used when no other profile matches
+workspace.1 = default, Zed
 ```
+
+- **Workspaces:** a profile moves only the workspaces it lists; the rest keep the screen `~/.config/omv/workspaces` gives them. Leaving the profile puts them back.
+- **Apps:** each app listed on a workspace goes there when it opens a window, ahead of omv's own rules and yours; its open windows move there when the profile starts. An app with windows on more than one workspace is left where it is, and a window you move stays.
+- **Open when empty:** `open.N` starts that app when you go to workspace N and nothing is on it.
+- **Screens' gaps:** `gaps.DELL`, `gaps.laptop.outer` and so on set one screen's; plain `gaps` sets every other screen's.
 
 - **When it switches:** as displays connect or disconnect, and on wake, once they've settled. A notice names the profile and what it set, such as `desk · tiles · gaps 12 · tokyo-night · font 15`. With none matching, omv's own settings are back.
 - **Leaving a profile** puts back what it changed: omv's gaps and tiles, the theme you had, the font from your own Ghostty settings, Do Not Disturb as it was and the bar shown. A setting left out, or set to `keep`, is never touched.
-- **By hand:** Option+Escape, then **Display profile**, or the palette, lists your profiles. One picked by hand stays until the displays change; **Follow the displays** goes back to choosing by itself.
-- **The profile editor:** Tab on a profile opens it. Enter on **Name** renames it. Enter on **When** lists the laptop screen and every display omv has seen, to tick the screens of the setup, or type part of a name; it also says whether the profile is used now, or which one comes first. Left and Right change the selected setting. **All gaps** sets both kinds; **Gaps between windows** and **Gaps at the screen edges** set one. Enter writes only the lines that changed, keeping your comments, and the profile applies as on any save; Esc changes nothing. Backspace on a profile deletes it from the file, with the comment saving it wrote above it; **Bring back** in its place undoes that while the card is open, and for a minute after. A setting on `keep` isn't in the file. The terminal font size shows in new Ghostty windows. `on-enter` and `on-leave` are set in the file.
+- **By hand:** Option+Escape, then **Profile**, or the palette, lists your profiles. One picked by hand stays until the displays change; **Follow the displays** goes back to choosing by itself.
+- **The profile editor:** Tab on a profile opens it, in three groups. Enter on **Name** renames it. Enter on **When** lists the laptop screen, **Any screens** and every display omv has seen, to tick the screens of the setup, or type part of a name; it also says whether the profile is used now, or which one comes first. **Workspaces:** Enter on one sets its screen, its layout, its apps (**Add an app…** lists the apps open now; Backspace takes one off) and the app to open when it's empty. **Screens:** Enter on one sets its gaps, with **All gaps**, **Gaps between windows** and **Gaps at the screen edges**. **Everywhere:** Left and Right change the layout, theme, font size, bar and Do Not Disturb. Enter writes only the lines that changed, keeping your comments, and the profile applies as on any save; Esc changes nothing. Backspace on a profile deletes it from the file, with the comment saving it wrote above it; **Bring back** in its place undoes that while the card is open, and for a minute after. A setting on `keep` isn't in the file. The terminal font size shows in new Ghostty windows. `on-enter` and `on-leave` are set in the file.
 
-  <img src="docs/display-editor.png" alt="The profile editor on desk: Name, When laptop, DELL U2723QE matches now, Layout tiles, All gaps 8 · 12 selected, Gaps between windows 8, Gaps at the screen edges 12, Terminal font size 15, Theme tokyo-night, Bar keep, Do Not Disturb on" width="720">
+  <img src="docs/display-editor.png" alt="The profile editor on desk, grouped: Name, When; Workspaces 1 DELL tiles Zed, 2 DELL tabs Helium and Arc, 3 default, 4 laptop Slack, 5 to 7 default; Screens with their gaps; Everywhere with layout, theme, font size, bar and Do Not Disturb" width="720">
 
 - **The notch:** the built-in screen keeps its own top gap below the notch, whatever `gaps` says. On other displays the outer gap is measured below the bar.
 - **Ghostty** takes the font size in new windows, or after Cmd+Shift+,. A `font-size` in your own `~/.config/omv/ghostty` still wins.
@@ -455,7 +470,7 @@ gaps   = 4
 - **Your own code:** `~/.config/omv/hammerspoon.lua` can define `omvOnDisplayProfile(name)`, called with the profile's name on each switch, or nil when none is used.
 - **When:** `when` lists exactly the screens of the setup, with a comma between: `laptop` for the laptop's own, and part of a display's name, in any case, for each of the others. `laptop, DELL` is the laptop open beside a DELL; `DELL` alone is the DELL with the lid closed. Two of a make take two names: `DELL, DELL`. `built-in only`, from before, still means `laptop`, and `count` still works.
 - **Names:** a profile's name can be anything without `[`, `]` or `#`, spaces too, such as `[Home desk]`. Two profiles can't share a name, whatever their case.
-- **Mistakes:** a line omv can't read changes nothing; the notice names it, such as `~/.config/omv/displays line 3: layout must be tiles, tabs or keep`, and `omv doctor` reports it too. Without the file, display profiles do nothing; `omv flags display-profiles off` turns them off altogether. Each check is logged in `~/.local/state/omv/display-profile.log`: why it ran, such as `load` or `saved`, and what it did.
+- **Mistakes:** a line omv can't read changes nothing; the notice names it, such as `~/.config/omv/profiles line 3: layout must be tiles, tabs or keep`, and `omv doctor` reports it too. The file was `~/.config/omv/displays` before; `omv update` renames it, and omv reads it while it's the only one. Without the file, profiles do nothing; `omv flags display-profiles off` turns them off altogether. Each check is logged in `~/.local/state/omv/display-profile.log`: why it ran, such as `load` or `saved`, and what it did.
 
 ## Meeting mode
 
@@ -707,7 +722,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `dev-layout` | the dev layout and the agent grid |
 | `drop-down-terminal` | Ghostty's quick terminal (Option+\`) |
 | `long-command-notices` | Ghostty's notice when a long command finishes |
-| `display-profiles` | display profiles from `~/.config/omv/displays`, and their row in the system menu; without the file they do nothing |
+| `display-profiles` | profiles from `~/.config/omv/profiles`, and their row in the system menu; without the file they do nothing |
 | `meeting-mode` | **off unless turned on:** Do Not Disturb, paused music, held-back agent notices and hidden chat and music apps while a meeting runs; see [Meeting mode](#meeting-mode) |
 | `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
 
@@ -879,7 +894,7 @@ Your own changes go in `~/.config/omv/`, outside the omv folder, so `omv update`
 | `nvim.lua` | Neovim | `vim.opt.number = true` |
 | `flags` | Feature flags | `file-search=on` (or `omv flags file-search on`) |
 | `apps` | The browser and editor omv's keys open | `browser = Google Chrome` |
-| `displays` | Display profiles: settings for each display setup, applied as displays connect and disconnect | `[desk]` then `when = laptop, DELL U2723QE` and `layout = tiles` |
+| `profiles` | Profiles: workspaces, apps and settings for each set of screens, applied as displays connect and disconnect | `[desk]` then `when = laptop, DELL U2723QE` and `workspace.1 = DELL, Zed` |
 | `away-digest` | How long a break must be before unlocking opens the agents' inbox; read each time, so no reload | `minutes = 10`, or `minutes = 0` for every break |
 | `theme-clock` | A day theme and a night theme, switched at sunrise and sunset; read each time, so no reload | `day = catppuccin-latte` then `night = vantablack` |
 

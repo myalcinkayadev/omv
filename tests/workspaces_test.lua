@@ -120,4 +120,12 @@ check.that("should hint each workspace's screen, and mark the dev workspace",
 check.that("should name the key of the workspace Add makes", cardRows[5].label == "Add workspace 3" and cardRows[5].hint == "Option+3")
 check.that("should leave out Add when all nine exist", not check.contains(rowIds(workspaces.rows(nine)), "add"))
 
+-- A profile's screens laid over the defaults.
+local base = workspaces.parse("1 = main\n2 = main\n4 = screen 2\n")
+local laid = workspaces.overlay(base, { ["1"] = { screen = "DELL" }, ["2"] = { apps = {} }, ["8"] = { screen = "LG" } })
+check.that("should move a workspace the profile names to its screen", laid.screens["1"] == "DELL")
+check.that("should keep the default for a workspace the profile leaves to it", laid.screens["2"] == "main" and laid.screens["4"] == "screen 2")
+check.that("should ignore a workspace that doesn't exist", laid.screens["8"] == nil)
+check.that("should leave the defaults it was given unchanged", base.screens["1"] == "main")
+
 check.finish()

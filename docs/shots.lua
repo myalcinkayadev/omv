@@ -313,15 +313,18 @@ end
 -- The display profile card before there are profiles: save the displays, or open the file.
 local function displaysShot()
   local rows = displays.rows({}, {}, { { name = "DELL U2723QE", builtin = false }, { name = "Built-in Retina Display", builtin = true } })
-  return listShot("displays.png", LIST_WIDTH, { prompt = "Display profile…", rows = rows })
+  return listShot("displays.png", LIST_WIDTH, { prompt = "Profile…", rows = rows })
 end
 
 -- The profile editor on a desk profile, its gaps apart. It ends with a footer, so it's cut to its body.
 local function displayEditorShot()
-  local rows = displays.editRows({ when = "laptop, DELL U2723QE", layout = "tiles", gapsInner = 8, gapsOuter = 12, font = 15,
-    theme = "tokyo-night", quiet = "on" }, "desk", "matches now")
+  local rows = displays.editRows({ when = "laptop, DELL U2723QE", layout = "tiles", font = 15, theme = "tokyo-night", quiet = "on",
+    workspaces = { ["1"] = { screen = "DELL", layout = "tiles", apps = { "Zed" } }, ["2"] = { screen = "DELL", layout = "tabs", apps = { "Helium", "Arc" } },
+      ["4"] = { screen = "laptop", apps = { "Slack" } } },
+    screenGaps = { DELL = { inner = 10, outer = 10 }, laptop = { inner = 4, outer = 4 } } }, "desk", "matches now", { "1", "2", "3", "4", "5", "6", "7" })
   local footer = { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open › or save" }, { key = "Esc", text = "cancel" } }
-  return { file = "display-editor.png", kind = "card", width = LIST_WIDTH, crop = "body",
+  -- Taller than the usual frame, so the grouped editor isn't cut before it's measured.
+  return { file = "display-editor.png", kind = "card", width = LIST_WIDTH, height = 1000, crop = "body",
     html = card.html({ prompt = "Edit desk…", rows = rows, compact = true, step = true, footer = footer, selected = 4 }),
     script = "document.documentElement.style.height='auto';document.body.style.height='auto';document.querySelector('.rows').style.flex='none'" }
 end

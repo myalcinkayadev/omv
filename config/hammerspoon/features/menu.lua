@@ -63,7 +63,7 @@ local function menuChoose(id)
   -- Loaded with its flag only, since it starts watching the displays when it loads.
   if id == "displays" then
     local profiles = package.loaded["features.displays"]
-    if type(profiles) ~= "table" then return shell.alert("Display profiles are off: omv flags display-profiles on", 2.5) end
+    if type(profiles) ~= "table" then return shell.alert("Profiles are off: omv flags display-profiles on", 2.5) end
     return profiles.open()
   end
   if id == "permissions" then return require("features.permissions").open() end

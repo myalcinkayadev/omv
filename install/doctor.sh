@@ -144,15 +144,17 @@ check_aerospace_built() {
   else problem 'aerospace.toml is out of date' 'omv reload'; fi
 }
 
-# ~/.config/omv/displays, the display profiles, when there is one: its first line Hammerspoon
-# can't read, as the notice on a display change names it.
+# ~/.config/omv/profiles, or the displays file it was called before, when there is one: its
+# first line Hammerspoon can't read, as the notice on a display change names it.
 check_displays_file() {
-  local file=$HOME/.config/omv/displays first
+  local name=profiles first
+  [ -e "$HOME/.config/omv/profiles" ] || name=displays
+  local file=$HOME/.config/omv/$name
   [ -e "$file" ] || return 0
   if first=$(luajit "$REPO_DIR/config/hammerspoon/displays.lua" check "$file" 2>&1); then
-    ok '~/.config/omv/displays'
+    ok "~/.config/omv/$name"
   else
-    problem "~/.config/omv/displays $(printf '%s\n' "$first" | head -n 1)" 'edit it'
+    problem "~/.config/omv/$name $(printf '%s\n' "$first" | head -n 1)" 'edit it'
   fi
 }
 
