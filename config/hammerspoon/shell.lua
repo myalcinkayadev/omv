@@ -63,6 +63,25 @@ function shell.osascript(source, language, seconds, done)
   end)
 end
 
+-- The tasks shell.execute started that haven't finished, kept so none is garbage-collected
+-- while it runs.
+local running = {}
+
+-- Runs command with /bin/sh in the background and hands done its output and whether it
+-- succeeded, as hs.execute returns them. hs.execute waits on Hammerspoon's only thread, which
+-- freezes every card and key until the command finishes.
+function shell.execute(command, done)
+  local task
+  task = hs.task.new("/bin/sh", function(code, output)
+    running[task] = nil
+    if done then done(output or "", code == 0) end
+  end, { "-c", command })
+  running[task] = true
+  if task:start() then return end
+  running[task] = nil
+  if done then done("", false) end
+end
+
 function shell.open(arguments)
   return shell.run("/usr/bin/open", arguments)
 end
