@@ -23,6 +23,7 @@ local clipboard = require("clipboard")
 local devlayout = require("devlayout")
 local digest = require("digest")
 local disk = require("disk")
+local displays = require("displays")
 local menu = require("menu")
 local network = require("network")
 local notepad = require("notepad")
@@ -309,6 +310,12 @@ local function sendtoShot()
   return listShot("sendto.png", LIST_WIDTH, { prompt = "Send to agent…", rows = rows })
 end
 
+-- The display profile card before there are profiles: save the displays, or open the file.
+local function displaysShot()
+  local rows = displays.rows({}, {}, { { name = "DELL U2723QE", builtin = false }, { name = "Built-in Retina Display", builtin = true } })
+  return listShot("displays.png", LIST_WIDTH, { prompt = "Display profile…", rows = rows })
+end
+
 local function devlayoutShot()
   local rows = devlayout.rows({ "/Users/me/work/omv", "/Users/me/work/api", "/Users/me/work/site" }, "/Users/me")
   return listShot("devlayout.png", LIST_WIDTH, { prompt = "Dev layout for…", rows = rows })
@@ -377,6 +384,7 @@ function shots.build(now, logo)
   add(list, ciShot())
   add(list, inboxShot(now))
   add(list, sendtoShot())
+  add(list, displaysShot())
   add(list, devlayoutShot())
   add(list, noteShots(now))
   add(list, translateShot())

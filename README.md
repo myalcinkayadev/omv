@@ -397,6 +397,8 @@ A profile is a few settings for one display setup, such as tabs and tight gaps o
 - **Save these displays as a profile** adds one for the displays plugged in now, named after the first that isn't built in, such as `[dell]`, then opens the file. Its settings are comments: remove a `#`, rename it to anything, and save.
 - **Open the profiles file** opens `~/.config/omv/displays` in the editor from `~/.config/omv/apps`, or TextEdit. Without the file it writes one first: the displays omv has seen, what each setting does, and examples left as comments.
 
+<img src="docs/displays.png" alt="The display profile card before any profile: Save these displays as a profile, for DELL U2723QE and the built-in display, then Open the profiles file, with examples" width="720">
+
 Saving the file applies it; there's no need to reload. `omv displays` prints the names of the displays plugged in now and those seen before, for a profile's `when`. The file holds one `[section]` each:
 
 ```ini
