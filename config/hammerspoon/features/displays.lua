@@ -81,16 +81,6 @@ local function run(command)
   if command then hs.task.new("/bin/sh", nil, { "-c", command }):start() end
 end
 
-local function summary(profile)
-  local settings, parts = profile.settings, {}
-  if settings.layout then parts[#parts + 1] = settings.layout end
-  if settings.gapsOuter or settings.gapsInner then parts[#parts + 1] = "gaps " .. (settings.gapsOuter or settings.gapsInner) end
-  if settings.quiet == "on" then parts[#parts + 1] = "quiet" end
-  if settings.theme then parts[#parts + 1] = settings.theme end
-  if settings.font then parts[#parts + 1] = "font " .. settings.font end
-  return table.concat(parts, " · ")
-end
-
 -- Applies the move from the profile in use to profile, either nil, and remembers it.
 -- The profile in use is kept with its settings, so leaving it puts things back even after the
 -- file changed or was removed.
@@ -130,7 +120,7 @@ local function apply(profile, saved)
   saved.settings = profile and profile.settings or nil
   writeState(saved)
   if type(omvOnDisplayProfile) == "function" then pcall(omvOnDisplayProfile, saved.active) end
-  if profile then shell.alert(profile.name .. (summary(profile) ~= "" and ("  ·  " .. summary(profile)) or ""), 2)
+  if profile then shell.alert(profile.name .. (displays.summary(profile) ~= "" and ("  ·  " .. displays.summary(profile)) or ""), 2)
   elseif before then shell.alert("No display profile", 1.5) end
 end
 
@@ -179,32 +169,11 @@ local function saveDisplays(profiles)
   shell.alert("Saved as " .. name .. ": add its settings, then save", 3)
 end
 
--- The displays plugged in, as the save row's hint: DELL U2723QE + built-in.
-local function screensHint(profiles)
-  local found = displays.pick(profiles, screens())
-  if found then return "already: " .. found.name end
-  local outside, builtin = {}, false
-  for _, screen in ipairs(screens()) do
-    if screen.builtin then builtin = true else outside[#outside + 1] = screen.name end
-  end
-  if builtin then outside[#outside + 1] = "built-in" end
-  return table.concat(outside, " + ")
-end
-
--- The card: each profile, the one in use marked, and Follow the displays; then saving the
--- displays as a profile and opening the file, which is all it shows without profiles.
+-- The card: the profiles, then saving the displays as a profile and opening the file.
 function feature.open()
   local read = displays.parse(shell.readText(displays.PATH))
   local saved = readState()
-  local rows = {}
-  for _, profile in ipairs(read.profiles) do
-    local hint = profile.name == saved.active and ("in use" .. ((saved.choice or {}).picked and " · picked" or "")) or summary(profile)
-    rows[#rows + 1] = { id = "profile:" .. profile.name, icon = "󰍹", label = profile.name, hint = hint }
-  end
-  if #read.profiles > 0 then rows[#rows + 1] = { id = "follow", icon = "󰑐", label = "Follow the displays", hint = "automatic" } end
-  rows[#rows + 1] = { id = "save", icon = "󰐕", label = "Save these displays as a profile", hint = screensHint(read.profiles) }
-  rows[#rows + 1] = { id = "file", icon = "󰷈", label = "Open the profiles file",
-    hint = #read.profiles > 0 and "applies on save" or "with examples" }
+  local rows = displays.rows(read.profiles, { active = saved.active, picked = (saved.choice or {}).picked ~= nil }, screens())
   shell.show("displays", shell.centered(shell.LIST_WIDTH, shell.listHeight(#rows)),
     card.html({ prompt = "Display profile…", rows = rows, compact = true }), function(message)
       if message.type ~= "choose" then return shell.close() end

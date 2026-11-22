@@ -101,6 +101,32 @@ check.that("should drop the hand-picked profile once the displays change",
   displays.current(state, read.profiles, { builtIn }).name == "laptop" and displays.current(state, read.profiles, { builtIn }).picked ~= true)
 check.that("should follow the displays when follow is picked", displays.current(displays.choose(state, nil, { builtIn, dell }), read.profiles, { builtIn, dell }).name == "desk")
 
+-- The card's rows.
+local function hints(rows)
+  local found = {}
+  for _, row in ipairs(rows) do found[row.id] = row.hint end
+  return found
+end
+local function ids(rows)
+  local found = {}
+  for _, row in ipairs(rows) do found[#found + 1] = row.id end
+  return table.concat(found, " ")
+end
+local emptyRows = displays.rows({}, {}, { builtIn, dell })
+check.that("should give only the save and file rows when there are no profiles", ids(emptyRows) == "save file")
+check.that("should hint with examples on the file row when there are no profiles", hints(emptyRows).file == "with examples")
+check.that("should hint the displays on the save row when no profile matches them", hints(emptyRows).save == "DELL U2723QE + built-in")
+local cardProfiles = displays.parse("[laptop]\nwhen = built-in only\nlayout = tabs\ngaps = 4\n\n[dell]\nwhen = DELL\n").profiles
+local cardRows = displays.rows(cardProfiles, { active = "dell" }, { builtIn, dell })
+check.that("should hint already on the save row when a profile matches the displays", hints(cardRows).save == "already: dell")
+check.that("should list the profiles in file order before follow, save and file",
+  ids(cardRows) == "profile:laptop profile:dell follow save file")
+check.that("should hint in use on the profile in use", hints(cardRows)["profile:dell"] == "in use")
+check.that("should hint in use and picked on a profile picked by hand",
+  hints(displays.rows(cardProfiles, { active = "dell", picked = true }, { builtIn, dell }))["profile:dell"] == "in use · picked")
+check.that("should hint its settings on a profile not in use", hints(cardRows)["profile:laptop"] == "tabs · gaps 4")
+check.that("should hint applies on save on the file row when there are profiles", hints(cardRows).file == "applies on save")
+
 -- AeroSpace's layout command.
 local layoutArgs = table.concat(displays.layoutArgs("3", "tabs"), " ")
 check.that("should lay out a whole workspace from its root as tabs", layoutArgs == "layout --workspace 3 --root accordion")

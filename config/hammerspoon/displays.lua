@@ -214,6 +214,45 @@ function displays.current(state, profiles, screens)
   return displays.pick(profiles, screens)
 end
 
+-- A profile's settings in a few words, for the card and the notice: tabs · gaps 4 · font 15.
+function displays.summary(profile)
+  local settings, parts = profile.settings, {}
+  if settings.layout then parts[#parts + 1] = settings.layout end
+  if settings.gapsOuter or settings.gapsInner then parts[#parts + 1] = "gaps " .. (settings.gapsOuter or settings.gapsInner) end
+  if settings.quiet == "on" then parts[#parts + 1] = "quiet" end
+  if settings.theme then parts[#parts + 1] = settings.theme end
+  if settings.font then parts[#parts + 1] = "font " .. settings.font end
+  return table.concat(parts, " · ")
+end
+
+-- The displays plugged in, as the save row's hint, or the profile that already matches them.
+local function screensHint(profiles, screens)
+  local found = displays.pick(profiles, screens)
+  if found then return "already: " .. found.name end
+  local outside, builtin = {}, false
+  for _, screen in ipairs(screens or {}) do
+    if screen.builtin then builtin = true else outside[#outside + 1] = tostring(screen.name) end
+  end
+  if builtin then outside[#outside + 1] = "built-in" end
+  return table.concat(outside, " + ")
+end
+
+-- The card's rows: each profile, the one in use marked, and Follow the displays; then saving
+-- the displays as a profile and opening the file, which are all it has without profiles.
+-- state is { active, picked }: the profile in use, and whether it was picked by hand.
+function displays.rows(profiles, state, screens)
+  local rows = {}
+  for _, profile in ipairs(profiles or {}) do
+    local hint = profile.name == state.active and ("in use" .. (state.picked and " · picked" or "")) or displays.summary(profile)
+    rows[#rows + 1] = { id = "profile:" .. profile.name, icon = "󰍹", label = profile.name, hint = hint }
+  end
+  local any = #rows > 0
+  if any then rows[#rows + 1] = { id = "follow", icon = "󰑐", label = "Follow the displays", hint = "automatic" } end
+  rows[#rows + 1] = { id = "save", icon = "󰐕", label = "Save these displays as a profile", hint = screensHint(profiles, screens) }
+  rows[#rows + 1] = { id = "file", icon = "󰷈", label = "Open the profiles file", hint = any and "applies on save" or "with examples" }
+  return rows
+end
+
 -- Every display omv has seen, so a profile can name one that isn't plugged in now. One line
 -- each: the date last seen, 1 when built in, 1 when plugged in now, and the name.
 displays.SEEN_PATH = (os.getenv("HOME") or "") .. "/.local/state/omv/displays-seen"
