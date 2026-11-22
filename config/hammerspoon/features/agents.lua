@@ -53,12 +53,13 @@ local function readTail(path, bytes)
   return text
 end
 
--- Claude Code's background sessions, from `claude agents --json`, which answers in about 0.1s.
-local function backgroundSessions()
-  if not hs.fs.attributes(CLAUDE) then return {} end
-  local output = hs.execute(agents.shellQuote(CLAUDE) .. " agents --json 2>/dev/null")
-  local ok, list = pcall(hs.json.decode, output or "")
-  return agents.background(ok and list or nil)
+-- Hands done Claude Code's background sessions, from `claude agents --json`.
+local function backgroundSessions(done)
+  if not hs.fs.attributes(CLAUDE) then return done({}) end
+  shell.execute(agents.shellQuote(CLAUDE) .. " agents --json 2>/dev/null", function(output)
+    local ok, list = pcall(hs.json.decode, output)
+    done(agents.background(ok and list or nil))
+  end)
 end
 
 local folderExists = claudeprojects.folderExists
@@ -73,13 +74,23 @@ local onAgentsMessage
 local sessionRows = {}
 local backgroundRows = {}
 
-local function showAgents()
-  sessionRows = waiting.rows()
-  backgroundRows = backgroundSessions()
+local function drawAgents()
   local model = { plan = claudePlan(), usage = agents.parseUsage(shell.readText(CLAUDE_USAGE), os.time()),
     logo = logoUrl(), sessions = sessionRows, background = backgroundRows }
   shell.show("agents", shell.anchored(agents.WIDTH, agents.height(#sessionRows, #backgroundRows), "claude_usage"),
     agents.html(model), onAgentsMessage)
+end
+
+-- Opens at once with the background sessions last read, then redraws when claude answers
+-- with different ones.
+local function showAgents()
+  sessionRows = waiting.rows()
+  drawAgents()
+  backgroundSessions(function(rows)
+    if not shell.isOpen("agents") or hs.json.encode(rows) == hs.json.encode(backgroundRows) then return end
+    backgroundRows = rows
+    drawAgents()
+  end)
 end
 
 local function focusSession(tty)
@@ -101,37 +112,51 @@ local function onProjectMessage(message)
 end
 
 local function showProjects()
-  local rows = agents.projectRows(agents.projects(recentSessions(), folderExists), HOME)
-  local screen = { prompt = "New Claude session in…", rows = rows, compact = true, hint = "No Claude Code projects yet" }
-  local height = shell.listHeight(math.max(1, #rows), PROJECTS_VISIBLE_ROWS)
-  shell.show("agents-projects", shell.centered(shell.LIST_WIDTH, height), card.html(screen), onProjectMessage)
+  recentSessions(function(sessions)
+    local rows = agents.projectRows(agents.projects(sessions, folderExists), HOME)
+    local screen = { prompt = "New Claude session in…", rows = rows, compact = true, hint = "No Claude Code projects yet" }
+    local height = shell.listHeight(math.max(1, #rows), PROJECTS_VISIBLE_ROWS)
+    shell.show("agents-projects", shell.centered(shell.LIST_WIDTH, height), card.html(screen), onProjectMessage)
+  end)
 end
 
 -- Opens a background session in a new Ghostty window, in its folder, with claude attach.
 -- Claude's background service runs only while a client is connected, and claude rm needs it.
-local function serviceRunning()
-  return (hs.execute(agents.shellQuote(CLAUDE) .. " daemon status 2>/dev/null") or ""):find("pid:") ~= nil
+local function serviceRunning(done)
+  shell.execute(agents.shellQuote(CLAUDE) .. " daemon status 2>/dev/null", function(output)
+    done(output:find("pid:") ~= nil)
+  end)
+end
+
+-- Runs each claude command after the one before has finished, then calls done.
+local function runClaude(commands, done, index)
+  index = index or 1
+  if not commands[index] then return done() end
+  shell.execute(agents.shellQuote(CLAUDE) .. " " .. commands[index] .. " 2>&1", function()
+    runClaude(commands, done, index + 1)
+  end)
 end
 
 -- Stops and removes the session, then stops the service when it was started for this,
 -- leaving any other background session running.
 local function runRemoval(id, startedService)
-  for _, command in ipairs(agents.removeCommands(id)) do
-    hs.execute(agents.shellQuote(CLAUDE) .. " " .. command .. " 2>&1")
-  end
-  if startedService then hs.execute(agents.shellQuote(CLAUDE) .. " daemon stop --any --keep-workers 2>&1") end
-  showAgents()
+  local commands = {}
+  for _, command in ipairs(agents.removeCommands(id)) do commands[#commands + 1] = command end
+  if startedService then commands[#commands + 1] = "daemon stop --any --keep-workers" end
+  runClaude(commands, showAgents)
 end
 
 local function removeBackground(id)
   if not agents.removeCommands(id) then return shell.close() end
-  if serviceRunning() then return runRemoval(id, false) end
-  shell.alert("Removing…", 1.5)
-  -- Kept on the feature, so it isn't garbage-collected while it runs.
-  feature.service = hs.task.new(CLAUDE, nil, { "daemon", "run" })
-  feature.service:start()
-  -- The service takes a moment before it answers.
-  hs.timer.doAfter(2, function() runRemoval(id, true) end)
+  serviceRunning(function(running)
+    if running then return runRemoval(id, false) end
+    shell.alert("Removing…", 1.5)
+    -- Kept on the feature, so it isn't garbage-collected while it runs.
+    feature.service = hs.task.new(CLAUDE, nil, { "daemon", "run" })
+    feature.service:start()
+    -- The service takes a moment before it answers.
+    hs.timer.doAfter(2, function() runRemoval(id, true) end)
+  end)
 end
 
 -- x on a background row asks first, with Cancel selected.
@@ -175,16 +200,17 @@ local function onResumeMessage(message)
 end
 
 local function showResume()
-  local sessions = recentSessions()
-  resumable = {}
-  for _, session in ipairs(sessions) do
-    session.title = agents.sessionTitle(readTail(session.path, SESSION_TAIL_BYTES))
-    resumable[session.id] = session
-  end
-  local rows = agents.resumeRows(sessions, folderExists, os.time())
-  local screen = { prompt = "Resume a Claude session…", rows = rows, compact = true, hint = "No Claude Code sessions yet" }
-  local height = shell.listHeight(math.max(1, #rows), RESUME_VISIBLE_ROWS)
-  shell.show("agents-resume", shell.centered(shell.LIST_WIDTH, height), card.html(screen), onResumeMessage)
+  recentSessions(function(sessions)
+    resumable = {}
+    for _, session in ipairs(sessions) do
+      session.title = agents.sessionTitle(readTail(session.path, SESSION_TAIL_BYTES))
+      resumable[session.id] = session
+    end
+    local rows = agents.resumeRows(sessions, folderExists, os.time())
+    local screen = { prompt = "Resume a Claude session…", rows = rows, compact = true, hint = "No Claude Code sessions yet" }
+    local height = shell.listHeight(math.max(1, #rows), RESUME_VISIBLE_ROWS)
+    shell.show("agents-resume", shell.centered(shell.LIST_WIDTH, height), card.html(screen), onResumeMessage)
+  end)
 end
 
 onAgentsMessage = function(message)
@@ -200,11 +226,13 @@ onAgentsMessage = function(message)
   if tty then return focusSession(tty) end
   local backgroundId = agents.backgroundId(message.id)
   if backgroundId then return attachBackground(backgroundId) end
-  local latest = agents.latest(recentSessions(), folderExists)
-  if not latest then return shell.alert("No Claude Code sessions yet", 1.5) end
   shell.leaveFocus()
   shell.close()
-  startClaude(latest.cwd, "--continue")
+  recentSessions(function(sessions)
+    local latest = agents.latest(sessions, folderExists)
+    if not latest then return shell.alert("No Claude Code sessions yet", 1.5) end
+    startClaude(latest.cwd, "--continue")
+  end)
 end
 
 function feature.toggle()

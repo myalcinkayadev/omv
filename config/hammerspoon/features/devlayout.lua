@@ -35,18 +35,31 @@ local ZED_CLI = "/Applications/Zed.app/Contents/MacOS/cli"
 local WAIT_SECONDS = 10
 local CHECK_SECONDS = 0.5
 
-local function aerospace(arguments)
-  return hs.execute(shell.AEROSPACE .. " " .. table.concat(arguments, " "))
+-- Every call here runs in the background, so the cards and keys stay live while the layout
+-- opens. Each step starts when the one before has finished.
+
+-- Runs step(item, next) on each of items in turn, then calls done.
+local function inTurn(items, step, done, index)
+  index = index or 1
+  if not items[index] then return done and done() end
+  step(items[index], function() inTurn(items, step, done, index + 1) end)
 end
 
-local function listWindows()
-  return hs.execute(shell.AEROSPACE .. " list-windows --all --format '" .. windows.FORMAT .. "'") or ""
+local function aerospaceAll(commands, done)
+  inTurn(commands, function(arguments, next)
+    hs.task.new(shell.AEROSPACE, function() next() end, arguments):start()
+  end, done)
 end
 
-local function clearDevWorkspace()
-  local output = hs.execute(shell.AEROSPACE .. " list-windows --workspace " .. devlayout.WORKSPACE
-    .. " --format '" .. windows.FORMAT .. "'") or ""
-  for _, command in ipairs(devlayout.sendHome(output)) do aerospace(command) end
+local function listWindows(done)
+  shell.execute(shell.AEROSPACE .. " list-windows --all --format '" .. windows.FORMAT .. "'", done)
+end
+
+local function clearDevWorkspace(done)
+  shell.execute(shell.AEROSPACE .. " list-windows --workspace " .. devlayout.WORKSPACE
+    .. " --format '" .. windows.FORMAT .. "'", function(output)
+    aerospaceAll(devlayout.sendHome(output), done)
+  end)
 end
 
 local function launch(commands)
@@ -57,51 +70,59 @@ end
 -- hands them to done. The timer is kept on the feature: one nothing refers to can be
 -- collected before it fires.
 local function waitFor(found, ready, done, waited)
-  local ids = found(listWindows())
-  if not ready(ids) and waited < WAIT_SECONDS then
-    feature.waiting = hs.timer.doAfter(CHECK_SECONDS, function() waitFor(found, ready, done, waited + CHECK_SECONDS) end)
-    return
-  end
-  done(ids)
+  listWindows(function(output)
+    local ids = found(output)
+    if not ready(ids) and waited < WAIT_SECONDS then
+      feature.waiting = hs.timer.doAfter(CHECK_SECONDS, function() waitFor(found, ready, done, waited + CHECK_SECONDS) end)
+      return
+    end
+    done(ids, output)
+  end)
 end
 
 -- Moves the windows in order, lays them out, then goes to the dev workspace.
 local function place(ordered, layout)
   local workspace = devlayout.WORKSPACE
-  for _, id in ipairs(ordered) do aerospace({ "move-node-to-workspace", "--window-id", id, workspace }) end
-  for _, command in ipairs(layout(workspace, ordered)) do aerospace(command) end
-  aerospace({ "workspace", workspace })
+  local commands = {}
+  for _, id in ipairs(ordered) do commands[#commands + 1] = { "move-node-to-workspace", "--window-id", id, workspace } end
+  for _, command in ipairs(layout(workspace, ordered)) do commands[#commands + 1] = command end
+  commands[#commands + 1] = { "workspace", workspace }
+  aerospaceAll(commands)
 end
 
 -- newWindow opens the editor in a window of its own, for a task's new folder.
 local function start(folder, editor, newWindow)
-  clearDevWorkspace()
-  local before = listWindows()
-  local cli = editor == "Zed" and hs.fs.attributes(ZED_CLI) and ZED_CLI or nil
-  launch(devlayout.commands(folder, { editor = editor, editorCli = cli, ghosttyWindow = TOOLS.ghosttyWindow,
-    claudeIn = TOOLS.claudeIn, shellIn = TOOLS.shellIn }, newWindow))
-  waitFor(function(after) return devlayout.windowsToMove(before, after, folder) end, devlayout.ready, function(ids)
-    -- Moved in order, so the editor ends up left, then Claude, then the shell.
-    place(devlayout.ordered(listWindows(), ids), devlayout.arrange)
-  end, 0)
+  clearDevWorkspace(function()
+    listWindows(function(before)
+      local cli = editor == "Zed" and hs.fs.attributes(ZED_CLI) and ZED_CLI or nil
+      launch(devlayout.commands(folder, { editor = editor, editorCli = cli, ghosttyWindow = TOOLS.ghosttyWindow,
+        claudeIn = TOOLS.claudeIn, shellIn = TOOLS.shellIn }, newWindow))
+      waitFor(function(after) return devlayout.windowsToMove(before, after, folder) end, devlayout.ready, function(ids, after)
+        -- Moved in order, so the editor ends up left, then Claude, then the shell.
+        place(devlayout.ordered(after, ids), devlayout.arrange)
+      end, 0)
+    end)
+  end)
 end
 
-local function isRepo(folder)
-  local _, ok = hs.execute("/usr/bin/git -C " .. devlayout.quote(folder) .. " rev-parse --git-dir 2>/dev/null")
-  return ok == true
+local function isRepo(folder, done)
+  shell.execute("/usr/bin/git -C " .. devlayout.quote(folder) .. " rev-parse --git-dir 2>/dev/null", function(_, ok)
+    done(ok)
+  end)
 end
 
--- A new branch and folder for a task; nil, with an alert, when git refuses.
-local function makeWorktree(folder, index)
+-- Hands done a new branch and folder for a task; nil, with an alert, when git refuses.
+local function makeWorktree(folder, index, done)
   local name = devlayout.taskName(os.time(), index)
   local path = devlayout.worktreePath(shell.HOME, folder, name)
   local command = devlayout.worktreeCommand(folder, path, name)
   local quoted = {}
   for _, argument in ipairs(command[2]) do quoted[#quoted + 1] = devlayout.quote(argument) end
-  local output, ok = hs.execute(command[1] .. " " .. table.concat(quoted, " ") .. " 2>&1")
-  if ok then return path end
-  shell.alert("Couldn't make a worktree: " .. (output or ""):gsub("%s+$", ""), 3)
-  return nil
+  shell.execute(command[1] .. " " .. table.concat(quoted, " ") .. " 2>&1", function(output, ok)
+    if ok then return done(path) end
+    shell.alert("Couldn't make a worktree: " .. output:gsub("%s+$", ""), 3)
+    done(nil)
+  end)
 end
 
 local function showList(name, prompt, rows, onPick)
@@ -120,18 +141,23 @@ end
 
 -- A new task in a worktree of folder, opened as the dev layout. Also callable from the console.
 function feature.startTask(folder, editor)
-  local path = makeWorktree(folder)
-  if path then start(path, editor, true) end
+  makeWorktree(folder, nil, function(path)
+    if path then start(path, editor, true) end
+  end)
 end
 
 -- editor is the app the editor key opens, from ~/.config/omv/apps.
 function feature.open(editor)
-  showList("devlayout", "Dev layout for…", devlayout.rows(projects(), shell.HOME), function(folder)
-    if not isRepo(folder) then return startClosed(function() start(folder, editor) end) end
-    showList("devlayout-choice", folder:match("([^/]+)/*$") .. "…", devlayout.choices(true), function(choice)
-      startClosed(function()
-        if choice == "open" then return start(folder, editor) end
-        feature.startTask(folder, editor)
+  projects(function(found)
+    showList("devlayout", "Dev layout for…", devlayout.rows(found, shell.HOME), function(folder)
+      isRepo(folder, function(repo)
+        if not repo then return startClosed(function() start(folder, editor) end) end
+        showList("devlayout-choice", folder:match("([^/]+)/*$") .. "…", devlayout.choices(true), function(choice)
+          startClosed(function()
+            if choice == "open" then return start(folder, editor) end
+            feature.startTask(folder, editor)
+          end)
+        end)
       end)
     end)
   end)
@@ -140,47 +166,66 @@ end
 local TMUX = "/opt/homebrew/bin/tmux"
 
 -- Output goes through a file: the tmux server new-session starts would otherwise inherit
--- hs.execute's pipe and keep it open, so hs.execute would never return.
-local function tmux(arguments)
+-- the task's pipe and keep it open, so the task would never be seen to finish.
+local function tmux(arguments, done)
   local quoted = {}
   for _, argument in ipairs(arguments) do quoted[#quoted + 1] = devlayout.quote(argument) end
   local log = os.tmpname()
-  local _, ok = hs.execute(TMUX .. " " .. table.concat(quoted, " ") .. " > " .. devlayout.quote(log) .. " 2>&1 < /dev/null")
-  local output = shell.readText(log) or ""
-  os.remove(log)
-  return output, ok
+  shell.execute(TMUX .. " " .. table.concat(quoted, " ") .. " > " .. devlayout.quote(log) .. " 2>&1 < /dev/null", function(_, ok)
+    local output = shell.readText(log) or ""
+    os.remove(log)
+    if done then done(output, ok) end
+  end)
 end
 
 -- A Ghostty window attached to the grid's session, alone on the dev workspace.
 local function attach(session)
-  clearDevWorkspace()
-  local before = listWindows()
-  launch({ { TOOLS.ghosttyWindow, { agentgrid.attachCommand(session, TMUX) } } })
-  waitFor(function(after) return devlayout.newWindows(before, after) end,
-    function(ids) return #ids >= 1 end,
-    function(ids) place(ids, devlayout.arrange) end, 0)
+  clearDevWorkspace(function()
+    listWindows(function(before)
+      launch({ { TOOLS.ghosttyWindow, { agentgrid.attachCommand(session, TMUX) } } })
+      waitFor(function(after) return devlayout.newWindows(before, after) end,
+        function(ids) return #ids >= 1 end,
+        function(ids) place(ids, devlayout.arrange) end, 0)
+    end)
+  end)
+end
+
+-- Hands done a worktree for each of count agents, or nil when git refuses one.
+local function makeWorktrees(folder, count, done, paths)
+  paths = paths or {}
+  if #paths == count then return done(paths) end
+  makeWorktree(folder, #paths + 1, function(path)
+    if not path then return done(nil) end
+    paths[#paths + 1] = path
+    makeWorktrees(folder, count, done, paths)
+  end)
+end
+
+-- Runs the tmux commands in turn, stopping with an alert at the first that fails.
+local function runTmux(commands, done, index)
+  index = index or 1
+  if not commands[index] then return done() end
+  tmux(commands[index], function(output, ok)
+    if not ok then return shell.alert("tmux: " .. output:gsub("%s+$", ""), 3) end
+    runTmux(commands, done, index + 1)
+  end)
 end
 
 -- Also callable from the console: feature.startGrid("/path/to/repo", 2).
 function feature.startGrid(folder, count)
   if not hs.fs.attributes(TMUX) then return shell.alert("The agent grid needs tmux: brew install tmux", 3) end
-  local paths = {}
-  for index = 1, count do
-    local path = makeWorktree(folder, index)
-    if not path then return end
-    paths[#paths + 1] = path
-  end
-  local session = agentgrid.sessionName(folder)
-  for _, command in ipairs(agentgrid.startCommands(session, paths, TOOLS.claudeIn)) do
-    local output, ok = tmux(command)
-    if not ok then return shell.alert("tmux: " .. (output or ""):gsub("%s+$", ""), 3) end
-  end
-  attach(session)
+  makeWorktrees(folder, count, function(paths)
+    if not paths then return end
+    local session = agentgrid.sessionName(folder)
+    runTmux(agentgrid.startCommands(session, paths, TOOLS.claudeIn), function() attach(session) end)
+  end)
 end
 
-local function runningGrids()
-  if not hs.fs.attributes(TMUX) then return {} end
-  return agentgrid.running(hs.execute(TMUX .. " list-sessions -F '#{session_name}' 2>/dev/null"))
+local function runningGrids(done)
+  if not hs.fs.attributes(TMUX) then return done({}) end
+  shell.execute(TMUX .. " list-sessions -F '#{session_name}' 2>/dev/null", function(output)
+    done(agentgrid.running(output))
+  end)
 end
 
 -- Reattaches a running grid on the dev workspace. Also callable from the console.
@@ -203,17 +248,26 @@ local function runningGrid(folder)
   end)
 end
 
-function feature.openGrid()
-  local running = runningGrids()
-  local rows = agentgrid.projectRows(devlayout.rows(projects(), shell.HOME), running)
-  showList("devlayout", "Agent grid for…", rows, function(folder)
-    if running[agentgrid.sessionName(folder)] then return runningGrid(folder) end
-    if not isRepo(folder) then
+local function pickGridSize(folder)
+  isRepo(folder, function(repo)
+    if not repo then
       shell.close()
       return shell.alert("The agent grid needs a git repository", 2)
     end
     showList("devlayout-grid", "How many agents?", devlayout.gridSizes(), function(size)
       startClosed(function() feature.startGrid(folder, tonumber(size)) end)
+    end)
+  end)
+end
+
+function feature.openGrid()
+  runningGrids(function(running)
+    projects(function(found)
+      local rows = agentgrid.projectRows(devlayout.rows(found, shell.HOME), running)
+      showList("devlayout", "Agent grid for…", rows, function(folder)
+        if running[agentgrid.sessionName(folder)] then return runningGrid(folder) end
+        pickGridSize(folder)
+      end)
     end)
   end)
 end
