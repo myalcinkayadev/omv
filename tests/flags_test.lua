@@ -31,10 +31,11 @@ for _, name in ipairs(FEATURES) do
   check.that("should have " .. name .. " on by default", defaults[name] == true)
 end
 check.that("should have meeting mode off by default", flags.read(nil)["meeting-mode"] == false)
-check.that("should have a flag for every feature, file search and meeting mode, and nothing else", (function()
+check.that("should have the stall detector off by default", flags.read(nil).stalls == false)
+check.that("should have a flag for every feature, file search, meeting mode and stalls, and nothing else", (function()
   local count = 0
   for _ in pairs(flags.DEFAULTS) do count = count + 1 end
-  return count == #FEATURES + 2
+  return count == #FEATURES + 3
 end)())
 check.that("should turn a feature off when its line says off", flags.read("weather=off").weather == false)
 check.that("should leave the other features on when one is turned off", flags.read("weather=off").battery == true)

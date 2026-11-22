@@ -83,6 +83,7 @@ local mic = feature("mic-mute", "features.micmute")
 local devLayout = feature("dev-layout", "features.devlayout")
 local airDrop = feature("airdrop", "features.share")
 local translateSelection = feature("translate", "features.translate")
+feature("stalls", "features.stalls")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }

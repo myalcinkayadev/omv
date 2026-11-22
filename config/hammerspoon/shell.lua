@@ -152,6 +152,11 @@ function shell.copySelection(done)
   end, 0.05)
 end
 
+-- The name of the card showing, or "" when none is.
+function shell.openName()
+  return panel and panel.name or ""
+end
+
 -- Whether the card named name is the one showing. With several names, any of them.
 function shell.isOpen(...)
   if not panel then return false end

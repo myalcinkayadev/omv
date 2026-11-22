@@ -53,6 +53,7 @@ flags.DEFAULTS = {
   -- Off unless turned on.
   ["meeting-mode"] = false, -- Do Not Disturb, paused music and hidden chat apps while a meeting runs
   ["file-search"] = false, -- the palette also lists recent files matching what's typed (mdfind)
+  ["stalls"] = false, -- logs each time Hammerspoon stalls to ~/.local/state/omv/stalls.log
 }
 
 -- text is the flags file's contents, or nil when there's none.
