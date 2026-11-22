@@ -67,10 +67,9 @@ local function setQuiet(on)
 end
 
 local function setLayout(layout)
-  local mode = layout == "tabs" and "accordion" or "tiles"
   local output = hs.execute(shell.AEROSPACE .. " list-workspaces --all") or ""
   for workspace in output:gmatch("[^\n]+") do
-    hs.task.new(shell.AEROSPACE, nil, { "layout", "--workspace", workspace, mode }):start()
+    hs.task.new(shell.AEROSPACE, nil, displays.layoutArgs(workspace, layout)):start()
   end
 end
 

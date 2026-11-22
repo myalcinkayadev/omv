@@ -139,6 +139,12 @@ function displays.changes(before, after)
   return changes
 end
 
+-- The aerospace arguments that set a workspace's layout: tabs is AeroSpace's accordion. The
+-- whole workspace changes, from its root; aerospace refuses --workspace without --root.
+function displays.layoutArgs(workspace, layout)
+  return { "layout", "--workspace", workspace, "--root", layout == "tabs" and "accordion" or "tiles" }
+end
+
 -- Whether two profiles' settings are the same, so an edit to the profile in use is noticed.
 function displays.sameSettings(a, b)
   a, b = a or {}, b or {}

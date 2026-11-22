@@ -101,4 +101,8 @@ check.that("should drop the hand-picked profile once the displays change",
   displays.current(state, read.profiles, { builtIn }).name == "laptop" and displays.current(state, read.profiles, { builtIn }).picked ~= true)
 check.that("should follow the displays when follow is picked", displays.current(displays.choose(state, nil, { builtIn, dell }), read.profiles, { builtIn, dell }).name == "desk")
 
+-- AeroSpace's layout command.
+check.that("should lay out a whole workspace from its root as tabs", table.concat(displays.layoutArgs("3", "tabs"), " ") == "layout --workspace 3 --root accordion")
+check.that("should lay out a whole workspace from its root as tiles", table.concat(displays.layoutArgs("3", "tiles"), " ") == "layout --workspace 3 --root tiles")
+
 check.finish()
