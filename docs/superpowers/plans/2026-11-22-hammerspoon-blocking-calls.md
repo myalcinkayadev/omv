@@ -69,3 +69,18 @@ or keep the guard and accept it.
    first: agents, devlayout, meeting, procs, network, bluetooth, waiting.
 3. Change the `hs` callers in section 1 so they don't cut calls off.
 4. Keep `ipcguard.lua` as the safety net.
+
+## Status (2026-11-22, branch fix/blocking-calls)
+
+- Stall detector: `stalls.lua` and `features/stalls.lua`, behind the `stalls` flag (off unless
+  turned on), log to `~/.local/state/omv/stalls.log`.
+- `shell.execute(command, done)` runs a command with `hs.task` and hands back its output and
+  whether it succeeded. agents, claudeprojects, devlayout, meeting, procs, network, bluetooth
+  and waiting use it, or `shell.osascript` for AppleScript; a contract test keeps
+  `hs.execute`, `hs.osascript.applescript` and `:waitUntilExit` out of them.
+- Bluetooth: Hammerspoon sets the bar icon itself, on load, each minute, on wake, after a change
+  in the card and when the bar restarts. `bluetooth.sh` only opens the card on a click, so the
+  bar no longer calls `hs` on a timer.
+- Kept as they were: the alarm in `bin/omv` and `doctor.sh` (run on request, and an `hs` with
+  no limit hangs while Hammerspoon reloads), the low rows (battery, disk, theme, `shell.lua`),
+  and `ipcguard.lua`.
