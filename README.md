@@ -431,7 +431,7 @@ gaps   = 4
 - **Gaps** are built into `aerospace.toml` after your own `~/.config/omv/aerospace.toml`, with `omv reload aerospace`.
 - **Your own code:** `~/.config/omv/hammerspoon.lua` can define `omvOnDisplayProfile(name)`, called with the profile's name on each switch, or nil when none is used.
 - **Names:** a profile's name can be anything without `[`, `]` or `#`, spaces too, such as `[Home desk]`. Two profiles can't share a name, whatever their case.
-- **Mistakes:** a line omv can't read changes nothing; the notice names it, such as `~/.config/omv/displays line 3: layout must be tiles, tabs or keep`, and `omv doctor` reports it too. Without the file, display profiles do nothing; `omv flags display-profiles off` turns them off altogether.
+- **Mistakes:** a line omv can't read changes nothing; the notice names it, such as `~/.config/omv/displays line 3: layout must be tiles, tabs or keep`, and `omv doctor` reports it too. Without the file, display profiles do nothing; `omv flags display-profiles off` turns them off altogether. Each check is logged in `~/.local/state/omv/display-profile.log`: why it ran, such as `load` or `saved`, and what it did.
 
 ## Meeting mode
 

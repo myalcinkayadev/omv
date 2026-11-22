@@ -22,6 +22,8 @@ local AEROSPACE_PROFILE = shell.STATE_DIR .. "/aerospace-profile.toml"
 local GHOSTTY_PROFILE = shell.STATE_DIR .. "/ghostty-profile"
 -- What's in use, kept across reloads, so a reload doesn't apply the same profile twice.
 local STATE = shell.STATE_DIR .. "/display-profile.json"
+-- Each check and the load, so a check that didn't run shows; see displays.logLine.
+local LOG = shell.STATE_DIR .. "/display-profile.log"
 -- Displays often connect in steps; the profile is worked out once they've settled.
 local SETTLE_SECONDS = 1.5
 -- An editor can save a few times in a row; the file is read once they've stopped.
@@ -124,18 +126,28 @@ local function apply(profile, saved)
   elseif before then shell.alert("No display profile", 1.5) end
 end
 
+local function log(reason, result)
+  os.execute("/bin/mkdir -p '" .. shell.STATE_DIR .. "'")
+  writeFile(LOG, displays.appendLog(shell.readText(LOG), displays.logLine(os.time(), reason, result)))
+end
+
 -- Works out the profile for the displays now, and applies it when it isn't the one in use, or
--- is but its settings were edited since.
-function feature.check()
+-- is but its settings were edited since. reason is why it runs, for the log.
+function feature.check(reason)
   local text = shell.readText(displays.PATH)
   local read = displays.parse(text)
   if #read.problems > 0 then
+    log(reason, "problem: " .. read.problems[1])
     return shell.alert("~/.config/omv/displays " .. read.problems[1], 5)
   end
   local saved = readState()
   local profile = displays.current(saved.choice, read.profiles, screens())
-  if (profile and profile.name or nil) == saved.active and displays.sameSettings(profile and profile.settings, saved.settings) then return end
+  local name = profile and profile.name or nil
+  if name == saved.active and displays.sameSettings(profile and profile.settings, saved.settings) then
+    return log(reason, name and ("kept " .. name) or "none")
+  end
   apply(profile, saved)
+  log(reason, name and ("applied " .. name) or "none")
 end
 
 -- Remembers the displays plugged in now, for the file's header and omv displays.
@@ -191,18 +203,23 @@ function feature.open()
       end
       state.choice = displays.choose(state.choice, chosen, screens())
       writeState(state)
-      feature.check()
+      feature.check("card")
     end)
 end
 
+-- Why the next settled check runs: the load, until displays change or the Mac wakes.
+local pendingReason = "load"
 local pending = hs.timer.delayed.new(SETTLE_SECONDS, function()
   recordSeen()
-  feature.check()
+  feature.check(pendingReason)
 end)
-local edited = hs.timer.delayed.new(SAVED_SECONDS, feature.check)
+local edited = hs.timer.delayed.new(SAVED_SECONDS, function() feature.check("saved") end)
 
 -- Kept on the feature, so they aren't garbage-collected.
-feature.screens = hs.screen.watcher.new(function() pending:start() end):start()
+feature.screens = hs.screen.watcher.new(function()
+  pendingReason = "displays"
+  pending:start()
+end):start()
 -- The folder, not the file: an editor often saves by replacing the file, and it may not exist yet.
 feature.file = hs.pathwatcher.new(shell.HOME .. "/.config/omv", function(paths)
   for _, path in ipairs(paths) do
@@ -210,8 +227,12 @@ feature.file = hs.pathwatcher.new(shell.HOME .. "/.config/omv", function(paths)
   end
 end):start()
 feature.wake = hs.caffeinate.watcher.new(function(event)
-  if event == hs.caffeinate.watcher.systemDidWake then pending:start() end
+  if event == hs.caffeinate.watcher.systemDidWake then
+    pendingReason = "wake"
+    pending:start()
+  end
 end):start()
+log("load")
 pending:start()
 
 return feature

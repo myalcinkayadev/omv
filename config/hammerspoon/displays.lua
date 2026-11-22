@@ -253,6 +253,25 @@ function displays.rows(profiles, state, screens)
   return rows
 end
 
+-- Each check is logged, so a check that didn't happen shows: the load's line without one after.
+displays.LOG_LINES = 200
+
+-- A log line: when, why the check ran (load, displays, wake, saved or card), and what it did.
+function displays.logLine(time, reason, result)
+  local line = os.date("%Y-%m-%d %H:%M:%S", time) .. "  " .. reason
+  if not result then return line end
+  return line .. string.rep(" ", math.max(1, 10 - #reason)) .. result
+end
+
+-- The log text with line added, keeping the last LOG_LINES lines.
+function displays.appendLog(text, line)
+  local lines = {}
+  for kept in tostring(text or ""):gmatch("[^\n]+") do lines[#lines + 1] = kept end
+  lines[#lines + 1] = line
+  local first = math.max(1, #lines - displays.LOG_LINES + 1)
+  return table.concat(lines, "\n", first) .. "\n"
+end
+
 -- Every display omv has seen, so a profile can name one that isn't plugged in now. One line
 -- each: the date last seen, 1 when built in, 1 when plugged in now, and the name.
 displays.SEEN_PATH = (os.getenv("HOME") or "") .. "/.local/state/omv/displays-seen"

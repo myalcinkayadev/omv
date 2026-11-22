@@ -127,6 +127,20 @@ check.that("should hint in use and picked on a profile picked by hand",
 check.that("should hint its settings on a profile not in use", hints(cardRows)["profile:laptop"] == "tabs · gaps 4")
 check.that("should hint applies on save on the file row when there are profiles", hints(cardRows).file == "applies on save")
 
+-- The log of each check.
+local loggedAt = os.time({ year = 2026, month = 11, day = 22, hour = 11, min = 50, sec = 3 })
+check.that("should format a check's line as date, time, reason and result",
+  displays.logLine(loggedAt, "saved", "applied laptop") == "2026-11-22 11:50:03  saved     applied laptop")
+check.that("should format the load's line without a result", displays.logLine(loggedAt, "load") == "2026-11-22 11:50:03  load")
+check.that("should add the line at the end of the log", displays.appendLog("one\ntwo\n", "three") == "one\ntwo\nthree\n")
+check.that("should start the log with the line when there's none", displays.appendLog(nil, "one") == "one\n")
+local fullLog = {}
+for index = 1, 200 do fullLog[index] = "line " .. index end
+local trimmed = displays.appendLog(table.concat(fullLog, "\n") .. "\n", "line 201")
+local trimmedCount = select(2, trimmed:gsub("\n", ""))
+check.that("should keep only the last 200 lines when the log is full",
+  trimmedCount == 200 and trimmed:sub(1, 7) == "line 2\n" and trimmed:sub(-9) == "line 201\n")
+
 -- AeroSpace's layout command.
 local layoutArgs = table.concat(displays.layoutArgs("3", "tabs"), " ")
 check.that("should lay out a whole workspace from its root as tabs", layoutArgs == "layout --workspace 3 --root accordion")
