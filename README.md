@@ -759,7 +759,11 @@ A key should be bound in only one of them. `tests/run.sh` fails if one is bound 
 
 These tools take the keys system-wide, so apps never receive them:
 
-- **Turkish-QWERTY-PC:** these characters can't be typed, because their keys are taken: `>` `£` `#` `$` `½` (Option+1-5), `^` (Option+H), `₺` (Option+T) and `€` (Option+Shift+2).
+- **Turkish-QWERTY-PC:** these characters can't be typed, because their keys are taken and no other key types them:
+  - `£` `#` `$` `½` (Option+2-5), `§` (Option+6), `{` (Option+7), `^` (Option+H) and `₺` (Option+T).
+  - With Option: `∫` `ƒ` `∆` `¨` `¬` `®` (Option+B, F, J, K, L, R), `≤` `≥` (Option+Comma, Period), `µ` `π` `¥` `√` (Option+M, P, Y, V) and `÷` (Option+/).
+  - With Option+Shift: `·` `©` `‚` `˚` `˙` `‡` (Option+Shift+1, 3-7), `¯` `˘` (Option+Shift+Comma, Period), `Ó` `Ô` `Ò` `Â` (Option+Shift+H, J, L, R), the Apple logo (Option+Shift+K), and `Î` `‰` `Ï` `˜` `ˆ` `∏` `Œ` `Ê` `◊` `„` `Ù` `Á` `Û` (Option+Shift+D, E, F, M, N, P, Q, T, V, W, X, Y, Z).
+  - `>` and `€` still work, as Shift+`<` and Option+E; `|` as Option+-.
 - **Shell:** Option+B and Option+F no longer jump by word.
 - **Neovim and other terminal apps:** any Alt mapping on these keys stops working.
 
