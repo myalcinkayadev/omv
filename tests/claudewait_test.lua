@@ -60,6 +60,13 @@ local nested = { [100] = { 75, "claude" }, [75] = { 70, "/Applications/Zed.app/C
 check.that("should pick the nearest of several app bundles", claudewait.appPid(100, parentIn(nested)) == 75)
 check.that("should give no app when no ancestor is inside an app bundle",
   claudewait.appPid(100, parentIn({ [100] = { 90, "claude" }, [90] = { 1, "/bin/zsh" } })) == nil)
+
+local PS = "  100    90 claude\n   90    70 /bin/zsh\n   70     1 /Applications/Zed.app/Contents/MacOS/zed\n"
+check.that("should find the app from ps's list of parents", claudewait.appPid(100, claudewait.parents(PS)) == 70)
+check.that("should read a program path with spaces from ps",
+  select(2, claudewait.parents("  5  1 /Applications/Visual Studio Code.app/Contents/MacOS/Electron\n")(5)) == "/Applications/Visual Studio Code.app/Contents/MacOS/Electron")
+check.that("should find no parent for a process ps didn't list", claudewait.parents(PS)(555) == nil)
+check.that("should find no app when ps printed nothing", claudewait.appPid(100, claudewait.parents("")) == nil)
 check.that("should stop walking at the first process, PID 1",
   pcall(claudewait.appPid, 100, parentIn({ [100] = { 1, "claude" } })))
 check.that("should list no rows when every Claude has ended", #claudewait.rows(sessions, function() return false end, 400) == 0)

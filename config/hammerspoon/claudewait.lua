@@ -128,6 +128,21 @@ function claudewait.appPid(pid, parent)
   return nil
 end
 
+-- Every process's parent and program from `ps -axo pid=,ppid=,comm=`, as a function that
+-- appPid can walk: parent(pid) gives the parent PID and the program path.
+function claudewait.parents(output)
+  local byPid = {}
+  for line in tostring(output or ""):gmatch("[^\n]+") do
+    local pid, parentPid, program = line:match("^%s*(%d+)%s+(%d+)%s+(.-)%s*$")
+    if pid then byPid[tonumber(pid)] = { tonumber(parentPid), program } end
+  end
+  return function(pid)
+    local entry = byPid[pid]
+    if not entry then return nil, nil end
+    return entry[1], entry[2]
+  end
+end
+
 -- The terminal you're looking at in Ghostty, as a tty such as /dev/ttys004.
 function claudewait.viewedScript()
   return 'tell application "Ghostty" to tty of focused terminal of selected tab of front window'

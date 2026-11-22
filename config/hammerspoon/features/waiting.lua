@@ -62,19 +62,16 @@ function feature.rows()
   return claudewait.rows(savedSessions(), alive, os.time())
 end
 
--- A process's parent PID and program path, as ps reports them.
-local function parentOf(pid)
-  local output = hs.execute("/bin/ps -o ppid=,comm= -p " .. math.floor(pid))
-  local parentPid, program = output:match("^%s*(%d+)%s+(.-)%s*$")
-  return tonumber(parentPid), program
-end
-
--- Brings forward the app Claude runs in, such as Zed, when no terminal app has its tty.
--- macOS can't pick the window or pane, so the app comes forward as it was.
-local function activateApp(row)
-  local appPid = row.pid and claudewait.appPid(row.pid, parentOf)
-  local app = appPid and hs.application.applicationForPID(appPid)
-  return app ~= nil and app:activate()
+-- Brings forward the app Claude runs in, such as Zed, when no terminal app has its tty, and
+-- hands done whether it could. macOS can't pick the window or pane, so the app comes forward
+-- as it was. One ps in the background lists every process's parent.
+local function activateApp(row, done)
+  if not row.pid then return done(false) end
+  shell.execute("/bin/ps -axo pid=,ppid=,comm=", function(output)
+    local appPid = claudewait.appPid(row.pid, claudewait.parents(output))
+    local app = appPid and hs.application.applicationForPID(appPid)
+    done(app ~= nil and app:activate())
+  end)
 end
 
 local TMUX = "/opt/homebrew/bin/tmux"
@@ -83,13 +80,16 @@ local TMUX = "/opt/homebrew/bin/tmux"
 -- the terminal attached to that tmux session. Only a plain target reaches the shell.
 local function focusTmux(row, done)
   if not hs.fs.attributes(TMUX) then return done(false) end
-  local panes = hs.execute(TMUX .. " list-panes -a -F '#{pane_tty} #{session_name}:#{window_index}.#{pane_index}' 2>/dev/null")
-  local target = agentgrid.paneFor(panes, row.id)
-  if not target or not target:match("^[%w_%-]+:%d+%.%d+$") then return done(false) end
-  hs.execute(TMUX .. " select-window -t " .. target .. " && " .. TMUX .. " select-pane -t " .. target)
-  local client = agentgrid.clientFor(hs.execute(TMUX .. " list-clients -F '#{client_tty} #{session_name}' 2>/dev/null"), target)
-  if not client then return done(false) end
-  claudewait.focus(client, running, runScript, done)
+  shell.execute(TMUX .. " list-panes -a -F '#{pane_tty} #{session_name}:#{window_index}.#{pane_index}' 2>/dev/null", function(panes)
+    local target = agentgrid.paneFor(panes, row.id)
+    if not target or not target:match("^[%w_%-]+:%d+%.%d+$") then return done(false) end
+    shell.execute(TMUX .. " select-window -t " .. target .. " && " .. TMUX .. " select-pane -t " .. target
+      .. " && " .. TMUX .. " list-clients -F '#{client_tty} #{session_name}' 2>/dev/null", function(clients)
+      local client = agentgrid.clientFor(clients, target)
+      if not client then return done(false) end
+      claudewait.focus(client, running, runScript, done)
+    end)
+  end)
 end
 
 -- Goes to the session's terminal, its tmux pane, else the app it runs in, or says where it runs.
@@ -103,8 +103,10 @@ function feature.focusRow(row, after)
     if focused then return finish(true) end
     focusTmux(row, function(tmuxFocused)
       if tmuxFocused then return finish(true) end
-      if not activateApp(row) then shell.alert("Claude runs in " .. row.label .. ", which can't be brought forward", 2) end
-      finish(false)
+      activateApp(row, function(activated)
+        if not activated then shell.alert("Claude runs in " .. row.label .. ", which can't be brought forward", 2) end
+        finish(false)
+      end)
     end)
   end)
 end
