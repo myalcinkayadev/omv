@@ -397,7 +397,7 @@ A profile is a few settings for one display setup, such as tabs and tight gaps o
 - **Save these displays as a profile** adds one for the displays plugged in now, named after the first that isn't built in, such as `[dell]`, then opens it in the profile editor. Its name is yours to change, in the editor or the file.
 - **Open the profiles file** opens `~/.config/omv/displays` in the editor from `~/.config/omv/apps`, or TextEdit. Without the file it writes one first: the displays omv has seen, what each setting does, and examples left as comments.
 
-<img src="docs/displays.png" alt="The display profile card before any profile: Save these displays as a profile, for DELL U2723QE and the built-in display, then Open the profiles file, with examples" width="720">
+<img src="docs/displays.png" alt="The display profile card before any profile: Save these displays as a profile, then edit it here; Open the profiles file, with examples" width="720">
 
 Saving the file applies it; there's no need to reload. `omv displays` prints the names of the displays plugged in now and those seen before, for a profile's `when`. The file holds one `[section]` each:
 
@@ -426,6 +426,9 @@ gaps   = 4
 - **Leaving a profile** puts back what it changed: omv's gaps and tiles, the theme you had, the font from your own Ghostty settings, Do Not Disturb as it was and the bar shown. A setting left out, or set to `keep`, is never touched.
 - **By hand:** Option+Escape, then **Display profile**, or the palette, lists your profiles. One picked by hand stays until the displays change; **Follow the displays** goes back to choosing by itself.
 - **The profile editor:** Tab on a profile opens it. Enter on **Name** renames it. Enter on **When** lists the laptop screen and every display omv has seen, to tick the screens of the setup, or type part of a name; it also says whether the profile is used now, or which one comes first. Left and Right change the selected setting. **All gaps** sets both kinds; **Gaps between windows** and **Gaps at the screen edges** set one. Enter writes only the lines that changed, keeping your comments, and the profile applies as on any save; Esc changes nothing. Backspace on a profile deletes it from the file, with the comment saving it wrote above it; **Bring back** in its place undoes that while the card is open, and for a minute after. A setting on `keep` isn't in the file. The terminal font size shows in new Ghostty windows. `on-enter` and `on-leave` are set in the file.
+
+  <img src="docs/display-editor.png" alt="The profile editor on desk: Name, When laptop, DELL U2723QE matches now, Layout tiles, All gaps 8 · 12 selected, Gaps between windows 8, Gaps at the screen edges 12, Terminal font size 15, Theme tokyo-night, Bar keep, Do Not Disturb on" width="720">
+
 - **The notch:** the built-in screen keeps its own top gap below the notch, whatever `gaps` says. On other displays the outer gap is measured below the bar.
 - **Ghostty** takes the font size in new windows, or after Cmd+Shift+,. A `font-size` in your own `~/.config/omv/ghostty` still wins.
 - **Gaps** are built into `aerospace.toml` after your own `~/.config/omv/aerospace.toml`, with `omv reload aerospace`.

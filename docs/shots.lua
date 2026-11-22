@@ -316,6 +316,16 @@ local function displaysShot()
   return listShot("displays.png", LIST_WIDTH, { prompt = "Display profile…", rows = rows })
 end
 
+-- The profile editor on a desk profile, its gaps apart. It ends with a footer, so it's cut to its body.
+local function displayEditorShot()
+  local rows = displays.editRows({ when = "laptop, DELL U2723QE", layout = "tiles", gapsInner = 8, gapsOuter = 12, font = 15,
+    theme = "tokyo-night", quiet = "on" }, "desk", "matches now")
+  local footer = { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open › or save" }, { key = "Esc", text = "cancel" } }
+  return { file = "display-editor.png", kind = "card", width = LIST_WIDTH, crop = "body",
+    html = card.html({ prompt = "Edit desk…", rows = rows, compact = true, step = true, footer = footer, selected = 4 }),
+    script = "document.documentElement.style.height='auto';document.body.style.height='auto';document.querySelector('.rows').style.flex='none'" }
+end
+
 local function devlayoutShot()
   local rows = devlayout.rows({ "/Users/me/work/omv", "/Users/me/work/api", "/Users/me/work/site" }, "/Users/me")
   return listShot("devlayout.png", LIST_WIDTH, { prompt = "Dev layout for…", rows = rows })
@@ -385,6 +395,7 @@ function shots.build(now, logo)
   add(list, inboxShot(now))
   add(list, sendtoShot())
   add(list, displaysShot())
+  add(list, displayEditorShot())
   add(list, devlayoutShot())
   add(list, noteShots(now))
   add(list, translateShot())
