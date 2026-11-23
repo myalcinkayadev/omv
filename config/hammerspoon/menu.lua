@@ -18,6 +18,7 @@ local SCREENS = {
       { id = "sound", icon = "󰕾", label = "Sound" },
       { id = "theme", icon = "󰏘", label = "Theme" },
       { id = "workspaces", icon = "󰕰", label = "Workspaces" },
+      { id = "dictation", icon = "󰍬", label = "Dictation" },
       { id = "permissions", icon = "󰒃", label = "Permissions" },
       { id = "reload", icon = "󰑐", label = "Reload", submenu = true },
     },

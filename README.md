@@ -58,6 +58,7 @@ Before you trust it:
 - [**Battery**](#battery): charge, time left, cycles and power draw.
 - [**Weather**](#weather): the temperature in the bar, and a three-day forecast for wherever the Mac is.
 - [**Your own workspaces**](#your-own-workspaces): which workspaces there are, the screens each goes on, the apps that live there and each screen's gaps, in one file, applied as displays come and go.
+- [**Dictation**](#dictation): hold Right Option to talk and release to type it, in any app, heard on the Mac.
 - [**Meeting mode**](#meeting-mode): Do Not Disturb, paused music and hidden chat apps while a meeting runs, all back as they were when it ends.
 - [**Calendar and today's events**](#calendar-and-todays-events): click the clock for the month and today's Calendar.app events.
 - [**Reminders and Pomodoro**](#reminders-and-pomodoro): `25m check deploy`, or `pomo` for focus blocks with break cards and a long break after every fourth.
@@ -597,6 +598,21 @@ The result card shows the service, your selection and its translation. Enter pas
 
 Copying the selection and pasting need Accessibility for Hammerspoon. A small Swift helper, `translate.swift`, finds the language and runs Apple's translation; it's built with `swiftc` the first time and kept in `~/.cache/omv/translate`.
 
+## Dictation
+
+Off until `omv flags dictation on`. Then hold **Right Option** alone and talk: a pill at the bottom of the screen shows the words as they're heard, and releasing the key types them where you were typing, in any app. For a long one, tap Right Option twice: it listens hands-free, and one more tap types it. Esc cancels. Everything is heard on the Mac, with macOS's own speech models: nothing is sent anywhere, and there's no account.
+
+<img src="docs/dictation-pill.png" alt="The dictation pill: a microphone, a waveform of speech and Listening, the words heard so far on two lines, and release types it, Esc cancels" width="560">
+
+- **The key:** omv's keys all use Left Option, so Right Option alone is free. Recording starts at the press, so the first word isn't cut off, and the pill shows once the key has been held alone for 0.3 seconds. Another key in that moment cancels it, so Right Option still types @, € and the rest on keyboards that use it.
+- **Typing it:** the text is pasted at the cursor, and your clipboard is put back once the app has read it; the paste is kept out of the clipboard history. With no window to type in, or a password field, it's only copied, and a notice says so. **Paste last dictation**, in the palette, types the last one again.
+- **Language:** macOS's own language, in System Settings → General → Language & Region, unless the Dictation card, in the System menu, picks another; it's kept as `language = tr-TR` in `~/.config/omv/dictation`. Each language's model is downloaded once, the first time it's used or picked, with its progress in the pill. Dozens of languages work; English, German, French, Spanish, Italian, Portuguese, Japanese, Korean and Chinese use macOS's newer transcriber, and the rest, Turkish among them, its dictation model.
+- **Sounds:** a short ping as it starts and a tick as it ends; the card, or `sounds = off`, turns them off.
+
+<img src="docs/dictation.png" alt="The Dictation card: Language Turkish, Sounds on, Key hold Right Option or tap it twice, Paste last dictation; then Microphone allowed and the Turkish model on this Mac" width="720">
+
+It needs the microphone, asked for the first time, and Accessibility to paste. A small Swift helper, `dictate.swift`, hears the speech with macOS 26's SpeechAnalyzer; it's built with `swiftc` the first time and kept in `~/.cache/omv/dictate`.
+
 ## Do Not Disturb
 
 While a Focus such as Do Not Disturb is on, the bar shows a moon and its name. Option+Escape, then **Do Not Disturb**, or a click on the moon, switches Do Not Disturb.
@@ -703,6 +719,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `long-command-notices` | Ghostty's notice when a long command finishes |
 | `meeting-mode` | **off unless turned on:** Do Not Disturb, paused music, held-back agent notices and hidden chat and music apps while a meeting runs; see [Meeting mode](#meeting-mode) |
 | `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
+| `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
 | `stalls` | **off unless turned on:** writes each time Hammerspoon freezes for over a quarter of a second, with the card showing, to `~/.local/state/omv/stalls.log`, and every 10 minutes its Lua memory and the background commands still running |
 
 ## Keys

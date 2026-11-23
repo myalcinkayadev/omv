@@ -84,6 +84,7 @@ local devLayout = feature("dev-layout", "features.devlayout")
 local airDrop = feature("airdrop", "features.share")
 local translateSelection = feature("translate", "features.translate")
 feature("stalls", "features.stalls")
+local dictationKey = feature("dictation", "features.dictation")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -128,6 +129,11 @@ end
 bindKey(SUPER, "w", "Option+W", "This window: keep its app on this workspace, or move it", "Windows", workspaceCards.window)
 -- No key: it's run from the palette, the key list or the system menu.
 keys.launchers[#keys.launchers + 1] = { description = "Workspaces and screens", group = "Tools", run = workspaceCards.open, runs = true }
+if dictationKey then
+  keys.launchers[#keys.launchers + 1] = { label = "Right Option", description = "Dictate: hold to talk, tap twice for hands-free",
+    group = "Tools", run = dictationKey.open, runs = true }
+  keys.launchers[#keys.launchers + 1] = { description = "Paste last dictation", group = "Tools", run = dictationKey.pasteLast, runs = true }
+end
 if meetingMode then
   -- No key: it's run from the palette or the key list.
   keys.launchers[#keys.launchers + 1] = { description = "Meeting mode on or off",

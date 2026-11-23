@@ -42,6 +42,7 @@ local translate = require("translate")
 local weather = require("weather")
 local workspacecards = require("workspacecards")
 local workspaces = require("workspaces")
+local dictation = require("dictation")
 
 local shots = {}
 
@@ -348,6 +349,23 @@ local function bodyShot(file, prompt, rows, footer, options)
     script = "document.documentElement.style.height='auto';document.body.style.height='auto';document.querySelector('.rows').style.flex='none'" }
 end
 
+-- Dictation: its card with Turkish picked, and the pill two lines into a sentence, with a
+-- waveform of speech.
+local function dictationShots(now)
+  local rows = dictation.cardRows({ ownLanguage = true, language = "Turkish (Türkiye)", sounds = true, hasRecent = true,
+    microphone = "granted", installed = true })
+  local history = {}
+  for _, level in ipairs({ 0.1, 0.3, 0.55, 0.4, 0.8, 0.95, 0.7, 0.5, 0.3, 0.6, 0.9, 1, 0.8, 0.45, 0.2, 0.35, 0.65, 0.85, 0.55, 0.3, 0.5, 0.75, 0.45, 0.25 }) do
+    history = dictation.pushLevel(history, level)
+  end
+  return {
+    bodyShot("dictation.png", "Dictation…", rows,
+      { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open ›" }, { key = "Esc", text = "close" } }, { selected = 1 }),
+    { file = "dictation-pill.png", kind = "pill", recording = { started = now, ready = true, history = history,
+      partial = "Refactor the login handler so it retries twice before giving up, and log each failed attempt with the user id" } },
+  }
+end
+
 local function workspacesShots()
   local list = workspaces.parse(DESK)
   local main = workspacecards.mainRows(list, DESK_SCREENS, DESK_SEEN)
@@ -431,6 +449,7 @@ function shots.build(now, logo)
   add(list, inboxShot(now))
   add(list, sendtoShot())
   add(list, workspacesShots())
+  add(list, dictationShots(now))
   add(list, devlayoutShot())
   add(list, noteShots(now))
   add(list, translateShot())

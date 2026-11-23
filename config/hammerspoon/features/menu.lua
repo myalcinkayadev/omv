@@ -28,7 +28,8 @@ local menuStack = {}
 
 -- Rows for features turned off with their flags, read once at load like every flag.
 local enabled = flags.read(shell.readText(flags.PATH))
-local hiddenRows = { focus = not enabled.focus, nightlight = not enabled["night-light"], sound = not enabled.sound }
+local hiddenRows = { focus = not enabled.focus, nightlight = not enabled["night-light"], sound = not enabled.sound,
+  dictation = not enabled.dictation }
 for id, hidden in pairs(hiddenRows) do
   if not hidden then hiddenRows[id] = nil end
 end
@@ -60,6 +61,7 @@ local function menuChoose(id)
   if id == "sound" then return require("features.sound").open() end
   if id == "theme" then return require("features.theme").open() end
   if id == "workspaces" then return require("features.workspaces").open() end
+  if id == "dictation" then return require("features.dictation").open() end
   if id == "permissions" then return require("features.permissions").open() end
   if menu.opens(id) then
     menuStack[#menuStack + 1] = id

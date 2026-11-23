@@ -58,6 +58,10 @@ local function show(shot, screen, onReady)
     local frame = osdFeature.show(shot.icon, shot.level)
     return hs.timer.doAfter(0.4, function() onReady(hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)) end)
   end
+  if shot.kind == "pill" then
+    local frame = require("dictationpill").draw(shot.recording)
+    return hs.timer.doAfter(0.4, function() onReady(hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)) end)
+  end
   if shot.kind == "live" then
     require(shot.feature)[shot.call]()
     return hs.timer.doAfter(SETTLE_SECONDS, function() onReady(shell.view():frame()) end)
@@ -98,8 +102,12 @@ return function(docs, only, doneFile)
 
   local function nextShot(index)
     local shot = queue[index]
-    if not shot then return finish() end
+    if not shot then
+      require("dictationpill").hide()
+      return finish()
+    end
     shell.close()
+    require("dictationpill").hide()
     parkPointer(screen)
     local ok, problem = pcall(show, shot, screen, function(rect)
       capture(rect, docs .. "/" .. shot.file, function(problem)
