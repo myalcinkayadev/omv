@@ -8,6 +8,8 @@ check.that("should count a gap as a stall when it's over the limit", stalls.gap(
 check.that("should give the stall's length when it's over the limit", math.abs(stalls.gap(10, 10.4) - 0.4) < 1e-9)
 check.that("should count nothing when the gap is under the limit", stalls.gap(10, 10.1) == nil)
 check.that("should count nothing when the gap is the limit", stalls.gap(0, stalls.LIMIT) == nil)
+check.that("should count nothing when the Mac slept, a gap over 30 seconds", stalls.gap(10, 10 + 3659) == nil)
+check.that("should still count a gap just under 30 seconds", stalls.gap(10, 39) ~= nil)
 
 check.that("should write the time, the length in ms and the card", stalls.line("12:00:01", 1.2345, "agents") == "12:00:01  1235 ms agents\n")
 check.that("should write no card when none is showing", stalls.line("12:00:01", 0.3, "") == "12:00:01   300 ms no card\n")

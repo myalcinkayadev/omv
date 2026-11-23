@@ -12,9 +12,12 @@ stalls.LIMIT = 0.25
 stalls.HEALTH_SECONDS = 600
 
 -- The stall between two ticks at last and now, in seconds, or nil when the gap is short.
+-- A gap longer than this is the Mac asleep, when no timer runs, not a stall.
+stalls.SLEEP = 30
+
 function stalls.gap(last, now)
   local gap = now - last
-  if gap <= stalls.LIMIT then return nil end
+  if gap <= stalls.LIMIT or gap > stalls.SLEEP then return nil end
   return gap
 end
 
