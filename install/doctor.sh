@@ -256,7 +256,7 @@ bar_count() {
 
 check_running() {
   section 'Running'
-  local process stuck bars answer
+  local process stuck bars borders answer
   for process in AeroSpace sketchybar borders Hammerspoon SwipeAeroSpace; do
     if pgrep -x "$process" >/dev/null 2>&1; then ok "$process"; else problem "$process is not running" "open it, or log out and back in"; fi
   done
@@ -268,6 +268,9 @@ check_running() {
   if [ "$bars" -gt 1 ]; then problem "$bars SketchyBars are running" 'omv doctor --fix'
   elif [ "$bars" -eq 1 ] && bar_answers; then ok 'one SketchyBar'
   elif [ "$bars" -eq 1 ]; then problem "SketchyBar isn't answering" 'omv doctor --fix'; fi
+  borders=$(borders_pids_oldest_first | wc -l | tr -d ' ')
+  if [ "$borders" -gt 1 ]; then problem "$borders borders are running" 'omv doctor --fix'
+  elif [ "$borders" -eq 1 ]; then ok 'one borders'; fi
   # A Hammerspoon that isn't running is named above; asking it would only add a fix that does nothing.
   pgrep -x Hammerspoon >/dev/null 2>&1 || return 0
   if ! command -v hs >/dev/null 2>&1; then
@@ -360,6 +363,16 @@ wait_until_not() {
   while "$@" && [ "$SECONDS" -lt "$limit" ]; do sleep 0.2; done
 }
 
+# Every borders, oldest first. It runs with its colours as arguments. AeroSpace starts one
+# when it starts, so an AeroSpace that restarted leaves the old one running beside the new.
+borders_pids_oldest_first() {
+  local pid etime command name
+  while read -r pid etime command; do
+    name=${command%% *}
+    [[ $name == borders || $name == */borders ]] && echo "$(etime_seconds "$etime") $pid"
+  done < <(ps -axo pid=,etime=,command=) | sort -rn | awk '{ print $2 }'
+}
+
 # A bar whose process runs but answers nothing draws nothing, and a card asking it where to
 # open would wait on it. Given BAR_SECONDS to answer; perl's alarm outlives exec.
 bar_answers() {
@@ -412,6 +425,14 @@ fix_running() {
     has_bars && pkill -9 -x sketchybar
     nohup "$REPO_DIR/config/sketchybar/.config/sketchybar/start.sh" >/dev/null 2>&1 &
     echo '  → restarted SketchyBar'
+    fixed=1
+  fi
+  # The newest borders is the running AeroSpace's; the older ones only draw a second outline.
+  local extra
+  extra=$(borders_pids_oldest_first | sed '$d')
+  if [ -n "$extra" ]; then
+    printf '%s\n' "$extra" | xargs kill 2>/dev/null
+    echo "  → stopped $(printf '%s\n' "$extra" | wc -l | tr -d ' ') extra borders"
     fixed=1
   fi
   # Only a Hammerspoon that's running but silent: one that isn't running is reported, not opened.

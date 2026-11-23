@@ -206,6 +206,39 @@ fix_restarts_silent_bar() {
   assert_called '^pkill -x sketchybar$'
 }
 
+# borders runs with its colours as arguments; the oldest of two was left by an AeroSpace
+# that has since restarted.
+two_borders() {
+  stuck_call '600 3-00:00:00 borders active_color=0xff8d8d8d width=2.0'
+  stuck_call '601 01:05:00 /opt/homebrew/bin/borders active_color=0xff8d8d8d width=2.0'
+}
+
+reports_two_borders() {
+  complete_setup
+  two_borders
+  expect_report '✗ 2 borders are running — fix: omv doctor --fix'
+}
+
+passes_one_borders() {
+  complete_setup
+  stuck_call '601 01:05:00 borders active_color=0xff8d8d8d width=2.0'
+  expect_report '✓ one borders'
+}
+
+fix_stops_older_borders() {
+  complete_setup
+  two_borders
+  [[ $(report --fix) == *'→ stopped 1 extra borders'* ]] || fail 'no stopped line'
+  assert_called '^kill 600$'
+}
+
+fix_keeps_newest_borders() {
+  complete_setup
+  two_borders
+  report --fix >/dev/null
+  assert_not_called '^kill .*601'
+}
+
 fix_kills_stuck_calls() {
   complete_setup
   stuck_call '4242 01:01 hs -c x'
@@ -713,6 +746,10 @@ run_case "should read a stuck call's age in hours" reads_age_in_hours
 run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
+run_case 'should flag two borders when two run' reports_two_borders
+run_case 'should pass one borders when one runs' passes_one_borders
+run_case 'should stop the older borders with --fix' fix_stops_older_borders
+run_case 'should keep the newest borders with --fix' fix_keeps_newest_borders
 run_case "should flag the bar when it doesn't answer" reports_silent_bar
 run_case 'should pass the bar when it answers' passes_answering_bar
 run_case 'should flag the bar when it hangs' reports_hanging_bar
