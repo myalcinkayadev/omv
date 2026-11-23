@@ -85,6 +85,7 @@ local airDrop = feature("airdrop", "features.share")
 local translateSelection = feature("translate", "features.translate")
 feature("stalls", "features.stalls")
 local dictationKey = feature("dictation", "features.dictation")
+local windowSizing = feature("window-sizing", "features.windowsize")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -127,6 +128,18 @@ if devLayout then
     group = "Apps", run = devLayout.openGrid, runs = true }
 end
 bindKey(SUPER, "w", "Option+W", "This window: keep its app on this workspace, or move it", "Windows", workspaceCards.window)
+if windowSizing then
+  for _, sizing in ipairs({
+    { "left", "Ctrl+Option+←", "Left half, then a third, then two-thirds" },
+    { "right", "Ctrl+Option+→", "Right half, then a third, then two-thirds" },
+    { "up", "Ctrl+Option+↑", "Almost full" },
+    { "down", "Ctrl+Option+↓", "Centred at two-thirds" },
+    { "c", "Ctrl+Option+C", "Centre the window" },
+  }) do
+    local action = sizing[1] == "c" and "center" or sizing[1]
+    bindKey({ "ctrl", "alt" }, sizing[1], sizing[2], sizing[3], "Windows", function() windowSizing.size(action) end)
+  end
+end
 -- No key: it's run from the palette, the key list or the system menu.
 keys.launchers[#keys.launchers + 1] = { description = "Workspaces and screens", group = "Tools", run = workspaceCards.open, runs = true }
 if dictationKey then

@@ -429,6 +429,8 @@ local function sectionFor(list, screen, screens)
   return nil
 end
 
+workspaces.sectionOf = sectionFor
+
 -- Each workspace's layout for the screens plugged in: its own, else its screen's; workspaces
 -- with neither are left as they are.
 function workspaces.layoutPlan(list, screens)

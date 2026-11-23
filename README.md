@@ -98,6 +98,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 - **Option+Tab** goes back to the previous workspace.
 - **Tabbed layout:** Option+A switches the workspace between tiles and tabs. In tabs, the focused window takes almost the whole width and the others peek out at the edges, which suits a laptop screen. Option+H / L move between them. AeroSpace remembers the layout per workspace.
 - **Dragging:** Ctrl+Cmd+drag moves a floating window by any part of it. A tiled window snaps back to its tile when you let go.
+- **Sizing a window:** Ctrl+Option+Left and Right put the focused window in the left or right half; pressed again, a third, then two-thirds. Ctrl+Option+Up makes it almost full, Down centres it at two-thirds, and C centres it as it is. All stay inside the gaps the tiles use, below the bar. A tiled window is floated first, and Option+T puts it back in the tiles.
 - **Resize mode:** Option+Shift+R, shown as `RESIZE` in the bar. H / L make the window narrower / wider, and K / J shorter / taller. Escape or Enter leaves, and other shortcuts stay off until you do. Height only changes when windows are stacked vertically.
 - **btop** opens on workspace 1 when AeroSpace starts, unless one is already running.
 
@@ -705,6 +706,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `keep-awake` | keeping the Mac awake (Option+Shift+I) and its item |
 | `night-light` | night light (Option+Shift+Z), its item and its row in the system menu |
 | `mic-mute` | muting the mic (Option+M) and its item |
+| `window-sizing` | halves, thirds, almost full and centred for the focused window (Ctrl+Option+arrows, Ctrl+Option+C) |
 | `volume-popups` | omv's volume and brightness pop-ups, and dimming an external display; macOS's own come back |
 | `processes` | hungry processes and ports (Option+Shift+P) |
 | `lyrics` | the lyrics window |
@@ -732,6 +734,10 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | Option+Shift+H/J/K/L | Move the window in that direction |
 | Option+F | Toggle fullscreen |
 | Option+T | Toggle floating or tiled |
+| Ctrl+Option+←/→ | The focused window in the left or right half; again for a third, then two-thirds (floats a tiled one) |
+| Ctrl+Option+↑ | The focused window almost full |
+| Ctrl+Option+↓ | The focused window centred at two-thirds |
+| Ctrl+Option+C | Centre the focused window as it is |
 | Option+R | Toggle the split between horizontal and vertical |
 | Option+A | Toggle tabbed or tiled |
 | Option+B | Make window sizes even |

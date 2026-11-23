@@ -37,6 +37,7 @@ flags.DEFAULTS = {
   ["keep-awake"] = true, -- keeping the Mac awake (Option+Shift+I) and its item
   ["night-light"] = true, -- night light (Option+Shift+Z), its item and its switch in the system menu
   ["mic-mute"] = true, -- muting the mic (Option+M) and its item
+  ["window-sizing"] = true, -- halves, thirds, almost full and centred for the focused window (Ctrl+Option+arrows, C)
   ["volume-popups"] = true, -- omv's volume and brightness pop-ups, and dimming an external display
   ["processes"] = true, -- hungry processes and ports (Option+Shift+P)
   ["lyrics"] = true, -- the lyrics window

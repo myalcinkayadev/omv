@@ -282,6 +282,14 @@ check.that("should list the displays plugged in, then those seen before", names[
   and names[3] == "Seen before:" and names[4]:match("^  Built%-in Retina Display +last seen 2026%-11%-20$") ~= nil)
 check.that("should say no display was seen yet", workspaces.nameLines({})[1]:match("^No display seen yet") ~= nil)
 
+-- A screen's section.
+local laptopSection = workspaces.parse("[workspace 1]\n[screen laptop]\ngaps = 4\n")
+local laptopScreen = { name = "Built-in Retina Display", builtin = true, main = true, x = 0 }
+check.that("should find a screen's section by the word that names it",
+  workspaces.sectionOf(laptopSection, laptopScreen, { laptopScreen }).outer == 4)
+check.that("should find no section for a screen the file doesn't name",
+  workspaces.sectionOf(laptopSection, { name = "DELL", main = false, x = 1 }, { laptopScreen, { name = "DELL", main = false, x = 1 } }) == nil)
+
 -- Names, and the bar's text for each workspace.
 local NAMED = "bar = {number}: {name}\n[workspace 1]\nname = Side project\n[workspace 2]\n[workspace 3]\nname = 🚀\n"
 local named = workspaces.parse(NAMED)
