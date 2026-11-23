@@ -55,6 +55,14 @@ echo "pkill \$*" >> "$CALL_LOG"
 exit 0
 STUB
   chmod +x "$STUB_DIR/pkill"
+  # The bar answers --query bar, unless $SANDBOX/silent-bar says it has stopped answering.
+  cat > "$STUB_DIR/sketchybar" <<STUB
+#!/bin/sh
+echo "sketchybar \$*" >> "$CALL_LOG"
+[ "\$*" = "--query bar" ] && [ ! -f "$SANDBOX/silent-bar" ] && echo '{"hidden":"off"}'
+exit 0
+STUB
+  chmod +x "$STUB_DIR/sketchybar"
   stub kill
   stub nohup
   chmod +x "$STUB_DIR/hs" "$STUB_DIR/defaults" "$STUB_DIR/ps" "$STUB_DIR/pgrep"
@@ -90,9 +98,11 @@ EOF
 # from starting within the real 5, so tests give it 60. hang_hammerspoon sets 1, so a hang
 # test is quick.
 HS_LIMIT=60
+# The same for the bar's answer; hang_bar sets 1.
+BAR_LIMIT=60
 
 doctor() {
-  run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" OMV_HS_SECONDS="$HS_LIMIT" OMV_BIN_DIR="$SANDBOX/prefix/bin" "$DOCTOR" "$@"
+  run_in_sandbox OMV_APPLICATIONS="$SANDBOX/Applications" OMV_FONT_DIRS="$SANDBOX/Fonts" OMV_HS_SECONDS="$HS_LIMIT" OMV_BAR_SECONDS="$BAR_LIMIT" OMV_BIN_DIR="$SANDBOX/prefix/bin" "$DOCTOR" "$@"
 }
 
 report() {
@@ -163,6 +173,37 @@ reports_two_bars() {
   complete_setup
   printf '500\n501\n' > "$SANDBOX/bars"
   expect_report '✗ 2 SketchyBars are running — fix: omv doctor --fix'
+}
+
+reports_silent_bar() {
+  complete_setup
+  touch "$SANDBOX/silent-bar"
+  expect_report "✗ SketchyBar isn't answering — fix: omv doctor --fix"
+}
+
+hang_bar() {
+  printf '#!/bin/sh\necho "sketchybar $*" >> "%s"\nexec sleep 120\n' "$CALL_LOG" > "$STUB_DIR/sketchybar"
+  BAR_LIMIT=1
+}
+
+reports_hanging_bar() {
+  complete_setup
+  hang_bar
+  local started=$SECONDS
+  expect_report "✗ SketchyBar isn't answering — fix: omv doctor --fix"
+  [ $((SECONDS - started)) -le 90 ] || fail "took $((SECONDS - started))s"
+}
+
+passes_answering_bar() {
+  complete_setup
+  expect_report '✓ one SketchyBar'
+}
+
+fix_restarts_silent_bar() {
+  complete_setup
+  touch "$SANDBOX/silent-bar"
+  [[ $(report --fix) == *'→ restarted SketchyBar'* ]] || fail 'no restarted line'
+  assert_called '^pkill -x sketchybar$'
 }
 
 fix_kills_stuck_calls() {
@@ -672,6 +713,10 @@ run_case "should read a stuck call's age in hours" reads_age_in_hours
 run_case 'should ignore an hs call under 60s old' ignores_young_call
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
+run_case "should flag the bar when it doesn't answer" reports_silent_bar
+run_case 'should pass the bar when it answers' passes_answering_bar
+run_case 'should flag the bar when it hangs' reports_hanging_bar
+run_case "should restart the bar with --fix when it doesn't answer" fix_restarts_silent_bar
 run_case 'should kill nothing without --fix' kills_nothing_without_fix
 run_case "should say Homebrew is missing when brew isn't found" reports_missing_homebrew
 run_case "should find Homebrew in its usual folder when brew isn't on the PATH" finds_homebrew_off_path

@@ -25,6 +25,8 @@ readonly FONT_DIRS=${OMV_FONT_DIRS:-$HOME/Library/Fonts:/Library/Fonts}
 readonly USAGE_MARKER='# omv bar usage'
 # hs -c can wait for Hammerspoon forever, so the doctor gives it this long. 5 unless a test sets it.
 readonly HS_SECONDS=${OMV_HS_SECONDS:-5}
+# How long the bar gets to answer --query bar.
+readonly BAR_SECONDS=${OMV_BAR_SECONDS:-2}
 # An hs -c call running longer than this is stuck: a normal one answers in under a second.
 readonly STUCK_SECONDS=60
 
@@ -264,7 +266,8 @@ check_running() {
   else problem "$(stuck_calls "$stuck")" 'omv doctor --fix'; fi
   bars=$(bar_count)
   if [ "$bars" -gt 1 ]; then problem "$bars SketchyBars are running" 'omv doctor --fix'
-  elif [ "$bars" -eq 1 ]; then ok 'one SketchyBar'; fi
+  elif [ "$bars" -eq 1 ] && bar_answers; then ok 'one SketchyBar'
+  elif [ "$bars" -eq 1 ]; then problem "SketchyBar isn't answering" 'omv doctor --fix'; fi
   # A Hammerspoon that isn't running is named above; asking it would only add a fix that does nothing.
   pgrep -x Hammerspoon >/dev/null 2>&1 || return 0
   if ! command -v hs >/dev/null 2>&1; then
@@ -357,6 +360,19 @@ wait_until_not() {
   while "$@" && [ "$SECONDS" -lt "$limit" ]; do sleep 0.2; done
 }
 
+# A bar whose process runs but answers nothing draws nothing, and a card asking it where to
+# open would wait on it. Given BAR_SECONDS to answer; perl's alarm outlives exec.
+bar_answers() {
+  [ -n "$(perl -e "alarm $BAR_SECONDS; exec @ARGV" sketchybar --query bar 2>/dev/null)" ]
+}
+
+# More than one bar, or the only one silent.
+bar_jammed() {
+  local bars
+  bars=$(bar_count)
+  [ "$bars" -gt 1 ] || { [ "$bars" -eq 1 ] && ! bar_answers; }
+}
+
 has_bars() {
   [ "$(bar_count)" -gt 0 ]
 }
@@ -390,7 +406,7 @@ fix_running() {
     echo "  → killed $(stuck_calls "$(printf '%s\n' "$stuck" | wc -l | tr -d ' ')")"
     fixed=1
   fi
-  if [ "$(bar_count)" -gt 1 ]; then
+  if bar_jammed; then
     pkill -x sketchybar
     wait_until_not 5 has_bars
     has_bars && pkill -9 -x sketchybar
