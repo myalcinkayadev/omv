@@ -104,7 +104,7 @@ Every shortcut starts with Option. Option alone goes somewhere or acts on the cu
 
 ## The bar
 
-![The bar: workspaces 1 to 7 and the playing track on the left; Claude's 5-hour limit, the weather, status icons and the clock on the right](docs/bar.png)
+![The bar: workspaces 1 Term, 2 Code, 3 Web, 4 Notes, 5 Chat, 6 Music and 7 Agents on the left; Claude's 5-hour limit, the weather, status icons and the clock on the right](docs/bar.png)
 
 **On the left**, workspace numbers: the focused one is a white pill, and the one visible on the other monitor is a gray pill. Click a number to go there, or scroll over them to move one workspace at a time across all seven, wrapping around. The binding mode shows next to them while it isn't the normal one.
 
