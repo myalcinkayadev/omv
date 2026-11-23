@@ -699,7 +699,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `long-command-notices` | Ghostty's notice when a long command finishes |
 | `meeting-mode` | **off unless turned on:** Do Not Disturb, paused music, held-back agent notices and hidden chat and music apps while a meeting runs; see [Meeting mode](#meeting-mode) |
 | `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
-| `stalls` | **off unless turned on:** writes each time Hammerspoon freezes for over a quarter of a second, with the card showing, to `~/.local/state/omv/stalls.log` |
+| `stalls` | **off unless turned on:** writes each time Hammerspoon freezes for over a quarter of a second, with the card showing, to `~/.local/state/omv/stalls.log`, and every 10 minutes its Lua memory and the background commands still running |
 
 ## Keys
 

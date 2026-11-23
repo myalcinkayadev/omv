@@ -22,4 +22,9 @@ os.remove(path)
 check.that("should add each line to the end of the log", text == "a\nb\n")
 check.that("should fail quietly when the log can't be written", stalls.append("/nonexistent/folder/stalls.log", "a\n") == false)
 
+check.that("should write the Lua memory and unfinished tasks in a health line",
+  stalls.healthLine("12:00:00", 2048.6, 3) == "12:00:00 health  2049 KB Lua, 3 tasks running\n")
+check.that("should write zero tasks when none is running", stalls.healthLine("12:00:00", 10, 0):find("0 tasks running", 1, true) ~= nil)
+check.that("should check the health every 10 minutes", stalls.HEALTH_SECONDS == 600)
+
 check.finish()

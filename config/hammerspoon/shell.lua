@@ -82,6 +82,13 @@ function shell.execute(command, done)
   if done then done("", false) end
 end
 
+-- How many commands shell.execute started are still running.
+function shell.runningCount()
+  local count = 0
+  for _ in pairs(running) do count = count + 1 end
+  return count
+end
+
 function shell.open(arguments)
   return shell.run("/usr/bin/open", arguments)
 end
