@@ -12,17 +12,23 @@ local function onBatteryMessage(message)
   if message.type == "choose" then shell.open({ BATTERY_SETTINGS })() end
 end
 
--- The card's model now, or nil on a Mac without a battery.
-local function model()
-  local status = battery.parseBatt(hs.execute("/usr/bin/pmset -g batt"))
-  if not status then return nil end
-  return battery.model(status, battery.parseSmartBattery(hs.execute("/usr/sbin/ioreg -rn AppleSmartBattery")))
+-- Hands done the card's model now, or nil on a Mac without a battery. pmset and ioreg run in
+-- the background, so the cards stay live while they read.
+local function model(done)
+  shell.execute("/usr/bin/pmset -g batt", function(batt)
+    local status = battery.parseBatt(batt)
+    if not status then return done(nil) end
+    shell.execute("/usr/sbin/ioreg -rn AppleSmartBattery", function(smart)
+      done(battery.model(status, battery.parseSmartBattery(smart)))
+    end)
+  end)
 end
 
 local function showBattery()
-  local current = model()
-  if not current then return shell.alert("This Mac has no battery", 1.5) end
-  shell.show("battery", shell.anchored(battery.WIDTH, battery.HEIGHT, "battery"), battery.html(current), onBatteryMessage)
+  model(function(current)
+    if not current then return shell.alert("This Mac has no battery", 1.5) end
+    shell.show("battery", shell.anchored(battery.WIDTH, battery.HEIGHT, "battery"), battery.html(current), onBatteryMessage)
+  end)
 end
 
 function feature.toggle()
@@ -34,8 +40,10 @@ end
 -- card updates in place. macOS reports several changes at a time, so they wait 0.2s.
 local batteryChanged = hs.timer.delayed.new(0.2, function()
   hs.task.new(shell.SKETCHYBAR, nil, { "--trigger", "omv_battery_change" }):start()
-  local current = shell.isOpen("battery") and model()
-  if current then shell.view():evaluateJavaScript(battery.update(current)) end
+  if not shell.isOpen("battery") then return end
+  model(function(current)
+    if current and shell.isOpen("battery") then shell.view():evaluateJavaScript(battery.update(current)) end
+  end)
 end)
 
 -- Kept on the feature, so it isn't garbage-collected.

@@ -140,7 +140,8 @@ def finder_title_filters() -> list[str]:
 
 # Features that run their commands with hs.task: hs.execute and hs.osascript.applescript wait
 # on Hammerspoon's only thread, which freezes every card and key until the command finishes.
-NON_BLOCKING_FEATURES = ("agents", "claudeprojects", "devlayout", "meeting", "procs", "network", "bluetooth", "waiting", "workspaces")
+NON_BLOCKING_FEATURES = ("agents", "claudeprojects", "devlayout", "meeting", "procs", "network", "bluetooth", "waiting", "workspaces",
+                         "battery", "disk", "theme")
 BLOCKING_CALL = re.compile(r"hs\.execute\(|hs\.osascript\.applescript\(|:waitUntilExit\(")
 
 

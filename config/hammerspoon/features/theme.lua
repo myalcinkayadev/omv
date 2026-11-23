@@ -48,8 +48,9 @@ end
 
 -- borders started by AeroSpace takes new colours when run again; it's never started here.
 local function outline(tokens)
-  if (hs.execute("/usr/bin/pgrep -x borders") or "") == "" then return end
-  hs.task.new("/opt/homebrew/bin/borders", nil, theme.bordersArguments(tokens)):start()
+  shell.execute("/usr/bin/pgrep -x borders", function(_, running)
+    if running then hs.task.new("/opt/homebrew/bin/borders", nil, theme.bordersArguments(tokens)):start() end
+  end)
 end
 
 local function apply(name)

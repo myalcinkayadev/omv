@@ -104,10 +104,19 @@ local function refreshPreviews()
   end
 end
 
--- df answers at once; Mole's status brings purgeable space about a second later. Until it
--- does, the last purgeable space stays, so the bar doesn't change a second after it opens.
-local function refreshSpace()
-  space = disk.withPurgeable(disk.parseDf(hs.execute("/bin/df -k /")), space)
+-- Hands done the free space from df, which runs in the background like every command here.
+local function readDf(done)
+  shell.execute("/bin/df -k /", function(output) done(disk.parseDf(output)) end)
+end
+
+-- df answers at once, then done runs; Mole's status brings purgeable space about a second
+-- later. Until it does, the last purgeable space stays, so the bar doesn't change a second
+-- after it opens.
+local function refreshSpace(done)
+  readDf(function(free)
+    space = disk.withPurgeable(free, space)
+    done()
+  end)
   startTask({ "status", "--json" }, function(code, output)
     if code ~= 0 then return end
     local ok, decoded = pcall(hs.json.decode, output)
@@ -121,12 +130,15 @@ end
 function feature.toggle()
   if shell.isOpen("disk") then return shell.close() end
   if not installed() then
-    space = disk.parseDf(hs.execute("/bin/df -k /"))
-    return render()
+    return readDf(function(free)
+      space = free
+      render()
+    end)
   end
-  refreshSpace()
-  refreshPreviews()
-  render()
+  refreshSpace(function()
+    refreshPreviews()
+    render()
+  end)
 end
 
 return feature
