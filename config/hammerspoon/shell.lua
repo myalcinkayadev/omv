@@ -201,11 +201,13 @@ function shell.view()
 end
 
 -- Just below the bar, under item, the SketchyBar item the card opens from; at the screen's
--- right edge when the item isn't drawn there. Reading its place takes about 10ms.
+-- right edge when the item isn't drawn there. Reading its place takes about 10ms; a bar that
+-- stopped answering gets a second, so it can't hold every card and key. perl's alarm
+-- outlives exec.
 function shell.anchored(width, height, item)
   local query = nil
   if item then
-    local ok, decoded = pcall(hs.json.decode, hs.execute(shell.SKETCHYBAR .. " --query " .. item .. " 2>/dev/null") or "")
+    local ok, decoded = pcall(hs.json.decode, hs.execute("/usr/bin/perl -e 'alarm 1; exec @ARGV' " .. shell.SKETCHYBAR .. " --query " .. item .. " 2>/dev/null") or "")
     query = ok and decoded or nil
   end
   local frame = placement.under(query, width, height, shell.screen():fullFrame())

@@ -151,6 +151,13 @@ def blocking_calls(feature: str) -> list[str]:
 
 
 class ConfigContract(unittest.TestCase):
+    def test_should_limit_the_bar_query_when_a_card_opens_under_the_bar(self) -> None:
+        shell = (REPO / "config/hammerspoon/shell.lua").read_text(encoding="utf-8")
+        anchored = shell[shell.index("function shell.anchored"):]
+        anchored = anchored[:anchored.index("\nend\n")]
+        self.assertIn("--query", anchored)
+        self.assertRegex(anchored, r"alarm \d")
+
     def test_should_run_no_blocking_call_when_a_feature_was_made_non_blocking(self) -> None:
         for feature in NON_BLOCKING_FEATURES:
             with self.subTest(feature=feature):
