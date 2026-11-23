@@ -168,6 +168,17 @@ function feature.check(done)
   require("features.aerospacebuild").request(after)
 end
 
+-- Sets each workspace's text on the bar: its name as the bar line formats it, or its number.
+local function redrawTexts(list)
+  local arguments = {}
+  for _, workspace in ipairs(workspaces.numbers(list)) do
+    arguments[#arguments + 1] = "--set"
+    arguments[#arguments + 1] = "space." .. workspace
+    arguments[#arguments + 1] = "icon=" .. workspaces.barText(list, workspace)
+  end
+  hs.task.new(shell.SKETCHYBAR, nil, arguments):start()
+end
+
 -- The list as last applied, so a save moves only the apps whose workspace changed.
 local applied = readList()
 
@@ -180,13 +191,15 @@ local function applySaved()
   local moved = workspaces.movedApps(before, list)
   -- The bar redraws every item on every screen, so only when workspaces came or went.
   local barChanged = table.concat(workspaces.numbers(applied), " ") ~= table.concat(workspaces.numbers(list), " ")
+  local textsChanged = table.concat(workspaces.textLines(applied), "\n") ~= table.concat(workspaces.textLines(list), "\n")
   applied = list
   require("devlayout").WORKSPACE = workspaces.devWorkspace(list)
   require("features.aerospacebuild").request(function()
     feature.check(function()
       moveApps(list, moved)
       moveForgotten(before, list)
-      if barChanged then hs.task.new(shell.SKETCHYBAR, nil, { "--reload" }):start() end
+      if barChanged then hs.task.new(shell.SKETCHYBAR, nil, { "--reload" }):start()
+      elseif textsChanged then redrawTexts(list) end
     end)
   end)
 end
@@ -284,6 +297,26 @@ end
 
 local showAppChoices
 
+-- Asks for workspace's name, its current one typed in; Enter saves it, an empty one removes
+-- it. A name the file can't keep says why and stays to be fixed.
+local function showName(workspace, typed)
+  local list = editable()
+  if not list or not list.workspaces[workspace] then return end
+  shell.show("workspaces", shell.centered(shell.LIST_WIDTH, INPUT_HEIGHT),
+    card.html({ prompt = "A name for workspace " .. workspace .. "…", rows = {}, input = true,
+      query = typed or list.workspaces[workspace].name,
+      hint = "up to 16 characters, emoji too · empty for none · Esc goes back" }), function(message)
+      if message.type ~= "submit" then return showWorkspace(workspace, 1) end
+      local text, problem = workspaces.setName(shell.readText(workspaces.PATH), list, workspace, message.id or "")
+      if not text then
+        shell.alert(problem, 3)
+        return showName(workspace, message.id)
+      end
+      save(text)
+      showWorkspace(workspace, 1)
+    end, { onEscape = function() showWorkspace(workspace, 1) end })
+end
+
 -- The apps open now, to put one on workspace; it comes off any other.
 local function showAddApp(workspace)
   runningApps(function(running) showAppChoices(workspace, running) end)
@@ -348,6 +381,10 @@ end
 -- whether the row was one of those.
 local function clearWorkspace(list, workspace, id)
   local entry, text = list.workspaces[workspace], shell.readText(workspaces.PATH)
+  if id == "name" then
+    save(workspaces.setName(text, list, workspace, ""))
+    return true
+  end
   local position = tonumber(id:match("^on:(%d+)$") or "")
   local app = id:match("^app:(.+)$")
   if position then
@@ -371,11 +408,12 @@ function showWorkspace(workspace, selected)
   if not list.workspaces[workspace] then return feature.open() end
   local rows = cards.workspaceRows(list.workspaces[workspace], appNames(list))
   local back = function() feature.open("workspace:" .. workspace) end
-  shell.show("workspaces", listFrame(rows, true), card.html({ prompt = "Workspace " .. workspace .. "…", rows = rows,
+  shell.show("workspaces", listFrame(rows, true), card.html({ prompt = "Workspace " .. workspaces.title(list, workspace) .. "…", rows = rows,
     compact = true, step = true, clearable = true, footer = WORKSPACE_FOOTER, selected = selected }), function(message)
     local id = message.id or ""
     if message.type == "step" then
       local direction, row = id:match("^(%-?1):(.+)$")
+      if row == "name" then return direction == "1" and showName(workspace) or nil end
       if not stepWorkspace(list, workspace, row, tonumber(direction)) then return end
       return showWorkspace(workspace, indexOf(rows, row))
     end
@@ -389,6 +427,7 @@ function showWorkspace(workspace, selected)
       return showWorkspace(workspace, #on)
     end
     if message.type == "choose" and id == "add" then return showAddApp(workspace) end
+    if message.type == "choose" and id == "name" then return showName(workspace) end
     back()
   end, { onEscape = back })
 end
@@ -474,8 +513,18 @@ function feature.open(selected)
   if removed and (os.time() - removed.at > UNDO_SECONDS or (removed.number and list.workspaces[removed.number])) then removed = nil end
   local rows = mainRows(list)
   shell.show("workspaces", listFrame(rows, true, MAIN_VISIBLE), card.html({ prompt = "Workspaces…", rows = rows, compact = true, clearable = true,
-    footer = MAIN_FOOTER, selected = selected and indexOf(rows, selected) or nil }), function(message)
+    step = true, footer = MAIN_FOOTER, selected = selected and indexOf(rows, selected) or nil }), function(message)
     if message.type == "clear" then return clearMain(list, rows, message.id or "") end
+    if message.type == "step" then
+      -- Left and Right change the Bar row; on the others they open or close, as without steps.
+      local direction, row = (message.id or ""):match("^(%-?1):(.+)$")
+      if row == "bar" then
+        save(workspaces.setBar(shell.readText(workspaces.PATH), cards.stepBar(list.bar, tonumber(direction))))
+        return feature.open("bar")
+      end
+      if direction == "1" and row then return chooseMain(list, row) end
+      return shell.close()
+    end
     if message.type ~= "choose" then return shell.close() end
     chooseMain(list, message.id or "")
   end)

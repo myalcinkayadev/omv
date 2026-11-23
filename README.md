@@ -398,8 +398,10 @@ One file, `~/.config/omv/workspaces`, says which workspaces there are, the scree
 
 ```ini
 dev = 7                       # the dev layout's workspace
+bar = {number} {name}         # how the bar shows a named workspace
 
 [workspace 1]
+name = Code                   # shown in the bar as "1 Code"; without one, just "1"
 on   = DELL, laptop           # the screens it goes on, the first plugged in; main is always last
 apps = Zed                    # each opens its windows here, ahead of your own rules
 
@@ -428,12 +430,14 @@ gaps = 12
 - **Apps:** each app goes on one workspace, by its name or its bundle id, such as `com.apple.Notes`. A bundle id matches whatever language macOS names the app in, so omv's own apps and the cards use them. Saving the file moves the open windows of the apps whose workspace changed; an app taken off a workspace stays where it is and opens new windows on the workspace you're on. An app with windows on more than one workspace is left alone, and a window you move stays. Option+Enter, Option+Shift+N, Option+Shift+Enter and Option+Shift+T open Ghostty, the editor, the browser and btop on the workspace that keeps their app, or on the one you're on.
 - **Layouts** are set as a workspace lands on a screen, and only when its layout in the file changed: Option+A still switches it for the moment.
 - **Gaps:** `[screen NAME]`'s gaps replace omv's on that screen, after your own `~/.config/omv/aerospace.toml`. The built-in screen keeps its top gap below the notch; on other displays the outer gap is measured below the bar.
+- **Names:** `name` gives a workspace a name of up to 16 characters, emoji and Nerd Font icons included, shown in the bar and the cards. A workspace without one shows only its number. `bar` sets how the bar shows a named workspace, with `{number}` and `{name}`: `{number} {name}` gives "1 Code", the default; `{number}: {name}` gives i3's "1: Code"; `{name}` gives "Code" alone. `#` starts a comment, so a name can't have one. The cards set both, too. To restyle the workspace items themselves, set `space.1` to `space.9` in `~/.config/omv/sketchybar.sh`.
 - **dev** is the dev layout's workspace; when it isn't one of them, the last is used.
 
 ### The Workspaces card
 
 Enter opens a workspace or a screen in a card of its own; Backspace removes a workspace, with **Bring back** in its place for a minute; **Add workspace 5** adds the next, up to 9. Each change is written to the file at once, keeping your comments, and applies a second after the keys stop.
 
+- **Naming:** a workspace's **Name** row opens a box with its name typed in: change it and press Enter, or empty it to have only the number; Backspace on the row removes it too. **Bar**, in the Workspaces card, steps with Left and Right through how the bar shows a name: `1 Code`, `1: Code` or `Code`.
 - **A workspace:** **First** and **Then** are its screens in order, Left and Right to change one, Backspace to drop it, and **Then try another** to add one; main is always last. Left and Right change its **Layout**, or leave it to the screen's, and the app to **Open when empty**. **Add an app…** lists the apps open now, with the workspace each lives on, or type a name; Backspace takes one off.
 - **A screen:** **All gaps**, **Gaps between windows** and **Gaps at the screen edges**, and its layout. Every display omv has seen is listed, so you can set one that isn't plugged in now.
 

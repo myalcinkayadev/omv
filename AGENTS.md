@@ -64,7 +64,9 @@ file with two kinds of section. Edit only the lines the change needs; comments s
 
 ```ini
 dev = 7
+bar = {number} {name}      # the bar's text for a named workspace; {number} and {name}
 [workspace 1]
+name   = Code              # up to 16 characters, emoji too; without it the bar shows "1"
 on     = DELL, laptop      # screens to try in order; main is always last, never written
 apps   = Zed, Helium       # each app on one workspace only
 layout = tabs              # tiles or tabs

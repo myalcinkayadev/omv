@@ -282,4 +282,58 @@ check.that("should list the displays plugged in, then those seen before", names[
   and names[3] == "Seen before:" and names[4]:match("^  Built%-in Retina Display +last seen 2026%-11%-20$") ~= nil)
 check.that("should say no display was seen yet", workspaces.nameLines({})[1]:match("^No display seen yet") ~= nil)
 
+-- Names, and the bar's text for each workspace.
+local NAMED = "bar = {number}: {name}\n[workspace 1]\nname = Side project\n[workspace 2]\n[workspace 3]\nname = 🚀\n"
+local named = workspaces.parse(NAMED)
+local function nameProblem(text) return workspaces.parse(text).problems[1] end
+check.that("should keep a workspace's name when name is set", workspaces.parse("[workspace 1]\nname = Code\n").workspaces["1"].name == "Code")
+check.that("should leave the name unset when a workspace has no name line", named.workspaces["2"].name == nil)
+check.that("should report the line when a name is empty", nameProblem("[workspace 1]\nname =\n") == "line 2: expected name = value")
+check.that("should report a name longer than 16 characters",
+  nameProblem("[workspace 1]\nname = abcdefghijklmnopq\n") == "line 2: a name is 16 characters at most")
+check.that("should keep spaces inside a name", named.workspaces["1"].name == "Side project")
+check.that("should keep an emoji in a name", named.workspaces["3"].name == "🚀")
+check.that("should count an emoji as one character, not its bytes",
+  #workspaces.parse("[workspace 1]\nname = 🚀🚀🚀🚀🚀\n").problems == 0)
+check.that("should accept a name of exactly 16 characters with emoji",
+  #workspaces.parse("[workspace 1]\nname = 🚀bcdefghijklmnop\n").problems == 0)
+check.that("should reject a name of 17 characters with emoji",
+  nameProblem("[workspace 1]\nname = 🚀bcdefghijklmnopq\n") == "line 2: a name is 16 characters at most")
+check.that("should cut a name at #, since # starts a comment", workspaces.parse("[workspace 1]\nname = C# work\n").workspaces["1"].name == "C")
+
+local plain = workspaces.parse("[workspace 1]\nname = Code\n[workspace 2]\n")
+check.that("should show {number} {name} by default", workspaces.barText(plain, "1") == "1 Code")
+check.that("should show only the number for a workspace without a name", workspaces.barText(plain, "2") == "2")
+check.that("should show the format the file gives", workspaces.barText(named, "1") == "1: Side project")
+check.that("should show only the number for an unnamed workspace when the format is {name}",
+  workspaces.barText(workspaces.parse("bar = {name}\n[workspace 2]\n"), "2") == "2")
+check.that("should show only the name when the format is {name}",
+  workspaces.barText(workspaces.parse("bar = {name}\n[workspace 3]\nname = 🚀\n"), "3") == "🚀")
+check.that("should report the line for an unknown placeholder",
+  nameProblem("bar = {number} {foo}\n[workspace 1]\n") == "line 1: bar knows {number} and {name}, not {foo}")
+check.that("should report a format with neither placeholder",
+  nameProblem("bar = Code\n[workspace 1]\n") == "line 1: bar needs {number} or {name}")
+check.that("should report bar inside a workspace section", nameProblem("[workspace 1]\nbar = {name}\n") == "line 2: unknown setting bar")
+check.that("should give the bar's text for only the named workspaces",
+  table.concat(workspaces.textLines(named), "|") == "1\t1: Side project|3\t3: 🚀")
+check.that("should give no bar text without names", #workspaces.textLines(workspaces.parse("[workspace 1]\n")) == 0)
+check.that("should give no bar text without a file", #workspaces.textLines(workspaces.parse(nil)) == 0)
+
+-- Writing names and the bar's format.
+local NAMEFILE = "dev = 7\n\n[workspace 1]\non = main   # here\n\n[workspace 2]\n"
+local renamed = workspaces.setName(NAMEFILE, workspaces.parse(NAMEFILE), "1", "Code")
+check.that("should write a name into the workspace's section", workspaces.parse(renamed).workspaces["1"].name == "Code")
+check.that("should keep the comments when writing a name", renamed:find("on = main   # here", 1, true) ~= nil)
+check.that("should remove the name line when the name is empty",
+  not workspaces.setName(renamed, workspaces.parse(renamed), "1", ""):find("name", 1, true))
+local tooLong, longProblem = workspaces.setName(NAMEFILE, workspaces.parse(NAMEFILE), "1", "abcdefghijklmnopq")
+check.that("should refuse a 17-character name", tooLong == nil and longProblem == "a name is 16 characters at most")
+local hashed, hashProblem = workspaces.setName(NAMEFILE, workspaces.parse(NAMEFILE), "1", "C#")
+check.that("should refuse a name with #, which would start a comment", hashed == nil and hashProblem == "a name can't have #")
+local withBar = workspaces.setBar(NAMEFILE, "{name}")
+check.that("should write bar at the top, outside any section", withBar:match("^dev = 7\nbar = {name}\n") ~= nil and workspaces.parse(withBar).bar == "{name}")
+local rewritten = workspaces.setBar(withBar, "{number}: {name}")
+check.that("should replace an existing bar line", select(2, rewritten:gsub("bar =", "")) == 1 and workspaces.parse(rewritten).bar == "{number}: {name}")
+check.that("should remove the bar line for the default", not workspaces.setBar(withBar, nil):find("bar", 1, true))
+
 check.finish()

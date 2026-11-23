@@ -43,4 +43,6 @@ check.that("should mark a card in step mode, so Left and Right step its row",
 check.that("should leave a card without step mode unmarked, so Right still picks",
   not check.contains(card.html({ prompt = "Pick…", rows = { { id = "a", label = "A" } } }), " data-step"))
 
+check.that("should start the input with the given text when query is set",
+  check.contains(card.html({ prompt = "A name…", rows = {}, input = true, query = 'Code "x"' }), 'data-query="Code &quot;x&quot;"'))
 check.finish()

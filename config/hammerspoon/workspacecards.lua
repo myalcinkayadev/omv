@@ -100,6 +100,31 @@ local function appList(apps, names)
   return table.concat(shown, ", ")
 end
 
+-- How the bar shows a named workspace, in the order Left and Right step through them.
+local BAR_FORMATS = { "{number} {name}", "{number}: {name}", "{name}" }
+
+-- The bar's format after or before format; nil, the file's default, is the first.
+function cards.stepBar(format, direction)
+  return cards.stepChoice(format or BAR_FORMATS[1], direction, BAR_FORMATS)
+end
+
+-- The Bar row's hint: the first named workspace as the bar shows it, or 1 Code; a format not
+-- among the three is the user's own.
+local function barHint(list)
+  local format = list.bar or BAR_FORMATS[1]
+  local known = false
+  for _, choice in ipairs(BAR_FORMATS) do known = known or choice == format end
+  if not known then return "‹  your own  ›" end
+  local example = { workspaces = {}, bar = format }
+  local numbers = workspaces.numbers(list)
+  local first = numbers[1] or "1"
+  for _, number in ipairs(numbers) do
+    if list.workspaces[number].name then first = number; break end
+  end
+  example.workspaces[first] = { name = list.workspaces[first] and list.workspaces[first].name or "Code" }
+  return "‹  " .. workspaces.barText(example, first) .. "  ›"
+end
+
 -- The Workspaces card: each workspace, where it is now, its apps and layout; Add and Reset;
 -- each screen omv has seen or the file names, with its gaps and layout. names gives installed
 -- apps' names by bundle id.
@@ -111,7 +136,7 @@ function cards.mainRows(list, screens, seen, names)
     if entry.apps and #entry.apps > 0 then parts[#parts + 1] = appList(entry.apps, names) end
     if entry.layout then parts[#parts + 1] = entry.layout end
     if number == dev then parts[#parts + 1] = "dev layout" end
-    rows[#rows + 1] = { id = "workspace:" .. number, group = "Workspaces", icon = "󰕰", label = number, hint = table.concat(parts, " · ") .. "  ›" }
+    rows[#rows + 1] = { id = "workspace:" .. number, group = "Workspaces", icon = "󰕰", label = workspaces.title(list, number), hint = table.concat(parts, " · ") .. "  ›" }
   end
   for number = 1, 9 do
     if not list.workspaces[tostring(number)] then
@@ -119,6 +144,7 @@ function cards.mainRows(list, screens, seen, names)
       break
     end
   end
+  rows[#rows + 1] = { id = "bar", group = "Workspaces", icon = "󰍜", label = "Bar", hint = barHint(list) }
   rows[#rows + 1] = { id = "reset", group = "Workspaces", icon = "󰑓", label = "Reset to omv's workspaces", hint = "1 to 7 with omv's apps" }
   local listed = {}
   local function addScreen(word)
@@ -153,6 +179,8 @@ end
 -- app to open when it's empty.
 function cards.workspaceRows(entry, names)
   local rows, index = {}, 0
+  rows[#rows + 1] = { id = "name", group = "Workspace", icon = "󰑕", label = "Name", hint = (entry.name or "none") .. "  ›" }
+  rows[#rows + 1] = { id = "layout", group = "Workspace", icon = "󰕰", label = "Layout", hint = shown(entry.layout, "the screen's") }
   for _, word in ipairs(entry.on or {}) do
     if word ~= "main" then
       index = index + 1
@@ -162,7 +190,6 @@ function cards.workspaceRows(entry, names)
   rows[#rows + 1] = { id = "on:add", group = "On", icon = "󰐕", label = index == 0 and "Pick a screen" or "Then try another",
     hint = "before main" }
   rows[#rows + 1] = { id = "on:main", group = "On", icon = "󰍹", label = "Then", hint = "main, always last" }
-  rows[#rows + 1] = { id = "layout", group = "Workspace", icon = "󰕰", label = "Layout", hint = shown(entry.layout, "the screen's") }
   for _, app in ipairs(entry.apps or {}) do
     rows[#rows + 1] = { id = "app:" .. app, group = "Apps", icon = "󰀻", label = (names or {})[app] or app, hint = "⌫ remove" }
   end
@@ -211,7 +238,7 @@ function cards.moveRows(list, current, screens, names)
     local hint = "on " .. workspaces.landsOn(list, number, screens)
     if entry.apps and #entry.apps > 0 then hint = hint .. " · " .. appList(entry.apps, names) end
     if number == current then hint = hint .. "  ·  here now" end
-    rows[#rows + 1] = { id = "workspace:" .. number, icon = "󰕰", label = number, hint = hint }
+    rows[#rows + 1] = { id = "workspace:" .. number, icon = "󰕰", label = workspaces.title(list, number), hint = hint }
   end
   for number = 1, 9 do
     if not list.workspaces[tostring(number)] then

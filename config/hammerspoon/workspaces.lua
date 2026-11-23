@@ -7,6 +7,7 @@
 -- build loads it, and omv doctor runs it as a script:
 --   luajit workspaces.lua check <file>      each problem in the file; fails when there's one
 --   luajit workspaces.lua names <seen file>  the displays seen, for omv displays
+--   luajit workspaces.lua texts <file>      the bar's text for each named workspace
 
 local inifile = require("inifile")
 
@@ -22,6 +23,8 @@ local FORCE_TABLE = "workspace-to-monitor-force-assignment"
 -- on other displays is this tall, so the outer gap goes below it. omv's gaps otherwise.
 local NOTCH_TOP, BAR_HEIGHT, DEFAULT_GAP = 14, 36, 10
 local LAYOUTS = { tiles = true, tabs = true }
+-- A name is this many characters at most, so the bar stays short; the bar's text without a bar line.
+local NAME_LIMIT, DEFAULT_BAR = 16, "{number} {name}"
 -- omv's apps on today's workspaces, by bundle id, so they match whatever language macOS names
 -- them in: the terminal, the editor, the browser; notes and planning; messages; music.
 local DEFAULT_APPS = {
@@ -97,6 +100,22 @@ local function defaultWorkspaces()
   return found
 end
 
+-- Characters, not bytes: an emoji is one.
+local function characters(text)
+  return select(2, text:gsub("[^\128-\191]", ""))
+end
+
+-- The bar's format, or a problem.
+local function barProblem(format)
+  for placeholder in format:gmatch("{([^}]*)}") do
+    if placeholder ~= "number" and placeholder ~= "name" then
+      return "bar knows {number} and {name}, not {" .. placeholder .. "}"
+    end
+  end
+  if not format:find("{number}", 1, true) and not format:find("{name}", 1, true) then return "bar needs {number} or {name}" end
+  return nil
+end
+
 local function wholeNumber(value)
   return value:match("^%d+$") and tonumber(value) or nil
 end
@@ -115,6 +134,9 @@ local function workspaceSetting(workspace, key, value, appsOn, number)
     if not LAYOUTS[value:lower()] then return "layout is tiles or tabs" end
     workspace.layout = value:lower()
   elseif key == "open" then workspace.open = value
+  elseif key == "name" then
+    if characters(value) > NAME_LIMIT then return "a name is " .. NAME_LIMIT .. " characters at most" end
+    workspace.name = value
   else return "unknown setting " .. key end
   return nil
 end
@@ -134,8 +156,8 @@ local function screenSetting(screen, key, value)
   return nil
 end
 
--- The file's text, or nil without one: { workspaces = { ["2"] = { on, apps, layout, open } },
--- screens = { [name] = { inner, outer, layout } }, dev, problems }. Without [workspace]
+-- The file's text, or nil without one: { workspaces = { ["2"] = { on, apps, layout, open, name } },
+-- screens = { [name] = { inner, outer, layout } }, dev, bar, problems }. Without [workspace]
 -- sections, or with a problem, today's workspaces stand, so the desktop always has some.
 function workspaces.parse(text)
   local list = { workspaces = {}, screens = {}, problems = {} }
@@ -181,6 +203,9 @@ function workspaces.parse(text)
       key = key and trim(key):lower()
       if not key or key == "" or (value == "" and key ~= "apps") then problem(number, "expected name = value")
       elseif not current and key == "dev" then list.dev = value
+      elseif not current and key == "bar" then
+        local reason = barProblem(value)
+        if reason then problem(number, reason) else list.bar = value end
       elseif not current and key:match("^%d$") then
         problem(number, key .. " = " .. value .. " is the old form; write [workspace " .. key .. "] then on = " .. value)
       elseif not current then problem(number, key .. " is outside a section")
@@ -204,6 +229,32 @@ function workspaces.numbers(list)
   for workspace in pairs(list.workspaces) do numbers[#numbers + 1] = workspace end
   table.sort(numbers, function(a, b) return tonumber(a) < tonumber(b) end)
   return numbers
+end
+
+-- What the bar shows for workspace: the bar line with its number and name filled in, or only its
+-- number when it has no name.
+function workspaces.barText(list, workspace)
+  local name = (list.workspaces[workspace] or {}).name
+  if not name then return workspace end
+  local text = (list.bar or DEFAULT_BAR):gsub("{(%a+)}", function(placeholder)
+    return placeholder == "number" and workspace or name
+  end)
+  return text
+end
+
+-- "N<tab>text" for each named workspace, in number order, for the bar to read when it starts.
+function workspaces.textLines(list)
+  local lines = {}
+  for _, workspace in ipairs(workspaces.numbers(list)) do
+    if list.workspaces[workspace].name then lines[#lines + 1] = workspace .. "\t" .. workspaces.barText(list, workspace) end
+  end
+  return lines
+end
+
+-- A workspace as the cards show it: its number, then its name when it has one.
+function workspaces.title(list, workspace)
+  local name = (list.workspaces[workspace] or {}).name
+  return name and (workspace .. " " .. name) or workspace
 end
 
 -- The dev layout's workspace: dev when it's one of them, otherwise the last.
@@ -696,6 +747,32 @@ function workspaces.setWorkspace(text, list, workspace, key, value)
   return inifile.set(materialize(text, list), "workspace " .. workspace, key, value)
 end
 
+-- text with workspace's name set, or removed when empty; nil and a problem for a name the
+-- file can't keep.
+function workspaces.setName(text, list, workspace, name)
+  name = trim(name or "")
+  if characters(name) > NAME_LIMIT then return nil, "a name is " .. NAME_LIMIT .. " characters at most" end
+  if name:find("#", 1, true) then return nil, "a name can't have #" end
+  return workspaces.setWorkspace(text, list, workspace, "name", name ~= "" and name or nil)
+end
+
+-- text with its bar line set to format, or removed for nil. A new one goes after the lines
+-- before the first section, such as dev, so it stays outside every section.
+function workspaces.setBar(text, format)
+  local lines, top, at = {}, 0, nil
+  for line in (tostring(text or "") .. "\n"):gmatch("([^\n]*)\n") do lines[#lines + 1] = line end
+  if lines[#lines] == "" then table.remove(lines) end
+  for index, line in ipairs(lines) do
+    if line:match("^%s*%[") then break end
+    if line:match("^%s*[Bb][Aa][Rr]%s*=") then at = index end
+    if trim(line) ~= "" then top = index end
+  end
+  if at and format then lines[at] = "bar = " .. format
+  elseif at then table.remove(lines, at)
+  elseif format then table.insert(lines, top + 1, "bar = " .. format) end
+  return table.concat(lines, "\n") .. "\n"
+end
+
 -- text without section when nothing is left under it, so omv's own values leave no header.
 local function withoutEmpty(text, section)
   if not inifile.isEmpty(text, section) then return text end
@@ -788,6 +865,9 @@ if arg and arg[0] and arg[0]:match("workspaces%.lua$") and arg[1] == "check" the
   local list = workspaces.parse(readFile(arg[2] or workspaces.PATH))
   for _, problem in ipairs(list.problems) do print(problem) end
   os.exit(#list.problems == 0 and 0 or 1)
+end
+if arg and arg[0] and arg[0]:match("workspaces%.lua$") and arg[1] == "texts" then
+  for _, line in ipairs(workspaces.textLines(workspaces.parse(readFile(arg[2] or workspaces.PATH)))) do print(line) end
 end
 if arg and arg[0] and arg[0]:match("workspaces%.lua$") and arg[1] == "names" then
   for _, line in ipairs(workspaces.nameLines(workspaces.parseSeen(readFile(arg[2])))) do print(line) end

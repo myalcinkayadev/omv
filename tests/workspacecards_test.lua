@@ -115,4 +115,25 @@ check.that("should count a group's header as a line", cards.lineCount({ { group 
 check.that("should step through the laptop, a screen past those plugged in, and the displays seen",
   table.concat(cards.screenChoices(2, seen), ",") == "laptop,screen 2,screen 3,DELL U2723QE,LG HDR 4K")
 
+-- Names on the cards.
+local namedList = workspaces.parse("[workspace 1]\nname = Code\n[workspace 2]\n")
+local namedRows = cards.mainRows(namedList, { dell }, {})
+check.that("should show a named workspace's number and name in its row", find(namedRows, "workspace:1").label == "1 Code")
+check.that("should show only the number in an unnamed workspace's row", find(namedRows, "workspace:2").label == "2")
+check.that("should show a named workspace's name in the move list", find(cards.moveRows(namedList, "2", { dell }), "workspace:1").label == "1 Code")
+
+-- Naming from the cards.
+local nameRows = cards.workspaceRows(workspaces.parse("[workspace 1]\nname = Code\n").workspaces["1"])
+check.that("should show a Name row first with the workspace's name", nameRows[1].id == "name" and nameRows[1].hint == "Code  ›")
+check.that("should show none on the Name row when the workspace has no name",
+  cards.workspaceRows(workspaces.parse("[workspace 1]\n").workspaces["1"])[1].hint == "none  ›")
+check.that("should show a Bar row with 1 Code by default", find(cards.mainRows(workspaces.parse("[workspace 1]\n"), { dell }, {}), "bar").hint == "‹  1 Code  ›")
+check.that("should show the Bar row's example with the first named workspace",
+  find(cards.mainRows(workspaces.parse("bar = {number}: {name}\n[workspace 1]\n[workspace 3]\nname = Web\n"), { dell }, {}), "bar").hint == "‹  3: Web  ›")
+check.that("should step the bar from 1 Code to 1: Code to Code and around",
+  cards.stepBar(nil, 1) == "{number}: {name}" and cards.stepBar("{number}: {name}", 1) == "{name}" and cards.stepBar("{name}", 1) == "{number} {name}"
+  and cards.stepBar(nil, -1) == "{name}")
+check.that("should show your own for a format not among the three",
+  find(cards.mainRows(workspaces.parse("bar = [{number}] {name}\n[workspace 1]\n"), { dell }, {}), "bar").hint == "‹  your own  ›")
+
 check.finish()

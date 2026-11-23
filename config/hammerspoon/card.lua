@@ -100,7 +100,7 @@ local SCRIPT = [[
   const prompt = document.querySelector(".prompt");
   const text = document.querySelector(".text");
   const none = document.querySelector(".none");
-  let query = "";
+  let query = document.body.dataset.query || "";
   // An input card has no rows to pick: Enter sends what was typed.
   const takesInput = document.body.dataset.input !== undefined;
   let selected = Math.max(0, Number(document.body.dataset.selected || 1) - 1);
@@ -410,7 +410,8 @@ end
 -- clearable card sends clear and the selected row on Backspace. A row's tone, ask, ok or
 -- muted, colours its icon. A card with clipActions, such as the palette, shows the clipboard
 -- actions on top, for clip, the clipboard's text; Shift+Enter on one sends paste.
--- An input card sends what was typed on Enter, and shows its hint under the prompt. A
+-- An input card sends what was typed on Enter, and shows its hint under the prompt; query is
+-- text already typed in it, to change rather than retype. A
 -- passage is text shown whole above the rows, wrapped, such as a translation; a quote, smaller
 -- and grey above it, is what it came from. A row's key picks it with Cmd held.
 -- A card with calc = true, such as the palette, works out a typed sum in its first row.
@@ -456,7 +457,7 @@ function card.html(screen)
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. (screen.footer and " footed" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
     .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (screen.step and " data-step" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "")
-    .. (screen.clearable and " data-clear" or "") .. ">"
+    .. (screen.clearable and " data-clear" or "") .. (screen.query and (' data-query="' .. card.escape(screen.query) .. '"') or "") .. ">"
     .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span>'
     .. "<span class=caret></span>"
     .. (screen.files and "<span class=busy>Searching files…</span>" or "") .. statusHtml(screen.sub) .. "</div>"
