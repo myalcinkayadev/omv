@@ -20,7 +20,10 @@ local function tick()
   stalls.append(feature.PATH, stalls.line(os.date("%Y-%m-%d %H:%M:%S"), gap, shell.openName()))
 end
 
+-- A full collection first, so the memory is what's still held, not what's waiting to be freed:
+-- only then does a leak show as a number that keeps rising.
 local function health()
+  collectgarbage("collect")
   stalls.append(feature.PATH, stalls.healthLine(os.date("%Y-%m-%d %H:%M:%S"), collectgarbage("count"), shell.runningCount()))
 end
 
