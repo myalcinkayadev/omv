@@ -394,7 +394,7 @@ Under the footer are today's events from Calendar.app, so every account added th
 
 One file, `~/.config/omv/workspaces`, says which workspaces there are, the screens each goes on, the apps that live on it, and each screen's gaps, much as Hyprland's workspace rules do. Option+Escape, then **Workspaces**, edits it, and so does Option+W on a window. You can also edit it in any editor: saving it applies it, without a reload.
 
-<img src="docs/workspaces.png" alt="The Workspaces card for a desk: workspaces 1 on DELL with Zed, 2 on DELL with Helium and Arc in tabs, 3 on main, 4 on laptop with Slack, 7 the dev layout, Add workspace 5; Reset to omv's workspaces; Screens with the DELL's and the laptop's gaps" width="720">
+<img src="docs/workspaces.png" alt="The Workspaces card for a desk: 1 Code on DELL with Zed, 2 Web on DELL with Helium and Arc in tabs, 3 on main, 4 Chat on laptop with Slack, 7 the dev layout, Add workspace 5; Bar showing 1 Code; Reset to omv's workspaces; Screens with the DELL's and the laptop's gaps" width="720">
 
 ```ini
 dev = 7                       # the dev layout's workspace
@@ -441,7 +441,7 @@ Enter opens a workspace or a screen in a card of its own; Backspace removes a wo
 - **A workspace:** **First** and **Then** are its screens in order, Left and Right to change one, Backspace to drop it, and **Then try another** to add one; main is always last. Left and Right change its **Layout**, or leave it to the screen's, and the app to **Open when empty**. **Add an app…** lists the apps open now, with the workspace each lives on, or type a name; Backspace takes one off.
 - **A screen:** **All gaps**, **Gaps between windows** and **Gaps at the screen edges**, and its layout. Every display omv has seen is listed, so you can set one that isn't plugged in now.
 
-<img src="docs/workspace-card.png" alt="Workspace 4's card: First laptop, Then try another, Then main always last; Layout the screen's; Slack with Backspace to remove; Add an app; Open when empty Slack" width="720">
+<img src="docs/workspace-card.png" alt="Workspace 4 Chat's card: Name Chat, Layout the screen's; First laptop, Then try another, Then main always last; Slack with Backspace to remove; Add an app; Open when empty Slack" width="720">
 
 ### Option+W
 

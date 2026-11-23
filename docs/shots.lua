@@ -317,14 +317,17 @@ end
 local DESK = [[
 dev = 7
 [workspace 1]
+name = Code
 on   = DELL
 apps = Zed
 [workspace 2]
+name   = Web
 on     = DELL
 apps   = Helium, Arc
 layout = tabs
 [workspace 3]
 [workspace 4]
+name = Chat
 on   = laptop
 apps = Slack
 open = Slack
@@ -352,9 +355,9 @@ local function workspacesShots()
   return {
     bodyShot("workspaces.png", "Workspaces…", main,
       { { key = "Enter", text = "open ›" }, { key = "⌫", text = "remove" }, { key = "Esc", text = "close" } }),
-    bodyShot("workspace-card.png", "Workspace 4…", workspacecards.workspaceRows(list.workspaces["4"]),
+    bodyShot("workspace-card.png", "Workspace 4 Chat…", workspacecards.workspaceRows(list.workspaces["4"]),
       { { key = "Left/Right", text = "change" }, { key = "Enter", text = "add" }, { key = "⌫", text = "remove" }, { key = "Esc", text = "back" } },
-      { step = true, selected = 1 }),
+      { step = true, selected = 3 }),
     listShot("window-card.png", LIST_WIDTH, { prompt = "Zed on workspace 1…", rows = window, compact = true }),
   }
 end

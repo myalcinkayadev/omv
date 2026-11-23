@@ -26,8 +26,11 @@ local function parkPointer(screen)
   hs.mouse.absolutePosition({ x = frame.x + 4, y = frame.y + frame.h - 4 })
 end
 
+-- A frame taller than the screen is cut to it: the part above the screen's top edge isn't on
+-- the display, so its capture would lose the card's top border.
 local function centered(screen, width, height)
   local frame = screen:fullFrame()
+  height = math.min(height, frame.h)
   return hs.geometry.rect(math.floor(frame.x + (frame.w - width) / 2), math.floor(frame.y + (frame.h - height) / 2), width, height)
 end
 
