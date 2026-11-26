@@ -10,6 +10,11 @@ check.that("should count nothing when the gap is under the limit", stalls.gap(10
 check.that("should count nothing when the gap is the limit", stalls.gap(0, stalls.LIMIT) == nil)
 check.that("should count a gap of a minute as a stall, since sleep never shows on the awake clock", stalls.gap(10, 70) ~= nil)
 check.that("should give a long stall's full length", math.abs(stalls.gap(10, 50) - 40) < 1e-9)
+check.that("should count nothing when the wall clock ran over a second ahead, the Mac asleep in the gap",
+  stalls.gap(10, 10.3, 1000, 1000 + 0.3 + 25) == nil)
+check.that("should count a gap when the wall clock kept to the awake clock", stalls.gap(10, 10.4, 1000, 1000.4) ~= nil)
+check.that("should count a long gap when both clocks agree, a freeze and not a sleep", stalls.gap(10, 50, 1000, 1040) ~= nil)
+check.that("should count a gap when the wall clock ran ahead by under a second", stalls.gap(10, 10.4, 1000, 1001.2) ~= nil)
 
 check.that("should write the time, the length in ms and the card", stalls.line("12:00:01", 1.2345, "agents") == "12:00:01  1235 ms agents\n")
 check.that("should write no card when none is showing", stalls.line("12:00:01", 0.3, "") == "12:00:01   300 ms no card\n")

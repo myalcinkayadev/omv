@@ -12,10 +12,18 @@ stalls.LIMIT = 0.25
 -- How often a health line is written, so something growing over hours shows in the log.
 stalls.HEALTH_SECONDS = 600
 
--- The stall between two ticks at last and now, in seconds, or nil when the gap is short.
-function stalls.gap(last, now)
+-- How far the wall clock may run ahead of the awake clock over one gap before the Mac counts
+-- as having slept in it. Waking takes a few hundred milliseconds that the awake clock counts
+-- while Hammerspoon is still held, so a gap with a sleep in it isn't a stall either.
+stalls.SLEPT = 1
+
+-- The stall between two ticks at last and now on the awake clock, in seconds, or nil when the
+-- gap is short or the Mac slept in it: wallLast and wallNow, the same ticks on the wall
+-- clock, then differ by more than SLEPT beyond it.
+function stalls.gap(last, now, wallLast, wallNow)
   local gap = now - last
   if gap <= stalls.LIMIT then return nil end
+  if wallLast and wallNow and (wallNow - wallLast) - gap > stalls.SLEPT then return nil end
   return gap
 end
 
