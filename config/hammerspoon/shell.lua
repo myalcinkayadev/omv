@@ -51,10 +51,13 @@ end
 -- when it failed or took longer than seconds. Asking an app over Apple Events waits for its
 -- answer, and an app stuck in a dialog never answers: on Hammerspoon's main thread, as
 -- hs.osascript runs, that froze every card and key until the app was dealt with.
+-- Hammerspoon frees a task's callback only once the task itself is freed, and the timer's
+-- callback holds the task: a finished task lets go of the timer, or neither is ever freed.
 function shell.osascript(source, language, seconds, done)
   local timer = nil
   local task = hs.task.new("/usr/bin/osascript", function(code, output)
     if timer then timer:stop() end
+    timer = nil
     done(code == 0 and output or nil)
   end, { "-l", language, "-e", source })
   if not task:start() then return done(nil) end
@@ -69,11 +72,14 @@ local running = {}
 
 -- Runs command with /bin/sh in the background and hands done its output and whether it
 -- succeeded, as hs.execute returns them. hs.execute waits on Hammerspoon's only thread, which
--- freezes every card and key until the command finishes.
+-- freezes every card and key until the command finishes. The callback lets go of its task
+-- once it's done: Hammerspoon frees the callback only with the task, so a callback still
+-- holding the task kept both for good.
 function shell.execute(command, done)
   local task
   task = hs.task.new("/bin/sh", function(code, output)
     running[task] = nil
+    task = nil
     if done then done(output or "", code == 0) end
   end, { "-c", command })
   running[task] = true

@@ -81,11 +81,15 @@ end
 local LIMIT_SECONDS = 20
 local running = {}
 
+-- A finished task lets go of itself and its limit: Hammerspoon frees a callback only with
+-- its task or timer, so references left here kept all three for good.
 local function runLimited(arguments, done)
   local task, limit
   task = hs.task.new(BLUEUTIL, function(code)
     if limit then limit:stop() end
+    limit = nil
     running[task] = nil
+    task = nil
     done(code == 0)
   end, arguments)
   limit = hs.timer.doAfter(LIMIT_SECONDS, function()
