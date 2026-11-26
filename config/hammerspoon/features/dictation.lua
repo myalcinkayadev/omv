@@ -124,6 +124,7 @@ local function record()
     return showProblem(recording, "language")
   end
   recording.task = hs.task.new(HELPER, function()
+    recording.task = nil
     if current == recording and not recording.finishing and not recording.problem then
       current = nil
       dictationPill.hide()
