@@ -179,9 +179,15 @@ function feature.focus()
   showInbox()
 end
 
--- Seen sessions, read every 2 seconds while Ghostty is in front, and only then.
+-- Seen sessions, read while Ghostty is in front, and only then: once its focused window has
+-- settled after a switch of window or tab (each tab is a window of its own), and every
+-- VIEW_SECONDS for a switch of split, which leaves the window as it was. Each read starts an
+-- osascript. A title change alone doesn't change the terminal in view, and Claude Code turns
+-- its spinner in the title once a second, so titles aren't watched.
 local GHOSTTY = "com.mitchellh.ghostty"
-local VIEW_SECONDS = 2
+local VIEW_SECONDS = 5
+-- Switching windows quickly, one read follows them all.
+local VIEW_SETTLE_SECONDS = 0.3
 local viewedTty = nil
 
 -- How long Ghostty gets to answer; a busy one is asked again at the next read.
@@ -218,16 +224,34 @@ end
 
 -- Kept on the feature, so they aren't garbage-collected.
 feature.viewTimer = hs.timer.new(VIEW_SECONDS, readViewed)
+feature.viewSettled = hs.timer.delayed.new(VIEW_SETTLE_SECONDS, readViewed)
+feature.ghosttyWatcher = nil
+
+local function watchGhostty(app)
+  readViewed()
+  feature.viewTimer:start()
+  if feature.ghosttyWatcher then feature.ghosttyWatcher:stop() end
+  feature.ghosttyWatcher = app:newWatcher(function() feature.viewSettled:start() end)
+  feature.ghosttyWatcher:start({ hs.uielement.watcher.focusedWindowChanged })
+end
+
+local function unwatchGhostty()
+  viewedTty = nil
+  feature.viewTimer:stop()
+  feature.viewSettled:stop()
+  if feature.ghosttyWatcher then feature.ghosttyWatcher:stop() end
+  feature.ghosttyWatcher = nil
+end
+
 feature.appWatcher = hs.application.watcher.new(function(_, event, app)
   if event ~= hs.application.watcher.activated then return end
-  if app and app:bundleID() == GHOSTTY then
-    readViewed()
-    feature.viewTimer:start()
-  else
-    viewedTty = nil
-    feature.viewTimer:stop()
-  end
+  if app and app:bundleID() == GHOSTTY then return watchGhostty(app) end
+  unwatchGhostty()
 end):start()
+
+-- A reload while Ghostty is in front gets no activation, so it starts watching here.
+local front = hs.application.frontmostApplication()
+if front and front:bundleID() == GHOSTTY then watchGhostty(front) end
 
 -- A notification when a session starts asking, unless its terminal is the one in view, or
 -- meeting mode holds notices back; the bar's pill still shows it. Clicking it goes to that
