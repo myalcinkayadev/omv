@@ -10,10 +10,16 @@ local feature = {}
 
 feature.PATH = shell.STATE_DIR .. "/stalls.log"
 
-local last = hs.timer.secondsSinceEpoch()
+-- Seconds the Mac has been awake: hs.timer.absoluteTime stops while it sleeps, unlike the
+-- wall clock, so a sleep, however short, never reads as a stall.
+local function awakeSeconds()
+  return hs.timer.absoluteTime() / 1e9
+end
+
+local last = awakeSeconds()
 
 local function tick()
-  local now = hs.timer.secondsSinceEpoch()
+  local now = awakeSeconds()
   local gap = stalls.gap(last, now)
   last = now
   if not gap then return end

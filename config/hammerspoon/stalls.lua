@@ -1,6 +1,7 @@
 -- Finds where Hammerspoon's thread stalls. A timer that should fire every TICK seconds
 -- fires late when something on the thread blocks it, as hs.execute does; a gap over LIMIT is
--- one stall, written as a line with the time, its length and the card showing. Every
+-- one stall, written as a line with the time, its length and the card showing. Gaps are
+-- timed on a clock that stops while the Mac sleeps, so a sleep is never a stall. Every
 -- HEALTH_SECONDS a health line follows, to catch a slow leak.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
@@ -12,12 +13,9 @@ stalls.LIMIT = 0.25
 stalls.HEALTH_SECONDS = 600
 
 -- The stall between two ticks at last and now, in seconds, or nil when the gap is short.
--- A gap longer than this is the Mac asleep, when no timer runs, not a stall.
-stalls.SLEEP = 30
-
 function stalls.gap(last, now)
   local gap = now - last
-  if gap <= stalls.LIMIT or gap > stalls.SLEEP then return nil end
+  if gap <= stalls.LIMIT then return nil end
   return gap
 end
 
