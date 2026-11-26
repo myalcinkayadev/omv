@@ -82,13 +82,16 @@ end
 -- Every request gets an answer, empty when there's nothing to search for or mdfind fails,
 -- since the page holds "No matches" until it has one. A search stopped for newer text
 -- isn't answered: the newer one will be. The page drops an answer for text no longer typed.
+-- A finished search lets go of its task: Hammerspoon frees the callback only with the task.
 local function findFiles(text)
   stopSearch()
   local arguments = files.arguments(text, shell.HOME)
   if not arguments then return answer(text, {}) end
   local task
   task = hs.task.new(MDFIND, function(code, output)
-    if search ~= task then return end
+    local current = search == task
+    task = nil
+    if not current then return end
     search = nil
     answer(text, code == 0 and files.rows(output, shell.HOME, text, modified) or {})
   end, arguments)
