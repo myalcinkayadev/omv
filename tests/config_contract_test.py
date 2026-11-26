@@ -151,6 +151,25 @@ def blocking_calls(feature: str) -> list[str]:
             if BLOCKING_CALL.search(line) and not line.lstrip().startswith("--")]
 
 
+# hs.task.new keeps its callback until the task is collected, so a callback that names its
+# own task, or the table holding it, keeps both for good unless it clears that name. A task
+# reached through a timer or another function the callback calls is not seen.
+TASK_WITH_CALLBACK = re.compile(r"^(?P<indent>[ \t]*)(?:local )?(?P<name>[\w.]+) = hs\.task\.new\([^,\n]+, function\(", re.M)
+
+
+def tasks_held_by_callback(source: str) -> list[str]:
+    held = []
+    for match in TASK_WITH_CALLBACK.finditer(source):
+        lines = source[match.end():].splitlines()[1:]
+        closing = re.compile(rf"^{match['indent']}end\b")
+        body = "\n".join(lines[:next((i for i, line in enumerate(lines) if closing.match(line)), len(lines))])
+        holder = re.escape(match["name"].split(".")[0])
+        name = re.escape(match["name"])
+        if re.search(rf"(?<![\w.]){holder}(?![\w])", body) and not re.search(rf"(?<![\w.]){name} = nil", body):
+            held.append(match["name"])
+    return held
+
+
 class ConfigContract(unittest.TestCase):
     def test_should_limit_the_bar_query_when_a_card_opens_under_the_bar(self) -> None:
         shell = (REPO / "config/hammerspoon/shell.lua").read_text(encoding="utf-8")
@@ -694,6 +713,46 @@ class Leftovers(unittest.TestCase):
     def test_should_document_every_flag_in_the_readme(self) -> None:
         readme = (REPO / "README.md").read_text(encoding="utf-8")
         self.assertEqual([name for name in flag_names() if f"`{name}`" not in readme], [])
+
+
+class TaskLeaks(unittest.TestCase):
+    def test_should_find_no_held_task_when_reading_the_hammerspoon_config(self) -> None:
+        sources = sorted((REPO / "config/hammerspoon").rglob("*.lua"))
+        held = [f"{path.relative_to(REPO)}: {name}" for path in sources
+                for name in tasks_held_by_callback(path.read_text(encoding="utf-8"))]
+        self.assertEqual(held, [])
+
+    def test_should_flag_the_task_when_its_callback_names_it_without_clearing_it(self) -> None:
+        source = (
+            "local function find(text)\n"
+            "  task = hs.task.new(MDFIND, function(code, output)\n"
+            "    if search ~= task then return end\n"
+            "    answer(text, output)\n"
+            "  end, arguments)\n"
+            "end\n"
+        )
+        self.assertEqual(tasks_held_by_callback(source), ["task"])
+
+    def test_should_flag_the_task_when_its_callback_holds_the_table_holding_it(self) -> None:
+        source = (
+            "local function listen(recording)\n"
+            "  recording.task = hs.task.new(HELPER, function()\n"
+            "    if current == recording then current = nil end\n"
+            "  end, arguments)\n"
+            "end\n"
+        )
+        self.assertEqual(tasks_held_by_callback(source), ["recording.task"])
+
+    def test_should_pass_the_task_when_its_callback_never_names_it(self) -> None:
+        source = (
+            "local function run(program)\n"
+            "  local task = hs.task.new(program, function(code, output, errors)\n"
+            "    done(code == 0, output)\n"
+            "  end, arguments)\n"
+            "  task:start()\n"
+            "end\n"
+        )
+        self.assertEqual(tasks_held_by_callback(source), [])
 
 
 if __name__ == "__main__":
