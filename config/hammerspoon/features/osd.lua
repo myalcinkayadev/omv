@@ -160,16 +160,30 @@ local function readLevel(index, readings)
   end, { "display", tostring(index), "get", "luminance" }):start()
 end
 
--- What m1ddc can dim, read again whenever displays come and go.
+-- What m1ddc can dim, read again whenever displays come and go. A change that comes during a
+-- read is read once more after it, not alongside it.
+local reading, readAgain = false, false
+
 local function readDisplays()
   if not hs.fs.attributes(M1DDC) then return end
-  hs.task.new(M1DDC, function(_, output)
+  if reading then readAgain = true; return end
+  reading = true
+  local list = hs.task.new(M1DDC, function(_, output)
     ddc.displays = osd.parseDisplays(output)
     for _, display in ipairs(ddc.displays) do
       readLevel(display.index, {})
     end
-  end, { "display", "list" }):start()
+    reading = false
+    if readAgain then readAgain = false; readDisplays() end
+  end, { "display", "list" })
+  if not (list and list:start()) then reading = false end
 end
+
+-- Waking makes the screen watcher fire hundreds of times in a few seconds, and each read
+-- starts 7 m1ddc processes; a wake once started 1,484 of them in 21 seconds. Reading once
+-- the displays have been quiet for SETTLE_SECONDS keeps that to one read.
+local SETTLE_SECONDS = 2
+local settled = hs.timer.delayed.new(SETTLE_SECONDS, readDisplays)
 
 -- A key's press and release are both swallowed, or both left to macOS.
 local swallowed = {}
@@ -195,7 +209,7 @@ feature.keys = hs.eventtap.new({ hs.eventtap.event.types.systemDefined }, onKey)
 feature.keysWatchdog = hs.timer.doEvery(30, function()
   if not feature.keys:isEnabled() then feature.keys:start() end
 end)
-feature.screens = hs.screen.watcher.new(readDisplays):start()
+feature.screens = hs.screen.watcher.new(function() settled:start() end):start()
 readDisplays()
 
 return feature
