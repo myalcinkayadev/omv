@@ -7,9 +7,8 @@
 
 local card = {}
 
--- The palette's calculator, read from beside this file. Empty when calc.js is missing: the
--- palette then filters as before, with no calculator row.
-local function readBeside(name)
+-- A page's script, read from beside this file; empty when the file is missing.
+function card.readBeside(name)
   local folder = debug.getinfo(1, "S").source:match("^@(.*/)") or "./"
   local file = io.open(folder .. name, "r")
   if not file then return "" end
@@ -18,9 +17,11 @@ local function readBeside(name)
   return text
 end
 
-local CALC = readBeside("calc.js")
+-- The palette's calculator. Empty when calc.js is missing: the palette then filters as
+-- before, with no calculator row.
+local CALC = card.readBeside("calc.js")
 -- The palette's clipboard actions, read the same way; empty leaves them out.
-local TRANSFORM = readBeside("transform.js")
+local TRANSFORM = card.readBeside("transform.js")
 
 card.STYLE = [[
   * { box-sizing: border-box; }
