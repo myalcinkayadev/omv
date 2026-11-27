@@ -14,8 +14,8 @@ local ownmic = require("ownmic")
 local feature = {}
 
 local HELPER = hs.configdir .. "/dictate.sh"
--- 20 times a second: each repaint of the pill costs Hammerspoon about 9 ms of CPU, so a faster
--- wave would cost more than the whole pill did before it.
+-- 20 times a second, for the key's timers and the countdown; the pill is redrawn only when its
+-- text changes, and the wave moves in dictate.swift's window, drawn on the GPU.
 local TICK_SECONDS = 0.05
 -- Where the words would go is asked of macOS every this many ticks, 4 times a second.
 local FOCUS_TICKS = 5
@@ -25,8 +25,8 @@ local START_SOUND, END_SOUND = "Tink", "Pop"
 local keys = dictation.keys()
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
--- The recording now: { task, locale, started, ready, partial, bands, gain, heardAt, phases, percent,
--- shown, locked, finishing, review, auto, app, appIcon, secure, startApp, left }.
+-- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
+-- review, auto, app, appIcon, secure, startApp, left, waveSent }.
 local current = nil
 -- The last dictations, newest first, each { text, app, at }.
 feature.recent = {}
@@ -96,9 +96,25 @@ local function stopTicker()
   ticker = nil
 end
 
+local function send(recording, word)
+  if recording and recording.task and recording.task:isRunning() then recording.task:setInput(word .. "\n") end
+end
+
+-- Draws the pill, and tells the helper where its wave goes, or to hide it, when that changed.
+local function drawPill(recording)
+  local _, strip = dictationPill.draw(recording)
+  local tokens = shell.themeTokens()
+  local command = strip and dictation.waveCommand(strip, recording,
+    { fg = tokens.fg, accent = tokens.accent, warning = dictationPill.WARNING }, reduceMotion) or "hide"
+  if command == recording.waveSent then return end
+  recording.waveSent = command
+  send(recording, command)
+end
+
 local function finished(recording, final)
   if current ~= recording then return end
   current = nil
+  send(recording, "hide")
   local text, dropped = final, 0
   if dictation.cleanupOn(settings()) then text, dropped = dictation.clean(final) end
   local outcome = dictation.outcome(text)
@@ -112,7 +128,7 @@ end
 
 local function showProblem(recording, problem)
   recording.problem = dictation.notice(problem, recording.locale)
-  dictationPill.draw(recording)
+  drawPill(recording)
   hs.timer.doAfter(2.5, function()
     if current == recording then current = nil end
     dictationPill.hide()
@@ -128,21 +144,12 @@ local function onOutput(recording, chunk)
     elseif message and message.kind == "level" then
       local level = dictation.levelOf(message.level)
       if dictation.isVoice(level) then dictation.press(keys, "voice", hs.timer.secondsSinceEpoch()) end
-    elseif message and message.kind == "bands" then
-      local now = hs.timer.secondsSinceEpoch()
-      local values = dictation.gain(recording.gain, message.bands, now - (recording.heardAt or now))
-      recording.heardAt = now
-      for band, value in pairs(values) do recording.bands[band] = dictation.smooth(recording.bands[band] or 0, value) end
     elseif message and message.kind == "progress" then recording.percent = message.percent
     elseif message and message.kind == "problem" then return showProblem(recording, message.problem)
     elseif message and message.kind == "final" then return finished(recording, message.text)
     elseif line == "ready\t" or line == "ready" then recording.ready = true end
   end
   recording.buffer = recording.buffer:match("([^\n]*)$")
-end
-
-local function send(recording, word)
-  if recording and recording.task and recording.task:isRunning() then recording.task:setInput(word .. "\n") end
 end
 
 local function cancel()
@@ -176,8 +183,7 @@ local function tick()
     end
     recording.left = dictation.remaining(keys, now)
   end
-  recording.phases = dictation.wavePhase(recording.phases, recording.bands, TICK_SECONDS, reduceMotion)
-  if dictation.drawsThisTick(recording, ticks) then dictationPill.draw(recording) end
+  drawPill(recording)
 end
 
 local function record()
@@ -185,8 +191,7 @@ local function record()
   stopTicker()
   local language = locale()
   local engine = dictation.engine(language, lists)
-  local recording = { locale = language, started = hs.timer.secondsSinceEpoch(), reduceMotion = reduceMotion,
-    bands = {}, gain = dictation.newGain() }
+  local recording = { locale = language, started = hs.timer.secondsSinceEpoch() }
   current = recording
   if not engine then
     recording.shown = true
@@ -221,7 +226,7 @@ local function show(locked)
   -- A locked one that types by itself only types into the app it started in.
   if locked then current.startApp = here.app end
   play(START_SOUND)
-  dictationPill.draw(current)
+  drawPill(current)
 end
 
 -- Ends the recording; how says what then happens to the words: review only copies them,
@@ -233,7 +238,7 @@ local function finish(how)
   recording.finishing, recording.stopped, recording.left = true, hs.timer.secondsSinceEpoch(), nil
   recording.review, recording.auto = how == "review", how == "auto"
   play(END_SOUND)
-  dictationPill.draw(recording)
+  drawPill(recording)
   send(recording, "stop")
 end
 

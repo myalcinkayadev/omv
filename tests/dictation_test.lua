@@ -156,8 +156,6 @@ check.that("should show clean-up on or off", find(cardRows, "cleanup").hint == "
 check.that("should map -55 dB and below to 0", dictation.levelOf(-55) == 0 and dictation.levelOf(-90) == 0)
 check.that("should map -15 dB and above to 1", dictation.levelOf(-15) == 1 and dictation.levelOf(0) == 1)
 check.that("should map between linearly", math.abs(dictation.levelOf(-35) - 0.5) < 0.001)
-check.that("should rise at once", math.abs(dictation.smooth(0, 1) - 0.6) < 0.001)
-check.that("should fall slower than it rises", math.abs(dictation.smooth(1, 0) - 0.75) < 0.001)
 
 -- The words.
 local lines = dictation.wrap("one two three four five six seven", 10)
@@ -226,93 +224,32 @@ check.that("should keep an 18-character app name whole", dictation.header({ star
 local wide, narrow = dictation.meterLayout(81), dictation.meterLayout(200)
 check.that("should end the strip 10 pt before the app chip", wide.x + wide.w == 560 - 18 - 81 - 10)
 check.that("should give the wave less room when the app name is long", narrow.w < wide.w)
-local layout = { x = 190, w = 200 }
-local function wave(recording) return dictation.wave(recording, layout) end
-local function height(curves)
-  local most = 0
-  for _, curve in ipairs(curves) do
-    for _, point in ipairs(curve.points) do most = math.max(most, math.abs(point.y - 25)) end
-  end
-  return most
-end
-local function bands(low, mid, high) return { low = low, mid = mid, high = high } end
-local loud = wave({ bands = bands(1, 1, 1), phases = { 0.3, 0.3, 0.3 } })
-check.that("should taper the wave to the centre line at both ends", math.abs(loud[1].points[1].y - 25) < 1e-6
-  and math.abs(loud[1].points[#loud[1].points].y - 25) < 1e-6)
-check.that("should raise the wave when the voice is louder",
-  height(loud) > height(wave({ bands = bands(0.2, 0.2, 0.2), phases = { 0.3, 0.3, 0.3 } })))
-check.that("should leave a small ripple when silent", dictation.waveAmplitude({ bands = bands(0, 0, 0) }, "mid") == 1.5
-  and height(wave({ bands = bands(0, 0, 0), phases = { 0.3, 0.3, 0.3 } })) > 0)
-check.that("should move each curve faster when its band is louder",
-  dictation.wavePhase({ 0, 0, 0 }, bands(1, 1, 1), 0.05)[1] > dictation.wavePhase({ 0, 0, 0 }, bands(0.2, 0.2, 0.2), 0.05)[1])
-local hiss = wave({ bands = bands(0, 0, 1), phases = { 0.3, 0.3, 0.3 } })
-check.that("should drive each curve by its own band", height({ hiss[3] }) > 5 and height({ hiss[1] }) <= 1.5 and height({ hiss[2] }) <= 1.5)
-local function hump(curve)
-  local best, at = -1, nil
-  for _, point in ipairs(curve.points) do
-    local taper = dictation.taperAt(curve, point.x)
-    if taper > best then best, at = taper, point.x end
-  end
-  return at
-end
-check.that("should move the hump right for hiss", hump(hiss[1]) > 190 + 100 + 2)
-check.that("should move the hump left for hum", hump(wave({ bands = bands(1, 0, 0) })[1]) < 190 + 100 - 2)
-check.that("should keep the hump in the middle when silent", math.abs(hump(wave({ bands = bands(0, 0, 0) })[1]) - (190 + 100)) <= 2)
-local counting = wave({ locked = true, left = 7, bands = bands(1, 1, 1), phases = { 0.3, 0.3, 0.3 } })
-local lastX = counting[1].points[#counting[1].points].x
-check.that("should shrink the wave to the left during the countdown", math.abs(lastX - (190 + 140)) < 2.01)
-check.that("should draw the countdown wave in orange", counting[1].warning == true)
-local closing = wave({ finishing = true, bands = bands(1, 1, 1) })
-check.that("should draw a low, dim wave while finishing", dictation.waveAmplitude({ finishing = true, bands = bands(1, 1, 1) }, "mid") == 2.5
-  and closing[1].dim == true)
-check.that("should hold the wave still when Reduce Motion is on", dictation.wavePhase({ 1, 2, 3 }, bands(1, 1, 1), 0.05, true)[2] == 2)
 
--- The bands, scaled by their recent peak.
-local function db(amplitude) return 20 * math.log10(amplitude) end
-check.that("should read a bands line", (function()
-  local line = dictation.parse("bands\t-40 -30.5 -50")
-  return line.kind == "bands" and line.bands.low == -40 and line.bands.mid == -30.5 and line.bands.high == -50
-end)())
--- Each gain starts in a quiet room, as a dictation does before you speak.
-local function room(state) for _ = 1, 10 do dictation.gain(state, bands(-70, -70, -70), 0.033) end return state end
-local gain = room(dictation.newGain())
-for _ = 1, 20 do dictation.gain(gain, bands(db(0.1), db(0.1), db(0.1)), 0.033) end
-local steady = dictation.gain(gain, bands(db(0.1), db(0.1), db(0.1)), 0.033)
-check.that("should keep headroom above the recent peak", math.abs(steady.mid - 0.8) < 0.01)
-check.that("should rise to the top only on a new peak", dictation.gain(gain, bands(db(0.1), db(0.2), db(0.1)), 0.033).mid == 1)
-local fading = room(dictation.newGain())
-dictation.gain(fading, bands(db(0.1), db(0.1), db(0.1)), 0.033)
-for _ = 1, 90 do dictation.gain(fading, bands(-90, -90, -90), 0.033) end
-check.that("should let the peak fall slowly so a quieter voice fills the wave again",
-  dictation.gain(fading, bands(db(0.05), db(0.05), db(0.05)), 0.033).mid > 0.6)
-check.that("should keep room noise as a ripple", dictation.gain(room(dictation.newGain()), bands(-70, -70, -70), 0.033).mid == 0)
-check.that("should hear a quiet voice well above a quiet room", dictation.gain(room(dictation.newGain()), bands(-50, -50, -50), 0.033).mid > 0.5)
-local noisy = dictation.newGain()
-for _ = 1, 10 do dictation.gain(noisy, bands(-45, -45, -45), 0.033) end
-check.that("should learn a noisy room's level as its floor", dictation.gain(noisy, bands(-45, -45, -45), 0.033).mid == 0)
-
-check.that("should draw three curves at 1, 0.5 and 0.25 brightness", #loud == 3 and loud[1].alpha == 1 and loud[2].alpha == 0.5 and loud[3].alpha == 0.25)
-
--- Redrawing: the whole pill only when its text changes, else only the wave moves.
-local base = { started = 100, app = "Zed", partial = "hello", bands = bands(0.2, 0.2, 0.2), phases = { 1, 1, 1 } }
+-- Redrawing: the pill only when its text changes; the wave is dictate.swift's.
+local base = { started = 100, app = "Zed", partial = "hello" }
 local function with(changes)
   local copy = {}
   for key, value in pairs(base) do copy[key] = value end
   for key, value in pairs(changes) do copy[key] = value end
   return copy
 end
-check.that("should keep the frame's text when only the wave moves",
-  dictation.frameKey(base, 105.2) == dictation.frameKey(with({ bands = bands(1, 1, 1), phases = { 2, 3, 4 } }), 105.6))
+check.that("should keep the frame's text within the same second", dictation.frameKey(base, 105.2) == dictation.frameKey(base, 105.6))
 check.that("should change the frame's text when the timer ticks", dictation.frameKey(base, 105.2) ~= dictation.frameKey(base, 106.1))
 check.that("should change the frame's text when words come", dictation.frameKey(base, 105) ~= dictation.frameKey(with({ partial = "hello there" }), 105))
 check.that("should change the frame's text when the app changes", dictation.frameKey(base, 105) ~= dictation.frameKey(with({ app = "Slack" }), 105))
 check.that("should change the frame's text when it locks", dictation.frameKey(base, 105) ~= dictation.frameKey(with({ locked = true }), 105))
-check.that("should draw a curve point every 4 pt", #wave({ bands = bands(1, 1, 1) })[1].points == 200 / 4 + 1)
-
-check.that("should redraw every tick while you speak", dictation.drawsThisTick({ bands = bands(0, 0.4, 0) }, 7))
-check.that("should redraw every other tick in silence", dictation.drawsThisTick({ bands = bands(0, 0.01, 0) }, 8)
-  and not dictation.drawsThisTick({ bands = bands(0, 0.01, 0) }, 7))
-check.that("should redraw every tick while finishing", dictation.drawsThisTick({ finishing = true, bands = bands(0, 0, 0) }, 7))
+-- Telling dictate.swift where to draw the wave.
+local colors = { fg = "#ffffff", accent = "#8d8d8d", warning = "#f0a35e" }
+local strip = { x = 1190.4, y = 1240, w = 262 }
+check.that("should tell the helper where the strip is while listening",
+  dictation.waveCommand(strip, { started = 0 }, colors, false) == "wave 1190 1240 262 listening -1 ffffff 8d8d8d f0a35e 0")
+check.that("should tell the helper the seconds left while locked",
+  dictation.waveCommand(strip, { started = 0, locked = true, left = 7 }, colors, false) == "wave 1190 1240 262 locked 7 ffffff 8d8d8d f0a35e 0")
+check.that("should tell the helper it's finishing, with no countdown",
+  dictation.waveCommand(strip, { started = 0, locked = true, left = 3, finishing = true }, colors, false)
+    == "wave 1190 1240 262 finishing -1 ffffff 8d8d8d f0a35e 0")
+check.that("should tell the helper when Reduce Motion is on",
+  dictation.waveCommand(strip, { started = 0 }, colors, true) == "wave 1190 1240 262 listening -1 ffffff 8d8d8d f0a35e 1")
 
 -- The helper ending.
 check.that("should finish with what was heard when the helper ends while finishing",

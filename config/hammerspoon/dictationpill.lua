@@ -22,15 +22,9 @@ local function color(hex, alpha)
 end
 
 local pill = nil
--- The wave, on a canvas of its own over the pill's meter strip: it moves 30 times a second,
--- and macOS repaints a canvas whole, text and all, on any change, so on the pill's own canvas
--- it cost more than the whole pill did before it. Over the strip, only the strip repaints.
-local waveCanvas = nil
--- The pill drawn last: its dictation.frameKey, frame and the wave's layout on its canvas, so a
--- frame whose text is the same only moves the wave.
+-- The pill drawn last: its dictation.frameKey, frame and the strip the wave goes in, so a frame
+-- whose text is the same isn't drawn again.
 local drawn = nil
--- The wave canvas's margin around the strip, so round line ends aren't cut.
-local WAVE_MARGIN = 4
 -- Hides the confirmation; stopped when the pill is drawn again before it fires.
 local hideLater = nil
 
@@ -50,6 +44,7 @@ end
 
 -- Orange, for a countdown and a password field.
 local WARNING = "#f0a35e"
+dictationPill.WARNING = WARNING
 -- The live dot: macOS's recording red.
 local LIVE = "#ff453a"
 -- The header, left to right: the state icon, the status and the timer together; the meter
@@ -99,39 +94,14 @@ local function chip(elements, header, recording, tokens)
   return w
 end
 
--- The wave's curves, as dictation.wave gives them, as elements for the wave canvas.
-local function waveElements(recording, layout, tokens)
-  local elements = {}
-  for _, curve in ipairs(dictation.wave(recording, layout)) do
-    local hex = curve.warning and WARNING or (curve.dim and tokens.accent or tokens.fg)
-    elements[#elements + 1] = { type = "segments", action = "stroke", closed = false, coordinates = curve.points,
-      strokeColor = color(hex, curve.alpha), strokeWidth = curve.stroke, strokeCapStyle = "round", strokeJoinStyle = "round" }
-  end
-  return elements
-end
-
--- Puts the wave canvas over the strip of the pill at frame, from x for w points.
-local function placeWave(frame, x, w, elements)
-  local placedAt = { x = frame.x + x - WAVE_MARGIN, y = frame.y, w = w + 2 * WAVE_MARGIN, h = 50 }
-  if not waveCanvas then
-    waveCanvas = hs.canvas.new(placedAt):level(hs.canvas.windowLevels.overlay + 1):behavior({ "canJoinAllSpaces", "transient" })
-  end
-  waveCanvas:frame(placedAt):replaceElements(elements):show()
-end
-
--- Moves only the wave of the pill drawn last.
-local function moveWave(recording)
-  for index, curve in ipairs(dictation.wave(recording, drawn.layout)) do waveCanvas[index].coordinates = curve.points end
-  return drawn.frame
-end
-
 local function card(tokens, border, height)
   return { type = "rectangle", action = "strokeAndFill", fillColor = color(tokens.bg), roundedRectRadii = { xRadius = 14, yRadius = 14 },
     strokeColor = color(border), strokeWidth = 2, frame = { x = 0, y = 0, w = WIDTH, h = height } }
 end
 
--- Draws recording, { partial, bands, phases, locked, finishing, stopped, left, secure, app, appIcon,
--- problem, ready, percent, started, locale, localeName, reduceMotion }, and gives its frame.
+-- Draws recording, { partial, locked, finishing, stopped, left, secure, app, appIcon, problem,
+-- ready, percent, started, locale, localeName }, and gives its frame and the strip, on screen,
+-- where dictate.swift draws the wave, or nil when there's none.
 function dictationPill.draw(recording)
   local tokens = shell.themeTokens()
   local now = hs.timer.secondsSinceEpoch()
@@ -143,7 +113,7 @@ function dictationPill.draw(recording)
     }, 52)
   end
   local key = dictation.frameKey(recording, now)
-  if drawn and drawn.layout and drawn.key == key and pill and pill:isShowing() then return moveWave(recording) end
+  if drawn and drawn.key == key and pill and pill:isShowing() then return drawn.frame, drawn.strip end
   local header = dictation.header(recording, now)
   local words, hint, download = body(recording)
   local all = dictation.wrap(words, LINE_CHARACTERS)
@@ -152,7 +122,7 @@ function dictationPill.draw(recording)
   local border = header.target.kind == "password" and WARNING or (recording.locked and tokens.fg or tokens.accent)
   local dim = recording.finishing and tokens.accent or tokens.fg
   local elements = { card(tokens, border, height), text(ICONS[header.icon], 20, dim, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }) }
-  -- Steady, not pulsing: a pulse would repaint the whole pill 30 times a second, and the wave
+  -- Steady, not pulsing: a pulse would redraw the whole pill many times a second, and the wave
   -- already shows the mic is live.
   if header.live then
     elements[#elements + 1] = { type = "circle", action = "strokeAndFill", fillColor = color(LIVE), strokeColor = color(tokens.bg),
@@ -176,10 +146,9 @@ function dictationPill.draw(recording)
   end
   elements[#elements + 1] = text(hint, 11, recording.secure and WARNING or tokens.fg, { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
   local frame = dictationPill.show(elements, height)
-  local layout = strip and { x = WAVE_MARGIN, w = strip.w } or nil
-  if layout then placeWave(frame, strip.x, strip.w, waveElements(recording, layout, tokens)) end
-  drawn = { key = key, frame = frame, layout = layout }
-  return frame
+  local onScreen = strip and { x = frame.x + strip.x, y = frame.y, w = strip.w } or nil
+  drawn = { key = key, frame = frame, strip = onScreen }
+  return frame, onScreen
 end
 
 -- After the words went somewhere: delivery { kind, message, hint } from dictation.delivery,
@@ -201,7 +170,6 @@ end
 
 function dictationPill.show(elements, height)
   drawn = nil
-  if waveCanvas then waveCanvas:hide() end
   if hideLater then hideLater:stop() end
   hideLater = nil
   if not pill then
@@ -214,7 +182,6 @@ end
 
 function dictationPill.hide()
   drawn = nil
-  if waveCanvas then waveCanvas:hide() end
   if pill then pill:hide() end
 end
 

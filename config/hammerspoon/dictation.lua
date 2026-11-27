@@ -190,8 +190,9 @@ function dictation.header(recording, now)
   return { icon = icon, live = not recording.finishing, status = status, timer = timer, warning = warning, target = target }
 end
 
--- What the pill shows besides its wave and live dot, as one string: the pill is rebuilt only
--- when it changes, and between, only the wave and the dot move, which costs a third as much.
+-- What the pill shows, as one string: it's redrawn only when this changes, about once a
+-- second for its timer, since each redraw costs Hammerspoon about 9 ms of CPU; the wave moves
+-- in dictate.swift's window, not here.
 function dictation.frameKey(recording, now)
   local header = dictation.header(recording, now)
   return table.concat({ header.icon, header.status, header.timer, tostring(header.warning), header.target.kind, header.target.name,
@@ -222,10 +223,6 @@ function dictation.parse(line)
   if kind == "partial" or kind == "final" then return { kind = kind, text = value } end
   if kind == "progress" then return { kind = kind, percent = tonumber(value) } end
   if kind == "level" then return { kind = kind, level = tonumber(value) } end
-  if kind == "bands" then
-    local low, mid, high = value:match("^(%S+) (%S+) (%S+)$")
-    return { kind = kind, bands = { low = tonumber(low), mid = tonumber(mid), high = tonumber(high) } }
-  end
   if kind == "problem" then return { kind = kind, problem = value } end
   return nil
 end
@@ -428,7 +425,6 @@ end
 -- The meter: a level in dB as 0 to 1, -55 dB (a quiet room) to -15 dB (speaking up), so
 -- quiet speech still moves it.
 local FLOOR_DB, CEILING_DB = -55, -15
-local ATTACK, RELEASE = 0.6, 0.25
 -- A level this loud or louder is speech, which keeps a locked one going.
 local VOICE = 0.3
 
@@ -440,12 +436,6 @@ function dictation.levelOf(db)
   return math.max(0, math.min(1, (db - FLOOR_DB) / (CEILING_DB - FLOOR_DB)))
 end
 
--- The shown level moved towards target: at once going up, slowly coming down, so it doesn't flicker.
-function dictation.smooth(shown, target)
-  local rate = target > shown and ATTACK or RELEASE
-  return shown + (target - shown) * rate
-end
-
 -- The meter fills the header from after the timer to 10 pt before the app chip: { x, w } for
 -- a chip chipWidth wide.
 dictation.PILL_WIDTH = 560
@@ -455,112 +445,16 @@ function dictation.meterLayout(chipWidth)
   return { x = METER_X, w = math.max(0, dictation.PILL_WIDTH - EDGE - chipWidth - GAP - METER_X) }
 end
 
--- The meter is three sine curves layered, as Siri's is, each following one band of your voice:
--- the bright one the vowels (mid), the next the hum under them (low), the faint one hiss like
--- s, sh and t (high). A band sets its curve's height and how fast it travels; silence leaves
--- a ripple so the mic still looks alive. Each curve: its band, cycles across the strip, its
--- speed, brightness and stroke.
-local CURVES = { { band = "mid", cycles = 1.6, speed = 1, alpha = 1, stroke = 2 }, { band = "low", cycles = 2.3, speed = -1.4, alpha = 0.5, stroke = 1.5 },
-  { band = "high", cycles = 3.2, speed = 1.9, alpha = 0.25, stroke = 1.2 } }
-local RIPPLE, RISE, FINISHING_HEIGHT, CENTER_Y, STEP = 1.5, 9.5, 2.5, 25, 4
--- How far the hump moves from the middle, as a part of the strip, for pure hum or pure hiss.
-local SWAY = 0.3
-
--- A curve's height in points for recording { bands, finishing, left } and its band: low while
--- finishing, a ripple during the countdown, else the ripple plus the band.
-function dictation.waveAmplitude(recording, band)
-  if recording.finishing then return FINISHING_HEIGHT end
-  if recording.left then return RIPPLE end
-  return RIPPLE + RISE * ((recording.bands or {})[band] or 0)
-end
-
--- The curves' phases after seconds at bands: each faster as its band is louder; still with
--- Reduce Motion.
-function dictation.wavePhase(phases, bands, seconds, still)
-  local moved = {}
-  for index, curve in ipairs(CURVES) do
-    local phase = phases and phases[index] or 0
-    moved[index] = still and phase or (phase + seconds * (1.5 + 6 * ((bands or {})[curve.band] or 0)))
-  end
-  return moved
-end
-
--- Where the hump sits, as a part of the strip: right of the middle for hiss, left for hum.
-local function humpAt(bands)
-  local low, mid, high = bands.low or 0, bands.mid or 0, bands.high or 0
-  local total = low + mid + high
-  if total <= 0 then return 0.5 end
-  return 0.5 + SWAY * (high - low) / total
-end
-
--- How much of its height a curve has at x: 0 at both ends, 1 at its hump.
-function dictation.taperAt(curve, x)
-  if curve.width <= 0 then return 0 end
-  local part = (x - curve.from) / curve.width
-  local hump = curve.hump
-  local shaped = part <= hump and (part / hump * 0.5) or (0.5 + (part - hump) / (1 - hump) * 0.5)
-  return math.sin(math.pi * shaped) ^ 2
-end
-
--- The wave's curves in layout { x, w } for recording { bands, phases, left, finishing }: each
--- { points, alpha, stroke, warning, dim, from, width, hump }. During the countdown it's orange
--- and shrinks to the left, a tenth each second; while finishing it's dim.
-function dictation.wave(recording, layout)
-  local width = layout.w * (recording.left and math.max(0, recording.left) / dictation.COUNTDOWN_SECONDS or 1)
-  local hump = humpAt(recording.bands or {})
-  local curves = {}
-  for index, curve in ipairs(CURVES) do
-    local shaped = { from = layout.x, width = width, hump = hump, alpha = curve.alpha, stroke = curve.stroke,
-      warning = recording.left ~= nil and not recording.finishing, dim = recording.finishing == true, points = {} }
-    local height, phase = dictation.waveAmplitude(recording, curve.band), (recording.phases or {})[index] or 0
-    local steps = math.max(1, math.floor(width / STEP))
-    for step = 0, steps do
-      local x = layout.x + width * step / steps
-      local y = CENTER_Y + height * dictation.taperAt(shaped, x) * math.sin(2 * math.pi * curve.cycles * (x - layout.x) / math.max(1, layout.w) + phase * curve.speed)
-      shaped.points[#shaped.points + 1] = { x = x, y = y }
-    end
-    curves[index] = shaped
-  end
-  return curves
-end
-
--- Whether the pill redraws on tick number tick: each repaint of a canvas costs Hammerspoon
--- about 9 ms of CPU whatever it draws, so in silence, when the wave is only a ripple, it
--- redraws every other tick; while you speak, and while finishing, every tick.
-local QUIET = 0.05
-
-function dictation.drawsThisTick(recording, tick)
-  if recording.finishing then return true end
-  local bands = recording.bands or {}
-  if math.max(bands.low or 0, bands.mid or 0, bands.high or 0) >= QUIET then return true end
-  return tick % 2 == 0
-end
-
--- Each band's loudness above the room, scaled by its own recent peak, so the wave shows how
--- your voice changes however loud you speak and however loud your mic is. The room's level is
--- learned as it goes: it falls at once to anything quieter and creeps up, doubling every 8 s,
--- so a pause sets it again. Only sound twice the room's counts; the peak never goes under ten
--- times the room's, so a quiet room isn't blown up. The peak halves every 1.5 s, and a steady
--- voice reaches 0.8, leaving the top for a new peak.
-local QUIETEST, MARGIN, PEAK_OVER_ROOM, HEADROOM, HALF_LIFE, ROOM_DOUBLING = 10 ^ (-90 / 20), 2, 10, 1.25, 1.5, 8
-
-function dictation.newGain()
-  return { peaks = {}, rooms = {} }
-end
-
--- The bands { low, mid, high } in dB as 0 to 1, seconds after the last; updates state.
-function dictation.gain(state, bands, seconds)
-  local values = {}
-  for _, band in ipairs({ "low", "mid", "high" }) do
-    local heard = math.max(QUIETEST, 10 ^ ((bands[band] or -100) / 20))
-    local room = math.min(heard, (state.rooms[band] or heard) * 2 ^ (seconds / ROOM_DOUBLING))
-    state.rooms[band] = room
-    local amplitude = math.max(0, heard - MARGIN * room)
-    local peak = math.max(PEAK_OVER_ROOM * room, (state.peaks[band] or 0) * 0.5 ^ (seconds / HALF_LIFE))
-    values[band] = math.min(1, math.sqrt(amplitude / peak) / HEADROOM)
-    state.peaks[band] = math.max(peak, amplitude)
-  end
-  return values
+-- The line that tells dictate.swift, which draws the wave on the GPU in a window of its own,
+-- where the strip { x, y, w } is on screen and what the pill shows: listening, locked or
+-- finishing, the seconds left of a countdown or -1, colors { fg, accent, warning } as hex,
+-- and still, 1 with Reduce Motion.
+function dictation.waveCommand(strip, recording, colors, still)
+  local state = recording.finishing and "finishing" or (recording.locked and "locked" or "listening")
+  local left = (not recording.finishing and recording.left) or -1
+  local function hex(value) return (tostring(value or "ffffff"):gsub("^#", "")) end
+  return string.format("wave %d %d %d %s %d %s %s %s %d", math.floor(strip.x + 0.5), math.floor(strip.y + 0.5),
+    math.floor(strip.w + 0.5), state, left, hex(colors.fg), hex(colors.accent), hex(colors.warning), still and 1 or 0)
 end
 
 -- The words as lines of at most width characters, broken between words, or inside a word

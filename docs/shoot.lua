@@ -52,15 +52,31 @@ local function elementRect(frame, selector, onRect)
   end)
 end
 
+-- The dictation helper drawing the pill's wave for its shot, stopped after it.
+local waveTask = nil
+
+local function stopWave()
+  if waveTask and waveTask:isRunning() then waveTask:terminate() end
+  waveTask = nil
+end
+
 -- Shows a shot and calls back with the rect to capture once it has drawn.
 local function show(shot, screen, onReady)
   if shot.kind == "osd" then
     local frame = osdFeature.show(shot.icon, shot.level)
     return hs.timer.doAfter(0.4, function() onReady(hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)) end)
   end
+  -- The pill's wave is drawn by the dictation helper, so a still one is started over its strip
+  -- and stopped once the shot is taken.
   if shot.kind == "pill" then
-    local frame = require("dictationpill").draw(shot.recording)
-    return hs.timer.doAfter(0.4, function() onReady(hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)) end)
+    local frame, strip = require("dictationpill").draw(shot.recording)
+    if strip then
+      local bands = shot.waveBands
+      waveTask = hs.task.new(hs.configdir .. "/dictate.sh", nil, { "wave", tostring(math.floor(strip.x)), tostring(math.floor(strip.y)),
+        tostring(math.floor(strip.w)), tostring(bands.low), tostring(bands.mid), tostring(bands.high) })
+      waveTask:start()
+    end
+    return hs.timer.doAfter(1.0, function() onReady(hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)) end)
   end
   if shot.kind == "live" then
     require(shot.feature)[shot.call]()
@@ -104,10 +120,12 @@ return function(docs, only, doneFile)
     local shot = queue[index]
     if not shot then
       require("dictationpill").hide()
+      stopWave()
       return finish()
     end
     shell.close()
     require("dictationpill").hide()
+    stopWave()
     parkPointer(screen)
     local ok, problem = pcall(show, shot, screen, function(rect)
       capture(rect, docs .. "/" .. shot.file, function(problem)
