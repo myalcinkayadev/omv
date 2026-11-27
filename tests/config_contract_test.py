@@ -62,6 +62,7 @@ BAR_ITEM_FLAGS = {
     "disk": "disk", "clipboard_paused": "clipboard", "nightlight": "night-light", "mic_muted": "mic-mute",
     "tailscale": "tailscale", "focus": "focus", "recording": "capture", "claude_waiting": "claude",
     "claude_usage": "claude", "github_prs": "github-prs", "github_ci": "github-ci", "reminder": "reminders", "meeting": "calendar",
+    "brew_outdated": "brew-outdated",
 }
 BAR_CORE_ITEMS = {"aerospace_listener", "mode", "clock", "bar_fit"}
 

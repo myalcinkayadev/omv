@@ -271,6 +271,13 @@ if clipboardHistory then
 end
 if hungryProcesses then omvToggleProcesses = later(hungryProcesses.toggle) end
 if diskCard then omvToggleDisk = later(diskCard.toggle) end
+-- The bar's outdated-packages item runs brew upgrade in a new Ghostty window on Ghostty's
+-- workspace; it has no card, so it's wired here.
+if enabled["brew-outdated"] then
+  omvBrewUpgrade = later(function()
+    run(shell.LAUNCH, { workspaceCards.homeOf("Ghostty"), shell.GHOSTTY_WINDOW, hs.configdir .. "/brew-upgrade.sh" })()
+  end)
+end
 if reminderCards then
   omvToggleReminders = later(reminderCards.toggle)
   omvNewReminder = later(reminderCards.new)

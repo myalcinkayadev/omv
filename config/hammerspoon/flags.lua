@@ -56,6 +56,7 @@ flags.DEFAULTS = {
   ["file-search"] = false, -- the palette also lists recent files matching what's typed (mdfind)
   ["stalls"] = false, -- logs each time Hammerspoon stalls to ~/.local/state/omv/stalls.log
   ["dictation"] = false, -- hold Right Option to talk, release to type it, heard on the Mac
+  ["brew-outdated"] = false, -- outdated Homebrew packages in the bar, and brew upgrade on a click
 }
 
 -- text is the flags file's contents, or nil when there's none.

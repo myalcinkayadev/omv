@@ -122,6 +122,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Pull requests | How many open pull requests ask for your review, checked with `gh` every 5 minutes. Hidden when none wait, or when `gh` is missing, logged out or offline | List them; Enter opens one in Helium | |
 | Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
 | Waiting Claude | A white pill right of Claude's limit, `omv`, while a Claude Code session waits for you, or `? omv` while it asks for approval, plus `+N` for others | Go to that session's terminal, or pick one when several wait | |
+| Outdated packages | How many Homebrew packages `brew outdated` lists, with [`brew-outdated`](#feature-flags) on | Run `brew upgrade` in a new Ghostty window; see [Smaller tools](#smaller-tools) | |
 | Disk | Free space on the startup disk, only while it's under 20 GB or under 10% | Open the [Disk card](#disk) | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
@@ -132,7 +133,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Battery | Charge | Open the [Battery card](#battery) | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
-**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, low disk space, the waiting Claude, the pull request count, the failing checks, the reminder and the status icons always stay, and everything comes back once there's room.
+**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, low disk space, outdated packages, the waiting Claude, the pull request count, the failing checks, the reminder and the status icons always stay, and everything comes back once there's room.
 
 **Claude usage** shows the 5-hour limit: gray under 70%, white from 70%, and a white pill from 90%. The 7-day limit is in the [Agents card](#agents).
 
@@ -666,9 +667,10 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 - **Clipboard history (Option+V):** the text you copied in the last day, at most 50, and the last 20 images, newest first; an image shows as a small preview with its size. Type to filter, and Enter pastes it where you were typing, as [snippets](#snippets) do, and leaves it on the clipboard. Without Accessibility for Hammerspoon, it's only copied, for you to paste with Cmd+V. It's kept in memory only, so a reload forgets it. Secrets are never kept: copies password managers mark as concealed, copies made while 1Password, Bitwarden, Passwords or Keychain Access is in front, and text shaped like a key or token (`sk-…`, `ghp_…`, `AKIA…`, a JWT, a private key, or a `KEY=`, `TOKEN=`, `SECRET=` or `PASSWORD=` line). Text and images are kept, never files. **Pause history** and **Clear history** are the card's first rows; while paused, the bar shows `paused`, and a click on it turns history back on. A secret with no recognizable shape is still kept, so pause the history for sensitive work.
 
   <img src="docs/clipboard.png" alt="Clipboard history: Pause history and Clear history, then five copies newest first, each with its app and age" width="720">
+- **Outdated packages:** with `omv flags brew-outdated on`, the bar shows how many Homebrew packages `brew outdated` lists, and hides at 0, or when `brew` is missing or fails. It counts every 6 hours and when the Mac wakes, but a wake less than an hour after the last count keeps that one; the time of the last count is kept in `~/.local/state/omv/brew-outdated`. The count runs with `HOMEBREW_NO_AUTO_UPDATE=1`, so it never runs `brew update` or reaches the network: it's only as fresh as your last `brew update` or `brew upgrade`. A click opens `brew upgrade` in a new Ghostty window, which does update Homebrew first; the item counts again as soon as the upgrade ends, and the window stays open until Enter so you can read what changed.
 - **Drop-down terminal (Option+\`):** Ghostty's quick terminal, over any workspace.
 - **Long commands:** in Ghostty, a command that runs longer than 10 seconds sends a notification when it finishes while you're in another window. The first one makes macOS ask to allow notifications from Ghostty.
-- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleMeetingMode()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvFocusClaude()`, `omvSendToAgent()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvWorkspaces()`, `omvWindowCard()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
+- **Scripting:** each card opens with `hs -c`: `omvToggleSystemMenu()`, `omvToggleSound()`, `omvToggleWifi()`, `omvToggleBluetooth()`, `omvToggleEthernet()`, `omvToggleWeather()`, `omvToggleBattery()`, `omvToggleAgents()`, `omvToggleKeyList()`, `omvToggleCalendar()`, `omvJoinMeeting()`, `omvToggleMeetingMode()`, `omvToggleWindows()`, `omvTogglePrs()`, `omvToggleCi()`, `omvToggleClipboard()`, `omvToggleProcesses()`, `omvToggleDisk()`, `omvBrewUpgrade()`, `omvFocusClaude()`, `omvSendToAgent()`, `omvToggleCapture()`, `omvStopRecording()`, `omvToggleFocus()`, `omvWorkspaces()`, `omvWindowCard()`, `omvToggleTailscale()`, `omvToggleMic()`, `omvNewReminder()` and `omvToggleReminders()`.
 
 ## Feature flags
 
@@ -721,6 +723,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `long-command-notices` | Ghostty's notice when a long command finishes |
 | `meeting-mode` | **off unless turned on:** Do Not Disturb, paused music, held-back agent notices and hidden chat and music apps while a meeting runs; see [Meeting mode](#meeting-mode) |
 | `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
+| `brew-outdated` | **off unless turned on:** the count of outdated Homebrew packages in the bar, and `brew upgrade` on a click; see [Smaller tools](#smaller-tools) |
 | `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
 | `stalls` | **off unless turned on:** writes each time Hammerspoon freezes for over a quarter of a second, with the card showing, to `~/.local/state/omv/stalls.log`, and every 10 minutes its Lua memory and the background commands still running |
 

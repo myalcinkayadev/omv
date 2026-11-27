@@ -150,6 +150,17 @@ if omv_flag_on disk; then
     --subscribe disk system_woke mouse.clicked
 fi
 
+if omv_flag_on brew-outdated; then
+  # Outdated Homebrew packages, counted every 6 hours and on wake without updating Homebrew.
+  # Hidden at 0. Sits left of the disk item; clicking it opens brew upgrade in Ghostty, which
+  # sends brew_outdated_change when it's done so the count follows.
+  sketchybar --add event brew_outdated_change \
+    --add item brew_outdated right \
+    --set brew_outdated drawing=off icon=󰏗 icon.padding_right=3 label.padding_left=3 update_freq=21600 \
+      script="$PLUGIN_DIR/brew_outdated.sh" \
+    --subscribe brew_outdated brew_outdated_change system_woke mouse.clicked
+fi
+
 if omv_flag_on clipboard; then
   # Shown only while clipboard history is paused, so a pause is never forgotten. Hammerspoon
   # sets it; clicking it turns history back on.
