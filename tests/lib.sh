@@ -32,6 +32,24 @@ exit "$code"
 EOF
 chmod 555 "$SHARED_STUB"
 CALL_LOG=/dev/null "$SHARED_STUB"
+
+# The system commands a case reaches with no stub of its own, such as one its stub file
+# isn't executable for: the shell then looks further along PATH, and a real pkill there once
+# stopped the running bar. These stand between the stubs and /usr/bin, and only say so.
+readonly GUARD_DIR=$SHARED_STUB_DIR/guard
+mkdir "$GUARD_DIR"
+cat > "$GUARD_DIR/guard" <<'EOF'
+#!/bin/sh
+echo "${0##*/}: blocked, a test reached the real command" >&2
+echo "blocked ${0##*/} $*" >> "$CALL_LOG"
+exit 127
+EOF
+chmod 555 "$GUARD_DIR/guard"
+# Only those PATH would find there: one that isn't, such as brew, stays missing when removed.
+for name in "${SYSTEM_COMMANDS[@]}"; do
+  [ -x "/usr/bin/$name" ] || [ -x "/bin/$name" ] && ln -s "$GUARD_DIR/guard" "$GUARD_DIR/$name"
+done
+CALL_LOG=/dev/null "$GUARD_DIR/guard" 2>/dev/null
 trap 'rm -rf "$SHARED_STUB_DIR"' EXIT
 
 stub() {
@@ -74,7 +92,7 @@ new_sandbox() {
 }
 
 run_in_sandbox() {
-  env -i HOME="$HOME_DIR" PATH="$STUB_DIR:/usr/bin:/bin" CALL_LOG="$CALL_LOG" "$@"
+  env -i HOME="$HOME_DIR" PATH="$STUB_DIR:$GUARD_DIR:/usr/bin:/bin" CALL_LOG="$CALL_LOG" "$@"
 }
 
 # Assertions print the reason and return non-zero, which fails the case.

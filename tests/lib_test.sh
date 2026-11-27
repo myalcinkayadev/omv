@@ -68,6 +68,20 @@ keeps_stubs_to_their_case() {
   [[ $output == *'ok   - second'* ]] || fail "a stub's exit code reached the next case: $output"
 }
 
+blocks_real_command_behind_broken_stub() {
+  remove_stub pkill
+  : > "$STUB_DIR/pkill"
+  local code=0
+  run_in_sandbox pkill -x sketchybar 2>/dev/null || code=$?
+  [ "$code" = 127 ] || fail "expected the guard's 127, got $code"
+}
+
+logs_blocked_real_command() {
+  remove_stub defaults
+  run_in_sandbox defaults write com.example key 1 2>/dev/null || true
+  assert_called '^blocked defaults write com.example key 1$'
+}
+
 refuses_writes_through_shared_stub() {
   ! (echo 'exit 9' > "$STUB_DIR/aerospace") 2>/dev/null || fail "a write through the link changed the shared stub"
 }
@@ -83,4 +97,6 @@ run_case 'should exit zero when stub replaces a failing stub of the same name' e
 run_case 'should leave no stub behind when remove_stub runs' leaves_no_stub_after_removal
 run_case "should keep a stub's exit code out of the next case" keeps_stubs_to_their_case
 run_case 'should refuse a write through a stub link to the shared stub' refuses_writes_through_shared_stub
+run_case "should block the real pkill when a case's own stub isn't executable" blocks_real_command_behind_broken_stub
+run_case 'should log a blocked call when a system command has no stub' logs_blocked_real_command
 finish
