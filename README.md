@@ -207,6 +207,8 @@ That writes `file-search=on` to `~/.config/omv/flags` and reloads Hammerspoon. `
 
 Then, after 3 or more typed characters and a short pause, the palette lists up to 20 files whose names contain every typed word, under Files, names starting with the first word first, then the newest: files you opened or changed in the last 30 days, in your home folder, leaving out `Library`, `node_modules` and `.git`. Enter opens one with its app, Cmd+Enter shows it in Finder, and Cmd+C copies its path. It asks Spotlight (`mdfind`) in the background, one search at a time, so typing never waits for it. While the flag is off, no search runs.
 
+**Browser tabs** are off unless you turn them on with `omv flags browser-tabs on`. Then the palette lists every tab open in your browser under Tabs, after the windows and snippets and before the apps: its title, or its URL when it has none, with the site's host beside it. Typing filters them like any row, and Enter shows that tab, brings its window to the front and switches to the browser. The browser is the one in `~/.config/omv/apps` (`browser = Safari`), else Helium; Safari and the Chromium browsers, such as Helium, Chrome and Brave, work. One `osascript` reads all the tabs in the background each time the palette opens, so the palette never waits: the tabs appear a moment later, or not at all when the browser isn't open or takes over 3 seconds. The first time, macOS asks to let Hammerspoon control the browser; until you allow it in System Settings, Privacy & Security, Automation, no tabs show. A browser name holding a quote or backslash is refused.
+
 <img src="docs/windows.png" alt="The palette: open windows with their app and workspace, then apps, then omv commands with their keys" width="720">
 
 ## Key list
@@ -745,6 +747,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `meeting-mode` | **off unless turned on:** Do Not Disturb, paused music, held-back agent notices and hidden chat and music apps while a meeting runs; see [Meeting mode](#meeting-mode) |
 | `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
 | `brew-outdated` | **off unless turned on:** the count of outdated Homebrew packages in the bar, and `brew upgrade` on a click; see [Smaller tools](#smaller-tools) |
+| `browser-tabs` | **off unless turned on:** the browser's open tabs in the palette; see [Palette](#palette) |
 | `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
 | `system-load` | **off unless turned on:** CPU and memory in the bar, only while the Mac is busy; see [Smaller tools](#smaller-tools) |
 | `input-source` | **off unless turned on:** the keyboard input source in the bar, and switching it with a click; see [Input source](#input-source) |

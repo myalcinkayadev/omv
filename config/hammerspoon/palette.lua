@@ -1,7 +1,8 @@
 -- The Option+Space palette: open windows, installed apps and omv's own commands in one
 -- list, filtered as you type. Rows carry what to do as their id: window:<id>, app:<path> or
 -- command:<index in the key list>. A typed sum adds calc:<result> on top, a clipboard action
--- clip:<result> above that, and file search file:<path> rows at the end.
+-- clip:<result> above that, browser tabs tab:<window id>:<tab index> rows before the apps, and
+-- file search file:<path> rows at the end.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local clipboard = require("clipboard")
@@ -53,10 +54,12 @@ function palette.windowRows(output)
 end
 
 -- Windows first, as the palette opens; snippets next, ahead of the apps and commands, so
--- typing a snippet's name picks it.
-function palette.rows(windowsOutput, apps, launchers, ownKey, snippetRows)
+-- typing a snippet's name picks it. With withTabs, a place for the browser's tabs follows the
+-- snippets: they're read after the palette opens, and fill it when they arrive.
+function palette.rows(windowsOutput, apps, launchers, ownKey, snippetRows, withTabs)
   local rows = {}
-  for _, part in ipairs({ palette.windowRows(windowsOutput), snippetRows or {}, palette.appRows(apps), palette.commandRows(launchers, ownKey) }) do
+  local tabPlace = withTabs and { { tabs = true } } or {}
+  for _, part in ipairs({ palette.windowRows(windowsOutput), snippetRows or {}, tabPlace, palette.appRows(apps), palette.commandRows(launchers, ownKey) }) do
     for _, row in ipairs(part) do rows[#rows + 1] = row end
   end
   return rows
@@ -78,9 +81,14 @@ function palette.prompt(fileSearch)
 end
 
 -- What a row does: "window", id; "app", path; "file", path; "calc" or "clip", the result to
--- copy; or "command", index. nil for an unknown row.
+-- copy; "tab", { window, index }; or "command", index. nil for an unknown row.
 function palette.parse(id)
   local kind, value = id:match("^(%a+):(.+)$")
+  if kind == "tab" then
+    local window, index = value:match("^(%d+):(%d+)$")
+    if not window then return nil end
+    return kind, { window = tonumber(window), index = tonumber(index) }
+  end
   if kind == "window" or kind == "app" or kind == "calc" or kind == "file" or kind == "clip" then return kind, value end
   if kind == "command" or kind == "snippet" then return kind, tonumber(value) end
   return nil

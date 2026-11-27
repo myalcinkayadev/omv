@@ -54,6 +54,7 @@ flags.DEFAULTS = {
   -- Off unless turned on.
   ["meeting-mode"] = false, -- Do Not Disturb, paused music and hidden chat apps while a meeting runs
   ["file-search"] = false, -- the palette also lists recent files matching what's typed (mdfind)
+  ["browser-tabs"] = false, -- the palette also lists the browser's open tabs (AppleScript)
   ["stalls"] = false, -- logs each time Hammerspoon stalls to ~/.local/state/omv/stalls.log
   ["dictation"] = false, -- hold Right Option to talk, release to type it, heard on the Mac
   ["brew-outdated"] = false, -- outdated Homebrew packages in the bar, and brew upgrade on a click

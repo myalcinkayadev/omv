@@ -45,6 +45,15 @@ check.that("should read an app to open from a row", palette.parse("app:/Applicat
 check.that("should read a command to run from a row", select(2, palette.parse("command:2")) == 2)
 check.that("should read nothing from an unknown row", palette.parse("nope") == nil)
 
+local withTabs = palette.rows("12|Ghostty|1|~/omv\n", { { name = "Zed", path = "/Applications/Zed.app" } }, launchers, "Option+Space",
+  { { id = "snippet:1", label = "reply", group = "Snippets" } }, true)
+check.that("should put the place for tabs after the windows and snippets, before the apps",
+  withTabs[2].group == "Snippets" and withTabs[3].tabs == true and withTabs[4].group == "Apps")
+check.that("should leave out the place for tabs when the flag is off", all[2].tabs == nil and all[2].group == "Apps")
+local kind, tab = palette.parse("tab:17:2")
+check.that("should read a tab to focus from a row", kind == "tab" and tab.window == 17 and tab.index == 2)
+check.that("should read nothing from a tab row without numbers", palette.parse("tab:17:x") == nil)
+
 
 local card = require("card")
 check.that("should read a calculator row's result", select(2, palette.parse("calc:70")) == "70")
@@ -64,6 +73,10 @@ check.that("should hand over no raw markup from a file name", card.filesCall("re
 check.that("should mention files in the prompt when file search is on", palette.prompt(true) == "Windows, apps, commands, files…")
 check.that("should keep the prompt when file search is off", palette.prompt(false) == "Windows, apps, commands…")
 check.that("should hand the page no rows when no files were found", card.filesCall("abc", {}) == 'omvFiles("abc","");')
+check.that("should leave a place for tabs among the rows", card.html({ prompt = "x", rows = { { tabs = true } } }):find("<div class=tabs></div>", 1, true) ~= nil)
+local tabRow = { id = "tab:1:1", icon = "t", label = "<b>Docs</b>", hint = "a.com", group = "Tabs" }
+check.that("should hand the page the tab rows under a Tabs heading", card.tabsCall({ tabRow }):find('omvTabs("<div class=lead><div class=group data-name=\\"Tabs\\">', 1, true) == 1)
+check.that("should escape a tab's title in the rows it hands over", card.tabsCall({ tabRow }):find("&lt;b&gt;Docs", 1, true) ~= nil)
 check.that("should put the searching sign in the prompt when a card allows files", card.html({ prompt = "x", rows = {}, files = true }):find('<div class="prompt empty"[^>]*>.-<span class=busy>') ~= nil)
 check.that("should leave the searching sign out of other cards", card.html({ prompt = "x", rows = {} }):find("<span class=busy>", 1, true) == nil)
 local reveal = palette.action("reveal", "file:/a/b.md")

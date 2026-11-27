@@ -1,7 +1,8 @@
 -- The palette (Option+Space): open windows on any workspace, installed apps, and every omv
 -- command the key list can run, in one list filtered as you type. With clipboard actions on,
 -- what the clipboard holds, such as JSON or a JWT, gets a row on top; see transform.js. With the file-search flag
--- on, files matching what's typed follow, found by mdfind in the background.
+-- on, files matching what's typed follow, found by mdfind in the background. With the
+-- browser-tabs flag on, the browser's open tabs join the list once read, after the windows.
 
 local shell = require("shell")
 local card = require("card")
@@ -12,6 +13,8 @@ local flags = require("flags")
 local files = require("files")
 local rates = require("rates")
 local snippets = require("snippets")
+local tabs = require("tabs")
+local apps = require("apps")
 
 local feature = {}
 
@@ -24,6 +27,9 @@ local MDFIND = "/usr/bin/mdfind"
 local enabled = flags.read(shell.readText(flags.PATH))
 local fileSearch, withSnippets, withCalculator = enabled["file-search"], enabled.snippets, enabled.calculator
 local withClipActions = enabled["clipboard-actions"]
+local withTabs = enabled["browser-tabs"]
+-- The browser in ~/.config/omv/apps, read at load as the keys that open it are.
+local BROWSER = apps.read(shell.readText(apps.PATH)).browser
 local search = nil
 
 -- Stops the search still running, so typing fast leaves one mdfind at most.
@@ -60,6 +66,34 @@ local function giveRates()
       hs.json.write(kept, RATES_PATH, false, true)
     end
     sendRates(kept)
+  end)
+end
+
+-- The browser's tabs, read by one osascript in the background when the palette's page asks,
+-- once it has loaded, so the palette never waits for the browser. The answer goes only to the
+-- palette that asked: one closed, or closed and opened again, by then drops it. The script
+-- returns nothing when the browser isn't running, and fails, giving no rows, when it isn't
+-- installed.
+local TABS_SECONDS = 3
+local opening = 0
+
+local function readTabs()
+  local script = tabs.readScript(BROWSER)
+  if not script then return end
+  local asked = opening
+  shell.osascript(script, "AppleScript", TABS_SECONDS, function(output)
+    if asked ~= opening or not output or not shell.isOpen("windows") then return end
+    shell.view():evaluateJavaScript(card.tabsCall(tabs.rows(output)))
+  end)
+end
+
+-- Shows the tab, then its window and the browser, also in the background: the browser
+-- may take a moment to answer. A tab or window closed since the palette opened fails.
+local function focusTab(tab)
+  local script = tabs.focusScript(BROWSER, tab.window, tab.index)
+  if not script then return end
+  shell.osascript(script, "AppleScript", TABS_SECONDS, function(output)
+    if output == nil then shell.alert(BROWSER .. " couldn't show that tab", 1.5) end
   end)
 end
 
@@ -120,6 +154,7 @@ end
 local function onPaletteMessage(message)
   if message.type == "files" then return findFiles(message.id) end
   if message.type == "rates" then return giveRates() end
+  if message.type == "tabs" then return readTabs() end
   if message.type == "reveal" or message.type == "copy" then
     local action = palette.action(message.type, message.id)
     if not action then return end
@@ -164,6 +199,11 @@ local function onPaletteMessage(message)
     shell.close()
     return shell.open({ value })()
   end
+  if kind == "tab" then
+    shell.leaveFocus()
+    shell.close()
+    return focusTab(value)
+  end
   if kind == "app" then
     shell.leaveFocus()
     shell.close()
@@ -185,11 +225,12 @@ end
 
 function feature.toggle()
   if shell.isOpen("windows") then return shell.close() end
+  opening = opening + 1
   typingIn = shell.typingIn()
   local clip = clipText()
   shownSnippets = withSnippets and snippets.parse(shell.readText(SNIPPETS_PATH)) or {}
   hs.task.new(shell.AEROSPACE, function(code, output)
-    local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY, snippets.rows(shownSnippets))
+    local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY, snippets.rows(shownSnippets), withTabs)
     -- Room for the clipboard section's heading and row.
     local height = shell.listHeight(#rows + (withClipActions and 2 or 0))
     shell.show("windows", shell.centered(shell.LIST_WIDTH, height),

@@ -123,6 +123,9 @@ local SCRIPT = [[
   // Files are on their way for the typed text: "No matches" waits for them, so it never
   // shows while a search may still find something.
   let filesPending = false;
+  // Browser tabs, in a card with a .tabs place among its rows: asked for once the page has
+  // loaded, so the answer always finds omvTabs, and put there when they arrive.
+  const tabs = document.querySelector(".tabs");
 
   // Currency rates, from Hammerspoon when the page asks; the calculator redraws with them.
   let rates = null, ratesAsked = false;
@@ -255,19 +258,30 @@ local SCRIPT = [[
     }, FILES_PAUSE_MS);
   }
 
+  // Rows that arrive while the card is open go into place. The selected row stays selected
+  // when it's still shown.
+  function fill(place, html) {
+    const was = visible()[selected];
+    place.innerHTML = html;
+    collect();
+    place.querySelectorAll(".row").forEach(wire);
+    draw();
+    const at = visible().indexOf(was);
+    if (at >= 0 && at !== selected) { selected = at; draw(); }
+  }
+
   // Called from Hammerspoon with the rows found for text. An answer for text that's no longer
-  // typed is dropped. The selected row stays selected when it's still shown.
+  // typed is dropped.
   window.omvFiles = (asked, html) => {
     if (!files || asked !== query) return;
     filesPending = false;
     busy.classList.remove("on");
-    const was = visible()[selected];
-    files.innerHTML = html;
-    collect();
-    files.querySelectorAll(".row").forEach(wire);
-    draw();
-    const at = visible().indexOf(was);
-    if (at >= 0 && at !== selected) { selected = at; draw(); }
+    fill(files, html);
+  };
+
+  // Called from Hammerspoon with the browser's tabs, filtered by what's typed like any row.
+  window.omvTabs = (html) => {
+    if (tabs) fill(tabs, html);
   };
 
   document.addEventListener("keydown", (event) => {
@@ -321,6 +335,7 @@ local SCRIPT = [[
   });
 
   rows.forEach(wire);
+  if (tabs) send("tabs");
 
   // The height the page needs, without the rows stretching to fill the window: Hammerspoon
   // sizes a card to fit it.
@@ -361,6 +376,8 @@ end
 local TONES = { ask = true, ok = true, muted = true }
 
 local function rowHtml(row)
+  -- Where the palette puts the browser's tabs once they're read.
+  if row.tabs then return "<div class=tabs></div>" end
   local icon = row.icon and ("<span class=icon>" .. card.escape(row.icon) .. "</span>") or ""
   -- A picture, such as a copied image's preview, takes the icon's place.
   if row.image then icon = '<span class=icon><img class=thumb src="' .. card.escape(row.image) .. '" alt=""></span>' end
@@ -479,6 +496,11 @@ end
 -- so, once nothing else matches either.
 function card.filesCall(text, fileRows)
   return "omvFiles(" .. card.jsString(text) .. "," .. card.jsString(table.concat(rowsWithHeaders(fileRows))) .. ");"
+end
+
+-- The JavaScript that hands an open palette the browser's tab rows.
+function card.tabsCall(tabRows)
+  return "omvTabs(" .. card.jsString(table.concat(rowsWithHeaders(tabRows))) .. ");"
 end
 
 -- The large card for Pomodoro breaks: the whole screen dims, and a wider card sits in

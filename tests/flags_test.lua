@@ -37,10 +37,11 @@ check.that("should have the outdated Homebrew packages off by default", flags.re
 check.that("should have system load off by default", flags.read(nil)["system-load"] == false)
 check.that("should have the input source off by default", flags.read(nil)["input-source"] == false)
 check.that("should have world clocks off by default", flags.read(nil)["world-clocks"] == false)
+check.that("should have browser tabs off by default", flags.read(nil)["browser-tabs"] == false)
 check.that("should have a flag for every feature and each feature that starts off, and nothing else", (function()
   local count = 0
   for _ in pairs(flags.DEFAULTS) do count = count + 1 end
-  return count == #FEATURES + 8
+  return count == #FEATURES + 9
 end)())
 check.that("should turn a feature off when its line says off", flags.read("weather=off").weather == false)
 check.that("should leave the other features on when one is turned off", flags.read("weather=off").battery == true)
