@@ -112,7 +112,7 @@ check.that("should use macOS's language without a language line", dictation.lang
 check.that("should fall back to en-US without either", dictation.language("", {}) == "en-US")
 local locales = dictation.parseLocales("transcriber\ten-US en-GB de-DE\ndictation\ten-US tr-TR\n")
 check.that("should read the helper's locale lists", locales.transcriber[1] == "en-US" and locales.dictation[2] == "tr-TR")
-check.that("should use dictation for a language both engines know", dictation.engine("en-TR", locales) == "dictation")
+check.that("should use the transcriber for a language both engines know", dictation.engine("en-TR", locales) == "transcriber")
 check.that("should use dictation for a language only it lists", dictation.engine("tr-TR", locales) == "dictation")
 check.that("should use the transcriber for a language only it lists", dictation.engine("de-DE", locales) == "transcriber")
 check.that("should have no engine for a language neither lists", dictation.engine("xx-YY", locales) == nil)
