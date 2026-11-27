@@ -197,6 +197,10 @@ function dictation.parse(line)
   if kind == "partial" or kind == "final" then return { kind = kind, text = value } end
   if kind == "progress" then return { kind = kind, percent = tonumber(value) } end
   if kind == "level" then return { kind = kind, level = tonumber(value) } end
+  if kind == "bands" then
+    local low, mid, high = value:match("^(%S+) (%S+) (%S+)$")
+    return { kind = kind, bands = { low = tonumber(low), mid = tonumber(mid), high = tonumber(high) } }
+  end
   if kind == "problem" then return { kind = kind, problem = value } end
   return nil
 end
@@ -426,47 +430,95 @@ function dictation.meterLayout(chipWidth)
   return { x = METER_X, w = math.max(0, dictation.PILL_WIDTH - EDGE - chipWidth - GAP - METER_X) }
 end
 
--- The meter is three sine curves layered, as Siri's is: your voice sets their height and how
--- fast they travel, silence leaves a ripple so the mic still looks alive, and each tapers to
--- nothing at both ends. Each curve: cycles across the strip, its speed, brightness and stroke.
-local CURVES = { { cycles = 1.6, speed = 1, alpha = 1, stroke = 2 }, { cycles = 2.3, speed = -1.4, alpha = 0.5, stroke = 1.5 },
-  { cycles = 3.2, speed = 1.9, alpha = 0.25, stroke = 1.2 } }
+-- The meter is three sine curves layered, as Siri's is, each following one band of your voice:
+-- the bright one the vowels (mid), the next the hum under them (low), the faint one hiss like
+-- s, sh and t (high). A band sets its curve's height and how fast it travels; silence leaves
+-- a ripple so the mic still looks alive. Each curve: its band, cycles across the strip, its
+-- speed, brightness and stroke.
+local CURVES = { { band = "mid", cycles = 1.6, speed = 1, alpha = 1, stroke = 2 }, { band = "low", cycles = 2.3, speed = -1.4, alpha = 0.5, stroke = 1.5 },
+  { band = "high", cycles = 3.2, speed = 1.9, alpha = 0.25, stroke = 1.2 } }
 local RIPPLE, RISE, FINISHING_HEIGHT, CENTER_Y, STEP = 1.5, 9.5, 2.5, 25, 2
+-- How far the hump moves from the middle, as a part of the strip, for pure hum or pure hiss.
+local SWAY = 0.3
 
--- The wave's height in points for recording { shownLevel, finishing, left }: low while
--- finishing, a ripple during the countdown, else the ripple plus your voice.
-function dictation.waveAmplitude(recording)
+-- A curve's height in points for recording { bands, finishing, left } and its band: low while
+-- finishing, a ripple during the countdown, else the ripple plus the band.
+function dictation.waveAmplitude(recording, band)
   if recording.finishing then return FINISHING_HEIGHT end
   if recording.left then return RIPPLE end
-  return RIPPLE + RISE * (recording.shownLevel or 0)
+  return RIPPLE + RISE * ((recording.bands or {})[band] or 0)
 end
 
--- The wave's phase after seconds at level: faster when louder; still with Reduce Motion.
-function dictation.wavePhase(phase, level, seconds, still)
-  if still then return phase end
-  return phase + seconds * (1.5 + 6 * level)
+-- The curves' phases after seconds at bands: each faster as its band is louder; still with
+-- Reduce Motion.
+function dictation.wavePhase(phases, bands, seconds, still)
+  local moved = {}
+  for index, curve in ipairs(CURVES) do
+    local phase = phases and phases[index] or 0
+    moved[index] = still and phase or (phase + seconds * (1.5 + 6 * ((bands or {})[curve.band] or 0)))
+  end
+  return moved
 end
 
--- The wave's curves in layout { x, w } for recording { shownLevel, phase, left, finishing }:
--- each { points, alpha, stroke, warning, dim }. During the countdown it's orange and shrinks
--- to the left, a tenth each second; while finishing it's dim.
+-- Where the hump sits, as a part of the strip: right of the middle for hiss, left for hum.
+local function humpAt(bands)
+  local low, mid, high = bands.low or 0, bands.mid or 0, bands.high or 0
+  local total = low + mid + high
+  if total <= 0 then return 0.5 end
+  return 0.5 + SWAY * (high - low) / total
+end
+
+-- How much of its height a curve has at x: 0 at both ends, 1 at its hump.
+function dictation.taperAt(curve, x)
+  if curve.width <= 0 then return 0 end
+  local part = (x - curve.from) / curve.width
+  local hump = curve.hump
+  local shaped = part <= hump and (part / hump * 0.5) or (0.5 + (part - hump) / (1 - hump) * 0.5)
+  return math.sin(math.pi * shaped) ^ 2
+end
+
+-- The wave's curves in layout { x, w } for recording { bands, phases, left, finishing }: each
+-- { points, alpha, stroke, warning, dim, from, width, hump }. During the countdown it's orange
+-- and shrinks to the left, a tenth each second; while finishing it's dim.
 function dictation.wave(recording, layout)
   local width = layout.w * (recording.left and math.max(0, recording.left) / dictation.COUNTDOWN_SECONDS or 1)
-  local height, phase = dictation.waveAmplitude(recording), recording.phase or 0
+  local hump = humpAt(recording.bands or {})
   local curves = {}
   for index, curve in ipairs(CURVES) do
-    local points = {}
+    local shaped = { from = layout.x, width = width, hump = hump, alpha = curve.alpha, stroke = curve.stroke,
+      warning = recording.left ~= nil and not recording.finishing, dim = recording.finishing == true, points = {} }
+    local height, phase = dictation.waveAmplitude(recording, curve.band), (recording.phases or {})[index] or 0
     local steps = math.max(1, math.floor(width / STEP))
     for step = 0, steps do
-      local x = width * step / steps
-      local taper = width > 0 and math.sin(math.pi * x / width) ^ 2 or 0
-      local y = CENTER_Y + height * taper * math.sin(2 * math.pi * curve.cycles * x / math.max(1, layout.w) + phase * curve.speed)
-      points[#points + 1] = { x = layout.x + x, y = y }
+      local x = layout.x + width * step / steps
+      local y = CENTER_Y + height * dictation.taperAt(shaped, x) * math.sin(2 * math.pi * curve.cycles * (x - layout.x) / math.max(1, layout.w) + phase * curve.speed)
+      shaped.points[#shaped.points + 1] = { x = x, y = y }
     end
-    curves[index] = { points = points, alpha = curve.alpha, stroke = curve.stroke, warning = recording.left ~= nil and not recording.finishing,
-      dim = recording.finishing == true }
+    curves[index] = shaped
   end
   return curves
+end
+
+-- Each band's loudness scaled by its own recent peak, so the wave shows how your voice changes
+-- however loud you speak. Room noise below -50 dB counts as nothing; the peak never goes under
+-- -40 dB, so a quiet room isn't blown up; it halves every 1.5 s, and a steady voice reaches 0.8,
+-- leaving the top for a new peak.
+local NOISE, PEAK_FLOOR, HEADROOM, HALF_LIFE = 10 ^ (-50 / 20), 10 ^ (-40 / 20), 1.25, 1.5
+
+function dictation.newGain()
+  return { peaks = {} }
+end
+
+-- The bands { low, mid, high } in dB as 0 to 1, seconds after the last; updates state's peaks.
+function dictation.gain(state, bands, seconds)
+  local values = {}
+  for _, band in ipairs({ "low", "mid", "high" }) do
+    local amplitude = math.max(0, 10 ^ ((bands[band] or -100) / 20) - NOISE)
+    local peak = math.max(PEAK_FLOOR, (state.peaks[band] or PEAK_FLOOR) * 0.5 ^ (seconds / HALF_LIFE))
+    values[band] = math.min(1, math.sqrt(amplitude / peak) / HEADROOM)
+    state.peaks[band] = math.max(peak, amplitude)
+  end
+  return values
 end
 
 -- The words as lines of at most width characters, broken between words, or inside a word

@@ -235,20 +235,56 @@ local function height(curves)
   end
   return most
 end
-local loud = wave({ shownLevel = 1, phase = 0.3 })
+local function bands(low, mid, high) return { low = low, mid = mid, high = high } end
+local loud = wave({ bands = bands(1, 1, 1), phases = { 0.3, 0.3, 0.3 } })
 check.that("should taper the wave to the centre line at both ends", math.abs(loud[1].points[1].y - 25) < 1e-6
   and math.abs(loud[1].points[#loud[1].points].y - 25) < 1e-6)
-check.that("should raise the wave when the voice is louder", height(loud) > height(wave({ shownLevel = 0.2, phase = 0.3 })))
-check.that("should leave a small ripple when silent", dictation.waveAmplitude({ shownLevel = 0 }) == 1.5 and height(wave({ shownLevel = 0, phase = 0.3 })) > 0)
-check.that("should move the wave faster when the voice is louder",
-  dictation.wavePhase(0, 1, 0.05) > dictation.wavePhase(0, 0.2, 0.05))
-local counting = wave({ locked = true, left = 7, shownLevel = 1, phase = 0.3 })
+check.that("should raise the wave when the voice is louder",
+  height(loud) > height(wave({ bands = bands(0.2, 0.2, 0.2), phases = { 0.3, 0.3, 0.3 } })))
+check.that("should leave a small ripple when silent", dictation.waveAmplitude({ bands = bands(0, 0, 0) }, "mid") == 1.5
+  and height(wave({ bands = bands(0, 0, 0), phases = { 0.3, 0.3, 0.3 } })) > 0)
+check.that("should move each curve faster when its band is louder",
+  dictation.wavePhase({ 0, 0, 0 }, bands(1, 1, 1), 0.05)[1] > dictation.wavePhase({ 0, 0, 0 }, bands(0.2, 0.2, 0.2), 0.05)[1])
+local hiss = wave({ bands = bands(0, 0, 1), phases = { 0.3, 0.3, 0.3 } })
+check.that("should drive each curve by its own band", height({ hiss[3] }) > 5 and height({ hiss[1] }) <= 1.5 and height({ hiss[2] }) <= 1.5)
+local function hump(curve)
+  local best, at = -1, nil
+  for _, point in ipairs(curve.points) do
+    local taper = dictation.taperAt(curve, point.x)
+    if taper > best then best, at = taper, point.x end
+  end
+  return at
+end
+check.that("should move the hump right for hiss", hump(hiss[1]) > 190 + 100 + 2)
+check.that("should move the hump left for hum", hump(wave({ bands = bands(1, 0, 0) })[1]) < 190 + 100 - 2)
+check.that("should keep the hump in the middle when silent", math.abs(hump(wave({ bands = bands(0, 0, 0) })[1]) - (190 + 100)) <= 2)
+local counting = wave({ locked = true, left = 7, bands = bands(1, 1, 1), phases = { 0.3, 0.3, 0.3 } })
 local lastX = counting[1].points[#counting[1].points].x
 check.that("should shrink the wave to the left during the countdown", math.abs(lastX - (190 + 140)) < 2.01)
 check.that("should draw the countdown wave in orange", counting[1].warning == true)
-local closing = wave({ finishing = true, shownLevel = 1, phase = 0.3 })
-check.that("should draw a low, dim wave while finishing", dictation.waveAmplitude({ finishing = true, shownLevel = 1 }) == 2.5 and closing[1].dim == true)
-check.that("should hold the wave still when Reduce Motion is on", dictation.wavePhase(1, 0.8, 0.05, true) == 1)
+local closing = wave({ finishing = true, bands = bands(1, 1, 1) })
+check.that("should draw a low, dim wave while finishing", dictation.waveAmplitude({ finishing = true, bands = bands(1, 1, 1) }, "mid") == 2.5
+  and closing[1].dim == true)
+check.that("should hold the wave still when Reduce Motion is on", dictation.wavePhase({ 1, 2, 3 }, bands(1, 1, 1), 0.05, true)[2] == 2)
+
+-- The bands, scaled by their recent peak.
+local function db(amplitude) return 20 * math.log10(amplitude) end
+check.that("should read a bands line", (function()
+  local line = dictation.parse("bands\t-40 -30.5 -50")
+  return line.kind == "bands" and line.bands.low == -40 and line.bands.mid == -30.5 and line.bands.high == -50
+end)())
+local gain = dictation.newGain()
+for _ = 1, 20 do dictation.gain(gain, bands(db(0.1), db(0.1), db(0.1)), 0.033) end
+local steady = dictation.gain(gain, bands(db(0.1), db(0.1), db(0.1)), 0.033)
+check.that("should keep headroom above the recent peak", math.abs(steady.mid - 0.8) < 0.01)
+check.that("should rise to the top only on a new peak", dictation.gain(gain, bands(db(0.1), db(0.2), db(0.1)), 0.033).mid == 1)
+local fading = dictation.newGain()
+dictation.gain(fading, bands(db(0.1), db(0.1), db(0.1)), 0.033)
+for _ = 1, 90 do dictation.gain(fading, bands(-90, -90, -90), 0.033) end
+check.that("should let the peak fall slowly so a quieter voice fills the wave again",
+  dictation.gain(fading, bands(db(0.05), db(0.05), db(0.05)), 0.033).mid > 0.6)
+check.that("should keep room noise as a ripple", dictation.gain(dictation.newGain(), bands(-60, -60, -60), 0.033).mid == 0)
+
 check.that("should draw three curves at 1, 0.5 and 0.25 brightness", #loud == 3 and loud[1].alpha == 1 and loud[2].alpha == 0.5 and loud[3].alpha == 0.25)
 
 check.finish()

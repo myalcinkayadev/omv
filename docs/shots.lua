@@ -357,7 +357,7 @@ local function dictationShots(now)
   return {
     bodyShot("dictation.png", "Dictation…", rows,
       { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open ›" }, { key = "Esc", text = "close" } }, { selected = 1 }),
-    { file = "dictation-pill.png", kind = "pill", recording = { started = now - 12, ready = true, shownLevel = 0.7, phase = 0.8, app = "Zed",
+    { file = "dictation-pill.png", kind = "pill", recording = { started = now - 12, ready = true, bands = { low = 0.4, mid = 0.8, high = 0.3 }, phases = { 0.8, 1.6, 2.4 }, app = "Zed",
       partial = "Refactor the login handler so it retries twice before giving up, and log each failed attempt with the user id" } },
   }
 end

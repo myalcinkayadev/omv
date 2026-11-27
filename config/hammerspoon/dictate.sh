@@ -1,5 +1,5 @@
 #!/bin/sh
-# Usage: dictate.sh locales | install <locale> <engine> | listen <locale> <engine>
+# Usage: dictate.sh locales | install <locale> <engine> | listen <locale> <engine> [words]
 # Hears speech on the Mac, through a small Swift helper built from dictate.swift the first
 # time and cached; dictate.swift says what it prints.
 

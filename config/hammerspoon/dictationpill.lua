@@ -104,7 +104,7 @@ local function card(tokens, border, height)
     strokeColor = color(border), strokeWidth = 2, frame = { x = 0, y = 0, w = WIDTH, h = height } }
 end
 
--- Draws recording, { partial, shownLevel, phase, locked, finishing, stopped, left, secure, app, appIcon,
+-- Draws recording, { partial, bands, phases, locked, finishing, stopped, left, secure, app, appIcon,
 -- problem, ready, percent, started, locale, localeName, reduceMotion }, and gives its frame.
 function dictationPill.draw(recording)
   local tokens = shell.themeTokens()

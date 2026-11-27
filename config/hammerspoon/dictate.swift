@@ -7,9 +7,11 @@
 //                                         |-separated, are names and terms to hear right
 // engine is transcriber (SpeechTranscriber) or dictation (DictationTranscriber, more languages).
 // While listening it prints, one per line: progress<tab>N while a model downloads, ready once
-// recording, level<tab>dB about twenty times a second, partial<tab>text as words come,
+// recording, level<tab>dB and bands<tab>low mid high, each band's dB (80-300 Hz, 300-2000 Hz,
+// 2-8 kHz), about thirty times a second, partial<tab>text as words come,
 // and after "stop" final<tab>text, everything heard. problem<tab>no-microphone, no-input or
 // language when it can't. "cancel", or stdin closing, ends it without a final line.
+import Accelerate
 import AVFoundation
 import Foundation
 import Speech
@@ -85,6 +87,55 @@ final class Heard: @unchecked Sendable {
   }
 }
 
+func decibels(_ amplitude: Float) -> Float {
+  20 * log10(max(amplitude, 0.000_01))
+}
+
+// How a buffer's energy splits between the voice's hum, its vowels and its hiss, each a part of
+// 0 to 1 of the energy from 80 Hz to 8 kHz; with the level, that gives each band's loudness.
+final class Bands {
+  static let size = 1024
+  static let edges: [Float] = [80, 300, 2000, 8000]
+  let setup: FFTSetup
+  let window: [Float]
+  let hertzPerBin: Float
+
+  init(sampleRate: Float) {
+    setup = vDSP_create_fftsetup(10, FFTRadix(kFFTRadix2))!
+    var window = [Float](repeating: 0, count: Bands.size)
+    vDSP_hann_window(&window, vDSP_Length(Bands.size), Int32(vDSP_HANN_NORM))
+    self.window = window
+    hertzPerBin = sampleRate / Float(Bands.size)
+  }
+
+  func shares(_ samples: UnsafePointer<Float>, _ count: Int) -> [Float] {
+    var windowed = [Float](repeating: 0, count: Bands.size)
+    vDSP_vmul(samples, 1, window, 1, &windowed, 1, vDSP_Length(min(count, Bands.size)))
+    var real = [Float](repeating: 0, count: Bands.size / 2)
+    var imaginary = [Float](repeating: 0, count: Bands.size / 2)
+    var power = [Float](repeating: 0, count: Bands.size / 2)
+    real.withUnsafeMutableBufferPointer { realPart in
+      imaginary.withUnsafeMutableBufferPointer { imaginaryPart in
+        var split = DSPSplitComplex(realp: realPart.baseAddress!, imagp: imaginaryPart.baseAddress!)
+        windowed.withUnsafeBufferPointer { input in
+          input.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: Bands.size / 2) {
+            vDSP_ctoz($0, 2, &split, 1, vDSP_Length(Bands.size / 2))
+          }
+        }
+        vDSP_fft_zrip(setup, &split, 1, 10, FFTDirection(FFT_FORWARD))
+        vDSP_zvmags(&split, 1, &power, 1, vDSP_Length(Bands.size / 2))
+      }
+    }
+    var energies = [Float](repeating: 0, count: 3)
+    for bin in 1..<(Bands.size / 2) {
+      let hertz = Float(bin) * hertzPerBin
+      for band in 0..<3 where hertz >= Bands.edges[band] && hertz < Bands.edges[band + 1] { energies[band] += power[bin] }
+    }
+    let total = energies.reduce(0, +)
+    return total > 0 ? energies.map { $0 / total } : [0, 0, 0]
+  }
+}
+
 func listen(_ module: any SpeechModule, words: [String]) async throws {
   guard await AVCaptureDevice.requestAccess(for: .audio) else { emit("problem", "no-microphone"); exit(1) }
   try await install(module)
@@ -106,12 +157,16 @@ func listen(_ module: any SpeechModule, words: [String]) async throws {
   }
   let (stream, input) = AsyncStream<AnalyzerInput>.makeStream()
   var lastLevel = Date.distantPast
+  let bands = Bands(sampleRate: Float(micFormat.sampleRate))
   node.installTap(onBus: 0, bufferSize: 1024, format: micFormat) { buffer, _ in
-    if Date().timeIntervalSince(lastLevel) >= 0.05, let samples = buffer.floatChannelData?[0] {
+    if Date().timeIntervalSince(lastLevel) >= 0.033, let samples = buffer.floatChannelData?[0] {
+      let count = Int(buffer.frameLength)
       var sum: Float = 0
-      for index in 0..<Int(buffer.frameLength) { sum += samples[index] * samples[index] }
-      let rms = (sum / Float(max(buffer.frameLength, 1))).squareRoot()
-      emit("level", String(format: "%.1f", 20 * log10(max(rms, 0.000_01))))
+      for index in 0..<count { sum += samples[index] * samples[index] }
+      let rms = (sum / Float(max(count, 1))).squareRoot()
+      emit("level", String(format: "%.1f", decibels(rms)))
+      let shares = bands.shares(samples, count)
+      emit("bands", shares.map { String(format: "%.1f", decibels(rms * $0.squareRoot())) }.joined(separator: " "))
       lastLevel = Date()
     }
     let capacity = AVAudioFrameCount(Double(buffer.frameLength) * format.sampleRate / micFormat.sampleRate) + 16
