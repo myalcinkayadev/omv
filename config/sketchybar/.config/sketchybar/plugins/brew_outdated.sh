@@ -39,9 +39,12 @@ fi
 
 # Auto-update would run `brew update` first, which fetches from GitHub; the hints and
 # analytics are of no use to a script.
+# Started from SketchyBar, brew crashes every time ("undefined method 'exitstatus' for nil",
+# when it waits on a command of its own), while the same call through perl's exec works every
+# time; why that helps isn't known: not the inherited files, nor SIGCHLD as perl sees it.
 count_outdated() {
   HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_ANALYTICS=1 \
-    "$brew" outdated --quiet 2>/dev/null
+    perl -e 'exec @ARGV' "$brew" outdated --quiet 2>/dev/null
 }
 
 # A count that fails, such as one asked while the upgrade the click opened is still finishing,
