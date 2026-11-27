@@ -1,7 +1,7 @@
 #!/bin/sh
 # Counts the Homebrew packages `brew outdated` lists, every 6 hours and on wake, and opens
-# `brew upgrade` in a Ghostty window on a click. Hidden at 0, and when brew is missing or
-# fails, so a wrong count never shows. BREW can point the tests at a stub.
+# `brew upgrade` in a Ghostty window on a click. Hidden at 0 and when brew is missing; a count
+# that fails twice leaves the item as it was. BREW and BREW_RETRY_SECONDS are for the tests.
 # The count never runs `brew update` and never reaches the network, so it's only as fresh as
 # your last `brew update` or `brew upgrade`.
 
@@ -36,10 +36,21 @@ if [ "${SENDER:-}" = system_woke ] && [ -r "$stamp" ]; then
 fi
 
 [ -x "$brew" ] || hide
+
 # Auto-update would run `brew update` first, which fetches from GitHub; the hints and
 # analytics are of no use to a script.
-outdated=$(HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_ANALYTICS=1 \
-  "$brew" outdated --quiet 2>/dev/null) || hide
+count_outdated() {
+  HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_ANALYTICS=1 \
+    "$brew" outdated --quiet 2>/dev/null
+}
+
+# A count that fails, such as one asked while the upgrade the click opened is still finishing,
+# is asked once more a little later. A second failure leaves the item as it was: hiding it
+# would drop a count that was right.
+outdated=$(count_outdated) || {
+  sleep "${BREW_RETRY_SECONDS:-30}"
+  outdated=$(count_outdated)
+} || exit 0
 
 mkdir -p "$state_dir" 2>/dev/null
 date +%s > "$stamp"

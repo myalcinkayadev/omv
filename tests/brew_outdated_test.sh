@@ -34,7 +34,7 @@ counted_ago() {
 }
 
 run_plugin() {
-  run_in_sandbox NAME=brew_outdated BREW="$STUB_DIR/brew" "$@" "$PLUGIN"
+  run_in_sandbox NAME=brew_outdated BREW="$STUB_DIR/brew" BREW_RETRY_SECONDS=0 "$@" "$PLUGIN"
 }
 
 hides_with_none() {
@@ -61,10 +61,34 @@ ignores_warnings_on_stderr() {
   assert_called '^sketchybar --set brew_outdated drawing=on label=1$'
 }
 
-hides_when_brew_fails() {
+keeps_the_item_when_brew_fails() {
   stub_brew 'git\n' 1
   run_plugin SENDER=routine
-  assert_called '^sketchybar --set brew_outdated drawing=off$'
+  assert_not_called '^sketchybar --set brew_outdated'
+}
+
+# A brew that fails its first call, as one still finishing an upgrade may, then answers.
+stub_brew_failing_once() {
+  printf 'git\nnode\n' > "$SANDBOX/outdated"
+  own_stub brew
+  cat > "$STUB_DIR/brew" <<STUB
+#!/bin/sh
+echo "brew \$*" >> "$CALL_LOG"
+[ -f "$SANDBOX/failed" ] || { touch "$SANDBOX/failed"; exit 1; }
+cat "$SANDBOX/outdated"
+STUB
+}
+
+counts_again_after_a_failed_count() {
+  stub_brew_failing_once
+  run_plugin SENDER=routine
+  assert_called '^sketchybar --set brew_outdated drawing=on label=2$'
+}
+
+asks_brew_twice_at_most() {
+  stub_brew 'git\n' 1
+  run_plugin SENDER=routine
+  [ "$(grep -c '^brew outdated' "$CALL_LOG")" = 2 ] || fail "expected two counts in: $(cat "$CALL_LOG")"
 }
 
 exits_zero_when_brew_fails() {
@@ -177,7 +201,9 @@ run_case 'should hide the item when no package is outdated' hides_with_none
 run_case 'should show the count when packages are outdated' shows_the_count
 run_case 'should count only non-blank lines when brew prints blank ones' ignores_blank_lines
 run_case 'should ignore warnings when brew prints them to stderr' ignores_warnings_on_stderr
-run_case 'should stay hidden when brew fails' hides_when_brew_fails
+run_case 'should keep the item as it was when brew fails' keeps_the_item_when_brew_fails
+run_case 'should count again once when a count fails' counts_again_after_a_failed_count
+run_case 'should ask brew no more than twice when it keeps failing' asks_brew_twice_at_most
 run_case 'should exit zero when brew fails' exits_zero_when_brew_fails
 run_case 'should keep the last count time when brew fails' keeps_the_time_when_brew_fails
 run_case 'should stay hidden when brew is missing' hides_without_brew
