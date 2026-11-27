@@ -28,8 +28,9 @@ local lists = { transcriber = {}, dictation = {} }
 -- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
 -- review, auto, app, appIcon, secure, startApp, left, waveSent, inputClosed }.
 local current = nil
--- The last dictations, newest first, each { text, app, at }.
-feature.recent = {}
+-- The last dictations, newest first, each { text, app, at }, kept in dictation.HISTORY_PATH so
+-- they outlive a reload.
+feature.recent = dictation.parseHistory(shell.readText(dictation.HISTORY_PATH))
 -- Whether macOS's Reduce Motion is on, read at load.
 local reduceMotion = false
 
@@ -122,6 +123,21 @@ local function drawPill(recording)
   send(recording, command)
 end
 
+-- Adds entry to the kept dictations and saves them, readable by you only: they're what you said.
+local function keep(entry)
+  feature.recent = dictation.remember(feature.recent, entry)
+  local existing = io.open(dictation.HISTORY_PATH, "r")
+  if existing then existing:close()
+  else
+    -- Made empty first with only your access, so it's never readable by others, even briefly.
+    os.execute("/bin/mkdir -p '" .. shell.STATE_DIR .. "' && umask 077 && : >> '" .. dictation.HISTORY_PATH .. "'")
+  end
+  local file = io.open(dictation.HISTORY_PATH, "w")
+  if not file then return end
+  file:write(dictation.historyText(feature.recent))
+  file:close()
+end
+
 local function finished(recording, final)
   if current ~= recording then return end
   current = nil
@@ -133,8 +149,9 @@ local function finished(recording, final)
     dictationPill.hide()
     return shell.alert(outcome.text, 1.2)
   end
-  local app = deliver(outcome.text, { review = recording.review, auto = recording.auto, startApp = recording.startApp }, dropped)
-  feature.recent = dictation.remember(feature.recent, { text = outcome.text, app = app, at = os.time() })
+  local info = { review = recording.review, auto = recording.auto, startApp = recording.startApp }
+  local app = deliver(outcome.text, info, dropped)
+  keep({ text = outcome.text, app = dictation.historyApp(info, app), at = os.time() })
 end
 
 local function showProblem(recording, problem)

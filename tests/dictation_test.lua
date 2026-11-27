@@ -260,4 +260,23 @@ check.that("should give up finishing after 15 s", dictation.finishOverdue({ fini
 check.that("should keep finishing before 15 s", not dictation.finishOverdue({ finishing = true, stopped = 100 }, 114))
 check.that("should not count a recording that isn't finishing as overdue", not dictation.finishOverdue({ stopped = 100 }, 200))
 
+-- The app a dictation is kept with.
+check.that("should keep a typed dictation with the app it was typed into",
+  dictation.historyApp({ startApp = "Zed" }, "Slack") == "Slack")
+check.that("should keep a locked one that lost focus with the app it started in",
+  dictation.historyApp({ auto = true, startApp = "TextEdit" }, "Finder") == "TextEdit")
+check.that("should keep a reviewed one with the app you were in", dictation.historyApp({ review = true }, "Slack") == "Slack")
+
+-- The history file, so dictations outlive a reload.
+local kept = { { text = "first\tline\nsecond", app = "Zed", at = 200 }, { text = "older", app = "", at = 100 } }
+local back = dictation.parseHistory(dictation.historyText(kept))
+check.that("should read back what it saved", #back == 2 and back[1].text == "first\tline\nsecond" and back[1].app == "Zed"
+  and back[1].at == 200 and back[2].text == "older" and back[2].app == "" and back[2].at == 100)
+check.that("should save one dictation a line", select(2, dictation.historyText(kept):gsub("\n", "")) == 2)
+check.that("should read no dictations from an empty file", #dictation.parseHistory("") == 0 and #dictation.parseHistory(nil) == 0)
+check.that("should skip a line it can't read", #dictation.parseHistory("garbage\n300\tZed\tok\n") == 1)
+local many = {}
+for index = 1, 15 do many[#many + 1] = string.format("%d\tZed\ttext %d", 1000 - index, index) end
+check.that("should keep the last 10 it reads", #dictation.parseHistory(table.concat(many, "\n")) == 10)
+
 check.finish()

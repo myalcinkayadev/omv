@@ -293,6 +293,42 @@ function dictation.remember(list, entry)
   return kept
 end
 
+-- The app a finished dictation is kept with, from info as dictation.delivery takes it and app,
+-- the one you're in: a locked one that ended by itself after you moved on is kept with the
+-- app it started in, the one it was meant for; any other with the app you're in.
+function dictation.historyApp(info, app)
+  if info.auto and info.startApp and info.startApp ~= app then return info.startApp end
+  return app
+end
+
+-- The history file, ~/.local/state/omv/dictations: a line a dictation, newest first,
+-- "at<tab>app<tab>text", with tabs, line breaks and backslashes in the text escaped.
+dictation.HISTORY_PATH = (os.getenv("HOME") or "") .. "/.local/state/omv/dictations"
+local ESCAPES = { ["\\"] = "\\\\", ["\t"] = "\\t", ["\n"] = "\\n" }
+local UNESCAPES = { ["\\"] = "\\", t = "\t", n = "\n" }
+
+function dictation.historyText(list)
+  local lines = {}
+  for _, entry in ipairs(list or {}) do
+    local text = tostring(entry.text or ""):gsub("[\\\t\n]", ESCAPES)
+    local app = tostring(entry.app or ""):gsub("[\t\n]", " ")
+    lines[#lines + 1] = string.format("%d\t%s\t%s", math.floor(entry.at or 0), app, text)
+  end
+  return #lines > 0 and (table.concat(lines, "\n") .. "\n") or ""
+end
+
+-- The kept dictations in the file's text, the last KEEP, skipping lines it can't read.
+function dictation.parseHistory(text)
+  local list = {}
+  for line in tostring(text or ""):gmatch("[^\n]+") do
+    local at, app, saved = line:match("^(%d+)\t([^\t]*)\t(.*)$")
+    if at and #list < KEEP then
+      list[#list + 1] = { at = tonumber(at), app = app, text = (saved:gsub("\\(.)", function(c) return UNESCAPES[c] or c end)) }
+    end
+  end
+  return list
+end
+
 local function ago(seconds)
   if seconds < 60 then return "now" end
   if seconds < 3600 then return math.floor(seconds / 60) .. " min" end
