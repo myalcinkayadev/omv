@@ -58,6 +58,7 @@ flags.DEFAULTS = {
   ["dictation"] = false, -- hold Right Option to talk, release to type it, heard on the Mac
   ["brew-outdated"] = false, -- outdated Homebrew packages in the bar, and brew upgrade on a click
   ["system-load"] = false, -- CPU and memory in the bar, only while the Mac is busy
+  ["input-source"] = false, -- the keyboard input source in the bar, as TR or US; a click switches it
 }
 
 -- text is the flags file's contents, or nil when there's none.

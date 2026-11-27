@@ -86,6 +86,7 @@ local translateSelection = feature("translate", "features.translate")
 feature("stalls", "features.stalls")
 local dictationKey = feature("dictation", "features.dictation")
 local windowSizing = feature("window-sizing", "features.windowsize")
+local inputSource = feature("input-source", "features.inputsource")
 
 local SUPER = { "alt" }
 local SUPER_SHIFT = { "alt", "shift" }
@@ -282,6 +283,7 @@ if reminderCards then
   omvToggleReminders = later(reminderCards.toggle)
   omvNewReminder = later(reminderCards.new)
 end
+if inputSource then omvNextInputSource = later(inputSource.next) end
 
 -- SketchyBar's config calls this when it starts: a restarted bar has lost the items set
 -- here, and they are only sent again when they change.
@@ -292,6 +294,7 @@ omvRedrawBar = later(function()
   if clipboardHistory then clipboardHistory.redrawBar() end
   if mic then mic.redrawBar() end
   if bluetoothCard then bluetoothCard.redrawBar() end
+  if inputSource then inputSource.redrawBar() end
 end)
 
 -- Your own settings, from ~/.config/omv/hammerspoon.lua when it exists. Last, so it can

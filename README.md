@@ -69,6 +69,7 @@ Before you trust it:
 - [**Do Not Disturb**](#do-not-disturb): the Focus that's on, in the bar, and a switch in the system menu.
 - [**Tailscale**](#tailscale): connect, disconnect, and copy any device's address.
 - [**Night light**](#night-light): macOS's Night Shift on a key, with a moon in the bar.
+- [**Input source**](#input-source): the keyboard layout in use, as `TR` or `US`, in the bar; click it for the next one.
 - [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell on a workspace of their own, a new task in a git worktree, or a grid of agents.
 - [**Share with AirDrop**](#share-with-airdrop): the files selected in Finder, or what you copied, in one key.
 - [**Translate**](#translate): Option+Y translates the selected text with Apple on the Mac, DeepL or Claude, and pastes it over the selection.
@@ -127,6 +128,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Disk | Free space on the startup disk, only while it's under 20 GB or under 10% | Open the [Disk card](#disk) | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
+| Input source | The keyboard input source, as `TR` or `US`, only with `omv flags input-source on` and more than one enabled | Switch to the next [input source](#input-source) | |
 | Ethernet | A plug, only while a cable is connected | Open the [Ethernet card](#wi-fi-and-ethernet) | |
 | Bluetooth | On or off, only with `blueutil` installed | Open the [Bluetooth card](#bluetooth) | |
 | Wi-Fi | Connected or not | Open the [Wi-Fi card](#wi-fi-and-ethernet) | |
@@ -134,7 +136,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Battery | Charge | Open the [Battery card](#battery) | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
-**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, low disk space, outdated packages, a busy CPU or memory, the waiting Claude, the pull request count, the failing checks, the reminder and the status icons always stay, and everything comes back once there's room.
+**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. The input source, keep-awake, low disk space, outdated packages, a busy CPU or memory, the waiting Claude, the pull request count, the failing checks, the reminder and the status icons always stay, and everything comes back once there's room.
 
 **Claude usage** shows the 5-hour limit: gray under 70%, white from 70%, and a white pill from 90%. The 7-day limit is in the [Agents card](#agents).
 
@@ -561,6 +563,12 @@ The volume, mute and brightness keys show omv's own pop-up instead of macOS's: a
 
 Option+Shift+Z, or Option+Escape, then **Night light**, switches macOS's Night Shift on or off. While it's on, the bar shows a moon; click it to turn night light off. Night Shift's own schedule still applies, and the bar checks again every 5 minutes, so it follows a scheduled change too. macOS has no public way to switch Night Shift, so omv uses [nightlight](https://github.com/smudge/nightlight), which `omv install` installs.
 
+## Input source
+
+Off until `omv flags input-source on`. Then the bar shows the keyboard input source in use as a short tag, such as `TR` for Turkish Q or `US` for U.S. and ABC, left of the Wi-Fi. Click it to switch to the next enabled source, wrapping around to the first. With only one source enabled in System Settings, there is nothing to switch, so it stays hidden.
+
+A layout omv doesn't know is tagged by the first two letters of its name, so Polish shows `PO`. Input methods, such as Japanese, are listed after the layouts and tagged the same way. macOS announces every change, from the item, the menu bar or Ctrl+Space, so nothing is polled, and the bar is redrawn only when the tag changes.
+
 ## Dev layout
 
 Option+Space, then **Dev layout**, lists your recent Claude Code projects, the most recent first. Pick one, then:
@@ -728,6 +736,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `brew-outdated` | **off unless turned on:** the count of outdated Homebrew packages in the bar, and `brew upgrade` on a click; see [Smaller tools](#smaller-tools) |
 | `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
 | `system-load` | **off unless turned on:** CPU and memory in the bar, only while the Mac is busy; see [Smaller tools](#smaller-tools) |
+| `input-source` | **off unless turned on:** the keyboard input source in the bar, and switching it with a click; see [Input source](#input-source) |
 | `stalls` | **off unless turned on:** writes each time Hammerspoon freezes for over a quarter of a second, with the card showing, to `~/.local/state/omv/stalls.log`, and every 10 minutes its Lua memory and the background commands still running |
 
 ## Keys

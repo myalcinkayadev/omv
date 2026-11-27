@@ -53,6 +53,7 @@ FEATURE_FLAGS = {
     "reminders": "reminders", "note": "daily-note", "share": "airdrop", "nightshift": "night-light",
     "micmute": "mic-mute", "osd": "volume-popups", "procs": "processes", "lyrics": "lyrics",
     "agents": "claude", "waiting": "claude", "sendto": "send-to-agent", "digest": "away-digest", "prs": "github-prs", "ci": "github-ci", "devlayout": "dev-layout", "stalls": "stalls", "dictation": "dictation", "windowsize": "window-sizing",
+    "inputsource": "input-source",
 }
 
 # Each bar item a flag hides; the workspaces, mode, clock and bar_fit are the desktop's own.
@@ -63,6 +64,7 @@ BAR_ITEM_FLAGS = {
     "tailscale": "tailscale", "focus": "focus", "recording": "capture", "claude_waiting": "claude",
     "claude_usage": "claude", "github_prs": "github-prs", "github_ci": "github-ci", "reminder": "reminders", "meeting": "calendar",
     "brew_outdated": "brew-outdated",
+    "input_source": "input-source",
 }
 BAR_CORE_ITEMS = {"aerospace_listener", "mode", "clock", "bar_fit"}
 

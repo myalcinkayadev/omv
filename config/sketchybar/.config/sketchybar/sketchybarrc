@@ -124,6 +124,14 @@ if omv_flag_on network; then
     --subscribe ethernet system_woke omv_network_change mouse.clicked
 fi
 
+if omv_flag_on input-source; then
+  # The keyboard input source, as TR or US, left of the status icons. Hidden while only one
+  # is enabled. Hammerspoon sets it when macOS announces a change; clicking it switches to
+  # the next source.
+  sketchybar --add item input_source right \
+    --set input_source drawing=off icon.drawing=off click_script="hs -c 'omvNextInputSource()'"
+fi
+
 if omv_flag_on weather; then
   # Added after the status icons, so it sits just to the left of them. Hidden until
   # Hammerspoon has a reading. It sets the icon and temperature, and the temperature gives way before
