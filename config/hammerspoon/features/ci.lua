@@ -5,6 +5,7 @@ local shell = require("shell")
 local card = require("card")
 local ci = require("ci")
 local apps = require("apps")
+local notices = require("notices")
 
 local feature = {}
 
@@ -28,13 +29,23 @@ function feature.toggle()
     card.html({ prompt = "Checks…", rows = rows, compact = true }), onCiMessage)
 end
 
--- The bar calls this after it wrote the passed file; each notice opens its pull request.
+-- Clicking a notice opens its pull request. One function serves every notice, since
+-- Hammerspoon keeps a function given to hs.notify.new for good.
+local NOTICE_TAG = "omv-ci-passed"
+local passedUrls = notices.new()
+
+hs.notify.register(NOTICE_TAG, function(clicked)
+  local url = notices.find(passedUrls, notices.key(clicked:title(), clicked:informativeText()))
+  if url then openInBrowser(url) end
+end)
+
+-- The bar calls this after it wrote the passed file.
 function feature.passed()
-  local notices = ci.notices(shell.readText(ci.PASSED))
+  local passed = ci.notices(shell.readText(ci.PASSED))
   os.remove(ci.PASSED)
-  for _, notice in ipairs(notices) do
-    hs.notify.new(function() openInBrowser(notice.url) end,
-      { title = notice.title, informativeText = notice.text, withdrawAfter = 0 }):send()
+  for _, notice in ipairs(passed) do
+    notices.add(passedUrls, notices.key(notice.title, notice.text), notice.url)
+    hs.notify.new(NOTICE_TAG, { title = notice.title, informativeText = notice.text, withdrawAfter = 0 }):send()
   end
 end
 

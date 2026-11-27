@@ -760,5 +760,19 @@ class TaskLeaks(unittest.TestCase):
         self.assertEqual(tasks_held_by_callback(source), [])
 
 
+# hs.notify.new(fn) registers fn under a new tag in hs.notify.registry and never removes it,
+# so each notification sent with a function kept its closure until Hammerspoon reloaded.
+NOTIFY_WITH_FUNCTION = re.compile(r"hs\.notify\.new\(\s*function\b")
+
+
+class NotifyLeaks(unittest.TestCase):
+    def test_should_find_no_notification_sent_with_a_function_when_reading_the_hammerspoon_config(self) -> None:
+        sources = sorted((REPO / "config/hammerspoon").rglob("*.lua"))
+        sent = [f"{path.relative_to(REPO)}:{number}" for path in sources
+                for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+                if NOTIFY_WITH_FUNCTION.search(line) and not line.lstrip().startswith("--")]
+        self.assertEqual(sent, [])
+
+
 if __name__ == "__main__":
     unittest.main()

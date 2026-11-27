@@ -13,6 +13,7 @@ local agentgrid = require("agentgrid")
 local quiet = require("quiet")
 local digest = require("digest")
 local apps = require("apps")
+local notices = require("notices")
 
 local feature = {}
 
@@ -255,15 +256,25 @@ if front and front:bundleID() == GHOSTTY then watchGhostty(front) end
 
 -- A notification when a session starts asking, unless its terminal is the one in view, or
 -- meeting mode holds notices back; the bar's pill still shows it. Clicking it goes to that
--- session.
+-- session. One function serves every notification, since Hammerspoon keeps a function given
+-- to hs.notify.new for good; two sessions in one folder read the same, so a click goes to
+-- the one that asked last.
 local known = savedSessions()
+local ASKING_TITLE = "omv · needs your approval"
+local ASKING_TAG = "omv-waiting"
+local askingRows = notices.new()
+
+hs.notify.register(ASKING_TAG, function(clicked)
+  local row = notices.find(askingRows, notices.key(clicked:title(), clicked:informativeText()))
+  if row then feature.focusRow(row) end
+end)
 
 feature.stateWatcher = hs.pathwatcher.new(claudewait.STATE_DIR, function()
   local now = savedSessions()
   for _, session in ipairs(quiet.active and {} or claudewait.newlyAsking(known, now, viewedTty)) do
-    local row = { id = session.tty, pid = session.pid, label = session.folder }
-    hs.notify.new(function() feature.focusRow(row) end,
-      { title = "omv · needs your approval", informativeText = session.folder, withdrawAfter = 0 }):send()
+    notices.add(askingRows, notices.key(ASKING_TITLE, session.folder),
+      { id = session.tty, pid = session.pid, label = session.folder })
+    hs.notify.new(ASKING_TAG, { title = ASKING_TITLE, informativeText = session.folder, withdrawAfter = 0 }):send()
   end
   known = now
 end):start()
