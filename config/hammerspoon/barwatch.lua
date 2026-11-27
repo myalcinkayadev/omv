@@ -7,7 +7,7 @@
 
 local barwatch = {}
 
-barwatch.CHECK_SECONDS, barwatch.GRACE, barwatch.RETRY = 5, 10, 60
+barwatch.CHECK_SECONDS, barwatch.GRACE, barwatch.RETRY = 10, 10, 60
 
 -- { missing, the time the bar was first missed; started, the time of the last start }.
 function barwatch.new()
