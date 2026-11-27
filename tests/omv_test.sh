@@ -31,6 +31,7 @@ make_repo() {
   : > "$SANDBOX/dirty"
   echo main > "$SANDBOX/branch"
   echo aaa111 > "$SANDBOX/head"
+  own_stub git
   cat > "$STUB_DIR/git" <<STUB
 #!/bin/sh
 echo "git \$*" >> "$CALL_LOG"
@@ -56,6 +57,7 @@ STUB
 
 # defaults answers $1 for Hammerspoon's config file, and logs every call.
 answer_hammerspoon_config() {
+  own_stub defaults
   cat > "$STUB_DIR/defaults" <<STUB
 #!/bin/sh
 echo "defaults \$*" >> "$CALL_LOG"
@@ -67,6 +69,7 @@ STUB
 
 # pgrep finds Hammerspoon, with a pid no process has, so the wait for it to quit ends at once.
 run_hammerspoon() {
+  own_stub pgrep
   printf '#!/bin/sh\necho "pgrep $*" >> "%s"\n[ "$*" = "-x Hammerspoon" ] && echo 999999\nexit 0\n' "$CALL_LOG" > "$STUB_DIR/pgrep"
   chmod +x "$STUB_DIR/pgrep"
 }
@@ -304,6 +307,7 @@ says_run_update_again_after_migration_stops() {
 says_nothing_stopped_under_system_bash() {
   make_repo
   # Like the real one, defaults fails to read a key that isn't set.
+  own_stub defaults
   printf '#!/bin/sh\necho "defaults $*" >> "%s"\n[ "$1" = read ] && exit 1\nexit 0\n' "$CALL_LOG" > "$STUB_DIR/defaults"
   local output
   output=$(run_in_sandbox /bin/bash "$REPO/bin/omv" update 2>&1) || fail "update failed: $output"
@@ -323,6 +327,7 @@ user_aerospace() {
 
 # pgrep finds AeroSpace, as it does Hammerspoon in run_hammerspoon.
 run_aerospace() {
+  own_stub pgrep
   printf '#!/bin/sh\necho "pgrep $*" >> "%s"\n[ "$*" = "-x AeroSpace" ] && echo 999998\nexit 0\n' "$CALL_LOG" > "$STUB_DIR/pgrep"
   chmod +x "$STUB_DIR/pgrep"
 }
@@ -502,6 +507,7 @@ update_skips_stopped_aerospace() {
 
 # hs answers the load time: 100 for the first two asks, then 200, as a reload would.
 reload_hammerspoon_slowly() {
+  own_stub hs
   cat > "$STUB_DIR/hs" <<STUB
 #!/bin/sh
 echo "hs \$*" >> "$CALL_LOG"
@@ -608,6 +614,7 @@ readonly SETUP_APP_PATTERN='^open .*/Applications/omv Setup\.app( |$)'
 
 # swiftc "builds" by writing the file after -o, as the real one would.
 build_with_stub_swiftc() {
+  own_stub swiftc
   cat > "$STUB_DIR/swiftc" <<STUB
 #!/bin/sh
 echo "swiftc \$*" >> "$CALL_LOG"
@@ -669,6 +676,7 @@ install_passes_no_apps_to_setup() {
 
 # pgrep finds omv Setup's binary, as it would while the app is open.
 setup_app_running() {
+  own_stub pgrep
   printf '#!/bin/sh\necho "pgrep $*" >> "%s"\ncase "$*" in *omv-setup*) echo 4242 ;; *) exit 1 ;; esac\n' "$CALL_LOG" > "$STUB_DIR/pgrep"
   chmod +x "$STUB_DIR/pgrep"
 }
@@ -851,6 +859,7 @@ use_real_configs() {
 
 # hs never answers, as when Hammerspoon reloads before it can reply.
 hang_hammerspoon() {
+  own_stub hs
   printf '#!/bin/sh\necho "hs $*" >> "%s"\nexec sleep 30\n' "$CALL_LOG" > "$STUB_DIR/hs"
   chmod +x "$STUB_DIR/hs"
 }

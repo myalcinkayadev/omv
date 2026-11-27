@@ -10,6 +10,7 @@ readonly CAPTURE=$REPO_DIR/config/hammerspoon/capture.sh
 # screencapture saves a picture unless $SANDBOX/cancel exists. swiftc "builds" the helper
 # by copying $SANDBOX/helper, whose output each case sets. pbcopy saves to $SANDBOX/clipboard.
 stub_capture_tools() {
+  own_stub screencapture
   cat > "$STUB_DIR/screencapture" <<STUB
 #!/bin/sh
 echo "screencapture \$*" >> "$CALL_LOG"
@@ -17,6 +18,7 @@ echo "screencapture \$*" >> "$CALL_LOG"
 for last; do :; done
 echo picture > "\$last"
 STUB
+  own_stub swiftc
   cat > "$STUB_DIR/swiftc" <<STUB
 #!/bin/sh
 echo "swiftc \$*" >> "$CALL_LOG"
@@ -24,6 +26,7 @@ for last; do :; done
 cp "$SANDBOX/helper" "\$last"
 chmod +x "\$last"
 STUB
+  own_stub pbcopy
   cat > "$STUB_DIR/pbcopy" <<STUB
 #!/bin/sh
 cat > "$SANDBOX/clipboard"

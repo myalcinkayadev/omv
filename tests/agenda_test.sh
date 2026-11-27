@@ -14,6 +14,7 @@ app() {
 # swiftc "builds" the helper by copying $SANDBOX/helper, which writes to its last argument. open runs the bundle's helper with
 # the arguments after --args, the way LaunchServices would.
 stub_agenda_tools() {
+  own_stub swiftc
   cat > "$STUB_DIR/swiftc" <<STUB
 #!/bin/sh
 echo "swiftc \$*" >> "$CALL_LOG"
@@ -21,6 +22,7 @@ for last; do :; done
 cp "$SANDBOX/helper" "\$last"
 chmod +x "\$last"
 STUB
+  own_stub open
   cat > "$STUB_DIR/open" <<STUB
 #!/bin/sh
 echo "open \$*" >> "$CALL_LOG"

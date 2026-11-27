@@ -11,12 +11,14 @@ readonly CONFIG_PACKAGES='sketchybar swipeaerospace ghostty nvim btop'
 complete_setup() {
   local name
   for name in borders gh mo m1ddc nightlight tmux; do stub "$name"; done
+  own_stub hs
   cat > "$STUB_DIR/hs" <<STUB
 #!/bin/sh
 echo "hs \$*" >> "$CALL_LOG"
 echo function
 STUB
   # defaults answers from $SANDBOX/defaults, lines of "<domain> <key> <value>".
+  own_stub defaults
   cat > "$STUB_DIR/defaults" <<STUB
 #!/bin/sh
 echo "defaults \$*" >> "$CALL_LOG"
@@ -26,6 +28,7 @@ awk -v d="\$2" -v k="\$3" '\$1 == d && \$2 == k { print \$3; found = 1 } END { e
 STUB
   # ps lists $SANDBOX/ps, lines of "<pid> <etime> <command>", then one bar per pid in
   # $SANDBOX/bars.
+  own_stub ps
   cat > "$STUB_DIR/ps" <<STUB
 #!/bin/sh
 cat "$SANDBOX/ps"
@@ -34,6 +37,7 @@ STUB
   : > "$SANDBOX/ps"
   # pgrep finds every process. Like the real one, -x sketchybar matches the bars in
   # $SANDBOX/bars (one by default) and any sketchybar command, such as --query, in $SANDBOX/ps.
+  own_stub pgrep
   cat > "$STUB_DIR/pgrep" <<STUB
 #!/bin/sh
 echo "pgrep \$*" >> "$CALL_LOG"
@@ -47,6 +51,7 @@ exit 0
 STUB
   echo 500 > "$SANDBOX/bars"
   # pkill stops what it names: the bars are gone, and Hammerspoon is.
+  own_stub pkill
   cat > "$STUB_DIR/pkill" <<STUB
 #!/bin/sh
 echo "pkill \$*" >> "$CALL_LOG"
@@ -56,6 +61,7 @@ exit 0
 STUB
   chmod +x "$STUB_DIR/pkill"
   # The bar answers --query bar, unless $SANDBOX/silent-bar says it has stopped answering.
+  own_stub sketchybar
   cat > "$STUB_DIR/sketchybar" <<STUB
 #!/bin/sh
 echo "sketchybar \$*" >> "$CALL_LOG"
@@ -122,6 +128,7 @@ expect_no_report() {
 }
 
 hang_hammerspoon() {
+  own_stub hs
   printf '#!/bin/sh\necho "hs $*" >> "%s"\nexec sleep 120\n' "$CALL_LOG" > "$STUB_DIR/hs"
   HS_LIMIT=1
 }
@@ -182,6 +189,7 @@ reports_silent_bar() {
 }
 
 hang_bar() {
+  own_stub sketchybar
   printf '#!/bin/sh\necho "sketchybar $*" >> "%s"\nexec sleep 120\n' "$CALL_LOG" > "$STUB_DIR/sketchybar"
   BAR_LIMIT=1
 }
@@ -450,6 +458,7 @@ skips_answer_when_not_running() {
 # stub's own start under a busy test run. reports_hanging_hammerspoon covers the hang.
 fix_waits_for_busy_hammerspoon() {
   complete_setup
+  own_stub hs
   printf '#!/bin/sh\n[ -f "%s/asked" ] && { echo function; exit 0; }\ntouch "%s/asked"\n' "$SANDBOX" "$SANDBOX" > "$STUB_DIR/hs"
   report --fix >/dev/null
   assert_not_called '^pkill -x Hammerspoon'
@@ -457,6 +466,7 @@ fix_waits_for_busy_hammerspoon() {
 
 # kill stops what it's told to, unless the pid is listed in $SANDBOX/stubborn: then only -9 does.
 stub_kill() {
+  own_stub kill
   cat > "$STUB_DIR/kill" <<STUB
 #!/bin/sh
 echo "kill \$*" >> "$CALL_LOG"
@@ -492,6 +502,7 @@ fix_force_kills_stubborn_bar() {
   complete_setup
   printf '500\n501\n' > "$SANDBOX/bars"
   # The bars outlive a plain pkill; only -9 stops them.
+  own_stub pkill
   cat > "$STUB_DIR/pkill" <<STUB
 #!/bin/sh
 echo "pkill \$*" >> "$CALL_LOG"
@@ -528,6 +539,7 @@ reports_missing_setup_app() {
 fix_builds_setup_app() {
   complete_setup
   rm -rf "$HOME_DIR/Applications/omv Setup.app"
+  own_stub swiftc
   cat > "$STUB_DIR/swiftc" <<STUB
 #!/bin/sh
 while [ "\$#" -gt 0 ]; do [ "\$1" = -o ] && { printf '#!/bin/sh\\n' > "\$2"; chmod +x "\$2"; }; shift; done
@@ -678,6 +690,7 @@ reports_broken_link() {
 
 reports_stopped_process() {
   complete_setup
+  own_stub pgrep
   cat > "$STUB_DIR/pgrep" <<STUB
 #!/bin/sh
 for last; do :; done
@@ -689,6 +702,7 @@ STUB
 
 reports_missing_config() {
   complete_setup
+  own_stub hs
   printf '#!/bin/sh\necho nil\n' > "$STUB_DIR/hs"
   expect_report "✗ Hammerspoon hasn't loaded the omv config"
 }

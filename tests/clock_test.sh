@@ -7,6 +7,7 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/clock.sh
 
 # date prints a fixed time, so the label never depends on when the test runs.
 stub_date() {
+  own_stub date
   cat > "$STUB_DIR/date" <<STUB
 #!/bin/sh
 echo "date \$*" >> "$CALL_LOG"

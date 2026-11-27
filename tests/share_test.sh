@@ -9,6 +9,7 @@ readonly SHARE=$REPO_DIR/config/hammerspoon/share.sh
 # copied file from $SANDBOX/copied-file, a copied image when $SANDBOX/copied-image exists.
 # swiftc "builds" the helper, which logs the paths it's given and exits with $SANDBOX/status.
 stub_share_tools() {
+  own_stub osascript
   cat > "$STUB_DIR/osascript" <<STUB
 #!/bin/sh
 case "\$*" in
@@ -17,6 +18,7 @@ case "\$*" in
   *PNGf*) [ -e "$SANDBOX/copied-image" ] || exit 1; echo "osascript png" >> "$CALL_LOG" ;;
 esac
 STUB
+  own_stub swiftc
   cat > "$STUB_DIR/swiftc" <<STUB
 #!/bin/sh
 echo "swiftc \$*" >> "$CALL_LOG"

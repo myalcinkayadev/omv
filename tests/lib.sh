@@ -14,20 +14,44 @@ readonly SYSTEM_COMMANDS=(aerospace brew defaults killall open osascript pgrep p
 passed=0
 failed=0
 
+# macOS checks each new executable the first time it runs, which takes about 0.2s. A fresh
+# script per stub in every case added minutes to a test file, so every stub is a link to one
+# script, written and run once per test file. It logs its name, from the link it was run
+# through, and exits with the code in exits/<name> beside the call log, or 0; run_in_sandbox
+# passes no other variable. Read-only, so a test that writes a stub of its own without
+# removing the link first fails instead of changing every stub.
+readonly SHARED_STUB_DIR=$(mktemp -d)
+readonly SHARED_STUB=$SHARED_STUB_DIR/stub
+cat > "$SHARED_STUB" <<'EOF'
+#!/bin/sh
+name=${0##*/}
+echo "$name $*" >> "$CALL_LOG"
+code=0
+[ -f "${CALL_LOG%/*}/exits/$name" ] && read -r code < "${CALL_LOG%/*}/exits/$name"
+exit "$code"
+EOF
+chmod 555 "$SHARED_STUB"
+CALL_LOG=/dev/null "$SHARED_STUB"
+trap 'rm -rf "$SHARED_STUB_DIR"' EXIT
+
 stub() {
   local name=$1 exit_code=${2:-0}
   # A link, such as the real luajit's, is removed first, so the stub never writes through it.
-  rm -f "$STUB_DIR/$name"
-  cat > "$STUB_DIR/$name" <<EOF
-#!/bin/sh
-echo "$name \$*" >> "$CALL_LOG"
-exit $exit_code
-EOF
-  chmod +x "$STUB_DIR/$name"
+  rm -f "$STUB_DIR/$name" "$SANDBOX/exits/$name"
+  ln -s "$SHARED_STUB" "$STUB_DIR/$name"
+  [ "$exit_code" = 0 ] || echo "$exit_code" > "$SANDBOX/exits/$name"
 }
 
 remove_stub() {
-  rm -f "$STUB_DIR/$1"
+  rm -f "$STUB_DIR/$1" "$SANDBOX/exits/$1"
+}
+
+# Makes name's stub an empty executable file of the case's own, for the case to write its
+# script into; writing through the link would reach the shared stub.
+own_stub() {
+  remove_stub "$1"
+  : > "$STUB_DIR/$1"
+  chmod +x "$STUB_DIR/$1"
 }
 
 use_real_stow() {
@@ -39,7 +63,7 @@ new_sandbox() {
   STUB_DIR=$SANDBOX/bin
   CALL_LOG=$SANDBOX/calls.log
   HOME_DIR=$SANDBOX/home
-  mkdir -p "$STUB_DIR" "$HOME_DIR"
+  mkdir -p "$STUB_DIR" "$HOME_DIR" "$SANDBOX/exits"
   : > "$CALL_LOG"
   local name
   for name in "${SYSTEM_COMMANDS[@]}"; do

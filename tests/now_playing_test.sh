@@ -8,12 +8,14 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/now_playi
 # pgrep finds a player when $SANDBOX/running-<name> exists. osascript answers a track
 # question with $SANDBOX/track-<name>, which is empty while that player is paused.
 stub_players() {
+  own_stub pgrep
   cat > "$STUB_DIR/pgrep" <<STUB
 #!/bin/sh
 echo "pgrep \$*" >> "$CALL_LOG"
 for last; do :; done
 [ -e "$SANDBOX/running-\$last" ]
 STUB
+  own_stub osascript
   cat > "$STUB_DIR/osascript" <<STUB
 #!/bin/sh
 echo "osascript \$*" >> "$CALL_LOG"

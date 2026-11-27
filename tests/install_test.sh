@@ -40,6 +40,7 @@ prints_no_markers_by_default() {
 }
 
 marks_step_before_its_work() {
+  own_stub brew
   printf '#!/bin/sh\necho "brew $*" >> "%s"\n[ "$1" = bundle ] && echo BREW-BUNDLE-RAN\nexit 0\n' "$CALL_LOG" > "$STUB_DIR/brew"
   chmod +x "$STUB_DIR/brew"
   local output marker work

@@ -10,6 +10,7 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 new_sandbox
+own_stub hook
 cat > "$STUB_DIR/hook" <<STUB
 #!/bin/sh
 printf '%s\t%s\n' "\$*" "\$(cat)" >> "$SANDBOX/hook.log"

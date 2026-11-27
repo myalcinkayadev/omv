@@ -12,6 +12,7 @@ readonly TWO_DISPLAYS='[{"arrangement-id":1,"frame":{"x":0,"y":0,"w":2560,"h":14
 # The stubbed bar is one 1512pt display unless told otherwise, so the notch's right edge
 # is 856pt. Each item's --query answer is $SANDBOX/<item>.json, built from its left edge and width.
 stub_bar() {
+  own_stub sketchybar
   cat > "$STUB_DIR/sketchybar" <<STUB
 #!/bin/sh
 echo "sketchybar \$*" >> "$CALL_LOG"

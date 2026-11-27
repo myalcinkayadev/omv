@@ -17,6 +17,7 @@ state_file() {
 
 # Claude (PID 4242) runs on ttys009; the hook's own shell has no terminal.
 stub_ps() {
+  own_stub ps
   cat > "$STUB_DIR/ps" <<'STUB'
 #!/bin/sh
 case "$*" in

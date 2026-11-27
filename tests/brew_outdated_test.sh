@@ -12,6 +12,7 @@ readonly UPGRADE=$REPO_DIR/config/hammerspoon/brew-upgrade.sh
 stub_brew() {
   local lines=$1 exit_code=${2:-0}
   printf '%b' "$lines" > "$SANDBOX/outdated"
+  own_stub brew
   cat > "$STUB_DIR/brew" <<STUB
 #!/bin/sh
 echo "brew \$* no_auto_update=\${HOMEBREW_NO_AUTO_UPDATE:-}" >> "$CALL_LOG"

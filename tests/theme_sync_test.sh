@@ -12,6 +12,7 @@ themes_dir() {
 
 # The list holds two themes, a file, and a name that could be a path.
 stub_github() {
+  own_stub curl
   cat > "$STUB_DIR/curl" <<'STUB'
 #!/bin/sh
 echo "curl $*" >> "$CALL_LOG"

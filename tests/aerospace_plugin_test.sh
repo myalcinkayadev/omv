@@ -11,6 +11,7 @@ readonly IDLE_STYLE='background.color=0x00000000 icon.color=0xff7a7a7a'
 # Answers only the two queries the plugin makes, so an unexpected query shows up as empty output.
 stub_aerospace() {
   local focused=$1 visible=$2 all=${3:-}
+  own_stub aerospace
   cat > "$STUB_DIR/aerospace" <<EOF
 #!/bin/sh
 case "\$*" in

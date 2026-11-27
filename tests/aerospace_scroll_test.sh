@@ -6,6 +6,7 @@ source "$(dirname "$0")/lib.sh"
 readonly SCROLL=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/aerospace_scroll.sh
 
 stub_focused() {
+  own_stub aerospace
   cat > "$STUB_DIR/aerospace" <<STUB
 #!/bin/sh
 echo "aerospace \$*" >> "$CALL_LOG"

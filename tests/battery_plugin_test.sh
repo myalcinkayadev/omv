@@ -13,6 +13,7 @@ opens_battery_card_on_click() {
 
 # pmset answers with the given source and battery line.
 stub_pmset() {
+  own_stub pmset
   cat > "$STUB_DIR/pmset" <<STUB
 #!/bin/sh
 printf "Now drawing from '%s'\n -InternalBattery-0 (id=1)\t%s present: true\n" "$1" "$2"

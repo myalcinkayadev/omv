@@ -37,9 +37,50 @@ finish_fails_after_failed_case() {
   assert_exit_nonzero run_with_harness 'sample() { false; }; run_case sample sample; finish'
 }
 
+logs_stub_call() {
+  stub gh
+  run_in_sandbox gh pr list --json number
+  assert_called '^gh pr list --json number$'
+}
+
+exits_with_stub_code() {
+  stub gh 3
+  local code=0
+  run_in_sandbox gh auth status || code=$?
+  [ "$code" = 3 ] || fail "expected exit 3, got $code"
+}
+
+exits_zero_after_restub() {
+  stub gh 3
+  stub gh
+  assert_exit_zero run_in_sandbox gh auth status
+}
+
+leaves_no_stub_after_removal() {
+  stub gh
+  remove_stub gh
+  [ ! -e "$STUB_DIR/gh" ] || fail "gh is still stubbed"
+}
+
+keeps_stubs_to_their_case() {
+  local output
+  output=$(run_with_harness 'first() { stub aerospace 3; }; second() { run_in_sandbox aerospace; }; run_case first first; run_case second second')
+  [[ $output == *'ok   - second'* ]] || fail "a stub's exit code reached the next case: $output"
+}
+
+refuses_writes_through_shared_stub() {
+  ! (echo 'exit 9' > "$STUB_DIR/aerospace") 2>/dev/null || fail "a write through the link changed the shared stub"
+}
+
 run_case 'should fail a case when an assertion before the last one fails' fails_on_early_assertion
 run_case 'should fail a case when its last assertion fails' fails_on_last_assertion
 run_case 'should pass a case when every assertion passes' passes_when_all_pass
 run_case 'should give each case a fresh sandbox' gives_each_case_fresh_sandbox
 run_case 'should make finish exit non-zero when any case failed' finish_fails_after_failed_case
+run_case 'should log the stub name and arguments when it runs' logs_stub_call
+run_case 'should exit with the code given to stub when it is not zero' exits_with_stub_code
+run_case 'should exit zero when stub replaces a failing stub of the same name' exits_zero_after_restub
+run_case 'should leave no stub behind when remove_stub runs' leaves_no_stub_after_removal
+run_case "should keep a stub's exit code out of the next case" keeps_stubs_to_their_case
+run_case 'should refuse a write through a stub link to the shared stub' refuses_writes_through_shared_stub
 finish

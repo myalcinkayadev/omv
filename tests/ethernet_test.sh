@@ -23,16 +23,19 @@ Ethernet Address: 00:e0:4c:68:01:02'
 stub_network() {
   printf '%s\n' "$1" > "$SANDBOX/ports"
   printf '%s\n' "$2" > "$SANDBOX/addresses"
+  own_stub networksetup
   cat > "$STUB_DIR/networksetup" <<STUB
 #!/bin/sh
 cat "$SANDBOX/ports"
 STUB
+  own_stub ipconfig
   cat > "$STUB_DIR/ipconfig" <<STUB
 #!/bin/sh
 echo "ipconfig \$*" >> "$CALL_LOG"
 awk -v d="\$2" '\$1 == d { print \$2; found = 1 } END { exit !found }' "$SANDBOX/addresses"
 STUB
   : > "$SANDBOX/inactive"
+  own_stub ifconfig
   cat > "$STUB_DIR/ifconfig" <<STUB
 #!/bin/sh
 if grep -qx "\$1" "$SANDBOX/inactive"; then echo "	status: inactive"; else echo "	status: active"; fi

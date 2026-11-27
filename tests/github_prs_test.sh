@@ -9,6 +9,7 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/github_pr
 # A gh that prints how many pull requests wait, or fails like gh does when offline.
 stub_gh() {
   local count=$1 exit_code=${2:-0}
+  own_stub gh
   cat > "$STUB_DIR/gh" <<STUB
 #!/bin/sh
 echo "gh \$*" >> "$CALL_LOG"

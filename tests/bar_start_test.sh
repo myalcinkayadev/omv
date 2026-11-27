@@ -8,6 +8,7 @@ readonly START=$REPO_DIR/config/sketchybar/.config/sketchybar/start.sh
 # A bar that keeps running, as a real one would, until the test lets it go by creating
 # $SANDBOX/release, so a second start meets it however slowly either start is launched.
 held_bar() {
+  own_stub sketchybar
   printf '#!/bin/sh\necho sketchybar >> "%s"\nuntil [ -e "%s" ]; do sleep 0.05; done\n' \
     "$CALL_LOG" "$SANDBOX/release" > "$STUB_DIR/sketchybar"
   chmod +x "$STUB_DIR/sketchybar"

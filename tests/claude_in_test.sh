@@ -7,6 +7,7 @@ readonly SCRIPT=$REPO_DIR/config/hammerspoon/claude-in.sh
 
 # The login shell is a stub that logs the folder it runs in and what it was asked to run.
 stub_shell() {
+  own_stub login-shell
   cat > "$STUB_DIR/login-shell" <<STUB
 #!/bin/sh
 echo "shell \$(pwd) \$*" >> "$CALL_LOG"

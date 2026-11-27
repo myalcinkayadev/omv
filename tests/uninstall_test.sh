@@ -46,6 +46,7 @@ removes_theme_files() {
 
 # defaults answers $1 for Hammerspoon's config file and fails every other read.
 answer_hammerspoon_config() {
+  own_stub defaults
   cat > "$STUB_DIR/defaults" <<STUB
 #!/bin/sh
 echo "defaults \$*" >> "$CALL_LOG"

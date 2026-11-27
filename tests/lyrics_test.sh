@@ -15,6 +15,7 @@ app() {
 # swiftc "builds" the helper by copying $SANDBOX/helper, which echoes what it reads, so a
 # test can see that Hammerspoon's commands reach it.
 stub_build() {
+  own_stub swiftc
   cat > "$STUB_DIR/swiftc" <<STUB
 #!/bin/sh
 echo "swiftc \$*" >> "$CALL_LOG"

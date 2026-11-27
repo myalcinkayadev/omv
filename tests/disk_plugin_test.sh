@@ -8,6 +8,7 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/disk.sh
 
 # df -k / answers with the given total and available KiB.
 stub_df() {
+  own_stub df
   cat > "$STUB_DIR/df" <<STUB
 #!/bin/sh
 printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\n/dev/disk3s1s1 %s 1 %s 1%% /\n' "$1" "$2"

@@ -10,6 +10,7 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/github_ci
 stub_gh() {
   local lines=$1 exit_code=${2:-0}
   printf '%b' "$lines" > "$SANDBOX/gh-output"
+  own_stub gh
   cat > "$STUB_DIR/gh" <<STUB
 #!/bin/sh
 echo "gh \$*" >> "$CALL_LOG"

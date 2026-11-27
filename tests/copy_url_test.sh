@@ -7,11 +7,13 @@ readonly COPY_URL=$REPO_DIR/config/hammerspoon/copy-url.sh
 
 # osascript answers with a URL, and pbcopy saves what it receives to $SANDBOX/clipboard.
 stub_helium() {
+  own_stub osascript
   cat > "$STUB_DIR/osascript" <<EOF
 #!/bin/sh
 echo "osascript \$*" >> "$CALL_LOG"
 echo 'https://example.com/page?q=1'
 EOF
+  own_stub pbcopy
   cat > "$STUB_DIR/pbcopy" <<EOF
 #!/bin/sh
 cat > "$SANDBOX/clipboard"

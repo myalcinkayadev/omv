@@ -11,6 +11,7 @@ app() {
 
 # swiftc "builds" the helper by writing a script that does nothing.
 stub_meter_tools() {
+  own_stub swiftc
   cat > "$STUB_DIR/swiftc" <<STUB
 #!/bin/sh
 echo "swiftc \$*" >> "$CALL_LOG"

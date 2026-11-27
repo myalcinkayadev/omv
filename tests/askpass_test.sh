@@ -7,6 +7,7 @@ readonly ASKPASS=$REPO_DIR/install/askpass.sh
 
 # osascript answers with what the user typed, or fails as it does on Cancel.
 dialog_answers() {
+  own_stub osascript
   printf '#!/bin/sh\necho "osascript $*" >> "%s"\nprintf "%%s\\n" "%s"\n' "$CALL_LOG" "$1" > "$STUB_DIR/osascript"
   chmod +x "$STUB_DIR/osascript"
 }

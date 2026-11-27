@@ -8,12 +8,14 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/system_lo
 
 # ps -A -o %cpu= prints each given share on its own line.
 stub_ps() {
+  own_stub ps
   printf '#!/bin/sh\nprintf "%%s\\n" %s\n' "$*" > "$STUB_DIR/ps"
   chmod +x "$STUB_DIR/ps"
 }
 
 # sysctl -n hw.ncpu kern.memorystatus_vm_pressure_level prints the cores, then the level.
 stub_sysctl() {
+  own_stub sysctl
   printf '#!/bin/sh\nprintf "%%s\\n%%s\\n" %s %s\n' "$1" "$2" > "$STUB_DIR/sysctl"
   chmod +x "$STUB_DIR/sysctl"
 }

@@ -8,6 +8,7 @@ readonly TRANSLATE=$REPO_DIR/config/hammerspoon/translate.sh
 
 # swiftc "builds" a helper that logs its arguments and the text it reads, then answers ok.
 stub_swiftc() {
+  own_stub swiftc
   cat > "$STUB_DIR/swiftc" <<STUB
 #!/bin/sh
 echo "swiftc \$*" >> "$CALL_LOG"
@@ -44,6 +45,7 @@ builds_the_helper_once() {
 }
 
 fails_when_the_helper_cannot_build() {
+  own_stub swiftc
   printf '#!/bin/sh\nexit 1\n' > "$STUB_DIR/swiftc"
   chmod +x "$STUB_DIR/swiftc"
   echo a | assert_exit_nonzero run_in_sandbox "$TRANSLATE" detect

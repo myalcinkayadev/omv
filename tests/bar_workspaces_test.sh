@@ -9,6 +9,7 @@ readonly TEXTS=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/workspace_
 
 # An aerospace that knows workspaces 1 to 8.
 aerospace_knows_eight() {
+  own_stub aerospace
   printf '#!/bin/sh\nprintf "1\\n2\\n3\\n4\\n5\\n6\\n7\\n8\\n"\n' > "$STUB_DIR/aerospace"
   chmod +x "$STUB_DIR/aerospace"
 }
