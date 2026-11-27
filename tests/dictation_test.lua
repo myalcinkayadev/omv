@@ -158,9 +158,6 @@ check.that("should map -15 dB and above to 1", dictation.levelOf(-15) == 1 and d
 check.that("should map between linearly", math.abs(dictation.levelOf(-35) - 0.5) < 0.001)
 check.that("should rise at once", math.abs(dictation.smooth(0, 1) - 0.6) < 0.001)
 check.that("should fall slowly", math.abs(dictation.smooth(1, 0) - 0.92) < 0.001)
-local history = {}
-for index = 1, 70 do history = dictation.pushLevel(history, index / 70) end
-check.that("should keep the last 60 levels, oldest dropped", #history == 60 and history[60] == 1 and math.abs(history[1] - 11 / 70) < 0.001)
 
 -- The words.
 local lines = dictation.wrap("one two three four five six seven", 10)
@@ -225,21 +222,33 @@ check.that("should cut an app name at 18 characters", dictation.header({ started
 check.that("should keep an 18-character app name whole", dictation.header({ started = 0, app = "Microsoft Outlook!" }, 1).target.name
   == "Microsoft Outlook!")
 
--- The meter: from after the timer to 10 pt before the app chip, a bar every 5 pt.
+-- The meter: a wave from after the timer to 10 pt before the app chip.
 local wide, narrow = dictation.meterLayout(81), dictation.meterLayout(200)
 check.that("should end the strip 10 pt before the app chip", wide.x + wide.w == 560 - 18 - 81 - 10)
-check.that("should fit fewer bars when the app name is long", narrow.bars < wide.bars and wide.bars == math.floor((wide.w + 2) / 5))
-local function heights(bars) local h = {} for i, bar in ipairs(bars) do h[i] = bar.h end return table.concat(h, ",") end
-local speech = dictation.meter({ history = { 0, 0.5, 1 } }, 0, 5)
-check.that("should put the newest level at the right", heights(speech) == "3,3,3,12,22")
-check.that("should fade older bars", speech[1].alpha < speech[5].alpha and speech[5].alpha == 1)
-local still = dictation.meter({ history = { 0, 1, 0.5 }, reduceMotion = true }, 0, 4)
-check.that("should not scroll the strip when Reduce Motion is on", heights(still) == "12,12,12,12" and still[1].alpha == still[4].alpha)
-local function lit(bars) local n = 0 for _, bar in ipairs(bars) do if bar.warning then n = n + 1 end end return n end
-check.that("should count down with orange dots when locked", lit(dictation.meter({ locked = true, left = 7 }, 0, 50)) == 35
-  and lit(dictation.meter({ locked = true, left = 6 }, 0, 50)) == 30)
-check.that("should draw dots, not speech, during the countdown", heights(dictation.meter({ locked = true, left = 7, history = { 1, 1 } }, 0, 3)) == "3,3,3")
-local shimmer = dictation.meter({ finishing = true }, 1, 40)
-check.that("should shimmer the dots while finishing", heights(shimmer) == string.rep("3,", 39) .. "3" and shimmer[1].alpha ~= shimmer[20].alpha)
+check.that("should give the wave less room when the app name is long", narrow.w < wide.w)
+local layout = { x = 190, w = 200 }
+local function wave(recording) return dictation.wave(recording, layout) end
+local function height(curves)
+  local most = 0
+  for _, curve in ipairs(curves) do
+    for _, point in ipairs(curve.points) do most = math.max(most, math.abs(point.y - 25)) end
+  end
+  return most
+end
+local loud = wave({ shownLevel = 1, phase = 0.3 })
+check.that("should taper the wave to the centre line at both ends", math.abs(loud[1].points[1].y - 25) < 1e-6
+  and math.abs(loud[1].points[#loud[1].points].y - 25) < 1e-6)
+check.that("should raise the wave when the voice is louder", height(loud) > height(wave({ shownLevel = 0.2, phase = 0.3 })))
+check.that("should leave a small ripple when silent", dictation.waveAmplitude({ shownLevel = 0 }) == 1.5 and height(wave({ shownLevel = 0, phase = 0.3 })) > 0)
+check.that("should move the wave faster when the voice is louder",
+  dictation.wavePhase(0, 1, 0.05) > dictation.wavePhase(0, 0.2, 0.05))
+local counting = wave({ locked = true, left = 7, shownLevel = 1, phase = 0.3 })
+local lastX = counting[1].points[#counting[1].points].x
+check.that("should shrink the wave to the left during the countdown", math.abs(lastX - (190 + 140)) < 2.01)
+check.that("should draw the countdown wave in orange", counting[1].warning == true)
+local closing = wave({ finishing = true, shownLevel = 1, phase = 0.3 })
+check.that("should draw a low, dim wave while finishing", dictation.waveAmplitude({ finishing = true, shownLevel = 1 }) == 2.5 and closing[1].dim == true)
+check.that("should hold the wave still when Reduce Motion is on", dictation.wavePhase(1, 0.8, 0.05, true) == 1)
+check.that("should draw three curves at 1, 0.5 and 0.25 brightness", #loud == 3 and loud[1].alpha == 1 and loud[2].alpha == 0.5 and loud[3].alpha == 0.25)
 
 check.finish()

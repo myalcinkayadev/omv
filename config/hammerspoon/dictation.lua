@@ -399,7 +399,7 @@ end
 -- The meter: a level in dB as 0 to 1, -55 dB (a quiet room) to -15 dB (speaking up), so
 -- quiet speech still moves it.
 local FLOOR_DB, CEILING_DB = -55, -15
-local ATTACK, RELEASE, BARS = 0.6, 0.08, 60
+local ATTACK, RELEASE = 0.6, 0.08
 -- A level this loud or louder is speech, which keeps a locked one going.
 local VOICE = 0.3
 
@@ -417,52 +417,56 @@ function dictation.smooth(shown, target)
   return shown + (target - shown) * rate
 end
 
--- The waveform's levels with level added at the right, the oldest dropped past 60 bars.
-function dictation.pushLevel(history, level)
-  local kept = {}
-  for index = math.max(1, #history - BARS + 2), #history do kept[#kept + 1] = history[index] end
-  kept[#kept + 1] = level
-  return kept
-end
-
--- The meter fills the header from after the timer to 10 pt before the app chip, a 3 pt bar
--- every 5 pt: { x, w, bars } for a chip chipWidth wide.
+-- The meter fills the header from after the timer to 10 pt before the app chip: { x, w } for
+-- a chip chipWidth wide.
 dictation.PILL_WIDTH = 560
-local METER_X, EDGE, GAP, PITCH = 190, 18, 10, 5
+local METER_X, EDGE, GAP = 190, 18, 10
 
 function dictation.meterLayout(chipWidth)
-  local w = dictation.PILL_WIDTH - EDGE - chipWidth - GAP - METER_X
-  return { x = METER_X, w = w, bars = math.max(0, math.floor((w + 2) / PITCH)) }
+  return { x = METER_X, w = math.max(0, dictation.PILL_WIDTH - EDGE - chipWidth - GAP - METER_X) }
 end
 
-local function dots(count, alphaOf, warningOf)
-  local bars = {}
-  for index = 1, count do bars[index] = { h = 3, alpha = alphaOf(index), warning = warningOf and warningOf(index) or false } end
-  return bars
+-- The meter is three sine curves layered, as Siri's is: your voice sets their height and how
+-- fast they travel, silence leaves a ripple so the mic still looks alive, and each tapers to
+-- nothing at both ends. Each curve: cycles across the strip, its speed, brightness and stroke.
+local CURVES = { { cycles = 1.6, speed = 1, alpha = 1, stroke = 2 }, { cycles = 2.3, speed = -1.4, alpha = 0.5, stroke = 1.5 },
+  { cycles = 3.2, speed = 1.9, alpha = 0.25, stroke = 1.2 } }
+local RIPPLE, RISE, FINISHING_HEIGHT, CENTER_Y, STEP = 1.5, 9.5, 2.5, 25, 2
+
+-- The wave's height in points for recording { shownLevel, finishing, left }: low while
+-- finishing, a ripple during the countdown, else the ripple plus your voice.
+function dictation.waveAmplitude(recording)
+  if recording.finishing then return FINISHING_HEIGHT end
+  if recording.left then return RIPPLE end
+  return RIPPLE + RISE * (recording.shownLevel or 0)
 end
 
--- The meter's count bars, left to right, each { h, alpha, warning }, for recording
--- { history, locked, left, finishing, reduceMotion } at now: the countdown as orange dots, a
--- tenth going out each second; a shimmer while finishing; else speech, newest at the right,
--- older bars fading. With Reduce Motion, nothing moves along: the level fills it evenly.
-function dictation.meter(recording, now, count)
-  if recording.finishing then
-    if recording.reduceMotion then return dots(count, function() return 0.3 end) end
-    local peak = (now * 20) % (count + 14) - 7
-    return dots(count, function(index) return 0.15 + 0.6 * math.max(0, 1 - math.abs(index - 1 - peak) / 7) end)
+-- The wave's phase after seconds at level: faster when louder; still with Reduce Motion.
+function dictation.wavePhase(phase, level, seconds, still)
+  if still then return phase end
+  return phase + seconds * (1.5 + 6 * level)
+end
+
+-- The wave's curves in layout { x, w } for recording { shownLevel, phase, left, finishing }:
+-- each { points, alpha, stroke, warning, dim }. During the countdown it's orange and shrinks
+-- to the left, a tenth each second; while finishing it's dim.
+function dictation.wave(recording, layout)
+  local width = layout.w * (recording.left and math.max(0, recording.left) / dictation.COUNTDOWN_SECONDS or 1)
+  local height, phase = dictation.waveAmplitude(recording), recording.phase or 0
+  local curves = {}
+  for index, curve in ipairs(CURVES) do
+    local points = {}
+    local steps = math.max(1, math.floor(width / STEP))
+    for step = 0, steps do
+      local x = width * step / steps
+      local taper = width > 0 and math.sin(math.pi * x / width) ^ 2 or 0
+      local y = CENTER_Y + height * taper * math.sin(2 * math.pi * curve.cycles * x / math.max(1, layout.w) + phase * curve.speed)
+      points[#points + 1] = { x = layout.x + x, y = y }
+    end
+    curves[index] = { points = points, alpha = curve.alpha, stroke = curve.stroke, warning = recording.left ~= nil and not recording.finishing,
+      dim = recording.finishing == true }
   end
-  if recording.left then
-    local lit = math.ceil(count * recording.left / dictation.COUNTDOWN_SECONDS)
-    return dots(count, function(index) return index <= lit and 1 or 0.25 end, function(index) return index <= lit end)
-  end
-  local history = recording.history or {}
-  local bars = {}
-  for index = 1, count do
-    local level = recording.reduceMotion and (history[#history] or 0) or (history[#history - count + index] or 0)
-    local alpha = (recording.reduceMotion or count == 1) and 1 or (0.3 + 0.7 * (index - 1) / (count - 1))
-    bars[index] = { h = 3 + math.floor(19 * level), alpha = alpha, warning = false }
-  end
-  return bars
+  return curves
 end
 
 -- The words as lines of at most width characters, broken between words, or inside a word

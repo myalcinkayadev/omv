@@ -90,13 +90,12 @@ local function chip(elements, header, recording, tokens)
   return w
 end
 
--- The meter's bars, as dictation.meter gives them, in the gap left of the chip.
-local function meter(elements, recording, chipWidth, now, fg)
-  local layout = dictation.meterLayout(chipWidth)
-  for index, bar in ipairs(dictation.meter(recording, now, layout.bars)) do
-    elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(bar.warning and WARNING or fg, bar.alpha),
-      roundedRectRadii = { xRadius = 1.5, yRadius = 1.5 },
-      frame = { x = layout.x + (index - 1) * 5, y = CENTER_Y - bar.h / 2, w = 3, h = bar.h } }
+-- The meter's wave, as dictation.wave gives it, in the gap left of the chip.
+local function meter(elements, recording, chipWidth, tokens)
+  for _, curve in ipairs(dictation.wave(recording, dictation.meterLayout(chipWidth))) do
+    local hex = curve.warning and WARNING or (curve.dim and tokens.accent or tokens.fg)
+    elements[#elements + 1] = { type = "segments", action = "stroke", closed = false, coordinates = curve.points,
+      strokeColor = color(hex, curve.alpha), strokeWidth = curve.stroke, strokeCapStyle = "round", strokeJoinStyle = "round" }
   end
 end
 
@@ -105,7 +104,7 @@ local function card(tokens, border, height)
     strokeColor = color(border), strokeWidth = 2, frame = { x = 0, y = 0, w = WIDTH, h = height } }
 end
 
--- Draws recording, { partial, history, locked, finishing, stopped, left, secure, app, appIcon,
+-- Draws recording, { partial, shownLevel, phase, locked, finishing, stopped, left, secure, app, appIcon,
 -- problem, ready, percent, started, locale, localeName, reduceMotion }, and gives its frame.
 function dictationPill.draw(recording)
   local tokens = shell.themeTokens()
@@ -136,7 +135,7 @@ function dictationPill.draw(recording)
   else
     elements[#elements + 1] = text(header.status, 14, dim, { x = STATUS_X, y = CENTER_Y - 10, w = TIMER_X - STATUS_X - 6, h = 22 })
     elements[#elements + 1] = text(header.timer, 13, header.warning and WARNING or tokens.accent, { x = TIMER_X, y = CENTER_Y - 9, w = 44, h = 18 })
-    meter(elements, recording, chipWidth, now, tokens.fg)
+    meter(elements, recording, chipWidth, tokens)
   end
   elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(tokens.fg, 0.12), frame = { x = 16, y = RULE_Y, w = WIDTH - 32, h = 1 } }
   -- Past four lines, the oldest shown fades, as the newest words push it up.

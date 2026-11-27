@@ -20,7 +20,7 @@ local START_SOUND, END_SOUND = "Tink", "Pop"
 local keys = dictation.keys()
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
--- The recording now: { task, locale, started, ready, partial, history, shownLevel, percent,
+-- The recording now: { task, locale, started, ready, partial, shownLevel, phase, percent,
 -- shown, locked, finishing, review, auto, app, appIcon, secure, startApp, left }.
 local current = nil
 -- The last dictations, newest first, each { text, app, at }.
@@ -124,7 +124,6 @@ local function onOutput(recording, chunk)
       local level = dictation.levelOf(message.level)
       if dictation.isVoice(level) then dictation.press(keys, "voice", hs.timer.secondsSinceEpoch()) end
       recording.shownLevel = dictation.smooth(recording.shownLevel or 0, level)
-      recording.history = dictation.pushLevel(recording.history or {}, recording.shownLevel)
     elseif message and message.kind == "progress" then recording.percent = message.percent
     elseif message and message.kind == "problem" then return showProblem(recording, message.problem)
     elseif message and message.kind == "final" then return finished(recording, message.text)
@@ -161,6 +160,7 @@ local function tick()
     recording.app, recording.appIcon, recording.secure = here.app, here.appIcon, here.secure
     recording.left = dictation.remaining(keys, now)
   end
+  recording.phase = dictation.wavePhase(recording.phase or 0, recording.shownLevel or 0, TICK_SECONDS, reduceMotion)
   dictationPill.draw(recording)
 end
 
@@ -169,7 +169,7 @@ local function record()
   stopTicker()
   local language = locale()
   local engine = dictation.engine(language, lists)
-  local recording = { locale = language, started = hs.timer.secondsSinceEpoch(), history = {}, reduceMotion = reduceMotion }
+  local recording = { locale = language, started = hs.timer.secondsSinceEpoch(), reduceMotion = reduceMotion }
   current = recording
   if not engine then
     recording.shown = true

@@ -350,18 +350,14 @@ local function bodyShot(file, prompt, rows, footer, options)
 end
 
 -- Dictation: its card with Turkish picked, and the pill two lines into a sentence, with a
--- waveform of speech.
+-- wave of speech.
 local function dictationShots(now)
   local rows = dictation.cardRows({ ownLanguage = true, language = "Turkish (Türkiye)", sounds = true, kept = 3, words = { "omv", "AeroSpace", "Ghostty" }, cleanup = true,
     microphone = "granted", installed = true })
-  local history = {}
-  for _, level in ipairs({ 0.1, 0.3, 0.55, 0.4, 0.8, 0.95, 0.7, 0.5, 0.3, 0.6, 0.9, 1, 0.8, 0.45, 0.2, 0.35, 0.65, 0.85, 0.55, 0.3, 0.5, 0.75, 0.45, 0.25 }) do
-    history = dictation.pushLevel(history, level)
-  end
   return {
     bodyShot("dictation.png", "Dictation…", rows,
       { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open ›" }, { key = "Esc", text = "close" } }, { selected = 1 }),
-    { file = "dictation-pill.png", kind = "pill", recording = { started = now - 12, ready = true, history = history, app = "Zed",
+    { file = "dictation-pill.png", kind = "pill", recording = { started = now - 12, ready = true, shownLevel = 0.7, phase = 0.8, app = "Zed",
       partial = "Refactor the login handler so it retries twice before giving up, and log each failed attempt with the user id" } },
   }
 end
