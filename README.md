@@ -1025,6 +1025,18 @@ Memory, measured on a MacBook Pro (M3 Pro, 18 GB) with everything running and no
 - The cards are drawn by one WebKit view that is made once and hidden between uses. WebKit runs it in a process of its own, which isn't in the table.
 - The helpers run only when needed: "omv agenda" for a moment every 5 minutes, and "omv meter" only while the Sound card is open.
 
+The features that start off cost little once turned on. Measured on a MacBook Pro (M3 Pro) with all six on:
+
+| Feature | What it costs |
+|---|---|
+| `system-load` | `ps` and `sysctl` every 10 seconds: about 0.02s of CPU a run, 0.2% of one core |
+| `brew-outdated` | `brew outdated` every 6 hours and on waking, at most once an hour: about 0.5s of CPU a count |
+| `browser-tabs` | one `osascript` each time the palette opens, in the background: about 0.1s with 2 tabs open |
+| `input-source`, `in-use` | nothing while nothing changes: macOS says when the input source or a device's use changes |
+| `world-clocks` | nothing while the calendar card is closed; the card works out the times itself |
+
+With all six on, Hammerspoon's footprint stayed at 47–49 MB over four hours, and its Lua memory came back to where it started.
+
 ## Tests
 
 ```sh
