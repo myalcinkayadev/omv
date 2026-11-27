@@ -59,6 +59,7 @@ flags.DEFAULTS = {
   ["brew-outdated"] = false, -- outdated Homebrew packages in the bar, and brew upgrade on a click
   ["system-load"] = false, -- CPU and memory in the bar, only while the Mac is busy
   ["input-source"] = false, -- the keyboard input source in the bar, as TR or US; a click switches it
+  ["world-clocks"] = false, -- the times in ~/.config/omv/clocks, under the calendar card's events
 }
 
 -- text is the flags file's contents, or nil when there's none.

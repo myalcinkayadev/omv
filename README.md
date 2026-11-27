@@ -396,6 +396,17 @@ Under the footer are today's events from Calendar.app, so every account added th
 - Events are read when Hammerspoon starts, every 5 minutes, when the Mac wakes, and when the card opens.
 - They're read by a small Swift helper, `agenda.swift`, built the first time into `~/.cache/omv/Agenda.app`. It runs as its own app because macOS asks the app that reads calendars for permission, and Hammerspoon can't ask. The first time, macOS asks to let "omv agenda" access your calendars. If you refuse, the card says so, and you can allow it later in System Settings > Privacy & Security > Calendars.
 
+**World clocks.** Off unless turned on, with `omv flags world-clocks on`. Then list the places you want in `~/.config/omv/clocks`, one per line, as a name and a time zone:
+
+```
+# name = time zone
+NYC = America/New_York
+Delhi = Asia/Kolkata
+Tokyo = Asia/Tokyo
+```
+
+Under today's events, a Clocks section shows each name with its time there, in 24 hours, and how far it is from yours, as `−8 h` or `+2:30`. When the date there isn't today's, the time starts with its weekday, as `Sat 09:30`. A time zone the Mac doesn't know shows `unknown time zone` instead of a time; the names are the IANA ones, such as `Europe/London`. The file is read each time the card opens, so an edit shows without a reload, in the file's order and eight at most. Without the file, or with no line it can read, there's no Clocks section. The times are worked out in the card itself, with no command run, and move on each minute while the card is open; nothing of them runs while it's closed.
+
 ## Your own workspaces
 
 One file, `~/.config/omv/workspaces`, says which workspaces there are, the screens each goes on, the apps that live on it, and each screen's gaps, much as Hyprland's workspace rules do. Option+Escape, then **Workspaces**, edits it, and so does Option+W on a window. You can also edit it in any editor: saving it applies it, without a reload.
@@ -737,6 +748,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
 | `system-load` | **off unless turned on:** CPU and memory in the bar, only while the Mac is busy; see [Smaller tools](#smaller-tools) |
 | `input-source` | **off unless turned on:** the keyboard input source in the bar, and switching it with a click; see [Input source](#input-source) |
+| `world-clocks` | **off unless turned on:** the times in `~/.config/omv/clocks` in the calendar card; see [Calendar and today's events](#calendar-and-todays-events) |
 | `stalls` | **off unless turned on:** writes each time Hammerspoon freezes for over a quarter of a second, with the card showing, to `~/.local/state/omv/stalls.log`, and every 10 minutes its Lua memory and the background commands still running |
 
 ## Keys
@@ -914,6 +926,7 @@ Your own changes go in `~/.config/omv/`, outside the omv folder, so `omv update`
 | `apps` | The browser and editor omv's keys open | `browser = Google Chrome` |
 | `workspaces` | [Workspaces](#your-own-workspaces), their screens and apps, and each screen's gaps; applied when saved | `[workspace 1]` then `on = DELL` and `apps = Zed` |
 | `away-digest` | How long a break must be before unlocking opens the agents' inbox; read each time, so no reload | `minutes = 10`, or `minutes = 0` for every break |
+| `clocks` | World clocks in the calendar card, with the `world-clocks` flag on; read each time the card opens, so no reload | `NYC = America/New_York` |
 | `theme-clock` | A day theme and a night theme, switched at sunrise and sunset; read each time, so no reload | `day = catppuccin-latte` then `night = vantablack` |
 
 After editing one, run:

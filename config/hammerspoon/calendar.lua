@@ -1,11 +1,12 @@
 -- The calendar card opened by clicking the clock. Weeks start on Monday and carry their
 -- ISO week number, and every month shows six of them. Left and Right change month, T returns to today, Escape closes.
--- Today's events from agenda.lua are listed under the footer.
+-- Today's events from agenda.lua are listed under the footer, then the world clocks from clocks.lua.
 -- Keys reach init.lua through the "omv" message handler as { type, id }.
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local card = require("card")
 local agenda = require("agenda")
+local clocks = require("clocks")
 
 local calendar = {}
 
@@ -77,6 +78,12 @@ local STYLE = [[
   .event.past, .event.past .time { color: #4a4a4a; }
   .event.current .what, .event.current .time { color: #fff; }
   .agenda .note { color: #7a7a7a; height: 22px; line-height: 22px; }
+  .clocks { padding: 10px 4px 0; font-size: 13px; }
+  .clocks .label { color: #7a7a7a; height: 22px; line-height: 22px; }
+  .clock { display: flex; height: 22px; align-items: center; color: #d0d0d0; }
+  .clock .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clock .time { flex: none; color: #fff; padding-left: 8px; }
+  .clock .diff { flex: none; width: 64px; text-align: right; color: #7a7a7a; }
 ]]
 
 local SCRIPT = [[
@@ -137,13 +144,14 @@ local function agendaLines(day, now)
 end
 
 -- day is agenda.decode's result, or nil before it is known. now is the current time.
-function calendar.height(day, now)
+-- clockList is clocks.parse's result, or nil without world clocks.
+function calendar.height(day, now, clockList)
   local count = #agendaLines(day, now)
-  if count == 0 then return HEIGHT end
-  return HEIGHT + AGENDA_PADDING + count * EVENT_HEIGHT
+  local events = count == 0 and 0 or AGENDA_PADDING + count * EVENT_HEIGHT
+  return HEIGHT + events + clocks.height(clockList)
 end
 
-function calendar.html(model, today, day, clock)
+function calendar.html(model, today, day, clock, clockList)
   local now = timeOf(today.year, today.month, today.day)
   local lines = agendaLines(day, clock or os.time())
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. STYLE .. "</style><body>"
@@ -153,6 +161,7 @@ function calendar.html(model, today, day, clock)
     .. "<div class=foot><span><b>" .. os.date("%A", now) .. "</b>, " .. tonumber(os.date("%d", now)) .. " " .. os.date("%B", now) .. "</span>"
     .. "<span>week " .. tonumber(os.date("%V", now)) .. "</span></div>"
     .. (#lines > 0 and ("<div class=agenda>" .. table.concat(lines) .. "</div>") or "")
+    .. clocks.html(clockList)
     .. "<script>" .. SCRIPT .. "</script></body>"
 end
 

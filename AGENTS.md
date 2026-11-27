@@ -27,6 +27,7 @@ overwrites. Create a file there only when the change needs it.
 | `~/.config/omv/workspaces` | Workspaces 1 to 9: their screens, apps, layout; each screen's gaps | `[workspace 1]` `on = DELL` `apps = Zed`; `[screen laptop]` `gaps = 4` |
 | `~/.config/omv/away-digest` | How long a break opens the agents' inbox | `minutes = 10`; `0` for every break |
 | `~/.config/omv/dictation` | Dictation's language and sounds | `language = tr-TR`, `sounds = off` |
+| `~/.config/omv/clocks` | World clocks in the calendar card; needs `omv flags world-clocks on` | `NYC = America/New_York` lines, IANA zones |
 | `~/.config/omv/theme-clock` | A day and a night theme, switched at sunrise and sunset | `day = catppuccin-latte`, `night = vantablack` |
 
 Then apply it:

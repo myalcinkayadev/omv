@@ -54,6 +54,8 @@ local checks = feature("github-ci", "features.ci")
 local captureMenu = feature("capture", "features.capture")
 local reminderCards = feature("reminders", "features.reminders")
 local calendarCard = feature("calendar", "features.calendar")
+-- World clocks live in the calendar card, so they need it.
+if calendarCard then calendarCard.withClocks = enabled["world-clocks"] end
 -- Reads the calendar's meetings, so it loads only with it.
 local meetingMode = calendarCard and feature("meeting-mode", "features.meeting")
 if meetingMode then

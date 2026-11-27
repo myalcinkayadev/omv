@@ -1,15 +1,19 @@
 -- Calendar (click the clock), today's events, the bar's next meeting, and joining a meeting.
 -- Today's events come from agenda.sh. They are read every 5 minutes, on wake and when the
 -- calendar opens; the bar's next-meeting item is redrawn from them every 30 seconds.
+-- With the world-clocks flag, ~/.config/omv/clocks is read each time the card opens, so an
+-- edit shows without a reload; its times tick in the card's page, only while it's open.
 
 local shell = require("shell")
 local card = require("card")
 local calendar = require("calendar")
 local agenda = require("agenda")
+local clocks = require("clocks")
 
 local feature = {}
 
 local AGENDA = hs.configdir .. "/agenda.sh"
+local CLOCKS_PATH = shell.HOME .. "/.config/omv/clocks"
 local CALENDAR_WIDTH = 360
 local AGENDA_REFRESH_SECONDS = 300
 local MEETING_REDRAW_SECONDS = 30
@@ -19,6 +23,7 @@ local agendaDay = nil
 local agendaText = nil
 local agendaTask = nil
 local meetingShown = nil
+local shownClocks = nil
 
 local function today()
   local now = os.date("*t")
@@ -29,9 +34,9 @@ local onCalendarMessage
 
 local function showCalendar()
   local now = os.time()
-  local frame = shell.anchored(CALENDAR_WIDTH, calendar.height(agendaDay, now), "clock")
+  local frame = shell.anchored(CALENDAR_WIDTH, calendar.height(agendaDay, now, shownClocks), "clock")
   local model = calendar.month(shown.year, shown.month, today())
-  shell.show("calendar", frame, calendar.html(model, today(), agendaDay, now), onCalendarMessage)
+  shell.show("calendar", frame, calendar.html(model, today(), agendaDay, now, shownClocks), onCalendarMessage)
 end
 
 local function drawMeeting()
@@ -83,6 +88,7 @@ end
 function feature.toggle()
   if shell.isOpen("calendar") then return shell.close() end
   shown = today()
+  shownClocks = feature.withClocks and clocks.parse(shell.readText(CLOCKS_PATH)) or nil
   showCalendar()
   readAgenda(redrawOpenCalendar)
 end
@@ -107,6 +113,9 @@ end
 
 -- Set by meeting mode, to hear which call was joined.
 feature.onJoin = nil
+
+-- Set by init.lua from the world-clocks flag.
+feature.withClocks = false
 
 function feature.openCall(link)
   shell.open({ link })()
