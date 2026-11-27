@@ -164,6 +164,10 @@ local function tick()
   local recording = current
   if not recording then return stopTicker() end
   if not recording.shown or recording.problem then return end
+  if dictation.finishOverdue(recording, now) then
+    if recording.task then recording.task:terminate() end
+    return finished(recording, recording.partial or "")
+  end
   ticks = ticks + 1
   if not recording.finishing then
     if ticks % FOCUS_TICKS == 0 then
@@ -192,7 +196,10 @@ local function record()
     recording.task = nil
     -- A cancelled helper can end after the next one started, which still listens.
     if not (current and current.task) then ownmic.set("dictation", false) end
-    if current == recording and not recording.finishing and not recording.problem then
+    if current ~= recording then return end
+    local next = dictation.onHelperExit(recording)
+    if next == "finish" then return finished(recording, recording.partial or "") end
+    if next == "hide" then
       current = nil
       dictationPill.hide()
     end

@@ -314,4 +314,13 @@ check.that("should redraw every other tick in silence", dictation.drawsThisTick(
   and not dictation.drawsThisTick({ bands = bands(0, 0.01, 0) }, 7))
 check.that("should redraw every tick while finishing", dictation.drawsThisTick({ finishing = true, bands = bands(0, 0, 0) }, 7))
 
+-- The helper ending.
+check.that("should finish with what was heard when the helper ends while finishing",
+  dictation.onHelperExit({ finishing = true, partial = "ship it" }) == "finish")
+check.that("should hide the pill when the helper ends while listening", dictation.onHelperExit({ partial = "ship it" }) == "hide")
+check.that("should leave a problem shown when the helper ends after it", dictation.onHelperExit({ finishing = true, problem = "x" }) == nil)
+check.that("should give up finishing after 15 s", dictation.finishOverdue({ finishing = true, stopped = 100 }, 115.1))
+check.that("should keep finishing before 15 s", not dictation.finishOverdue({ finishing = true, stopped = 100 }, 114))
+check.that("should not count a recording that isn't finishing as overdue", not dictation.finishOverdue({ stopped = 100 }, 200))
+
 check.finish()

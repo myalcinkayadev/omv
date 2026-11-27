@@ -199,6 +199,22 @@ function dictation.frameKey(recording, now)
     tostring(recording.problem), recording.partial or "" }, "\0")
 end
 
+-- What the helper ending does to recording, the one now: finish with the words heard so far
+-- when it ends while finishing without its final line, since the pill would otherwise wait on
+-- it forever; hide the pill when it ends while listening; nothing when a problem is shown,
+-- which hides itself.
+function dictation.onHelperExit(recording)
+  if recording.problem then return nil end
+  return recording.finishing and "finish" or "hide"
+end
+
+-- Whether finishing has taken too long: past FINISH_SECONDS, what was heard is used as it is.
+dictation.FINISH_SECONDS = 15
+
+function dictation.finishOverdue(recording, now)
+  return recording.finishing == true and recording.stopped ~= nil and now - recording.stopped > dictation.FINISH_SECONDS
+end
+
 -- One line from the helper, "kind<tab>value": { kind, text | percent | level | problem },
 -- or nil for a line it doesn't know.
 function dictation.parse(line)
