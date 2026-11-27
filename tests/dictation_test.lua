@@ -293,4 +293,20 @@ check.that("should learn a noisy room's level as its floor", dictation.gain(nois
 
 check.that("should draw three curves at 1, 0.5 and 0.25 brightness", #loud == 3 and loud[1].alpha == 1 and loud[2].alpha == 0.5 and loud[3].alpha == 0.25)
 
+-- Redrawing: the whole pill only when its text changes, else only the wave moves.
+local base = { started = 100, app = "Zed", partial = "hello", bands = bands(0.2, 0.2, 0.2), phases = { 1, 1, 1 } }
+local function with(changes)
+  local copy = {}
+  for key, value in pairs(base) do copy[key] = value end
+  for key, value in pairs(changes) do copy[key] = value end
+  return copy
+end
+check.that("should keep the frame's text when only the wave moves",
+  dictation.frameKey(base, 105.2) == dictation.frameKey(with({ bands = bands(1, 1, 1), phases = { 2, 3, 4 } }), 105.6))
+check.that("should change the frame's text when the timer ticks", dictation.frameKey(base, 105.2) ~= dictation.frameKey(base, 106.1))
+check.that("should change the frame's text when words come", dictation.frameKey(base, 105) ~= dictation.frameKey(with({ partial = "hello there" }), 105))
+check.that("should change the frame's text when the app changes", dictation.frameKey(base, 105) ~= dictation.frameKey(with({ app = "Slack" }), 105))
+check.that("should change the frame's text when it locks", dictation.frameKey(base, 105) ~= dictation.frameKey(with({ locked = true }), 105))
+check.that("should draw a curve point every 4 pt", #wave({ bands = bands(1, 1, 1) })[1].points == 200 / 4 + 1)
+
 check.finish()

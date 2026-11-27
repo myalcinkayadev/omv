@@ -190,6 +190,15 @@ function dictation.header(recording, now)
   return { icon = icon, live = not recording.finishing, status = status, timer = timer, warning = warning, target = target }
 end
 
+-- What the pill shows besides its wave and live dot, as one string: the pill is rebuilt only
+-- when it changes, and between, only the wave and the dot move, which costs a third as much.
+function dictation.frameKey(recording, now)
+  local header = dictation.header(recording, now)
+  return table.concat({ header.icon, header.status, header.timer, tostring(header.warning), header.target.kind, header.target.name,
+    tostring(recording.locked), tostring(recording.finishing), tostring(recording.ready), tostring(recording.percent),
+    tostring(recording.problem), recording.partial or "" }, "\0")
+end
+
 -- One line from the helper, "kind<tab>value": { kind, text | percent | level | problem },
 -- or nil for a line it doesn't know.
 function dictation.parse(line)
@@ -437,7 +446,7 @@ end
 -- speed, brightness and stroke.
 local CURVES = { { band = "mid", cycles = 1.6, speed = 1, alpha = 1, stroke = 2 }, { band = "low", cycles = 2.3, speed = -1.4, alpha = 0.5, stroke = 1.5 },
   { band = "high", cycles = 3.2, speed = 1.9, alpha = 0.25, stroke = 1.2 } }
-local RIPPLE, RISE, FINISHING_HEIGHT, CENTER_Y, STEP = 1.5, 9.5, 2.5, 25, 2
+local RIPPLE, RISE, FINISHING_HEIGHT, CENTER_Y, STEP = 1.5, 9.5, 2.5, 25, 4
 -- How far the hump moves from the middle, as a part of the strip, for pure hum or pure hiss.
 local SWAY = 0.3
 

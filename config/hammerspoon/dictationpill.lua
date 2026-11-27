@@ -22,6 +22,9 @@ local function color(hex, alpha)
 end
 
 local pill = nil
+-- The pill drawn last: its dictation.frameKey, frame, chip width, and where its wave's curves
+-- and live dot are among its elements, so a frame whose text is the same only moves those.
+local drawn = nil
 -- Hides the confirmation; stopped when the pill is drawn again before it fires.
 local hideLater = nil
 
@@ -99,6 +102,19 @@ local function meter(elements, recording, chipWidth, tokens)
   end
 end
 
+local function pulseOf(recording, now)
+  return recording.reduceMotion and 1 or (0.55 + 0.45 * math.abs(math.sin(now * 3)))
+end
+
+-- Moves only the wave and the live dot of the pill drawn last.
+local function moveWave(recording, now)
+  for index, curve in ipairs(dictation.wave(recording, dictation.meterLayout(drawn.chipWidth))) do
+    if drawn.curves[index] then pill[drawn.curves[index]].coordinates = curve.points end
+  end
+  if drawn.dot then pill[drawn.dot].fillColor = color(LIVE, pulseOf(recording, now)) end
+  return drawn.frame
+end
+
 local function card(tokens, border, height)
   return { type = "rectangle", action = "strokeAndFill", fillColor = color(tokens.bg), roundedRectRadii = { xRadius = 14, yRadius = 14 },
     strokeColor = color(border), strokeWidth = 2, frame = { x = 0, y = 0, w = WIDTH, h = height } }
@@ -116,6 +132,8 @@ function dictationPill.draw(recording)
       text(recording.problem, 14, tokens.fg, { x = STATUS_X, y = CENTER_Y - 10, w = WIDTH - STATUS_X - 18, h = 22 }),
     }, 52)
   end
+  local key = dictation.frameKey(recording, now)
+  if drawn and drawn.key == key and pill and pill:isShowing() then return moveWave(recording, now) end
   local header = dictation.header(recording, now)
   local words, hint, download = body(recording)
   local all = dictation.wrap(words, LINE_CHARACTERS)
@@ -124,18 +142,22 @@ function dictationPill.draw(recording)
   local border = header.target.kind == "password" and WARNING or (recording.locked and tokens.fg or tokens.accent)
   local dim = recording.finishing and tokens.accent or tokens.fg
   local elements = { card(tokens, border, height), text(ICONS[header.icon], 20, dim, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }) }
+  local dot = nil
   if header.live then
-    local pulse = recording.reduceMotion and 1 or (0.55 + 0.45 * math.abs(math.sin(now * 3)))
-    elements[#elements + 1] = { type = "circle", action = "strokeAndFill", fillColor = color(LIVE, pulse), strokeColor = color(tokens.bg),
-      strokeWidth = 2, center = { x = ICON_X + 19, y = CENTER_Y - 10 }, radius = 4.5 }
+    elements[#elements + 1] = { type = "circle", action = "strokeAndFill", fillColor = color(LIVE, pulseOf(recording, now)),
+      strokeColor = color(tokens.bg), strokeWidth = 2, center = { x = ICON_X + 19, y = CENTER_Y - 10 }, radius = 4.5 }
+    dot = #elements
   end
   local chipWidth = chip(elements, header, recording, tokens)
+  local curves = {}
   if download then
     elements[#elements + 1] = text(download, 13, tokens.fg, { x = STATUS_X, y = CENTER_Y - 9, w = WIDTH - 18 - chipWidth - 10 - STATUS_X, h = 18 })
   else
     elements[#elements + 1] = text(header.status, 14, dim, { x = STATUS_X, y = CENTER_Y - 10, w = TIMER_X - STATUS_X - 6, h = 22 })
     elements[#elements + 1] = text(header.timer, 13, header.warning and WARNING or tokens.accent, { x = TIMER_X, y = CENTER_Y - 9, w = 44, h = 18 })
+    local first = #elements + 1
     meter(elements, recording, chipWidth, tokens)
+    for index = first, #elements do curves[#curves + 1] = index end
   end
   elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(tokens.fg, 0.12), frame = { x = 16, y = RULE_Y, w = WIDTH - 32, h = 1 } }
   -- Past four lines, the oldest shown fades, as the newest words push it up.
@@ -145,7 +167,9 @@ function dictationPill.draw(recording)
       text = hs.styledtext.new(line, { font = { name = FONT, size = 14 }, color = color(tokens.fg, faded and 0.45 or 1) }) }
   end
   elements[#elements + 1] = text(hint, 11, recording.secure and WARNING or tokens.fg, { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
-  return dictationPill.show(elements, height)
+  local frame = dictationPill.show(elements, height)
+  drawn = { key = key, frame = frame, chipWidth = chipWidth, curves = curves, dot = dot }
+  return frame
 end
 
 -- After the words went somewhere: delivery { kind, message, hint } from dictation.delivery,
@@ -166,6 +190,7 @@ function dictationPill.confirm(delivery)
 end
 
 function dictationPill.show(elements, height)
+  drawn = nil
   if hideLater then hideLater:stop() end
   hideLater = nil
   if not pill then
@@ -177,6 +202,7 @@ function dictationPill.show(elements, height)
 end
 
 function dictationPill.hide()
+  drawn = nil
   if pill then pill:hide() end
 end
 
