@@ -31,26 +31,24 @@ make_repo() {
   : > "$SANDBOX/dirty"
   echo main > "$SANDBOX/branch"
   echo aaa111 > "$SANDBOX/head"
-  own_stub git
-  cat > "$STUB_DIR/git" <<STUB
+  shared_stub git <<'STUB'
 #!/bin/sh
-echo "git \$*" >> "$CALL_LOG"
-[ "\$1" = -C ] && shift 2
-case "\$*" in
-  "status --porcelain") cat "$SANDBOX/dirty" ;;
-  "rev-parse --abbrev-ref HEAD") cat "$SANDBOX/branch" ;;
-  "rev-parse HEAD") cat "$SANDBOX/head" ;;
+echo "git $*" >> "$CALL_LOG"
+[ "$1" = -C ] && shift 2
+case "$*" in
+  "status --porcelain") cat "${CALL_LOG%/*}/dirty" ;;
+  "rev-parse --abbrev-ref HEAD") cat "${CALL_LOG%/*}/branch" ;;
+  "rev-parse HEAD") cat "${CALL_LOG%/*}/head" ;;
   "pull --ff-only")
-    [ -f "$SANDBOX/pull-fails" ] && exit 1
-    [ -f "$SANDBOX/up-to-date" ] || echo bbb222 > "$SANDBOX/head"
-    [ -x "$SANDBOX/on-pull" ] && "$SANDBOX/on-pull"
+    [ -f "${CALL_LOG%/*}/pull-fails" ] && exit 1
+    [ -f "${CALL_LOG%/*}/up-to-date" ] || echo bbb222 > "${CALL_LOG%/*}/head"
+    [ -x "${CALL_LOG%/*}/on-pull" ] && "${CALL_LOG%/*}/on-pull"
     ;;
-  "reset --hard "*) echo "\$3" > "$SANDBOX/head" ;;
-  "log -1 --format=%h %cs") echo "\$(cat "$SANDBOX/head") 2026-11-15" ;;
+  "reset --hard "*) echo "$3" > "${CALL_LOG%/*}/head" ;;
+  "log -1 --format=%h %cs") echo "$(cat "${CALL_LOG%/*}/head") 2026-11-15" ;;
 esac
 exit 0
 STUB
-  chmod +x "$STUB_DIR/git"
   stub hs
   answer_hammerspoon_config "$REPO/config/hammerspoon/init.lua"
 }

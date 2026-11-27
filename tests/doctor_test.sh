@@ -11,67 +11,58 @@ readonly CONFIG_PACKAGES='sketchybar swipeaerospace ghostty nvim btop'
 complete_setup() {
   local name
   for name in borders gh mo m1ddc nightlight tmux; do stub "$name"; done
-  own_stub hs
-  cat > "$STUB_DIR/hs" <<STUB
+  shared_stub hs <<'STUB'
 #!/bin/sh
-echo "hs \$*" >> "$CALL_LOG"
+echo "hs $*" >> "$CALL_LOG"
 echo function
 STUB
   # defaults answers from $SANDBOX/defaults, lines of "<domain> <key> <value>".
-  own_stub defaults
-  cat > "$STUB_DIR/defaults" <<STUB
+  shared_stub defaults <<'STUB'
 #!/bin/sh
-echo "defaults \$*" >> "$CALL_LOG"
-[ "\$1" = -currentHost ] && shift
-[ "\$1" = read ] || exit 0
-awk -v d="\$2" -v k="\$3" '\$1 == d && \$2 == k { print \$3; found = 1 } END { exit !found }' "$SANDBOX/defaults"
+echo "defaults $*" >> "$CALL_LOG"
+[ "$1" = -currentHost ] && shift
+[ "$1" = read ] || exit 0
+awk -v d="$2" -v k="$3" '$1 == d && $2 == k { print $3; found = 1 } END { exit !found }' "${CALL_LOG%/*}/defaults"
 STUB
   # ps lists $SANDBOX/ps, lines of "<pid> <etime> <command>", then one bar per pid in
   # $SANDBOX/bars.
-  own_stub ps
-  cat > "$STUB_DIR/ps" <<STUB
+  shared_stub ps <<'STUB'
 #!/bin/sh
-cat "$SANDBOX/ps"
-while read -r pid; do echo "\$pid 1-00:00:00 /opt/homebrew/bin/sketchybar"; done < "$SANDBOX/bars"
+cat "${CALL_LOG%/*}/ps"
+while read -r pid; do echo "$pid 1-00:00:00 /opt/homebrew/bin/sketchybar"; done < "${CALL_LOG%/*}/bars"
 STUB
   : > "$SANDBOX/ps"
   # pgrep finds every process. Like the real one, -x sketchybar matches the bars in
   # $SANDBOX/bars (one by default) and any sketchybar command, such as --query, in $SANDBOX/ps.
-  own_stub pgrep
-  cat > "$STUB_DIR/pgrep" <<STUB
+  shared_stub pgrep <<'STUB'
 #!/bin/sh
-echo "pgrep \$*" >> "$CALL_LOG"
-if [ "\$*" = "-x sketchybar" ]; then
-  cat "$SANDBOX/bars"
-  awk '{ name = \$3; sub(".*/", "", name); if (name == "sketchybar") print \$1 }' "$SANDBOX/ps"
+echo "pgrep $*" >> "$CALL_LOG"
+if [ "$*" = "-x sketchybar" ]; then
+  cat "${CALL_LOG%/*}/bars"
+  awk '{ name = $3; sub(".*/", "", name); if (name == "sketchybar") print $1 }' "${CALL_LOG%/*}/ps"
 fi
-[ "\$*" = "-x Hammerspoon" ] && [ -f "$SANDBOX/no-hammerspoon" ] && exit 1
-[ "\$*" = "-x SwipeAeroSpace" ] && [ -f "$SANDBOX/no-swipe" ] && exit 1
+[ "$*" = "-x Hammerspoon" ] && [ -f "${CALL_LOG%/*}/no-hammerspoon" ] && exit 1
+[ "$*" = "-x SwipeAeroSpace" ] && [ -f "${CALL_LOG%/*}/no-swipe" ] && exit 1
 exit 0
 STUB
   echo 500 > "$SANDBOX/bars"
   # pkill stops what it names: the bars are gone, and Hammerspoon is.
-  own_stub pkill
-  cat > "$STUB_DIR/pkill" <<STUB
+  shared_stub pkill <<'STUB'
 #!/bin/sh
-echo "pkill \$*" >> "$CALL_LOG"
-[ "\$*" = "-x sketchybar" ] && : > "$SANDBOX/bars"
-[ "\$*" = "-x Hammerspoon" ] && touch "$SANDBOX/no-hammerspoon"
+echo "pkill $*" >> "$CALL_LOG"
+[ "$*" = "-x sketchybar" ] && : > "${CALL_LOG%/*}/bars"
+[ "$*" = "-x Hammerspoon" ] && touch "${CALL_LOG%/*}/no-hammerspoon"
 exit 0
 STUB
-  chmod +x "$STUB_DIR/pkill"
   # The bar answers --query bar, unless $SANDBOX/silent-bar says it has stopped answering.
-  own_stub sketchybar
-  cat > "$STUB_DIR/sketchybar" <<STUB
+  shared_stub sketchybar <<'STUB'
 #!/bin/sh
-echo "sketchybar \$*" >> "$CALL_LOG"
-[ "\$*" = "--query bar" ] && [ ! -f "$SANDBOX/silent-bar" ] && echo '{"hidden":"off"}'
+echo "sketchybar $*" >> "$CALL_LOG"
+[ "$*" = "--query bar" ] && [ ! -f "${CALL_LOG%/*}/silent-bar" ] && echo '{"hidden":"off"}'
 exit 0
 STUB
-  chmod +x "$STUB_DIR/sketchybar"
   stub kill
   stub nohup
-  chmod +x "$STUB_DIR/hs" "$STUB_DIR/defaults" "$STUB_DIR/ps" "$STUB_DIR/pgrep"
   cat > "$SANDBOX/defaults" <<EOF
 NSGlobalDomain _HIHideMenuBar 1
 com.apple.spaces spans-displays 1

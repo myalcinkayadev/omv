@@ -64,6 +64,22 @@ remove_stub() {
   rm -f "$STUB_DIR/$1" "$SANDBOX/exits/$1"
 }
 
+# Makes name's stub the script on stdin, one file shared by every case in this test file
+# that gives the same script, so macOS checks it once. The script finds the case's sandbox
+# when it runs, as ${CALL_LOG%/*}, instead of having a sandbox's path written into it.
+shared_stub() {
+  local name=$1 script file
+  script=$(cat)
+  file=$SHARED_STUB_DIR/own/$name.$(printf '%s' "$script" | cksum | tr ' ' '-')
+  if [ ! -f "$file" ]; then
+    mkdir -p "$SHARED_STUB_DIR/own"
+    printf '%s\n' "$script" > "$file"
+    chmod 555 "$file"
+  fi
+  remove_stub "$name"
+  ln -s "$file" "$STUB_DIR/$name"
+}
+
 # Makes name's stub an empty executable file of the case's own, for the case to write its
 # script into; writing through the link would reach the shared stub.
 own_stub() {

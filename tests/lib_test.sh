@@ -82,6 +82,38 @@ logs_blocked_real_command() {
   assert_called '^blocked defaults write com.example key 1$'
 }
 
+answering_stub() {
+  shared_stub gh <<'STUB'
+#!/bin/sh
+cat "${CALL_LOG%/*}/answer"
+STUB
+}
+
+runs_shared_stub_in_its_case() {
+  echo "case answer" > "$SANDBOX/answer"
+  answering_stub
+  [ "$(run_in_sandbox gh)" = "case answer" ] || fail "the stub didn't read this case's sandbox"
+}
+
+reuses_one_file_for_one_script() {
+  local output
+  output=$(run_with_harness 'first() { answering_stub; readlink "$STUB_DIR/gh" > "$SHARED_STUB_DIR/first"; }; second() { answering_stub; [ "$(readlink "$STUB_DIR/gh")" = "$(cat "$SHARED_STUB_DIR/first")" ]; }; '"$(declare -f answering_stub)"'; run_case first first; run_case second second')
+  [[ $output == *'ok   - second'* ]] || fail "two cases got two files: $output"
+}
+
+keeps_two_scripts_apart() {
+  answering_stub
+  local first
+  first=$(readlink "$STUB_DIR/gh")
+  printf '#!/bin/sh\nexit 4\n' | shared_stub gh
+  [ "$(readlink "$STUB_DIR/gh")" != "$first" ] || fail "a different script reused the first one's file"
+}
+
+refuses_writes_through_shared_own_stub() {
+  answering_stub
+  ! (echo 'exit 9' > "$STUB_DIR/gh") 2>/dev/null || fail "a write through the link changed the shared script"
+}
+
 refuses_writes_through_shared_stub() {
   ! (echo 'exit 9' > "$STUB_DIR/aerospace") 2>/dev/null || fail "a write through the link changed the shared stub"
 }
@@ -99,4 +131,8 @@ run_case "should keep a stub's exit code out of the next case" keeps_stubs_to_th
 run_case 'should refuse a write through a stub link to the shared stub' refuses_writes_through_shared_stub
 run_case "should block the real pkill when a case's own stub isn't executable" blocks_real_command_behind_broken_stub
 run_case 'should log a blocked call when a system command has no stub' logs_blocked_real_command
+run_case "should run a shared stub against the sandbox of the case that runs it" runs_shared_stub_in_its_case
+run_case 'should reuse one file when two cases give the same script' reuses_one_file_for_one_script
+run_case 'should keep two different scripts of one name apart' keeps_two_scripts_apart
+run_case "should refuse a write through a shared stub's link" refuses_writes_through_shared_own_stub
 finish
