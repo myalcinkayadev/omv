@@ -39,9 +39,11 @@ fi
 
 # Auto-update would run `brew update` first, which fetches from GitHub; the hints and
 # analytics are of no use to a script.
-# Started from SketchyBar, brew crashes every time ("undefined method 'exitstatus' for nil",
-# when it waits on a command of its own), while the same call through perl's exec works every
-# time; why that helps isn't known: not the inherited files, nor SIGCHLD as perl sees it.
+# SketchyBar runs its scripts with SIGCHLD ignored, and an ignored signal stays ignored across
+# exec, so brew's Ruby can't collect a finished command: Ruby's $? comes back as pid -1, and
+# brew crashes with "undefined method 'exitstatus' for nil". sh can't undo that, since a signal
+# ignored when a shell starts can't be trapped; perl sets SIGCHLD back to default as it starts,
+# so brew run through perl's exec gets its default back.
 count_outdated() {
   HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_ANALYTICS=1 \
     perl -e 'exec @ARGV' "$brew" outdated --quiet 2>/dev/null
