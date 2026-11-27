@@ -1026,6 +1026,8 @@ Memory, measured on a MacBook Pro (M3 Pro, 18 GB) with everything running and no
 - borders draws the focus outline at 1x (`hidpi=off`). At 2x it took 149–209 MB for an outline that looks the same.
 - The cards are drawn by one WebKit view that is made once and hidden between uses. WebKit runs it in a process of its own, which isn't in the table.
 - The helpers run only when needed: "omv agenda" for a moment every 5 minutes, and "omv meter" only while the Sound card is open.
+- The bar watchdog asks macOS about SketchyBar every 10 seconds without starting a process, about 0.06 ms a check; with it, Hammerspoon idles at 0.42% of one core, as it did without it.
+- While dictation's pill shows, Hammerspoon uses about a fifth of one core, 18.8% in a test of half speech and half silence, most of it macOS repainting the wave 20 times a second; it's nothing once the pill hides.
 
 The features that start off cost little once turned on. Measured on a MacBook Pro (M3 Pro) with all six on:
 
