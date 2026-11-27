@@ -59,7 +59,7 @@ FEATURE_FLAGS = {
 BAR_ITEM_FLAGS = {
     "now_playing": "now-playing", "battery": "battery", "volume": "sound", "bluetooth": "bluetooth",
     "wifi": "network", "ethernet": "network", "weather": "weather", "keep_awake": "keep-awake",
-    "disk": "disk", "clipboard_paused": "clipboard", "nightlight": "night-light", "mic_muted": "mic-mute",
+    "disk": "disk", "system_load": "system-load", "clipboard_paused": "clipboard", "nightlight": "night-light", "mic_muted": "mic-mute",
     "tailscale": "tailscale", "focus": "focus", "recording": "capture", "claude_waiting": "claude",
     "claude_usage": "claude", "github_prs": "github-prs", "github_ci": "github-ci", "reminder": "reminders", "meeting": "calendar",
     "brew_outdated": "brew-outdated",

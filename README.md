@@ -72,7 +72,7 @@ Before you trust it:
 - [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell on a workspace of their own, a new task in a git worktree, or a grid of agents.
 - [**Share with AirDrop**](#share-with-airdrop): the files selected in Finder, or what you copied, in one key.
 - [**Translate**](#translate): Option+Y translates the selected text with Apple on the Mac, DeepL or Claude, and pastes it over the selection.
-- [**Smaller tools**](#smaller-tools): keep the Mac awake, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
+- [**Smaller tools**](#smaller-tools): keep the Mac awake, CPU and memory in the bar while the Mac is busy, copy the browser's URL, a drop-down terminal, and notifications when long commands finish.
 - [**Feature flags**](#feature-flags): turn off any feature you don't use, with its key, card and bar item.
 - [**Doctor**](#doctor): `omv doctor` checks the tools, links, running services and settings, and says how to fix whatever is wrong.
 
@@ -123,6 +123,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Claude | The 5-hour usage limit, as `5h 23%` | Open the [Agents card](#agents) | |
 | Waiting Claude | A white pill right of Claude's limit, `omv`, while a Claude Code session waits for you, or `? omv` while it asks for approval, plus `+N` for others | Go to that session's terminal, or pick one when several wait | |
 | Outdated packages | How many Homebrew packages `brew outdated` lists, with [`brew-outdated`](#feature-flags) on | Run `brew upgrade` in a new Ghostty window; see [Smaller tools](#smaller-tools) | |
+| System load | `CPU 92%` past 80% of all cores, and `mem high` or `mem critical` under memory pressure, only while busy; off unless the `system-load` flag is on | Open [hungry processes](#smaller-tools) | |
 | Disk | Free space on the startup disk, only while it's under 20 GB or under 10% | Open the [Disk card](#disk) | |
 | Keep-awake | A crossed-out Zzz, while keep-awake is on | Turn it off | |
 | Weather | Condition and temperature, where the Mac is | Open the [weather card](#weather) | |
@@ -133,7 +134,7 @@ While Music or Spotify plays, the track follows as `Artist — Title`, cut at 40
 | Battery | Charge | Open the [Battery card](#battery) | |
 | Clock | Date and time, as `Sun Nov 8 12:09` | Open the [calendar](#calendar-and-todays-events) | |
 
-**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, low disk space, outdated packages, the waiting Claude, the pull request count, the failing checks, the reminder and the status icons always stay, and everything comes back once there's room.
+**Clear of the notch:** when the right side gets too full, items give way in this order until it fits: Claude's limit (its logo stays), then the meeting's time (its icon stays), then the weather's temperature (its icon stays), then the Claude logo. Keep-awake, low disk space, outdated packages, a busy CPU or memory, the waiting Claude, the pull request count, the failing checks, the reminder and the status icons always stay, and everything comes back once there's room.
 
 **Claude usage** shows the 5-hour limit: gray under 70%, white from 70%, and a white pill from 90%. The 7-day limit is in the [Agents card](#agents).
 
@@ -664,6 +665,7 @@ While a recording runs, the bar shows `rec`; click it, or press Option+Shift+S a
 - **Hungry processes (Option+Shift+P):** your 20 busiest processes by CPU, by memory after Tab, or your listening TCP ports after a second Tab, as `:3000  node  ~/workspace/app`, each with the folder it runs in, so a dev server or build an agent left behind is easy to spot. Type to filter, and Enter asks, then quits it. A process still running 3 seconds later is offered Force quit. Only your own processes are listed, never `loginwindow`, `launchd` or Hammerspoon.
 
   <img src="docs/procs.png" alt="Hungry processes: vite in ~/work/site at 85.7% CPU first, then Music, claude in ~/work/omv, Zed, Helium and btop, each with CPU and memory" width="720">
+- **System load in the bar:** off unless turned on with `omv flags system-load on`. The bar then shows `CPU 92%` while all processes together use over 80% of every core, `mem high` or `mem critical` while macOS reports memory pressure, or both, as `CPU 92%, mem high`. It stays hidden the rest of the time, and when `ps` or `sysctl` fails. It's checked every 10 seconds with one `ps` and one `sysctl`, and the bar is only touched when the text changes. A click opens hungry processes, which needs the `processes` flag on.
 - **Clipboard history (Option+V):** the text you copied in the last day, at most 50, and the last 20 images, newest first; an image shows as a small preview with its size. Type to filter, and Enter pastes it where you were typing, as [snippets](#snippets) do, and leaves it on the clipboard. Without Accessibility for Hammerspoon, it's only copied, for you to paste with Cmd+V. It's kept in memory only, so a reload forgets it. Secrets are never kept: copies password managers mark as concealed, copies made while 1Password, Bitwarden, Passwords or Keychain Access is in front, and text shaped like a key or token (`sk-…`, `ghp_…`, `AKIA…`, a JWT, a private key, or a `KEY=`, `TOKEN=`, `SECRET=` or `PASSWORD=` line). Text and images are kept, never files. **Pause history** and **Clear history** are the card's first rows; while paused, the bar shows `paused`, and a click on it turns history back on. A secret with no recognizable shape is still kept, so pause the history for sensitive work.
 
   <img src="docs/clipboard.png" alt="Clipboard history: Pause history and Clear history, then five copies newest first, each with its app and age" width="720">
@@ -725,6 +727,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `file-search` | **off unless turned on:** recent files in the palette; see [Palette](#palette) |
 | `brew-outdated` | **off unless turned on:** the count of outdated Homebrew packages in the bar, and `brew upgrade` on a click; see [Smaller tools](#smaller-tools) |
 | `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
+| `system-load` | **off unless turned on:** CPU and memory in the bar, only while the Mac is busy; see [Smaller tools](#smaller-tools) |
 | `stalls` | **off unless turned on:** writes each time Hammerspoon freezes for over a quarter of a second, with the card showing, to `~/.local/state/omv/stalls.log`, and every 10 minutes its Lua memory and the background commands still running |
 
 ## Keys

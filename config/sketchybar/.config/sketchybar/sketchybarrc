@@ -161,6 +161,15 @@ if omv_flag_on brew-outdated; then
     --subscribe brew_outdated brew_outdated_change system_woke mouse.clicked
 fi
 
+if omv_flag_on system-load; then
+  # Hidden while the Mac keeps up; shows the CPU share past 80% of all cores, or memory
+  # pressure at warn or critical. Sits left of the disk. Clicking it opens hungry processes.
+  sketchybar --add item system_load right \
+    --set system_load drawing=off icon=󰍛 icon.padding_right=3 label.padding_left=3 update_freq=10 \
+      script="$PLUGIN_DIR/system_load.sh" \
+    --subscribe system_load system_woke mouse.clicked
+fi
+
 if omv_flag_on clipboard; then
   # Shown only while clipboard history is paused, so a pause is never forgotten. Hammerspoon
   # sets it; clicking it turns history back on.
