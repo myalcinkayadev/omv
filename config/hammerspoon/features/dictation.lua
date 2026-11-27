@@ -1,6 +1,7 @@
--- Dictation: hold Right Option alone to talk, release to type it at the cursor; tap it twice
--- to talk hands-free, once more to type. A pill at the bottom of the screen shows what's
--- heard; Esc cancels. Heard on the Mac by dictate.sh; dictation.lua holds the rules. Off
+-- Dictation: hold Right Option alone to talk, release to type it at the cursor, or release
+-- with Shift to only copy it; tap it twice to talk hands-free, once more to type, and it types
+-- by itself after 30 s of silence. A pill at the bottom of the screen shows what's heard and
+-- where it goes; Esc cancels. Heard on the Mac by dictate.sh; dictation.lua holds the rules. Off
 -- unless turned on with omv flags dictation on. The Dictation card, in the System menu, sets
 -- the language and the sounds in ~/.config/omv/dictation.
 
@@ -19,9 +20,13 @@ local START_SOUND, END_SOUND = "Tink", "Pop"
 local keys = dictation.keys()
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
--- The recording now: { task, locale, started, ready, partial, history, shownLevel, percent, shown, locked, finishing }.
+-- The recording now: { task, locale, started, ready, partial, history, shownLevel, percent,
+-- shown, locked, finishing, review, auto, app, appIcon, secure, startApp, left }.
 local current = nil
+-- The last dictations, newest first, each { text, app, at }.
 feature.recent = {}
+-- Whether macOS's Reduce Motion is on, read at load.
+local reduceMotion = false
 
 local function settings()
   return shell.readText(dictation.PATH)
@@ -52,9 +57,31 @@ local function runSteps(steps, index)
   runSteps(steps, index + 1)
 end
 
-local function typeText(value)
-  local hasWindow = hs.accessibilityState() and hs.window.focusedWindow() ~= nil
-  runSteps(dictation.pasteSteps(value, shell.saveClipboard(), hs.eventtap.isSecureInputEnabled(), hasWindow))
+-- App icons by bundle id, read once each, since the pill asks every tick.
+local icons = {}
+
+local function iconOf(bundle)
+  if not bundle then return nil end
+  if icons[bundle] == nil then icons[bundle] = hs.image.imageFromAppBundle(bundle) or false end
+  return icons[bundle] or nil
+end
+
+-- The app you're typing in now: its name and icon, and whether its field is a password one.
+local function focus()
+  local app = hs.application.frontmostApplication()
+  return { app = app and app:name() or "", appIcon = iconOf(app and app:bundleID()),
+    secure = hs.eventtap.isSecureInputEnabled(), hasWindow = hs.accessibilityState() and hs.window.focusedWindow() ~= nil }
+end
+
+-- Types or copies text as dictation.delivery decides from info and where you are now, and
+-- says which in the pill; gives the app it went to.
+local function deliver(value, info, dropped)
+  local now = focus()
+  info.secure, info.hasWindow, info.app = now.secure, now.hasWindow, now.app
+  local delivery = dictation.delivery(info, value, dropped)
+  runSteps(dictation.pasteSteps(value, shell.saveClipboard(), delivery.kind))
+  dictationPill.confirm(delivery)
+  return now.app
 end
 
 local ticker = nil
@@ -67,11 +94,15 @@ end
 local function finished(recording, final)
   if current ~= recording then return end
   current = nil
-  dictationPill.hide()
-  local outcome = dictation.outcome(final)
-  if outcome.kind == "notice" then return shell.alert(outcome.text, 1.2) end
-  feature.recent = dictation.remember(feature.recent, outcome.text)
-  typeText(outcome.text)
+  local text, dropped = final, 0
+  if dictation.cleanupOn(settings()) then text, dropped = dictation.clean(final) end
+  local outcome = dictation.outcome(text)
+  if outcome.kind == "notice" then
+    dictationPill.hide()
+    return shell.alert(outcome.text, 1.2)
+  end
+  local app = deliver(outcome.text, { review = recording.review, auto = recording.auto, startApp = recording.startApp }, dropped)
+  feature.recent = dictation.remember(feature.recent, { text = outcome.text, app = app, at = os.time() })
 end
 
 local function showProblem(recording, problem)
@@ -90,7 +121,9 @@ local function onOutput(recording, chunk)
     local message = dictation.parse(line)
     if message and message.kind == "partial" then recording.partial = message.text
     elseif message and message.kind == "level" then
-      recording.shownLevel = dictation.smooth(recording.shownLevel or 0, dictation.levelOf(message.level))
+      local level = dictation.levelOf(message.level)
+      if dictation.isVoice(level) then dictation.press(keys, "voice", hs.timer.secondsSinceEpoch()) end
+      recording.shownLevel = dictation.smooth(recording.shownLevel or 0, level)
       recording.history = dictation.pushLevel(recording.history or {}, recording.shownLevel)
     elseif message and message.kind == "progress" then recording.percent = message.percent
     elseif message and message.kind == "problem" then return showProblem(recording, message.problem)
@@ -98,7 +131,6 @@ local function onOutput(recording, chunk)
     elseif line == "ready\t" or line == "ready" then recording.ready = true end
   end
   recording.buffer = recording.buffer:match("([^\n]*)$")
-  if recording.shown and not recording.finishing then dictationPill.draw(recording) end
 end
 
 local function send(recording, word)
@@ -114,11 +146,30 @@ local function cancel()
   dictationPill.hide()
 end
 
+-- Each tick: the key's timers, where the words would go now, the countdown, and the pill.
+local function tick()
+  local now = hs.timer.secondsSinceEpoch()
+  if keys.phase ~= "idle" then
+    local action = dictation.press(keys, "tick", now)
+    if action then feature.act(action) end
+  end
+  local recording = current
+  if not recording then return stopTicker() end
+  if not recording.shown or recording.problem then return end
+  if not recording.finishing then
+    local here = focus()
+    recording.app, recording.appIcon, recording.secure = here.app, here.appIcon, here.secure
+    recording.left = dictation.remaining(keys, now)
+  end
+  dictationPill.draw(recording)
+end
+
 local function record()
   if current then cancel() end
+  stopTicker()
   local language = locale()
   local engine = dictation.engine(language, lists)
-  local recording = { locale = language, started = hs.timer.secondsSinceEpoch(), history = {} }
+  local recording = { locale = language, started = hs.timer.secondsSinceEpoch(), history = {}, reduceMotion = reduceMotion }
   current = recording
   if not engine then
     recording.shown = true
@@ -135,37 +186,41 @@ local function record()
   end, function(_, out)
     onOutput(recording, out)
     return true
-  end, { "listen", language, engine })
+  end, { "listen", language, engine, table.concat(dictation.words(settings()), "|") })
   -- Before the helper opens the mic, so the in-use dot never takes it for another app's.
   ownmic.set("dictation", true)
   recording.task:start()
-  ticker = hs.timer.doEvery(TICK_SECONDS, function()
-    local action = dictation.press(keys, "tick", hs.timer.secondsSinceEpoch())
-    if action then feature.act(action) end
-    if current and current.shown and current.locked then dictationPill.draw(current) end
-    if keys.phase == "idle" then stopTicker() end
-  end)
+  ticker = hs.timer.doEvery(TICK_SECONDS, tick)
 end
 
 local function show(locked)
   if not current then return end
+  local here = focus()
   current.shown, current.locked = true, locked
+  current.app, current.appIcon, current.secure = here.app, here.appIcon, here.secure
+  -- A locked one that types by itself only types into the app it started in.
+  if locked then current.startApp = here.app end
   play(START_SOUND)
   dictationPill.draw(current)
 end
 
-local function finish()
-  stopTicker()
+-- Ends the recording; how says what then happens to the words: review only copies them,
+-- auto is a locked one that ended by itself.
+local function finish(how)
   local recording = current
   if not recording then return end
   if not recording.shown then return cancel() end
-  recording.finishing = true
+  recording.finishing, recording.stopped, recording.left = true, hs.timer.secondsSinceEpoch(), nil
+  recording.review, recording.auto = how == "review", how == "auto"
   play(END_SOUND)
   dictationPill.draw(recording)
   send(recording, "stop")
 end
 
-local ACTIONS = { record = record, show = function() show(false) end, lock = function() show(true) end, finish = finish, cancel = cancel }
+local ACTIONS = {
+  record = record, show = function() show(false) end, lock = function() show(true) end, cancel = cancel,
+  finish = function() finish() end, review = function() finish("review") end, timeout = function() finish("auto") end,
+}
 
 function feature.act(action)
   if ACTIONS[action] then ACTIONS[action]() end
@@ -177,7 +232,8 @@ local function onKey(event)
   local kind = event:getType()
   local name
   if kind == hs.eventtap.event.types.flagsChanged then
-    name = dictation.eventFor(event:getKeyCode(), event:getFlags().alt == true)
+    local flags = event:getFlags()
+    name = dictation.eventFor(event:getKeyCode(), flags.alt == true, flags.shift == true)
   elseif kind == hs.eventtap.event.types.keyDown then
     name = event:getKeyCode() == ESCAPE and "escape" or "other"
   end
@@ -195,10 +251,15 @@ shell.execute("'" .. HELPER .. "' locales", function(output)
   lists = dictation.parseLocales(output)
 end)
 
--- Pastes the last dictation again, for one that went nowhere.
-function feature.pasteLast()
-  if not feature.recent[1] then return shell.alert("Nothing dictated yet", 1.2) end
-  typeText(feature.recent[1])
+shell.execute("/usr/bin/defaults read com.apple.universalaccess reduceMotion", function(output)
+  reduceMotion = tostring(output or ""):match("^%s*1") ~= nil
+end)
+
+-- Pastes a kept dictation again, the last one unless index says, for one that went nowhere.
+function feature.pasteLast(index)
+  local entry = feature.recent[type(index) == "number" and index or 1]
+  if not entry then return shell.alert("Nothing dictated yet", 1.2) end
+  deliver(entry.text, {})
 end
 
 -- The Dictation card: the language, the sounds, the key and what it needs.
@@ -242,12 +303,29 @@ local function rows()
   return dictation.cardRows({
     -- With no macOS language given, an empty one means the file has no language line.
     ownLanguage = dictation.language(settings(), { "" }) ~= "",
-    language = languageName(language), sounds = dictation.sounds(settings()), hasRecent = feature.recent[1] ~= nil,
+    language = languageName(language), sounds = dictation.sounds(settings()), kept = #feature.recent,
+    words = dictation.words(settings()), cleanup = dictation.cleanupOn(settings()),
     microphone = lists.microphone, installed = dictation.isInstalled(lists, language),
   })
 end
 
-local function showCard(selected)
+local showCard, showHistory
+
+-- Toggles key, sounds or cleanup, in ~/.config/omv/dictation, and shows the card again on its row.
+local function toggle(key, on, row)
+  save(dictation.setting(settings(), key, on and "off" or "on"))
+  return showCard(row)
+end
+
+-- Opens ~/.config/omv/dictation for your words, with a words line to fill in when it has none.
+local function editWords()
+  if #dictation.words(settings()) == 0 and not (settings() or ""):match("words%s*=") then
+    save(dictation.setting(settings(), "words", "omv"))
+  end
+  shell.open({ "-t", dictation.PATH })
+end
+
+function showCard(selected)
   local shown = rows()
   shell.show("dictation", shell.centered(shell.LIST_WIDTH, 28 + 46 + #shown * 30 + 2 * 26 + 44), card.html({
     prompt = "Dictation…", rows = shown, compact = true, step = true, selected = selected,
@@ -255,24 +333,21 @@ local function showCard(selected)
   }), function(message)
     local id = message.id or ""
     if message.type == "step" then
-      if id:match(":sounds$") then
-        save(dictation.setting(settings(), "sounds", dictation.sounds(settings()) and "off" or "on"))
-        return showCard(2)
-      end
+      if id:match(":sounds$") then return toggle("sounds", dictation.sounds(settings()), 4) end
+      if id:match(":cleanup$") then return toggle("cleanup", dictation.cleanupOn(settings()), 3) end
       if id == "1:language" then return showLanguages() end
       return
     end
     if message.type ~= "choose" then return shell.close() end
     if id == "language" then return showLanguages() end
-    if id == "sounds" then
-      save(dictation.setting(settings(), "sounds", dictation.sounds(settings()) and "off" or "on"))
-      return showCard(2)
-    end
+    if id == "sounds" then return toggle("sounds", dictation.sounds(settings()), 4) end
+    if id == "cleanup" then return toggle("cleanup", dictation.cleanupOn(settings()), 3) end
+    if id == "dictations" then return feature.recent[1] and showHistory() or nil end
     if id == "key" then return end
     if id == "permissions" and lists.microphone == "granted" then return end
     if id == "install" and dictation.isInstalled(lists, locale()) then return end
     shell.close()
-    if id == "last" then return feature.pasteLast() end
+    if id == "words" then return editWords() end
     if id == "permissions" then return require("features.permissions").open() end
     if id == "install" then return install(locale()) end
   end)
@@ -285,6 +360,19 @@ function feature.open(selected)
     lists = dictation.parseLocales(output)
     showCard(selected)
   end)
+end
+
+-- The kept dictations, newest first; picking one pastes it again.
+function showHistory()
+  local shown = dictation.historyRows(feature.recent, os.time())
+  shell.show("dictation", shell.centered(shell.LIST_WIDTH, 28 + 46 + #shown * 30 + 4), card.html({
+    prompt = "Dictations…", rows = shown, compact = true,
+  }), function(message)
+    if message.type ~= "choose" then return showCard(6) end
+    local index = tonumber((message.id or ""):match("^dictation:(%d+)$"))
+    shell.close()
+    if index then feature.pasteLast(index) end
+  end, { onEscape = function() showCard(6) end })
 end
 
 -- Every language the Mac can hear, macOS's first; picking one writes it and gets it.

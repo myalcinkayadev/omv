@@ -1,6 +1,6 @@
 -- The dictation pill: a card-styled box at the bottom of the screen you're on, which never
--- takes focus. A header of fixed slots (state icon with a live dot, waveform, status, timer,
--- and the app the words land in), then what's heard on up to four lines, and a hint; it grows
+-- takes focus. A header (state icon with a live dot, status and timer, a meter filling the
+-- gap, and the app the words land in), then what's heard on up to four lines, and a hint; it grows
 -- upwards as lines come. features/dictation.lua draws it while you talk, and docs/shoot.lua
 -- draws a sample for the README.
 
@@ -12,7 +12,7 @@ local dictationPill = {}
 -- A download shows in the pill only when the helper isn't ready this long after starting,
 -- since it reports 0% for a language already on the Mac too.
 local DOWNLOAD_SHOWN_AFTER = 1.0
-local WIDTH = 560
+local WIDTH = dictation.PILL_WIDTH
 -- Characters on a line of words at the pill's width, in the bar's monospaced font.
 local LINE_CHARACTERS = 60
 local FONT = "JetBrainsMono Nerd Font Mono"
@@ -43,10 +43,10 @@ end
 local WARNING = "#f0a35e"
 -- The live dot: macOS's recording red.
 local LIVE = "#ff453a"
--- The header's slots, left to right: the state icon, the waveform, the status, the timer and
--- the app the words land in. They keep their places in every state, so nothing jumps.
-local ICON_X, WAVE_X, STATUS_X, TIMER_X, TARGET_X = 18, 50, 180, 306, 402
-local TIMER_W, TARGET_W, CENTER_Y = 84, 140, 25
+-- The header, left to right: the state icon, the status and the timer together; the meter
+-- filling the gap; the app the words land in as a chip at the right edge. A hairline under it.
+local ICON_X, STATUS_X, TIMER_X, CENTER_Y, RULE_Y, WORDS_Y = 18, 50, 140, 25, 44, 52
+local CHIP_H, CHIP_PAD, CHIP_ICON = 26, 10, 16
 local ICONS = { mic = "󰍬", lock = "󰌾", spinner = "󰑓" }
 
 -- What the pill says under the header, and whether a download takes the status's place.
@@ -56,44 +56,53 @@ local function body(recording)
     return "", "once, then it stays on this Mac", "Getting " .. (recording.localeName or recording.locale) .. " for dictation… " .. recording.percent .. "%"
   end
   if recording.finishing then return recording.partial or "", "", nil end
-  local hint = recording.locked and "tap Right Option to type it · Shift to review · Esc cancels"
-    or "release types it · Shift+release to review · Esc cancels"
+  local hint = recording.locked and "tap Right Option to type it · Shift to copy · Esc cancels"
+    or "release types it · Shift+release copies · Esc cancels"
   if recording.secure then hint = "won't be typed here: it goes to the clipboard" end
   return recording.partial or "", hint, nil
 end
 
-local function waveform(elements, recording, fg)
-  if recording.reduceMotion then
-    local level = recording.finishing and 0 or ((recording.history or {})[#(recording.history or {})] or 0)
-    elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(fg, 0.25), roundedRectRadii = { xRadius = 3, yRadius = 3 },
-      frame = { x = WAVE_X, y = CENTER_Y - 3, w = 118, h = 6 } }
-    elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(fg), roundedRectRadii = { xRadius = 3, yRadius = 3 },
-      frame = { x = WAVE_X, y = CENTER_Y - 3, w = math.max(6, 118 * level), h = 6 } }
-    return
+local function styled(value, size, hex)
+  return hs.styledtext.new(value, { font = { name = FONT, size = size }, color = color(hex) })
+end
+
+-- The app chip at the right edge; gives its width, which the meter ends 10 pt before.
+local function chip(elements, header, recording, tokens)
+  local warn = header.target.kind == "password"
+  local fg = warn and WARNING or tokens.fg
+  local name = styled(header.target.name, 13, fg)
+  local textW = math.ceil(hs.drawing.getTextDrawingSize(name).w)
+  local hasIcon = warn or recording.appIcon ~= nil
+  local w = CHIP_PAD * 2 + textW + (hasIcon and (CHIP_ICON + 6) or 0)
+  local x = WIDTH - 18 - w
+  elements[#elements + 1] = { type = "rectangle", action = "strokeAndFill", fillColor = color(warn and WARNING or tokens.fg, warn and 0.12 or 0.06),
+    strokeColor = color(warn and WARNING or tokens.fg, warn and 1 or 0.18), strokeWidth = 1,
+    roundedRectRadii = { xRadius = CHIP_H / 2, yRadius = CHIP_H / 2 }, frame = { x = x, y = CENTER_Y - CHIP_H / 2, w = w, h = CHIP_H } }
+  local textX = x + CHIP_PAD
+  if warn then
+    elements[#elements + 1] = text("󰌾", 13, WARNING, { x = textX, y = CENTER_Y - 9, w = CHIP_ICON, h = 18 })
+    textX = textX + CHIP_ICON + 6
+  elseif recording.appIcon then
+    elements[#elements + 1] = { type = "image", image = recording.appIcon, frame = { x = textX, y = CENTER_Y - 8, w = CHIP_ICON, h = CHIP_ICON } }
+    textX = textX + CHIP_ICON + 6
   end
-  -- Silence is a flat line; speech rises out of it in bars, newest at the right.
-  elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(fg, 0.3), frame = { x = WAVE_X, y = CENTER_Y - 1, w = 118, h = 2 } }
-  if recording.finishing then return end
-  local history = recording.history or {}
-  for index = 1, 24 do
-    local level = history[#history - 24 + index] or 0
-    if level > 0.04 then
-      local barHeight = 3 + math.floor(19 * level)
-      elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(fg), roundedRectRadii = { xRadius = 1.5, yRadius = 1.5 },
-        frame = { x = WAVE_X + (index - 1) * 5, y = CENTER_Y - barHeight / 2, w = 3, h = barHeight } }
-    end
+  elements[#elements + 1] = { type = "text", text = name, frame = { x = textX, y = CENTER_Y - 9, w = textW + 2, h = 18 } }
+  return w
+end
+
+-- The meter's bars, as dictation.meter gives them, in the gap left of the chip.
+local function meter(elements, recording, chipWidth, now, fg)
+  local layout = dictation.meterLayout(chipWidth)
+  for index, bar in ipairs(dictation.meter(recording, now, layout.bars)) do
+    elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(bar.warning and WARNING or fg, bar.alpha),
+      roundedRectRadii = { xRadius = 1.5, yRadius = 1.5 },
+      frame = { x = layout.x + (index - 1) * 5, y = CENTER_Y - bar.h / 2, w = 3, h = bar.h } }
   end
 end
 
-local function target(elements, header, recording, fg)
-  local warn = header.target.kind == "password"
-  local x = TARGET_X
-  if warn then
-    elements[#elements + 1] = text("󰌾", 13, WARNING, { x = x, y = CENTER_Y - 9, w = 16, h = 18 })
-  elseif recording.appIcon then
-    elements[#elements + 1] = { type = "image", image = recording.appIcon, frame = { x = x, y = CENTER_Y - 8, w = 16, h = 16 } }
-  end
-  elements[#elements + 1] = text(header.target.name, 13, warn and WARNING or fg, { x = x + 22, y = CENTER_Y - 9, w = TARGET_W - 22, h = 18 })
+local function card(tokens, border, height)
+  return { type = "rectangle", action = "strokeAndFill", fillColor = color(tokens.bg), roundedRectRadii = { xRadius = 14, yRadius = 14 },
+    strokeColor = color(border), strokeWidth = 2, frame = { x = 0, y = 0, w = WIDTH, h = height } }
 end
 
 -- Draws recording, { partial, history, locked, finishing, stopped, left, secure, app, appIcon,
@@ -102,13 +111,11 @@ function dictationPill.draw(recording)
   local tokens = shell.themeTokens()
   local now = hs.timer.secondsSinceEpoch()
   if recording.problem then
-    local elements = {
-      { type = "rectangle", action = "strokeAndFill", fillColor = color(tokens.bg), roundedRectRadii = { xRadius = 14, yRadius = 14 },
-        strokeColor = color(tokens.accent), strokeWidth = 2, frame = { x = 0, y = 0, w = WIDTH, h = 52 } },
+    return dictationPill.show({
+      card(tokens, tokens.accent, 52),
       text("󰍭", 20, WARNING, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }),
-      text(recording.problem, 14, tokens.fg, { x = WAVE_X, y = CENTER_Y - 10, w = WIDTH - WAVE_X - 18, h = 22 }),
-    }
-    return dictationPill.show(elements, 52)
+      text(recording.problem, 14, tokens.fg, { x = STATUS_X, y = CENTER_Y - 10, w = WIDTH - STATUS_X - 18, h = 22 }),
+    }, 52)
   end
   local header = dictation.header(recording, now)
   local words, hint, download = body(recording)
@@ -116,48 +123,46 @@ function dictationPill.draw(recording)
   local lines = dictation.lastLines(all, dictation.MAX_LINES)
   local height = dictation.pillHeight(#lines)
   local border = header.target.kind == "password" and WARNING or (recording.locked and tokens.fg or tokens.accent)
-  local elements = {
-    { type = "rectangle", action = "strokeAndFill", fillColor = color(tokens.bg), roundedRectRadii = { xRadius = 14, yRadius = 14 },
-      strokeColor = color(border), strokeWidth = 2, frame = { x = 0, y = 0, w = WIDTH, h = height } },
-    text(ICONS[header.icon], 20, tokens.fg, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }),
-  }
+  local dim = recording.finishing and tokens.accent or tokens.fg
+  local elements = { card(tokens, border, height), text(ICONS[header.icon], 20, dim, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }) }
   if header.live then
     local pulse = recording.reduceMotion and 1 or (0.55 + 0.45 * math.abs(math.sin(now * 3)))
     elements[#elements + 1] = { type = "circle", action = "strokeAndFill", fillColor = color(LIVE, pulse), strokeColor = color(tokens.bg),
       strokeWidth = 2, center = { x = ICON_X + 19, y = CENTER_Y - 10 }, radius = 4.5 }
   end
-  waveform(elements, recording, tokens.fg)
+  local chipWidth = chip(elements, header, recording, tokens)
   if download then
-    elements[#elements + 1] = text(download, 13, tokens.fg, { x = STATUS_X, y = CENTER_Y - 9, w = TARGET_X - STATUS_X - 12, h = 18 })
+    elements[#elements + 1] = text(download, 13, tokens.fg, { x = STATUS_X, y = CENTER_Y - 9, w = WIDTH - 18 - chipWidth - 10 - STATUS_X, h = 18 })
   else
-    elements[#elements + 1] = text(header.status, 14, tokens.fg, { x = STATUS_X, y = CENTER_Y - 10, w = TIMER_X - STATUS_X - 12, h = 22 })
-    elements[#elements + 1] = text(header.timer, 13, header.warning and WARNING or tokens.fg, { x = TIMER_X, y = CENTER_Y - 9, w = TIMER_W, h = 18 },
-      { alignment = "right" })
+    elements[#elements + 1] = text(header.status, 14, dim, { x = STATUS_X, y = CENTER_Y - 10, w = TIMER_X - STATUS_X - 6, h = 22 })
+    elements[#elements + 1] = text(header.timer, 13, header.warning and WARNING or tokens.accent, { x = TIMER_X, y = CENTER_Y - 9, w = 44, h = 18 })
+    meter(elements, recording, chipWidth, now, tokens.fg)
   end
-  target(elements, header, recording, tokens.fg)
+  elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(tokens.fg, 0.12), frame = { x = 16, y = RULE_Y, w = WIDTH - 32, h = 1 } }
   -- Past four lines, the oldest shown fades, as the newest words push it up.
   for index, line in ipairs(lines) do
     local faded = index == 1 and #all > dictation.MAX_LINES
-    elements[#elements + 1] = { type = "text", frame = { x = 16, y = 44 + (index - 1) * dictation.LINE_HEIGHT, w = WIDTH - 32, h = dictation.LINE_HEIGHT },
+    elements[#elements + 1] = { type = "text", frame = { x = 16, y = WORDS_Y + (index - 1) * dictation.LINE_HEIGHT, w = WIDTH - 32, h = dictation.LINE_HEIGHT },
       text = hs.styledtext.new(line, { font = { name = FONT, size = 14 }, color = color(tokens.fg, faded and 0.45 or 1) }) }
   end
   elements[#elements + 1] = text(hint, 11, recording.secure and WARNING or tokens.fg, { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
   return dictationPill.show(elements, height)
 end
 
--- After typing: how many words, how many ums were dropped, and that ⌘Z undoes it, for a moment.
-function dictationPill.confirm(words, dropped)
+-- After the words went somewhere: delivery { kind, message, hint } from dictation.delivery,
+-- with a check when typed and the clipboard when copied, for a moment.
+function dictationPill.confirm(delivery)
   local tokens = shell.themeTokens()
-  local said = "Typed " .. words .. (words == 1 and " word" or " words") .. (dropped > 0 and (" · " .. dropped .. " ums dropped") or "")
   local elements = {
-    { type = "rectangle", action = "strokeAndFill", fillColor = color(tokens.bg), roundedRectRadii = { xRadius = 14, yRadius = 14 },
-      strokeColor = color(tokens.accent), strokeWidth = 2, frame = { x = 0, y = 0, w = WIDTH, h = 52 } },
-    text("󰄬", 20, tokens.fg, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }),
-    text(said, 14, tokens.fg, { x = WAVE_X, y = CENTER_Y - 10, w = 380, h = 22 }),
-    text("⌘Z undoes", 12, tokens.fg, { x = WIDTH - 118, y = CENTER_Y - 8, w = 100, h = 18 }, { alignment = "right" }),
+    card(tokens, tokens.accent, 52),
+    text(delivery.kind == "type" and "󰄬" or "󰅍", 20, tokens.fg, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }),
+    text(delivery.message, 14, tokens.fg, { x = STATUS_X, y = CENTER_Y - 10, w = 380, h = 22 }),
   }
+  if delivery.hint then
+    elements[#elements + 1] = text(delivery.hint, 12, tokens.accent, { x = WIDTH - 118, y = CENTER_Y - 8, w = 100, h = 18 }, { alignment = "right" })
+  end
   local frame = dictationPill.show(elements, 52)
-  hideLater = hs.timer.doAfter(1.2, dictationPill.hide)
+  hideLater = hs.timer.doAfter(delivery.kind == "type" and 1.2 or 2, dictationPill.hide)
   return frame
 end
 

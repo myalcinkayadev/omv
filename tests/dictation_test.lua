@@ -35,7 +35,7 @@ check.that("should finish a locked one on the next tap",
     == "record - lock - finish -")
 check.that("should finish a locked one after 5 minutes",
   run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "voice", 95 }, { "tick", 100 }, { "voice", 290 }, { "tick", 300.4 } })
-    == "record - lock - - - - finish")
+    == "record - lock - - - - timeout")
 check.that("should cancel on Esc while listening",
   run({ { "option-down", 0 }, { "tick", 0.31 }, { "escape", 1 } }) == "record show cancel")
 check.that("should swallow Esc only while listening", (function()
@@ -67,15 +67,32 @@ local function kinds(steps)
   for _, step in ipairs(steps) do names[#names + 1] = step.kind end
   return table.concat(names, " ")
 end
-local steps = dictation.pasteSteps("Hey", { ["public.utf8-plain-text"] = "before" }, false, true)
+local steps = dictation.pasteSteps("Hey", { ["public.utf8-plain-text"] = "before" }, "type")
 check.that("should restore the clipboard only after the paste and a wait", kinds(steps) == "write paste wait restore"
   and steps[3].seconds >= 0.5 and steps[4].saved["public.utf8-plain-text"] == "before")
-check.that("should empty a clipboard that was empty before", kinds(dictation.pasteSteps("Hey", {}, false, true)) == "write paste wait clear")
+check.that("should empty a clipboard that was empty before", kinds(dictation.pasteSteps("Hey", {}, "type")) == "write paste wait clear")
 check.that("should mark the paste transient, so clipboard history skips it", steps[1].transient == true and steps[1].text == "Hey")
-check.that("should leave the text on the clipboard without a window to type in",
-  kinds(dictation.pasteSteps("Hey", {}, false, false)) == "write notice")
-check.that("should not type into a password field", kinds(dictation.pasteSteps("Hey", {}, true, true)) == "write notice")
-check.that("should keep the text in clipboard history when it isn't typed", dictation.pasteSteps("Hey", {}, true, true)[1].transient == false)
+check.that("should only write the clipboard when copying", kinds(dictation.pasteSteps("Hey", {}, "copy")) == "write")
+check.that("should keep the text in clipboard history when it's copied", dictation.pasteSteps("Hey", {}, "copy")[1].transient == false)
+
+-- Where the words go.
+local function deliver(info) return dictation.delivery(info, "one two three") end
+check.that("should type the words when Right Option is released", deliver({ hasWindow = true, app = "Zed" }).kind == "type")
+check.that("should say how many words were typed", deliver({ hasWindow = true }).message == "Typed 3 words")
+check.that("should say how many ums were dropped", dictation.delivery({ hasWindow = true }, "one", 2).message == "Typed 1 word · 2 ums dropped")
+check.that("should copy the words when Shift+release ends a hold", deliver({ review = true, hasWindow = true }).kind == "copy")
+check.that("should show the copied count when the words are copied", deliver({ review = true, hasWindow = true }).message == "Copied 3 words")
+check.that("should copy instead of type when the target is a password field", deliver({ secure = true, hasWindow = true }).kind == "copy")
+check.that("should say a password field isn't typed into",
+  deliver({ secure = true, hasWindow = true }).message == "Not typed into a password field · on the clipboard")
+check.that("should copy when no window has focus", deliver({ hasWindow = false }).kind == "copy")
+check.that("should paste into the focused app when focus changed before the release",
+  deliver({ hasWindow = true, startApp = "Zed", app = "Slack" }).kind == "type")
+check.that("should type after 30 s of silence when locked", deliver({ auto = true, hasWindow = true, startApp = "Zed", app = "Zed" }).kind == "type")
+check.that("should copy, not type, when a silent lock ends after focus moved",
+  deliver({ auto = true, hasWindow = true, startApp = "Zed", app = "Slack" }).kind == "copy")
+check.that("should name the app that lost focus",
+  deliver({ auto = true, hasWindow = true, startApp = "Zed", app = "Slack" }).message == "Zed lost focus · on the clipboard")
 
 -- Last dictations.
 local recent = {}
@@ -142,8 +159,8 @@ check.that("should map between linearly", math.abs(dictation.levelOf(-35) - 0.5)
 check.that("should rise at once", math.abs(dictation.smooth(0, 1) - 0.6) < 0.001)
 check.that("should fall slowly", math.abs(dictation.smooth(1, 0) - 0.92) < 0.001)
 local history = {}
-for index = 1, 30 do history = dictation.pushLevel(history, index / 30) end
-check.that("should keep the last 24 levels, oldest dropped", #history == 24 and history[24] == 1 and math.abs(history[1] - 7 / 30) < 0.001)
+for index = 1, 70 do history = dictation.pushLevel(history, index / 70) end
+check.that("should keep the last 60 levels, oldest dropped", #history == 60 and history[60] == 1 and math.abs(history[1] - 11 / 70) < 0.001)
 
 -- The words.
 local lines = dictation.wrap("one two three four five six seven", 10)
@@ -172,9 +189,14 @@ check.that("should review on a release with Shift held",
   run({ { "option-down", 0 }, { "tick", 0.31 }, { "option-up-shift", 1 } }) == "record show review")
 check.that("should review on a Shift tap while locked",
   run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "shift", 2 } }) == "record - lock - review")
-check.that("should finish a locked one after 30 s without voice",
+check.that("should time out a locked one after 30 s without voice",
   run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "tick", 20 }, { "tick", 30.4 } })
-    == "record - lock - - finish")
+    == "record - lock - - timeout")
+check.that("should cancel when Esc is pressed during the countdown",
+  run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "tick", 25 }, { "escape", 26 }, { "tick", 31 } })
+    == "record - lock - - cancel -")
+check.that("should take a loud level as voice", dictation.isVoice(dictation.levelOf(-25)))
+check.that("should not take a quiet room as voice", not dictation.isVoice(dictation.levelOf(-50)))
 check.that("should keep a locked one going while voice comes",
   run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "voice", 25 }, { "tick", 40 } })
     == "record - lock - - -")
@@ -187,15 +209,37 @@ check.that("should give no time left while held", dictation.remaining(select(2, 
 
 -- The pill's header.
 local held = dictation.header({ started = 100, app = "Ghostty" }, 106)
-check.that("should show the mic, live, while held", held.icon == "mic" and held.live == true and held.status == "Listening…")
+check.that("should show the mic, live, while held", held.icon == "mic" and held.live == true and held.status == "Listening")
 check.that("should always show a timer", held.timer == "0:06" and held.warning == false)
 check.that("should name the app the words land in", held.target.kind == "app" and held.target.name == "Ghostty")
 local lockedHeader = dictation.header({ started = 0, locked = true, left = 8, app = "Notes" }, 292)
 check.that("should show the lock, live, while locked", lockedHeader.icon == "lock" and lockedHeader.live and lockedHeader.status == "Locked")
-check.that("should turn the timer into an orange countdown in the last 10 s", lockedHeader.timer == "0:08 left" and lockedHeader.warning == true)
+check.that("should turn the timer into an orange countdown in the last 10 s", lockedHeader.timer == "0:08" and lockedHeader.warning == true)
 local finishingHeader = dictation.header({ started = 100, finishing = true, stopped = 111, app = "Ghostty" }, 112)
 check.that("should show a spinner, not live, while finishing", finishingHeader.icon == "spinner" and finishingHeader.live == false
-  and finishingHeader.status == "Finishing…" and finishingHeader.timer == "0:11")
+  and finishingHeader.status == "Finishing" and finishingHeader.timer == "0:11")
 check.that("should warn of a password field as the target", dictation.header({ started = 0, secure = true, app = "Safari" }, 1).target.kind == "password")
+
+check.that("should cut an app name at 18 characters", dictation.header({ started = 0, app = "Visual Studio Code Insiders" }, 1).target.name
+  == "Visual Studio Cod…")
+check.that("should keep an 18-character app name whole", dictation.header({ started = 0, app = "Microsoft Outlook!" }, 1).target.name
+  == "Microsoft Outlook!")
+
+-- The meter: from after the timer to 10 pt before the app chip, a bar every 5 pt.
+local wide, narrow = dictation.meterLayout(81), dictation.meterLayout(200)
+check.that("should end the strip 10 pt before the app chip", wide.x + wide.w == 560 - 18 - 81 - 10)
+check.that("should fit fewer bars when the app name is long", narrow.bars < wide.bars and wide.bars == math.floor((wide.w + 2) / 5))
+local function heights(bars) local h = {} for i, bar in ipairs(bars) do h[i] = bar.h end return table.concat(h, ",") end
+local speech = dictation.meter({ history = { 0, 0.5, 1 } }, 0, 5)
+check.that("should put the newest level at the right", heights(speech) == "3,3,3,12,22")
+check.that("should fade older bars", speech[1].alpha < speech[5].alpha and speech[5].alpha == 1)
+local still = dictation.meter({ history = { 0, 1, 0.5 }, reduceMotion = true }, 0, 4)
+check.that("should not scroll the strip when Reduce Motion is on", heights(still) == "12,12,12,12" and still[1].alpha == still[4].alpha)
+local function lit(bars) local n = 0 for _, bar in ipairs(bars) do if bar.warning then n = n + 1 end end return n end
+check.that("should count down with orange dots when locked", lit(dictation.meter({ locked = true, left = 7 }, 0, 50)) == 35
+  and lit(dictation.meter({ locked = true, left = 6 }, 0, 50)) == 30)
+check.that("should draw dots, not speech, during the countdown", heights(dictation.meter({ locked = true, left = 7, history = { 1, 1 } }, 0, 3)) == "3,3,3")
+local shimmer = dictation.meter({ finishing = true }, 1, 40)
+check.that("should shimmer the dots while finishing", heights(shimmer) == string.rep("3,", 39) .. "3" and shimmer[1].alpha ~= shimmer[20].alpha)
 
 check.finish()

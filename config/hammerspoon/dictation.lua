@@ -48,7 +48,8 @@ end
 
 -- What one event does: option-down, option-up, option-up-shift (released with Shift held),
 -- shift (a Shift tap), voice (speech heard), other (any other key), escape or tick, at time
--- in seconds. Gives the action, record, show, lock, finish, review or cancel, or nil; and
+-- in seconds. Gives the action, record, show, lock, finish, review, timeout (a locked one
+-- ending by itself) or cancel, or nil; and
 -- whether the event is swallowed, which only Esc is, and only while the pill listens.
 local PHASES = {}
 
@@ -136,7 +137,7 @@ function PHASES.locked(state, event, time)
   local quiet = time - (state.heard or state.since)
   if event == "tick" and (time - state.since >= dictation.LOCK_SECONDS or quiet >= dictation.SILENCE_SECONDS) then
     moveTo(state, "idle")
-    return "finish", false
+    return "timeout", false
   end
   return nil, false
 end
@@ -165,16 +166,27 @@ local function clock(seconds)
   return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
+-- An app's name as the pill's chip shows it: cut at 18 characters, so the meter keeps room.
+local NAME_CHARACTERS = 18
+
+local function shortName(name)
+  name = tostring(name or "")
+  local starts = {}
+  for position in name:gmatch("()[^\128-\191]") do starts[#starts + 1] = position end
+  if #starts <= NAME_CHARACTERS then return name end
+  return name:sub(1, starts[NAME_CHARACTERS] - 1) .. "…"
+end
+
 -- The pill's header, from recording { started, stopped, locked, finishing, left, secure, app }:
 -- { icon = mic, lock or spinner; live, whether the mic is on; status; timer; warning, whether
 -- the timer is an orange countdown; target = { kind = app or password, name } }.
 function dictation.header(recording, now)
-  local icon, status = "mic", "Listening…"
-  if recording.finishing then icon, status = "spinner", "Finishing…"
+  local icon, status = "mic", "Listening"
+  if recording.finishing then icon, status = "spinner", "Finishing"
   elseif recording.locked then icon, status = "lock", "Locked" end
   local warning = recording.left ~= nil and not recording.finishing
-  local timer = warning and (clock(recording.left) .. " left") or clock((recording.stopped or now) - recording.started)
-  local target = recording.secure and { kind = "password", name = "password field" } or { kind = "app", name = recording.app or "" }
+  local timer = warning and clock(recording.left) or clock((recording.stopped or now) - recording.started)
+  local target = recording.secure and { kind = "password", name = "password field" } or { kind = "app", name = shortName(recording.app) }
   return { icon = icon, live = not recording.finishing, status = status, timer = timer, warning = warning, target = target }
 end
 
@@ -206,19 +218,34 @@ function dictation.notice(problem, locale)
   return NOTICES[problem] or ("Dictation stopped: " .. tostring(problem))
 end
 
--- The steps that put text where you were typing: on the clipboard, marked transient so the
--- clipboard history skips it; Cmd+V; a wait, so the app reads it first; then saved back, or
--- the clipboard emptied when it was empty. Into a password field, or with no window to
--- type in, it's only copied, kept in the history, and a notice says so.
-function dictation.pasteSteps(text, saved, secure, hasWindow)
-  if secure or not hasWindow then
-    return {
-      { kind = "write", text = text, transient = false },
-      { kind = "notice", text = secure and "Not typed into a password field · on the clipboard" or "On the clipboard · ⌘V to paste" },
-    }
-  end
+-- The steps for how, type or copy: typed, the text goes on the clipboard, marked transient
+-- so the clipboard history skips it; Cmd+V; a wait, so the app reads it first; then saved
+-- back, or the clipboard emptied when it was empty. Copied, it's only written, and kept in
+-- the history.
+function dictation.pasteSteps(text, saved, how)
+  if how == "copy" then return { { kind = "write", text = text, transient = false } } end
   local back = next(saved or {}) and { kind = "restore", saved = saved } or { kind = "clear" }
   return { { kind = "write", text = text, transient = true }, { kind = "paste" }, { kind = "wait", seconds = dictation.RESTORE_SECONDS }, back }
+end
+
+local function counted(count, one)
+  return count .. " " .. one .. (count == 1 and "" or "s")
+end
+
+-- Whether finished words are typed or only copied, and what the pill says, from info
+-- { review, secure, hasWindow, auto (a locked one ended by itself), startApp, app }: copied
+-- for a review, a password field or no window, and when a locked one ends by itself after
+-- you moved to another app; typed into the focused app otherwise.
+function dictation.delivery(info, text, dropped)
+  local words = select(2, tostring(text or ""):gsub("%S+", ""))
+  if info.review then return { kind = "copy", message = "Copied " .. counted(words, "word"), hint = "⌘V pastes" } end
+  if info.secure then return { kind = "copy", message = "Not typed into a password field · on the clipboard" } end
+  if not info.hasWindow then return { kind = "copy", message = "On the clipboard · ⌘V to paste" } end
+  if info.auto and info.startApp and info.app ~= info.startApp then
+    return { kind = "copy", message = info.startApp .. " lost focus · on the clipboard" }
+  end
+  local said = "Typed " .. counted(words, "word") .. ((dropped or 0) > 0 and (" · " .. counted(dropped, "um") .. " dropped") or "")
+  return { kind = "type", message = said, hint = "⌘Z undoes" }
 end
 
 -- The pasteboard data for a write step.
@@ -372,7 +399,13 @@ end
 -- The meter: a level in dB as 0 to 1, -55 dB (a quiet room) to -15 dB (speaking up), so
 -- quiet speech still moves it.
 local FLOOR_DB, CEILING_DB = -55, -15
-local ATTACK, RELEASE, BARS = 0.6, 0.08, 24
+local ATTACK, RELEASE, BARS = 0.6, 0.08, 60
+-- A level this loud or louder is speech, which keeps a locked one going.
+local VOICE = 0.3
+
+function dictation.isVoice(level)
+  return level >= VOICE
+end
 
 function dictation.levelOf(db)
   return math.max(0, math.min(1, (db - FLOOR_DB) / (CEILING_DB - FLOOR_DB)))
@@ -384,12 +417,52 @@ function dictation.smooth(shown, target)
   return shown + (target - shown) * rate
 end
 
--- The waveform's levels with level added at the right, the oldest dropped past 24 bars.
+-- The waveform's levels with level added at the right, the oldest dropped past 60 bars.
 function dictation.pushLevel(history, level)
   local kept = {}
   for index = math.max(1, #history - BARS + 2), #history do kept[#kept + 1] = history[index] end
   kept[#kept + 1] = level
   return kept
+end
+
+-- The meter fills the header from after the timer to 10 pt before the app chip, a 3 pt bar
+-- every 5 pt: { x, w, bars } for a chip chipWidth wide.
+dictation.PILL_WIDTH = 560
+local METER_X, EDGE, GAP, PITCH = 190, 18, 10, 5
+
+function dictation.meterLayout(chipWidth)
+  local w = dictation.PILL_WIDTH - EDGE - chipWidth - GAP - METER_X
+  return { x = METER_X, w = w, bars = math.max(0, math.floor((w + 2) / PITCH)) }
+end
+
+local function dots(count, alphaOf, warningOf)
+  local bars = {}
+  for index = 1, count do bars[index] = { h = 3, alpha = alphaOf(index), warning = warningOf and warningOf(index) or false } end
+  return bars
+end
+
+-- The meter's count bars, left to right, each { h, alpha, warning }, for recording
+-- { history, locked, left, finishing, reduceMotion } at now: the countdown as orange dots, a
+-- tenth going out each second; a shimmer while finishing; else speech, newest at the right,
+-- older bars fading. With Reduce Motion, nothing moves along: the level fills it evenly.
+function dictation.meter(recording, now, count)
+  if recording.finishing then
+    if recording.reduceMotion then return dots(count, function() return 0.3 end) end
+    local peak = (now * 20) % (count + 14) - 7
+    return dots(count, function(index) return 0.15 + 0.6 * math.max(0, 1 - math.abs(index - 1 - peak) / 7) end)
+  end
+  if recording.left then
+    local lit = math.ceil(count * recording.left / dictation.COUNTDOWN_SECONDS)
+    return dots(count, function(index) return index <= lit and 1 or 0.25 end, function(index) return index <= lit end)
+  end
+  local history = recording.history or {}
+  local bars = {}
+  for index = 1, count do
+    local level = recording.reduceMotion and (history[#history] or 0) or (history[#history - count + index] or 0)
+    local alpha = (recording.reduceMotion or count == 1) and 1 or (0.3 + 0.7 * (index - 1) / (count - 1))
+    bars[index] = { h = 3 + math.floor(19 * level), alpha = alpha, warning = false }
+  end
+  return bars
 end
 
 -- The words as lines of at most width characters, broken between words, or inside a word
@@ -424,7 +497,7 @@ end
 dictation.MAX_LINES, dictation.LINE_HEIGHT = 4, 21
 
 function dictation.pillHeight(count)
-  return 75 + dictation.LINE_HEIGHT * math.max(1, math.min(dictation.MAX_LINES, count))
+  return 83 + dictation.LINE_HEIGHT * math.max(1, math.min(dictation.MAX_LINES, count))
 end
 
 -- The Dictation card's rows, from info { ownLanguage, language (its name), words, cleanup,
