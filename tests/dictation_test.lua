@@ -23,6 +23,9 @@ check.that("should not show on a hold shorter than 0.3 s",
   run({ { "option-down", 0 }, { "option-up", 0.2 }, { "tick", 0.7 } }) == "record - cancel")
 check.that("should read only Right Option as the key", dictation.eventFor(61, true) == "option-down"
   and dictation.eventFor(61, false) == "option-up" and dictation.eventFor(58, true) == nil)
+check.that("should read a release with Shift held", dictation.eventFor(61, false, true) == "option-up-shift")
+check.that("should read a Shift press, either side, as a Shift tap", dictation.eventFor(56, false, true) == "shift"
+  and dictation.eventFor(60, false, true) == "shift" and dictation.eventFor(56, false, false) == nil)
 check.that("should finish when Right Option is released",
   run({ { "option-down", 0 }, { "tick", 0.31 }, { "option-up", 1 } }) == "record show finish")
 check.that("should lock on two taps within 0.4 s",
@@ -31,8 +34,8 @@ check.that("should finish a locked one on the next tap",
   run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "option-down", 2 }, { "option-up", 2.1 } })
     == "record - lock - finish -")
 check.that("should finish a locked one after 5 minutes",
-  run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "tick", 100 }, { "tick", 300.4 } })
-    == "record - lock - - finish")
+  run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "voice", 95 }, { "tick", 100 }, { "voice", 290 }, { "tick", 300.4 } })
+    == "record - lock - - - - finish")
 check.that("should cancel on Esc while listening",
   run({ { "option-down", 0 }, { "tick", 0.31 }, { "escape", 1 } }) == "record show cancel")
 check.that("should swallow Esc only while listening", (function()
@@ -76,9 +79,15 @@ check.that("should keep the text in clipboard history when it isn't typed", dict
 
 -- Last dictations.
 local recent = {}
-for index = 1, 12 do recent = dictation.remember(recent, "text " .. index) end
-check.that("should keep the last ten, newest first", #recent == 10 and recent[1] == "text 12" and recent[10] == "text 3")
-check.that("should not keep an empty dictation", #dictation.remember({}, "") == 0)
+for index = 1, 12 do recent = dictation.remember(recent, { text = "text " .. index, app = "Ghostty", at = index }) end
+check.that("should keep the last ten, newest first", #recent == 10 and recent[1].text == "text 12" and recent[10].text == "text 3")
+check.that("should keep each dictation's app and time", recent[1].app == "Ghostty" and recent[1].at == 12)
+check.that("should not keep an empty dictation", #dictation.remember({}, { text = "  ", app = "x", at = 1 }) == 0)
+local history = dictation.historyRows({ { text = "a", app = "Ghostty", at = 990 }, { text = "b", app = "Notes", at = 1000 - 18 * 60 },
+  { text = "c", app = "Zed", at = 1000 - 3 * 3600 } }, 1000)
+check.that("should show history times as now, minutes and hours",
+  history[1].hint == "Ghostty · now" and history[2].hint == "Notes · 18 min" and history[3].hint == "Zed · 3 h")
+check.that("should label each history row with its text", history[2].label == "b" and history[2].id == "dictation:2")
 
 -- Language.
 check.that("should use the file's language line", dictation.language("# mine\nlanguage = tr-TR\n", { "en-TR" }) == "tr-TR")
@@ -86,8 +95,9 @@ check.that("should use macOS's language without a language line", dictation.lang
 check.that("should fall back to en-US without either", dictation.language("", {}) == "en-US")
 local locales = dictation.parseLocales("transcriber\ten-US en-GB de-DE\ndictation\ten-US tr-TR\n")
 check.that("should read the helper's locale lists", locales.transcriber[1] == "en-US" and locales.dictation[2] == "tr-TR")
-check.that("should use the transcriber for a language it lists", dictation.engine("en-TR", locales) == "transcriber")
+check.that("should use dictation for a language both engines know", dictation.engine("en-TR", locales) == "dictation")
 check.that("should use dictation for a language only it lists", dictation.engine("tr-TR", locales) == "dictation")
+check.that("should use the transcriber for a language only it lists", dictation.engine("de-DE", locales) == "transcriber")
 check.that("should have no engine for a language neither lists", dictation.engine("xx-YY", locales) == nil)
 
 -- The settings file.
@@ -109,7 +119,8 @@ check.that("should read the microphone access", mac.microphone == "granted")
 
 -- The Dictation card.
 local function find(rows, id) for _, row in ipairs(rows) do if row.id == id then return row end end end
-local cardRows = dictation.cardRows({ ownLanguage = false, language = "Turkish (Türkiye)", sounds = true, microphone = "granted", installed = true })
+local cardRows = dictation.cardRows({ ownLanguage = false, language = "Turkish (Türkiye)", sounds = true, microphone = "granted", installed = true,
+  words = { "omv", "AeroSpace", "SketchyBar", "Ghostty", "Hammerspoon" }, cleanup = true, kept = 0 })
 check.that("should mark macOS's language on the card", find(cardRows, "language").hint == "macOS's: Turkish (Türkiye)  ›")
 check.that("should show a language the file picked without the mark",
   find(dictation.cardRows({ ownLanguage = true, language = "English (United States)" }), "language").hint == "English (United States)  ›")
@@ -117,7 +128,12 @@ check.that("should say the microphone is allowed", find(cardRows, "permissions")
 check.that("should say the microphone will be asked before it was", find(dictation.cardRows({ language = "x" }), "permissions").hint == "asked on the first hold")
 check.that("should say the model is on the Mac", find(cardRows, "install").label == "Turkish (Türkiye) model" and find(cardRows, "install").hint == "on this Mac")
 check.that("should offer to get a model that isn't", find(dictation.cardRows({ language = "x" }), "install").hint == "get it  ›")
-check.that("should say no dictation is kept yet", find(cardRows, "last").hint == "none yet")
+check.that("should say no dictation is kept yet", find(cardRows, "dictations").hint == "none yet")
+check.that("should count the dictations kept", find(dictation.cardRows({ language = "x", kept = 4 }), "dictations").hint == "the last 4  ›")
+check.that("should show the first three of your words and how many more", find(cardRows, "words").hint == "omv, AeroSpace, SketchyBar +2  ›")
+check.that("should say none without your words", find(dictation.cardRows({ language = "x" }), "words").hint == "none  ›")
+check.that("should show clean-up on or off", find(cardRows, "cleanup").hint == "‹  on  ›"
+  and find(dictation.cardRows({ language = "x", cleanup = false }), "cleanup").hint == "‹  off  ›")
 
 -- The meter.
 check.that("should map -55 dB and below to 0", dictation.levelOf(-55) == 0 and dictation.levelOf(-90) == 0)
@@ -138,5 +154,48 @@ local long = dictation.lastLines({ "a", "b", "c", "d", "e", "f" }, 4)
 check.that("should keep only the last 4 lines", table.concat(long, "|") == "c|d|e|f")
 check.that("should size the pill by its lines, 1 to 4", dictation.pillHeight(0) == dictation.pillHeight(1)
   and dictation.pillHeight(2) > dictation.pillHeight(1) and dictation.pillHeight(6) == dictation.pillHeight(4))
+
+-- Your words and clean-up.
+check.that("should read the words line as a list", table.concat(dictation.words("words = omv,  AeroSpace , SketchyBar # mine\n"), "|") == "omv|AeroSpace|SketchyBar")
+check.that("should give no words without a words line", #dictation.words("language = tr-TR\n") == 0 and #dictation.words(nil) == 0)
+check.that("should clean up unless cleanup = off", dictation.cleanupOn(nil) and not dictation.cleanupOn("cleanup = off\n"))
+local cleaned, dropped = dictation.clean("So, um, we move the uh gaps ıı now")
+check.that("should drop filler sounds", cleaned == "So, we move the gaps now")
+check.that("should count the fillers dropped", dropped == 3)
+check.that("should capitalise after dropping a filler at the start", (dictation.clean("Um, the bar is fine")) == "The bar is fine")
+check.that("should keep şey, a real word", (dictation.clean("bir şey söyle")) == "bir şey söyle")
+check.that("should keep words that contain a filler", (dictation.clean("summer umbrella hummus")) == "summer umbrella hummus")
+check.that("should drop Turkish ee", (dictation.clean("ee yarın gelirim")) == "yarın gelirim")
+
+-- Review, and a locked one ending by itself.
+check.that("should review on a release with Shift held",
+  run({ { "option-down", 0 }, { "tick", 0.31 }, { "option-up-shift", 1 } }) == "record show review")
+check.that("should review on a Shift tap while locked",
+  run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "shift", 2 } }) == "record - lock - review")
+check.that("should finish a locked one after 30 s without voice",
+  run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "tick", 20 }, { "tick", 30.4 } })
+    == "record - lock - - finish")
+check.that("should keep a locked one going while voice comes",
+  run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "voice", 25 }, { "tick", 40 } })
+    == "record - lock - - -")
+local lockedState = select(2, run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "voice", 290 } }))
+check.that("should give no time left before the last 10 s", dictation.remaining(lockedState, 280) == nil)
+check.that("should count down the last 10 s to the 5-minute limit", dictation.remaining(lockedState, 292.3) == 8)
+local quiet = select(2, run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "voice", 10 } }))
+check.that("should count down to 30 s of silence when it comes first", dictation.remaining(quiet, 33) == 7)
+check.that("should give no time left while held", dictation.remaining(select(2, run({ { "option-down", 0 }, { "tick", 0.31 } })), 290) == nil)
+
+-- The pill's header.
+local held = dictation.header({ started = 100, app = "Ghostty" }, 106)
+check.that("should show the mic, live, while held", held.icon == "mic" and held.live == true and held.status == "Listening…")
+check.that("should always show a timer", held.timer == "0:06" and held.warning == false)
+check.that("should name the app the words land in", held.target.kind == "app" and held.target.name == "Ghostty")
+local lockedHeader = dictation.header({ started = 0, locked = true, left = 8, app = "Notes" }, 292)
+check.that("should show the lock, live, while locked", lockedHeader.icon == "lock" and lockedHeader.live and lockedHeader.status == "Locked")
+check.that("should turn the timer into an orange countdown in the last 10 s", lockedHeader.timer == "0:08 left" and lockedHeader.warning == true)
+local finishingHeader = dictation.header({ started = 100, finishing = true, stopped = 111, app = "Ghostty" }, 112)
+check.that("should show a spinner, not live, while finishing", finishingHeader.icon == "spinner" and finishingHeader.live == false
+  and finishingHeader.status == "Finishing…" and finishingHeader.timer == "0:11")
+check.that("should warn of a password field as the target", dictation.header({ started = 0, secure = true, app = "Safari" }, 1).target.kind == "password")
 
 check.finish()
