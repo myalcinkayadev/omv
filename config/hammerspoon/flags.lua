@@ -61,6 +61,7 @@ flags.DEFAULTS = {
   ["system-load"] = false, -- CPU and memory in the bar, only while the Mac is busy
   ["input-source"] = false, -- the keyboard input source in the bar, as TR or US; a click switches it
   ["world-clocks"] = false, -- the times in ~/.config/omv/clocks, under the calendar card's events
+  ["in-use"] = false, -- a green camera and an orange mic in the bar while another app uses them
 }
 
 -- text is the flags file's contents, or nil when there's none.

@@ -82,6 +82,7 @@ local focusMode = feature("focus", "features.focus")
 local tailscalePanel = feature("tailscale", "features.tailscale")
 local nightLight = feature("night-light", "features.nightshift")
 local mic = feature("mic-mute", "features.micmute")
+local inUseDots = feature("in-use", "features.inuse")
 local devLayout = feature("dev-layout", "features.devlayout")
 local airDrop = feature("airdrop", "features.share")
 local translateSelection = feature("translate", "features.translate")
@@ -295,6 +296,7 @@ omvRedrawBar = later(function()
   if reminderCards then reminderCards.redrawBar() end
   if clipboardHistory then clipboardHistory.redrawBar() end
   if mic then mic.redrawBar() end
+  if inUseDots then inUseDots.redrawBar() end
   if bluetoothCard then bluetoothCard.redrawBar() end
   if inputSource then inputSource.redrawBar() end
 end)

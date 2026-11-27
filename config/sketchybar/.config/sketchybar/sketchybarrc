@@ -200,6 +200,15 @@ if omv_flag_on mic-mute; then
     --set mic_muted drawing=off icon=󰍭 icon.color=0xffff5f5f label.drawing=off click_script="hs -c 'omvToggleMic()'"
 fi
 
+if omv_flag_on in-use; then
+  # Shown only while a camera is in use, in green, or an audio input runs, in orange, as
+  # macOS's own dots. Hammerspoon sets them from the devices' events; a click does nothing.
+  sketchybar --add item camera_in_use right \
+    --set camera_in_use drawing=off icon=󰕧 icon.color=0xff30d158 label.drawing=off \
+    --add item mic_in_use right \
+    --set mic_in_use drawing=off icon=󰍬 icon.color=0xffff9f0a label.drawing=off
+fi
+
 if omv_flag_on tailscale; then
   # Tailscale, shown only once it's installed: white while connected, gray otherwise.
   # Hammerspoon sets it; clicking it opens the Tailscale card.

@@ -8,6 +8,7 @@ local shell = require("shell")
 local card = require("card")
 local dictation = require("dictation")
 local dictationPill = require("dictationpill")
+local ownmic = require("ownmic")
 
 local feature = {}
 
@@ -125,6 +126,8 @@ local function record()
   end
   recording.task = hs.task.new(HELPER, function()
     recording.task = nil
+    -- A cancelled helper can end after the next one started, which still listens.
+    if not (current and current.task) then ownmic.set("dictation", false) end
     if current == recording and not recording.finishing and not recording.problem then
       current = nil
       dictationPill.hide()
@@ -133,6 +136,8 @@ local function record()
     onOutput(recording, out)
     return true
   end, { "listen", language, engine })
+  -- Before the helper opens the mic, so the in-use dot never takes it for another app's.
+  ownmic.set("dictation", true)
   recording.task:start()
   ticker = hs.timer.doEvery(TICK_SECONDS, function()
     local action = dictation.press(keys, "tick", hs.timer.secondsSinceEpoch())

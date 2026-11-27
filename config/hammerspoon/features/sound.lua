@@ -6,6 +6,7 @@
 local shell = require("shell")
 local sound = require("sound")
 local audiowatch = require("features.audiowatch")
+local ownmic = require("ownmic")
 
 local feature = {}
 
@@ -60,12 +61,15 @@ local function stopMeter()
   stopMeterTimers()
   os.remove(METER_ALIVE)
   hs.task.new(METER, nil, { "stop" }):start()
+  ownmic.set("meter", false)
 end
 
 local function launchMeter(generation)
   os.execute("/bin/mkdir -p '" .. shell.HOME .. "/.cache/omv'")
   os.remove(METER_FILE)
   touchMeterAlive()
+  -- Before the helper opens the mic, so the in-use dot never takes it for another app's.
+  ownmic.set("meter", true)
   hs.task.new(METER, function(code)
     -- The helper couldn't be built or started: it will never answer.
     if code ~= 0 and generation == meterGeneration then meterHasAnswered() end

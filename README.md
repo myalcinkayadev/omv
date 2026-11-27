@@ -70,6 +70,7 @@ Before you trust it:
 - [**Tailscale**](#tailscale): connect, disconnect, and copy any device's address.
 - [**Night light**](#night-light): macOS's Night Shift on a key, with a moon in the bar.
 - [**Input source**](#input-source): the keyboard layout in use, as `TR` or `US`, in the bar; click it for the next one.
+- [**Camera and mic in use**](#camera-and-mic-in-use): a green camera and an orange mic in the bar while an app uses them.
 - [**Dev layout**](#dev-layout): a project's editor, Claude Code and a shell on a workspace of their own, a new task in a git worktree, or a grid of agents.
 - [**Share with AirDrop**](#share-with-airdrop): the files selected in Finder, or what you copied, in one key.
 - [**Translate**](#translate): Option+Y translates the selected text with Apple on the Mac, DeepL or Claude, and pastes it over the selection.
@@ -582,6 +583,15 @@ Off until `omv flags input-source on`. Then the bar shows the keyboard input sou
 
 A layout omv doesn't know is tagged by the first two letters of its name, so Polish shows `PO`. Input methods, such as Japanese, are listed after the layouts and tagged the same way. macOS announces every change, from the item, the menu bar or Ctrl+Space, so nothing is polled, and the bar is redrawn only when the tag changes.
 
+## Camera and mic in use
+
+Off until `omv flags in-use on`. Then the bar shows a green camera while any camera is in use, and an orange mic while any audio input is running, beside the red muted mic, so it's there with the menu bar hidden too. Nothing shows otherwise, and a click on either does nothing.
+
+- **Event-driven:** each camera and input device tells Hammerspoon when its use changes, and cameras or mics plugged in later are watched too. There's no timer and no helper, and the bar is only sent a dot that changed.
+- **omv's own mic:** the Sound card's level meter and [dictation](#dictation) don't light the mic dot. While either listens, and for 1.5 seconds after, mic use is ignored, including another app's.
+- **No permission:** it only reads whether a device is in use, never the picture or sound, so macOS asks for nothing.
+- **Any use counts:** a device that's both a mic and speakers, such as a USB headset or dock, can light the mic dot while it only plays sound, and so can a virtual device an app keeps running.
+
 ## Dev layout
 
 Option+Space, then **Dev layout**, lists your recent Claude Code projects, the most recent first. Pick one, then:
@@ -752,6 +762,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `system-load` | **off unless turned on:** CPU and memory in the bar, only while the Mac is busy; see [Smaller tools](#smaller-tools) |
 | `input-source` | **off unless turned on:** the keyboard input source in the bar, and switching it with a click; see [Input source](#input-source) |
 | `world-clocks` | **off unless turned on:** the times in `~/.config/omv/clocks` in the calendar card; see [Calendar and today's events](#calendar-and-todays-events) |
+| `in-use` | **off unless turned on:** a green camera and an orange mic in the bar while an app uses them; see [Camera and mic in use](#camera-and-mic-in-use) |
 | `stalls` | **off unless turned on:** writes each time Hammerspoon freezes for over a quarter of a second, with the card showing, to `~/.local/state/omv/stalls.log`, and every 10 minutes its Lua memory and the background commands still running |
 
 ## Keys
