@@ -3,7 +3,8 @@
 //   dictate locales                       transcriber<tab>en-US …, dictation<tab>tr-TR …, installed<tab>…,
 //                                         microphone<tab>granted, and name<tab>tr-TR<tab>Turkish (Türkiye) each
 //   dictate install <locale> <engine>     gets the language's model: progress<tab>N, then ready
-//   dictate listen <locale> <engine>      records until "stop" or "cancel" on stdin
+//   dictate listen <locale> <engine> [words]  records until "stop" or "cancel" on stdin; words,
+//                                         |-separated, are names and terms to hear right
 // engine is transcriber (SpeechTranscriber) or dictation (DictationTranscriber, more languages).
 // While listening it prints, one per line: progress<tab>N while a model downloads, ready once
 // recording, level<tab>dB about twenty times a second, partial<tab>text as words come,
@@ -84,10 +85,16 @@ final class Heard: @unchecked Sendable {
   }
 }
 
-func listen(_ module: any SpeechModule) async throws {
+func listen(_ module: any SpeechModule, words: [String]) async throws {
   guard await AVCaptureDevice.requestAccess(for: .audio) else { emit("problem", "no-microphone"); exit(1) }
   try await install(module)
   let analyzer = SpeechAnalyzer(modules: [module])
+  // Only the dictation model takes them; the transcriber ignores contextual strings.
+  if !words.isEmpty && module is DictationTranscriber {
+    let context = AnalysisContext()
+    context.contextualStrings = [.general: words]
+    try await analyzer.setContext(context)
+  }
   guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
     emit("problem", "no-input"); exit(1)
   }
@@ -153,7 +160,7 @@ if mode == "locales" {
 } else if (mode == "listen" || mode == "install") && arguments.count > 3 {
   guard let module = await makeModule(arguments[2], arguments[3]) else { emit("problem", "language"); exit(1) }
   do {
-    if mode == "install" { try await install(module); emit("ready") } else { try await listen(module) }
+    if mode == "install" { try await install(module); emit("ready") } else { try await listen(module, words: arguments.count > 4 ? arguments[4].split(separator: "|").map(String.init) : []) }
   } catch {
     emit("problem", error.localizedDescription)
     exit(1)
