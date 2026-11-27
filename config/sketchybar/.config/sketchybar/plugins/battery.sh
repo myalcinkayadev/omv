@@ -3,7 +3,7 @@
 # Nerd Font glyphs are written as octal UTF-8 bytes so they survive any editor.
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvToggleBattery()'
+  "${0%/*}/../hs.sh" 'omvToggleBattery()'
   exit 0
 fi
 

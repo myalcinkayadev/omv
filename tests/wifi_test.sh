@@ -8,7 +8,7 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/wifi.sh
 opens_wifi_card_on_click() {
   stub hs
   run_in_sandbox NAME=wifi SENDER=mouse.clicked "$PLUGIN"
-  assert_called "^hs -c omvToggleWifi\(\)$"
+  assert_called "^hs -t 2 -c omvToggleWifi\(\)$"
 }
 
 leaves_card_closed_on_timer() {

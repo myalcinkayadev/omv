@@ -6,7 +6,7 @@
 PATH="$PATH:/usr/sbin:/sbin"
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvToggleEthernet()'
+  "${0%/*}/../hs.sh" 'omvToggleEthernet()'
   exit 0
 fi
 

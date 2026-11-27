@@ -4,5 +4,5 @@
 
 PATH="$PATH:/opt/homebrew/bin"
 
-[ "${SENDER:-}" = mouse.clicked ] && hs -c 'omvToggleBluetooth()'
+[ "${SENDER:-}" = mouse.clicked ] && "${0%/*}/../hs.sh" 'omvToggleBluetooth()'
 exit 0

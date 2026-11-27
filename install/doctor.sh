@@ -234,12 +234,12 @@ stuck_calls() {
   if [ "$1" -eq 1 ]; then echo '1 stuck hs call'; else echo "$1 stuck hs calls"; fi
 }
 
-# One pid per hs -c call that has run longer than STUCK_SECONDS. An hs run by hand, as a
-# REPL, isn't a -c call, so it's left alone.
+# One pid per hs call with -c, timed out or not, that has run longer than STUCK_SECONDS. An
+# hs run by hand, as a REPL, isn't a -c call, so it's left alone.
 stuck_hs_pids() {
   local pid etime command
   while read -r pid etime command; do
-    [[ $command == "hs -c"* ]] || continue
+    [[ $command == "hs "* && $command == *" -c "* ]] || continue
     [ "$(etime_seconds "$etime")" -gt "$STUCK_SECONDS" ] && echo "$pid"
   done < <(ps -axo pid=,etime=,command=)
 }

@@ -8,7 +8,7 @@
 max_characters=40
 
 if [ "${SENDER:-}" = mouse.clicked ] && [ "${BUTTON:-}" = right ]; then
-  hs -c 'if omvToggleLyrics then omvToggleLyrics() end'
+  "${0%/*}/../hs.sh" 'if omvToggleLyrics then omvToggleLyrics() end'
   exit 0
 fi
 

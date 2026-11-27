@@ -17,7 +17,7 @@ if [ "${SENDER:-}" = mouse.clicked ]; then
   # The upgrade changes the count, so the next wake counts again even if the window was
   # closed before brew finished.
   rm -f "$stamp"
-  hs -c 'omvBrewUpgrade()'
+  "${0%/*}/../hs.sh" 'omvBrewUpgrade()'
   exit 0
 fi
 

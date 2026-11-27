@@ -23,7 +23,7 @@ draw() {
 opens_disk_card_on_click() {
   stub hs
   run_in_sandbox NAME=disk SENDER=mouse.clicked "$PLUGIN"
-  assert_called "^hs -c omvToggleDisk\(\)$"
+  assert_called "^hs -t 2 -c omvToggleDisk\(\)$"
 }
 
 hides_when_there_is_room() {

@@ -125,7 +125,7 @@ redraws_when_not_routine() {
 opens_processes_card_on_click() {
   stub hs
   run_in_sandbox NAME=system_load SENDER=mouse.clicked "$PLUGIN"
-  assert_called '^hs -c omvToggleProcesses\(\)$'
+  assert_called '^hs -t 2 -c omvToggleProcesses\(\)$'
 }
 
 run_case "should stay hidden when CPU is under 80% and memory pressure is normal" hides_when_idle

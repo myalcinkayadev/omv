@@ -161,6 +161,12 @@ ignores_young_call() {
   expect_no_report '✗ 1 stuck hs call'
 }
 
+reports_stuck_call_with_timeout() {
+  complete_setup
+  stuck_call '4242 01:01 hs -t 2 -c omvRedrawBar()'
+  expect_report '✗ 1 stuck hs call'
+}
+
 ignores_hs_by_hand() {
   complete_setup
   stuck_call '4242 05:00 hs'
@@ -749,6 +755,7 @@ run_case 'should flag a stuck hs call when one runs over 60s' reports_stuck_call
 run_case "should read a stuck call's age in days" reads_age_in_days
 run_case "should read a stuck call's age in hours" reads_age_in_hours
 run_case 'should ignore an hs call under 60s old' ignores_young_call
+run_case 'should flag a stuck hs call that has a timeout option' reports_stuck_call_with_timeout
 run_case "should ignore an hs that isn't a -c call" ignores_hs_by_hand
 run_case 'should flag two bars when two run' reports_two_bars
 run_case 'should flag two borders when two run' reports_two_borders

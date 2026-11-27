@@ -9,7 +9,7 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/bluetooth
 opens_card_on_click() {
   stub hs
   run_in_sandbox NAME=bluetooth SENDER=mouse.clicked "$PLUGIN"
-  assert_called '^hs -c omvToggleBluetooth\(\)$'
+  assert_called '^hs -t 2 -c omvToggleBluetooth\(\)$'
 }
 
 # The icon is Hammerspoon's to set, so the bar never waits on an hs call for it.

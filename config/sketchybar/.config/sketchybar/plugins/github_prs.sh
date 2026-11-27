@@ -6,7 +6,7 @@
 gh=${GH:-/opt/homebrew/bin/gh}
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvTogglePrs()'
+  "${0%/*}/../hs.sh" 'omvTogglePrs()'
   exit 0
 fi
 

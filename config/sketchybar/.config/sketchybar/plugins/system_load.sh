@@ -8,7 +8,7 @@
 PATH="$PATH:/usr/sbin"
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvToggleProcesses()'
+  "${0%/*}/../hs.sh" 'omvToggleProcesses()'
   exit 0
 fi
 

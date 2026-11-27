@@ -11,7 +11,7 @@ tab=$(printf '\t')
 PATH="$PATH:/usr/sbin"
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvFocusClaude()'
+  "${0%/*}/../hs.sh" 'omvFocusClaude()'
   exit 0
 fi
 

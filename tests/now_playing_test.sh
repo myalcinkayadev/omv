@@ -85,7 +85,7 @@ opens_lyrics_on_right_click() {
   stub hs
   playing Music 'Korn — Freak on a Leash'
   draw mouse.clicked 0 right
-  assert_called '^hs -c if omvToggleLyrics then omvToggleLyrics\(\) end$'
+  assert_called '^hs -t 2 -c if omvToggleLyrics then omvToggleLyrics\(\) end$'
 }
 
 keeps_playing_on_right_click() {

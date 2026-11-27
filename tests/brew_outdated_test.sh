@@ -164,7 +164,7 @@ checks_the_fit() {
 opens_the_upgrade_on_click() {
   stub hs
   run_plugin SENDER=mouse.clicked
-  assert_called '^hs -c omvBrewUpgrade\(\)$'
+  assert_called '^hs -t 2 -c omvBrewUpgrade\(\)$'
 }
 
 skips_brew_on_click() {

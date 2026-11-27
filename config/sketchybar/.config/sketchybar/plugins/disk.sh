@@ -4,7 +4,7 @@
 # df counts space macOS could purge as used, so the card, which asks Mole, can show more.
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvToggleDisk()'
+  "${0%/*}/../hs.sh" 'omvToggleDisk()'
   exit 0
 fi
 

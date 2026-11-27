@@ -126,7 +126,7 @@ opens_agents_on_click() {
   stub hs
   save_usage 23 "$FUTURE" 41 "$FUTURE"
   run_plugin SENDER=mouse.clicked
-  assert_called "^hs -c omvToggleAgents\(\)$"
+  assert_called "^hs -t 2 -c omvToggleAgents\(\)$"
 }
 
 adds_line() {

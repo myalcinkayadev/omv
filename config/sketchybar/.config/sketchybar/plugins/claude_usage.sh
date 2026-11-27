@@ -10,7 +10,7 @@ WHITE=0xffffffff MUTED=0xff7a7a7a BLACK=0xff000000
 [ -r "$HOME/.local/state/omv/theme/colors.sh" ] && . "$HOME/.local/state/omv/theme/colors.sh"
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvToggleAgents()'
+  "${0%/*}/../hs.sh" 'omvToggleAgents()'
   exit 0
 fi
 

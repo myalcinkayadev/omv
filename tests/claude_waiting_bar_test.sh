@@ -95,7 +95,7 @@ checks_the_fit() {
 focuses_on_click() {
   stub hs
   run_plugin SENDER=mouse.clicked
-  assert_called "hs -c omvFocusClaude\(\)"
+  assert_called "hs -t 2 -c omvFocusClaude\(\)"
 }
 
 hides_when_every_session_works() {

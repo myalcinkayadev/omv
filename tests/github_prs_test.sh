@@ -72,7 +72,7 @@ checks_the_fit() {
 opens_the_card_on_click() {
   stub hs
   run_plugin SENDER=mouse.clicked
-  assert_called "hs -c omvTogglePrs\(\)"
+  assert_called "hs -t 2 -c omvTogglePrs\(\)"
 }
 
 skips_gh_on_click() {

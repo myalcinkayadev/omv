@@ -8,7 +8,7 @@ readonly PLUGIN=$REPO_DIR/config/sketchybar/.config/sketchybar/plugins/battery.s
 opens_battery_card_on_click() {
   stub hs
   run_in_sandbox NAME=battery SENDER=mouse.clicked "$PLUGIN"
-  assert_called "^hs -c omvToggleBattery\(\)$"
+  assert_called "^hs -t 2 -c omvToggleBattery\(\)$"
 }
 
 # pmset answers with the given source and battery line.

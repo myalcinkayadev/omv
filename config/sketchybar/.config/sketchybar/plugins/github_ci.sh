@@ -17,7 +17,7 @@ state_file="$state_dir/github-ci"
 passed_file="$state_dir/github-ci-passed"
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvToggleCi()'
+  "${0%/*}/../hs.sh" 'omvToggleCi()'
   exit 0
 fi
 
@@ -47,7 +47,7 @@ if [ -r "$state_file" ]; then
     $1 == "SUCCESS" && failed[$2]' "$state_file" "$temporary" > "$passed_file.new"
   if [ -s "$passed_file.new" ]; then
     mv "$passed_file.new" "$passed_file"
-    hs -c 'omvCiPassed()' >/dev/null 2>&1
+    "${0%/*}/../hs.sh" 'omvCiPassed()' >/dev/null 2>&1
   else
     rm -f "$passed_file.new"
   fi

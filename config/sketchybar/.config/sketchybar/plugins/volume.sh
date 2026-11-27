@@ -18,7 +18,7 @@ scrolled_level() {
 }
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvToggleSound()'
+  "${0%/*}/../hs.sh" 'omvToggleSound()'
   exit 0
 fi
 

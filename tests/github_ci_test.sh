@@ -119,7 +119,7 @@ notices_a_failing_pull_request_that_passes() {
   stub_gh "$PASSING"
   stub hs
   run_plugin
-  assert_called "hs -c omvCiPassed\(\)"
+  assert_called "hs -t 2 -c omvCiPassed\(\)"
 }
 
 names_the_passed_pull_request() {
@@ -163,7 +163,7 @@ checks_the_fit() {
 opens_the_card_on_click() {
   stub hs
   run_plugin SENDER=mouse.clicked
-  assert_called "hs -c omvToggleCi\(\)"
+  assert_called "hs -t 2 -c omvToggleCi\(\)"
 }
 
 skips_gh_on_click() {

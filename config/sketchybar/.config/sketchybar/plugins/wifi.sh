@@ -2,7 +2,7 @@
 # Draws the Wi-Fi icon, and opens the Wi-Fi card on a click.
 
 if [ "${SENDER:-}" = mouse.clicked ]; then
-  hs -c 'omvToggleWifi()'
+  "${0%/*}/../hs.sh" 'omvToggleWifi()'
   exit 0
 fi
 

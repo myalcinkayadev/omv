@@ -82,7 +82,7 @@ hides_item_when_link_is_down() {
 opens_card_on_click() {
   stub hs
   run_in_sandbox NAME=ethernet SENDER=mouse.clicked "$PLUGIN"
-  assert_called "^hs -c omvToggleEthernet\(\)$"
+  assert_called "^hs -t 2 -c omvToggleEthernet\(\)$"
 }
 
 run_case "should show the item when a LAN port has an address" shows_item_with_cable

@@ -24,7 +24,7 @@ after-startup-command = [
 # While the profile in use has an app to open on an empty workspace, Hammerspoon hears about
 # each switch too; the file says so, so a switch costs nothing otherwise.
 exec-on-workspace-change = ['/bin/bash', '-c',
-  '/opt/homebrew/bin/sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE; [ -e "$HOME/.local/state/omv/open-when-empty" ] && /opt/homebrew/bin/hs -t 2 -c "omvWorkspaceChanged(\"$AEROSPACE_FOCUSED_WORKSPACE\")" >/dev/null 2>&1 &']
+  '/opt/homebrew/bin/sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE; [ -e "$HOME/.local/state/omv/open-when-empty" ] && /usr/bin/perl -e "alarm 3; exec @ARGV" /opt/homebrew/bin/hs -t 2 -c "omvWorkspaceChanged(\"$AEROSPACE_FOCUSED_WORKSPACE\")" >/dev/null 2>&1 &']
 
 # Switching monitors changes the focused workspace without firing the callback above.
 on-focused-monitor-changed = [

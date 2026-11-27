@@ -12,12 +12,12 @@ click() {
 
 opens_sound_card_on_left_click() {
   click left
-  assert_called "^hs -c omvToggleSound\(\)$"
+  assert_called "^hs -t 2 -c omvToggleSound\(\)$"
 }
 
 opens_sound_card_on_right_click() {
   click right
-  assert_called "^hs -c omvToggleSound\(\)$"
+  assert_called "^hs -t 2 -c omvToggleSound\(\)$"
 }
 
 leaves_mute_alone_on_click() {

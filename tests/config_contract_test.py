@@ -421,7 +421,7 @@ class ConfigContract(unittest.TestCase):
 
     def test_should_stop_a_recording_from_the_bar(self) -> None:
         source = (REPO / "config/sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
-        self.assertIn("click_script=\"hs -c 'omvStopRecording()'\"", source)
+        self.assertIn("click_script=\"$CONFIG_DIR/hs.sh 'omvStopRecording()'\"", source)
 
     def test_should_define_the_lyrics_window_hook_in_hammerspoon(self) -> None:
         self.assertIn("omvToggleLyrics = later(", HAMMERSPOON.read_text(encoding="utf-8"))
@@ -432,7 +432,7 @@ class ConfigContract(unittest.TestCase):
 
     def test_should_ask_hammerspoon_to_redraw_its_items_when_the_bar_starts(self) -> None:
         source = (REPO / "config/sketchybar/.config/sketchybar/sketchybarrc").read_text(encoding="utf-8")
-        self.assertIn("hs -t 2 -c 'omvRedrawBar()' >/dev/null 2>&1 &", source)
+        self.assertIn("\"$CONFIG_DIR/hs.sh\" 'omvRedrawBar()' >/dev/null 2>&1 &", source)
 
     def test_should_define_the_bar_redraw_in_hammerspoon(self) -> None:
         self.assertIn("omvRedrawBar = later(", HAMMERSPOON.read_text(encoding="utf-8"))
@@ -713,7 +713,7 @@ class Leftovers(unittest.TestCase):
 
     def test_should_open_the_calendar_from_the_clock_only_with_the_calendar_flag(self) -> None:
         source = SKETCHYBARRC.read_text(encoding="utf-8")
-        self.assertRegex(source, r'if omv_flag_on calendar; then\s*\n\s*sketchybar --set clock click_script="hs -c \'omvToggleCalendar\(\)\'"')
+        self.assertRegex(source, r'if omv_flag_on calendar; then\s*\n\s*sketchybar --set clock click_script="\$CONFIG_DIR/hs.sh \'omvToggleCalendar\(\)\'"')
 
     def test_should_document_every_flag_in_the_readme(self) -> None:
         readme = (REPO / "README.md").read_text(encoding="utf-8")
@@ -772,6 +772,26 @@ class NotifyLeaks(unittest.TestCase):
                 for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
                 if NOTIFY_WITH_FUNCTION.search(line) and not line.lstrip().startswith("--")]
         self.assertEqual(sent, [])
+
+
+
+# An hs call that runs Lua: "hs", maybe with its full path, then -c among its options.
+HS_CALL = re.compile(r"(?:^|[\s;&|(\"'=])(?:/opt/homebrew/bin/)?hs(?:\s+-[A-Za-z]+(?:\s+[0-9]+)?)*\s+-c\b")
+# The places a script can call Hammerspoon from: the command, the installer, the bar, AeroSpace,
+# Hammerspoon's own shell scripts, the agents' hooks and the screenshot script.
+HS_CALLERS = ["bin/omv", "install", "config/sketchybar", "config/aerospace", "config/hammerspoon", "agents", "docs"]
+
+
+class HsTimeouts(unittest.TestCase):
+    def test_should_give_every_hs_call_a_time_limit_when_reading_the_scripts(self) -> None:
+        # hs -c can wait forever, even with -t, when a reload drops the call, so each call runs
+        # under perl's alarm: in the line itself, or through the bar's hs.sh.
+        paths = [path for caller in HS_CALLERS for path in ([REPO / caller] if (REPO / caller).is_file()
+                 else sorted((REPO / caller).rglob("*"))) if path.is_file() and path.suffix not in {".lua", ".png", ".md", ".swift", ".json"}]
+        unlimited = [f"{path.relative_to(REPO)}:{number}" for path in paths
+                     for number, line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), 1)
+                     if HS_CALL.search(line) and not line.lstrip().startswith("#") and "alarm" not in line]
+        self.assertEqual(unlimited, [])
 
 
 if __name__ == "__main__":

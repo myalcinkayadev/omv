@@ -83,7 +83,7 @@ STATUS_ICON=(icon.width=32 icon.align=center icon.padding_left=0 icon.padding_ri
 sketchybar --add item clock right \
   --set clock icon.drawing=off label.padding_left=4 update_freq=30 script="$PLUGIN_DIR/clock.sh"
 if omv_flag_on calendar; then
-  sketchybar --set clock click_script="hs -c 'omvToggleCalendar()'"
+  sketchybar --set clock click_script="$CONFIG_DIR/hs.sh 'omvToggleCalendar()'"
 fi
 
 if omv_flag_on battery; then
@@ -129,7 +129,7 @@ if omv_flag_on input-source; then
   # is enabled. Hammerspoon sets it when macOS announces a change; clicking it switches to
   # the next source.
   sketchybar --add item input_source right \
-    --set input_source drawing=off icon.drawing=off click_script="hs -c 'omvNextInputSource()'"
+    --set input_source drawing=off icon.drawing=off click_script="$CONFIG_DIR/hs.sh 'omvNextInputSource()'"
 fi
 
 if omv_flag_on weather; then
@@ -138,7 +138,7 @@ if omv_flag_on weather; then
   # the notch; see bar_fit.sh. Clicking it opens the weather card.
   sketchybar --add item weather right \
     --set weather drawing=off icon.padding_right=3 label.padding_left=3 label.padding_right=10 \
-      click_script="hs -c 'omvToggleWeather()'"
+      click_script="$CONFIG_DIR/hs.sh 'omvToggleWeather()'"
 fi
 
 if omv_flag_on keep-awake; then
@@ -183,21 +183,21 @@ if omv_flag_on clipboard; then
   # sets it; clicking it turns history back on.
   sketchybar --add item clipboard_paused right \
     --set clipboard_paused drawing=off icon=󰅍 icon.color=$MUTED icon.padding_right=3 label=paused \
-      label.color=$MUTED label.padding_left=3 click_script="hs -c 'omvResumeClipboard()'"
+      label.color=$MUTED label.padding_left=3 click_script="$CONFIG_DIR/hs.sh 'omvResumeClipboard()'"
 fi
 
 if omv_flag_on night-light; then
   # Shown only while night light (macOS's Night Shift) is on. Hammerspoon sets it; clicking
   # it turns night light off.
   sketchybar --add item nightlight right \
-    --set nightlight drawing=off icon=󰖔 icon.color=$MUTED label.drawing=off click_script="hs -c 'omvToggleNightLight()'"
+    --set nightlight drawing=off icon=󰖔 icon.color=$MUTED label.drawing=off click_script="$CONFIG_DIR/hs.sh 'omvToggleNightLight()'"
 fi
 
 if omv_flag_on mic-mute; then
   # Shown only while the mic is muted (Option+M), in red so a muted mic is never missed.
   # Hammerspoon sets it; clicking it unmutes.
   sketchybar --add item mic_muted right \
-    --set mic_muted drawing=off icon=󰍭 icon.color=0xffff5f5f label.drawing=off click_script="hs -c 'omvToggleMic()'"
+    --set mic_muted drawing=off icon=󰍭 icon.color=0xffff5f5f label.drawing=off click_script="$CONFIG_DIR/hs.sh 'omvToggleMic()'"
 fi
 
 if omv_flag_on in-use; then
@@ -213,7 +213,7 @@ if omv_flag_on tailscale; then
   # Tailscale, shown only once it's installed: white while connected, gray otherwise.
   # Hammerspoon sets it; clicking it opens the Tailscale card.
   sketchybar --add item tailscale right \
-    --set tailscale drawing=off icon=󰖂 label.drawing=off click_script="hs -c 'omvToggleTailscale()'"
+    --set tailscale drawing=off icon=󰖂 label.drawing=off click_script="$CONFIG_DIR/hs.sh 'omvToggleTailscale()'"
 fi
 
 if omv_flag_on focus; then
@@ -221,7 +221,7 @@ if omv_flag_on focus; then
   # from macOS's Focus files; clicking it switches Do Not Disturb.
   sketchybar --add item focus right \
     --set focus drawing=off icon=󰽥 icon.color=$MUTED icon.padding_right=3 label.color=$MUTED \
-      label.padding_left=3 click_script="hs -c 'omvToggleFocus()'"
+      label.padding_left=3 click_script="$CONFIG_DIR/hs.sh 'omvToggleFocus()'"
 fi
 
 if omv_flag_on capture; then
@@ -229,7 +229,7 @@ if omv_flag_on capture; then
   # clicking it stops the recording and saves it to the Desktop.
   sketchybar --add item recording right \
     --set recording drawing=off icon=󰻃 icon.color=$WHITE icon.padding_right=3 label=rec \
-      label.color=$WHITE label.padding_left=3 click_script="hs -c 'omvStopRecording()'"
+      label.color=$WHITE label.padding_left=3 click_script="$CONFIG_DIR/hs.sh 'omvStopRecording()'"
 fi
 
 if omv_flag_on claude; then
@@ -284,7 +284,7 @@ if omv_flag_on reminders; then
   sketchybar --add item reminder right \
     --set reminder drawing=off icon=󰔛 icon.padding_right=3 label.padding_left=3 \
       background.drawing=off background.color=$WHITE \
-      background.corner_radius=5 background.height=24 click_script="hs -c 'omvToggleReminders()'"
+      background.corner_radius=5 background.height=24 click_script="$CONFIG_DIR/hs.sh 'omvToggleReminders()'"
 fi
 
 if omv_flag_on calendar; then
@@ -294,7 +294,7 @@ if omv_flag_on calendar; then
   sketchybar --add item meeting right \
     --set meeting drawing=off icon=󰃭 icon.padding_right=3 label.padding_left=3 \
       background.drawing=off background.color=$WHITE \
-      background.corner_radius=5 background.height=24 click_script="hs -c 'omvJoinMeeting()'"
+      background.corner_radius=5 background.height=24 click_script="$CONFIG_DIR/hs.sh 'omvJoinMeeting()'"
 fi
 
 # Hidden. Gives way on the right side of the bar before the notch; see bar_fit.sh.
@@ -312,4 +312,4 @@ sketchybar --update
 # Hammerspoon sets the weather, meeting and reminder items, and only when they change, so
 # after a restart of the bar it is asked to draw them again. In the background, so the bar
 # never waits on it, and quietly when Hammerspoon isn't running.
-hs -t 2 -c 'omvRedrawBar()' >/dev/null 2>&1 &
+"$CONFIG_DIR/hs.sh" 'omvRedrawBar()' >/dev/null 2>&1 &
