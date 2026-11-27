@@ -6,7 +6,7 @@
 //   dictate listen <locale> <engine> [words]  records until "stop" or "cancel" on stdin; words,
 //                                         |-separated, are names and terms to hear right; draws
 //                                         the pill's wave where "wave" lines on stdin say (below)
-//   dictate wave <x> <y> <w> <low> <mid> <high>  a still wave there until stdin closes
+//   dictate wave <x> <y> <w> <low> <mid> <high> [seconds]  a still wave there, 10 s unless given
 //   dictate selftest                      checks the wave's rules
 // engine is transcriber (SpeechTranscriber) or dictation (DictationTranscriber, more languages).
 // While listening it prints, one per line: progress<tab>N while a model downloads, ready once
@@ -568,16 +568,20 @@ if mode == "locales" {
   await locales()
 } else if mode == "selftest" {
   exit(selftest())
-} else if mode == "wave" && arguments.count > 6 {
-  // A still wave with bands low, mid and high at x, y and w until stdin closes, for the README's picture.
+} else if mode == "wave" && arguments.count > 7 {
+  // A still wave with bands low, mid and high at x, y and w, for the README's picture: shown for
+  // seconds, 10 unless given, or until it's stopped. It reads nothing, since a task started with
+  // no input has its stdin closed at once.
   let values = arguments[5...7].map { Double($0) ?? 0 }
-  runWithWindow { levels, wave, commands in
-    levels.set(values)
-    let x = Double(arguments[2]) ?? 0, y = Double(arguments[3]) ?? 0, w = Double(arguments[4]) ?? 0
-    await MainActor.run { wave.show(WaveSpot(x: x, y: y, w: w, still: true)) }
-    _ = await commands.next()
-    exit(0)
-  }
+  let seconds = arguments.count > 8 ? Double(arguments[8]) ?? 10 : 10
+  let app = NSApplication.shared
+  app.setActivationPolicy(.accessory)
+  let levels = Levels()
+  levels.set(values)
+  let wave = WaveView(levels: levels)
+  wave.show(WaveSpot(x: Double(arguments[2]) ?? 0, y: Double(arguments[3]) ?? 0, w: Double(arguments[4]) ?? 0, still: true))
+  DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { exit(0) }
+  app.run()
 } else if mode == "listen" && arguments.count > 3 {
   runWithWindow { levels, _, commands in
     guard let module = await makeModule(arguments[2], arguments[3]) else { emit("problem", "language"); leave(1) }
@@ -600,6 +604,6 @@ if mode == "locales" {
     exit(1)
   }
 } else {
-  FileHandle.standardError.write("usage: dictate locales | install <locale> <engine> | listen <locale> <engine> [words] | wave <x> <y> <w> <low> <mid> <high> | selftest\n".data(using: .utf8)!)
+  FileHandle.standardError.write("usage: dictate locales | install <locale> <engine> | listen <locale> <engine> [words] | wave <x> <y> <w> <low> <mid> <high> [seconds] | selftest\n".data(using: .utf8)!)
   exit(2)
 }

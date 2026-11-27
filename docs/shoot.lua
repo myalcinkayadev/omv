@@ -76,7 +76,8 @@ local function show(shot, screen, onReady)
         tostring(math.floor(strip.w)), tostring(bands.low), tostring(bands.mid), tostring(bands.high) })
       waveTask:start()
     end
-    return hs.timer.doAfter(1.0, function() onReady(hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)) end)
+    -- The helper takes a couple of seconds to start and open its window.
+    return hs.timer.doAfter(2.5, function() onReady(hs.geometry.rect(frame.x, frame.y, frame.w, frame.h)) end)
   end
   if shot.kind == "live" then
     require(shot.feature)[shot.call]()
