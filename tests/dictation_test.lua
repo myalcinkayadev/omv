@@ -157,7 +157,7 @@ check.that("should map -55 dB and below to 0", dictation.levelOf(-55) == 0 and d
 check.that("should map -15 dB and above to 1", dictation.levelOf(-15) == 1 and dictation.levelOf(0) == 1)
 check.that("should map between linearly", math.abs(dictation.levelOf(-35) - 0.5) < 0.001)
 check.that("should rise at once", math.abs(dictation.smooth(0, 1) - 0.6) < 0.001)
-check.that("should fall slowly", math.abs(dictation.smooth(1, 0) - 0.92) < 0.001)
+check.that("should fall slower than it rises", math.abs(dictation.smooth(1, 0) - 0.75) < 0.001)
 
 -- The words.
 local lines = dictation.wrap("one two three four five six seven", 10)
@@ -273,17 +273,23 @@ check.that("should read a bands line", (function()
   local line = dictation.parse("bands\t-40 -30.5 -50")
   return line.kind == "bands" and line.bands.low == -40 and line.bands.mid == -30.5 and line.bands.high == -50
 end)())
-local gain = dictation.newGain()
+-- Each gain starts in a quiet room, as a dictation does before you speak.
+local function room(state) for _ = 1, 10 do dictation.gain(state, bands(-70, -70, -70), 0.033) end return state end
+local gain = room(dictation.newGain())
 for _ = 1, 20 do dictation.gain(gain, bands(db(0.1), db(0.1), db(0.1)), 0.033) end
 local steady = dictation.gain(gain, bands(db(0.1), db(0.1), db(0.1)), 0.033)
 check.that("should keep headroom above the recent peak", math.abs(steady.mid - 0.8) < 0.01)
 check.that("should rise to the top only on a new peak", dictation.gain(gain, bands(db(0.1), db(0.2), db(0.1)), 0.033).mid == 1)
-local fading = dictation.newGain()
+local fading = room(dictation.newGain())
 dictation.gain(fading, bands(db(0.1), db(0.1), db(0.1)), 0.033)
 for _ = 1, 90 do dictation.gain(fading, bands(-90, -90, -90), 0.033) end
 check.that("should let the peak fall slowly so a quieter voice fills the wave again",
   dictation.gain(fading, bands(db(0.05), db(0.05), db(0.05)), 0.033).mid > 0.6)
-check.that("should keep room noise as a ripple", dictation.gain(dictation.newGain(), bands(-60, -60, -60), 0.033).mid == 0)
+check.that("should keep room noise as a ripple", dictation.gain(room(dictation.newGain()), bands(-70, -70, -70), 0.033).mid == 0)
+check.that("should hear a quiet voice well above a quiet room", dictation.gain(room(dictation.newGain()), bands(-50, -50, -50), 0.033).mid > 0.5)
+local noisy = dictation.newGain()
+for _ = 1, 10 do dictation.gain(noisy, bands(-45, -45, -45), 0.033) end
+check.that("should learn a noisy room's level as its floor", dictation.gain(noisy, bands(-45, -45, -45), 0.033).mid == 0)
 
 check.that("should draw three curves at 1, 0.5 and 0.25 brightness", #loud == 3 and loud[1].alpha == 1 and loud[2].alpha == 0.5 and loud[3].alpha == 0.25)
 

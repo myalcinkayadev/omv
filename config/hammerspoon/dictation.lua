@@ -403,7 +403,7 @@ end
 -- The meter: a level in dB as 0 to 1, -55 dB (a quiet room) to -15 dB (speaking up), so
 -- quiet speech still moves it.
 local FLOOR_DB, CEILING_DB = -55, -15
-local ATTACK, RELEASE = 0.6, 0.08
+local ATTACK, RELEASE = 0.6, 0.25
 -- A level this loud or louder is speech, which keeps a locked one going.
 local VOICE = 0.3
 
@@ -499,22 +499,27 @@ function dictation.wave(recording, layout)
   return curves
 end
 
--- Each band's loudness scaled by its own recent peak, so the wave shows how your voice changes
--- however loud you speak. Room noise below -50 dB counts as nothing; the peak never goes under
--- -40 dB, so a quiet room isn't blown up; it halves every 1.5 s, and a steady voice reaches 0.8,
--- leaving the top for a new peak.
-local NOISE, PEAK_FLOOR, HEADROOM, HALF_LIFE = 10 ^ (-50 / 20), 10 ^ (-40 / 20), 1.25, 1.5
+-- Each band's loudness above the room, scaled by its own recent peak, so the wave shows how
+-- your voice changes however loud you speak and however loud your mic is. The room's level is
+-- learned as it goes: it falls at once to anything quieter and creeps up, doubling every 8 s,
+-- so a pause sets it again. Only sound twice the room's counts; the peak never goes under ten
+-- times the room's, so a quiet room isn't blown up. The peak halves every 1.5 s, and a steady
+-- voice reaches 0.8, leaving the top for a new peak.
+local QUIETEST, MARGIN, PEAK_OVER_ROOM, HEADROOM, HALF_LIFE, ROOM_DOUBLING = 10 ^ (-90 / 20), 2, 10, 1.25, 1.5, 8
 
 function dictation.newGain()
-  return { peaks = {} }
+  return { peaks = {}, rooms = {} }
 end
 
--- The bands { low, mid, high } in dB as 0 to 1, seconds after the last; updates state's peaks.
+-- The bands { low, mid, high } in dB as 0 to 1, seconds after the last; updates state.
 function dictation.gain(state, bands, seconds)
   local values = {}
   for _, band in ipairs({ "low", "mid", "high" }) do
-    local amplitude = math.max(0, 10 ^ ((bands[band] or -100) / 20) - NOISE)
-    local peak = math.max(PEAK_FLOOR, (state.peaks[band] or PEAK_FLOOR) * 0.5 ^ (seconds / HALF_LIFE))
+    local heard = math.max(QUIETEST, 10 ^ ((bands[band] or -100) / 20))
+    local room = math.min(heard, (state.rooms[band] or heard) * 2 ^ (seconds / ROOM_DOUBLING))
+    state.rooms[band] = room
+    local amplitude = math.max(0, heard - MARGIN * room)
+    local peak = math.max(PEAK_OVER_ROOM * room, (state.peaks[band] or 0) * 0.5 ^ (seconds / HALF_LIFE))
     values[band] = math.min(1, math.sqrt(amplitude / peak) / HEADROOM)
     state.peaks[band] = math.max(peak, amplitude)
   end
