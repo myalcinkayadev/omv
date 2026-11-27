@@ -309,4 +309,9 @@ check.that("should change the frame's text when the app changes", dictation.fram
 check.that("should change the frame's text when it locks", dictation.frameKey(base, 105) ~= dictation.frameKey(with({ locked = true }), 105))
 check.that("should draw a curve point every 4 pt", #wave({ bands = bands(1, 1, 1) })[1].points == 200 / 4 + 1)
 
+check.that("should redraw every tick while you speak", dictation.drawsThisTick({ bands = bands(0, 0.4, 0) }, 7))
+check.that("should redraw every other tick in silence", dictation.drawsThisTick({ bands = bands(0, 0.01, 0) }, 8)
+  and not dictation.drawsThisTick({ bands = bands(0, 0.01, 0) }, 7))
+check.that("should redraw every tick while finishing", dictation.drawsThisTick({ finishing = true, bands = bands(0, 0, 0) }, 7))
+
 check.finish()

@@ -508,6 +508,18 @@ function dictation.wave(recording, layout)
   return curves
 end
 
+-- Whether the pill redraws on tick number tick: each repaint of a canvas costs Hammerspoon
+-- about 9 ms of CPU whatever it draws, so in silence, when the wave is only a ripple, it
+-- redraws every other tick; while you speak, and while finishing, every tick.
+local QUIET = 0.05
+
+function dictation.drawsThisTick(recording, tick)
+  if recording.finishing then return true end
+  local bands = recording.bands or {}
+  if math.max(bands.low or 0, bands.mid or 0, bands.high or 0) >= QUIET then return true end
+  return tick % 2 == 0
+end
+
 -- Each band's loudness above the room, scaled by its own recent peak, so the wave shows how
 -- your voice changes however loud you speak and however loud your mic is. The room's level is
 -- learned as it goes: it falls at once to anything quieter and creeps up, doubling every 8 s,

@@ -14,8 +14,12 @@ local ownmic = require("ownmic")
 local feature = {}
 
 local HELPER = hs.configdir .. "/dictate.sh"
--- About 30 times a second, so the wave moves smoothly.
-local TICK_SECONDS = 0.033
+-- 20 times a second: each repaint of the pill costs Hammerspoon about 9 ms of CPU, so a faster
+-- wave would cost more than the whole pill did before it.
+local TICK_SECONDS = 0.05
+-- Where the words would go is asked of macOS every this many ticks, 4 times a second.
+local FOCUS_TICKS = 5
+local ticks = 0
 local START_SOUND, END_SOUND = "Tink", "Pop"
 
 local keys = dictation.keys()
@@ -160,13 +164,16 @@ local function tick()
   local recording = current
   if not recording then return stopTicker() end
   if not recording.shown or recording.problem then return end
+  ticks = ticks + 1
   if not recording.finishing then
-    local here = focus()
-    recording.app, recording.appIcon, recording.secure = here.app, here.appIcon, here.secure
+    if ticks % FOCUS_TICKS == 0 then
+      local here = focus()
+      recording.app, recording.appIcon, recording.secure = here.app, here.appIcon, here.secure
+    end
     recording.left = dictation.remaining(keys, now)
   end
   recording.phases = dictation.wavePhase(recording.phases, recording.bands, TICK_SECONDS, reduceMotion)
-  dictationPill.draw(recording)
+  if dictation.drawsThisTick(recording, ticks) then dictationPill.draw(recording) end
 end
 
 local function record()

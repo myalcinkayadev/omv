@@ -8,7 +8,7 @@
 // engine is transcriber (SpeechTranscriber) or dictation (DictationTranscriber, more languages).
 // While listening it prints, one per line: progress<tab>N while a model downloads, ready once
 // recording, level<tab>dB and bands<tab>low mid high, each band's dB (80-300 Hz, 300-2000 Hz,
-// 2-8 kHz), about thirty times a second, partial<tab>text as words come,
+// 2-8 kHz), about twenty times a second, partial<tab>text as words come,
 // and after "stop" final<tab>text, everything heard. problem<tab>no-microphone, no-input or
 // language when it can't. "cancel", or stdin closing, ends it without a final line.
 import Accelerate
@@ -159,7 +159,7 @@ func listen(_ module: any SpeechModule, words: [String]) async throws {
   var lastLevel = Date.distantPast
   let bands = Bands(sampleRate: Float(micFormat.sampleRate))
   node.installTap(onBus: 0, bufferSize: 1024, format: micFormat) { buffer, _ in
-    if Date().timeIntervalSince(lastLevel) >= 0.033, let samples = buffer.floatChannelData?[0] {
+    if Date().timeIntervalSince(lastLevel) >= 0.05, let samples = buffer.floatChannelData?[0] {
       let count = Int(buffer.frameLength)
       var sum: Float = 0
       for index in 0..<count { sum += samples[index] * samples[index] }
