@@ -48,6 +48,8 @@ local workspaceCards = require("features.workspaces")
 local themes = require("features.theme")
 -- Loaded now, so the Permissions card can open on its own the first time omv loads.
 require("features.permissions")
+-- Starts the bar again when it has gone, since nothing else would.
+require("features.barwatch")
 
 local pullRequests = feature("github-prs", "features.prs")
 local checks = feature("github-ci", "features.ci")

@@ -44,7 +44,7 @@ FINDER_INFO_TITLE = " Info$"
 FLAGS = REPO / "config/hammerspoon/flags.lua"
 SKETCHYBARRC = REPO / "config/sketchybar/.config/sketchybar/sketchybarrc"
 # The desktop itself, which every flag leaves loaded.
-CORE_FEATURES = {"menu", "keys", "windows", "workspaces", "theme", "permissions"}
+CORE_FEATURES = {"menu", "keys", "windows", "workspaces", "theme", "permissions", "barwatch"}
 # Each optional feature module and the flag that loads it.
 FEATURE_FLAGS = {
     "weather": "weather", "battery": "battery", "bluetooth": "bluetooth", "network": "network",
