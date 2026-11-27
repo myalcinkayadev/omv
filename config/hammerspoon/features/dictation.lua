@@ -26,7 +26,7 @@ local keys = dictation.keys()
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
 -- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
--- review, auto, app, appIcon, secure, startApp, left, waveSent }.
+-- review, auto, app, appIcon, secure, startApp, left, waveSent, inputClosed }.
 local current = nil
 -- The last dictations, newest first, each { text, app, at }.
 feature.recent = {}
@@ -96,8 +96,19 @@ local function stopTicker()
   ticker = nil
 end
 
+-- Writes a line to the helper, until its input is closed: writing to a helper that has ended
+-- would kill Hammerspoon, which is why the helper reads on until then.
 local function send(recording, word)
-  if recording and recording.task and recording.task:isRunning() then recording.task:setInput(word .. "\n") end
+  if recording and recording.task and not recording.inputClosed and recording.task:isRunning() then
+    recording.task:setInput(word .. "\n")
+  end
+end
+
+-- After the helper's last line: nothing more is written to it, and closing its input lets it end.
+local function closeInput(recording)
+  if recording.inputClosed then return end
+  recording.inputClosed = true
+  if recording.task then recording.task:closeInput() end
 end
 
 -- Draws the pill, and tells the helper where its wave goes, or to hide it, when that changed.
@@ -114,7 +125,7 @@ end
 local function finished(recording, final)
   if current ~= recording then return end
   current = nil
-  send(recording, "hide")
+  closeInput(recording)
   local text, dropped = final, 0
   if dictation.cleanupOn(settings()) then text, dropped = dictation.clean(final) end
   local outcome = dictation.outcome(text)
@@ -128,6 +139,7 @@ end
 
 local function showProblem(recording, problem)
   recording.problem = dictation.notice(problem, recording.locale)
+  closeInput(recording)
   drawPill(recording)
   hs.timer.doAfter(2.5, function()
     if current == recording then current = nil end
@@ -157,7 +169,7 @@ local function cancel()
   local recording = current
   current = nil
   send(recording, "cancel")
-  if recording and recording.task then recording.task:closeInput() end
+  if recording then closeInput(recording) end
   dictationPill.hide()
 end
 

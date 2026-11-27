@@ -324,9 +324,15 @@ final class Commands: @unchecked Sendable {
   }
 }
 
+// Signalled when Hammerspoon closes the helper's stdin.
+let inputClosed = DispatchSemaphore(value: 0)
+// The wave of a listen, hidden as it ends.
+nonisolated(unsafe) var shownWave: WaveView?
+
 // Reads Hammerspoon's lines on a thread of their own, so the main thread draws: stop and
 // cancel end the listen, wave and hide move the wave, which keeps going while finishing.
 func readCommands(_ commands: Commands, _ wave: WaveView) {
+  shownWave = wave
   Thread {
     while let line = readLine() {
       let word = line.trimmingCharacters(in: .whitespaces)
@@ -335,7 +341,17 @@ func readCommands(_ commands: Commands, _ wave: WaveView) {
       else if let spot = parseWave(word) { DispatchQueue.main.async { wave.show(spot) } }
     }
     commands.end("cancel")
+    inputClosed.signal()
   }.start()
+}
+
+// Ends a listen after its last line: the wave goes at once, but the helper reads on until
+// Hammerspoon closes its stdin, 2 s at most, since Hammerspoon may still be writing, and
+// writing to a pipe nobody reads kills the writer.
+func leave(_ code: Int32) -> Never {
+  DispatchQueue.main.async { shownWave?.hide() }
+  _ = inputClosed.wait(timeout: .now() + 2)
+  exit(code)
 }
 
 // MARK: Checks
@@ -462,7 +478,7 @@ final class Bands {
 }
 
 func listen(_ module: any SpeechModule, words: [String], levels: Levels, commands: Commands) async throws {
-  guard await AVCaptureDevice.requestAccess(for: .audio) else { emit("problem", "no-microphone"); exit(1) }
+  guard await AVCaptureDevice.requestAccess(for: .audio) else { emit("problem", "no-microphone"); leave(1) }
   try await install(module)
   let analyzer = SpeechAnalyzer(modules: [module])
   // Only the dictation model takes them; the transcriber ignores contextual strings.
@@ -472,13 +488,13 @@ func listen(_ module: any SpeechModule, words: [String], levels: Levels, command
     try await analyzer.setContext(context)
   }
   guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
-    emit("problem", "no-input"); exit(1)
+    emit("problem", "no-input"); leave(1)
   }
   let engine = AVAudioEngine()
   let node = engine.inputNode
   let micFormat = node.outputFormat(forBus: 0)
   guard micFormat.channelCount > 0, let converter = AVAudioConverter(from: micFormat, to: format) else {
-    emit("problem", "no-input"); exit(1)
+    emit("problem", "no-input"); leave(1)
   }
   let (stream, input) = AsyncStream<AnalyzerInput>.makeStream()
   var lastLevel = Date.distantPast
@@ -527,7 +543,7 @@ func listen(_ module: any SpeechModule, words: [String], levels: Levels, command
   engine.stop()
   node.removeTap(onBus: 0)
   input.finish()
-  if command == "cancel" { exit(0) }
+  if command == "cancel" { leave(0) }
   try await analyzer.finalizeAndFinishThroughEndOfInput()
   _ = try? await reader.value
   emit("final", heard.finished())
@@ -564,15 +580,15 @@ if mode == "locales" {
   }
 } else if mode == "listen" && arguments.count > 3 {
   runWithWindow { levels, _, commands in
-    guard let module = await makeModule(arguments[2], arguments[3]) else { emit("problem", "language"); exit(1) }
+    guard let module = await makeModule(arguments[2], arguments[3]) else { emit("problem", "language"); leave(1) }
     do {
       try await listen(module, words: arguments.count > 4 ? arguments[4].split(separator: "|").map(String.init) : [],
                        levels: levels, commands: commands)
     } catch {
       emit("problem", error.localizedDescription)
-      exit(1)
+      leave(1)
     }
-    exit(0)
+    leave(0)
   }
 } else if mode == "install" && arguments.count > 3 {
   guard let module = await makeModule(arguments[2], arguments[3]) else { emit("problem", "language"); exit(1) }
