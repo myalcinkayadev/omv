@@ -11,8 +11,9 @@ local sendto = require("sendto")
 
 local voiceagents = {}
 
--- Up to this many spoken words name the project, such as "omv web" for omv-web.
-local NAME_WORDS = 3
+-- Up to this many spoken words name the project, such as "omv web" for omv-web; spelled out,
+-- a letter a word, up to SPELLED_WORDS, so "oh em vee test" reaches omv-test.
+local NAME_WORDS, SPELLED_WORDS = 3, 6
 -- A name this long or longer may be heard one letter off, such as "dashbord".
 local NEAR_LENGTH = 5
 
@@ -96,12 +97,23 @@ local function asLetters(words, count)
   return table.concat(out)
 end
 
--- How well heard matches a folder's name: 2 the same, 1 one letter off, 0 not at all.
-local function score(heard, name)
+-- How well heard matches a folder's name: 2 the same, 1 one letter off, 0 not at all. A short
+-- name may be one letter off only when it was heard as an acronym, such as LMV for omv: the
+-- dictation model writes spelled-out letters that way, while a short word one letter off, such
+-- as omb, is more likely another word.
+local function score(heard, name, acronym)
   if heard == "" then return 0 end
   if heard == name then return 2 end
-  if #name >= NEAR_LENGTH and oneEdit(heard, name) then return 1 end
+  if (#name >= NEAR_LENGTH or acronym) and oneEdit(heard, name) then return 1 end
   return 0
+end
+
+-- Whether the first count words were heard as capitals, such as LMV.
+local function capitals(words, count)
+  for index = 1, count do
+    if not tostring(words[index]):match("^%u%u+%p*$") then return false end
+  end
+  return true
 end
 
 -- The session the first words name, and the words left as the prompt; else nil and why:
@@ -110,11 +122,12 @@ end
 -- counting as nothing; the same name beats one letter off, then the longer name wins.
 function voiceagents.match(words, rows)
   local best, bestScore, bestCount, tied = nil, 0, 0, {}
-  for count = 1, math.min(NAME_WORDS, #words) do
-    local heard, spelled = normal(table.concat(words, "", 1, count)), asLetters(words, count)
+  for count = 1, math.min(SPELLED_WORDS, #words) do
+    local heard = count <= NAME_WORDS and normal(table.concat(words, "", 1, count)) or ""
+    local spelled = asLetters(words, count)
     for _, row in ipairs(rows or {}) do
       local name = normal(row.label)
-      local value = math.max(score(heard, name), score(spelled, name))
+      local value = math.max(score(heard, name, capitals(words, count)), score(spelled, name))
       if value > 0 and (value > bestScore or (value == bestScore and count > bestCount)) then
         best, bestScore, bestCount, tied = row, value, count, { row }
       elseif value > 0 and value == bestScore and count == bestCount and row ~= best and row.id ~= best.id then

@@ -755,12 +755,8 @@ end
 -- it hears quiet speech from the start, keeps the last word and punctuates a long dictation
 -- throughout, where dictation lost the start of quiet speech and the last word; dictation, which
 -- also takes your words, for the languages only it knows, Turkish among them; nil for neither.
--- wantsHints: a recording whose hint words matter more than punctuation, such as Right
--- Command's, where they are the project names: dictation first, since the transcriber ignores
--- them.
-function dictation.engine(locale, lists, wantsHints)
+function dictation.engine(locale, lists)
   local language = tostring(locale):match("^(%a+)")
-  if wantsHints and hasLanguage(lists.dictation, language) then return "dictation" end
   if hasLanguage(lists.transcriber, language) then return "transcriber" end
   if hasLanguage(lists.dictation, language) then return "dictation" end
   return nil

@@ -134,4 +134,20 @@ check.that("should match a folder named see when see is said as a word", heard("
 check.that("should give the rest as the prompt when the name was spoken letters", select(2, heard("tell oh em vee run it")) == "run it")
 check.that("should not turn a prompt word into a letter when it follows the name", select(2, heard("tell omv see you")) == "see you")
 
+local tests = { { id = "/dev/ttys003", label = "omv-test", state = "done" } }
+check.that("should match omv-test when it is spelled oh em vee then test", (function()
+  local row, prompt = voiceagents.match(voiceagents.parse("tell oh em vee test run it").words, tests)
+  return row ~= nil and row.label == "omv-test" and prompt == "run it"
+end)())
+check.that("should not match past four words when nothing is spelled",
+  voiceagents.match(voiceagents.parse("tell big red fox omv test run it").words, tests) == nil)
+
+local short = { { id = "/dev/ttys001", label = "omv", state = "done" } }
+check.that("should match omv when the name is heard as the acronym LMV", (function()
+  local row, prompt = voiceagents.match(voiceagents.parse("Tell LMV print hi").words, short)
+  return row ~= nil and row.label == "omv" and prompt == "print hi"
+end)())
+check.that("should not match omv when a lowercase word is one letter off", voiceagents.match(voiceagents.parse("tell omb print hi").words, short) == nil)
+check.that("should not match omv when the acronym is two letters off", voiceagents.match(voiceagents.parse("tell LMB print hi").words, short) == nil)
+
 check.finish()

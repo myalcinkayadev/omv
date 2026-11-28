@@ -450,10 +450,4 @@ check.that("should list Talk-back speaks with in headphones by default", (functi
   return false
 end)())
 
-local engines = { transcriber = { "en-US" }, dictation = { "en-US", "tr-TR" } }
-check.that("should give dictation for en-US when hints are wanted and dictation has it", dictation.engine("en-US", engines, true) == "dictation")
-check.that("should give transcriber for en-US when hints aren't wanted", dictation.engine("en-US", engines) == "transcriber")
-check.that("should give transcriber when hints are wanted but dictation lacks the language",
-  dictation.engine("ja-JP", { transcriber = { "ja-JP" }, dictation = {} }, true) == "transcriber")
-
 check.finish()
