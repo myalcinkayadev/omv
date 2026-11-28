@@ -52,6 +52,11 @@ function soundmatch.key(text)
   return table.concat(out)
 end
 
+-- The verbs omv's commands start with: words, not names, so they never match by sound, and
+-- "said" isn't "Set a reminder".
+local VERBS = { set = true, open = true, show = true, toggle = true, start = true, stop = true, new = true, go = true,
+  turn = true, take = true, copy = true, paste = true, move = true, close = true, quit = true }
+
 -- The label's words, and the label as one word, as normal text.
 local function parts(label)
   local list = { soundmatch.normal(label) }
@@ -73,7 +78,7 @@ function soundmatch.score(query, label)
     if part == said then return soundmatch.EXACT end
     if part:sub(1, #said) == said then best = math.max(best, soundmatch.PREFIX + whole)
     elseif #part >= soundmatch.NEAR_LENGTH and soundmatch.oneEdit(said, part) then best = math.max(best, soundmatch.SPELLING + whole)
-    elseif saidKey and #saidKey >= 2 and soundmatch.key(part) == saidKey then best = math.max(best, soundmatch.SOUND + whole) end
+    elseif saidKey and #saidKey >= 2 and not VERBS[part] and soundmatch.key(part) == saidKey then best = math.max(best, soundmatch.SOUND + whole) end
   end
   return best
 end

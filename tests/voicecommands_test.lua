@@ -85,4 +85,21 @@ check.that("should decide for an agent only when there's no command context", vo
 check.that("should mark a run go and a quit warn", voicecommands.decide("open said", sessions, nil, context).tone == "go"
   and voicecommands.decide("quit zed", sessions, nil, context).tone == "warn")
 
+-- A tie goes to the one that's running.
+local zs = { items = { { id = "app:/Applications/Zed.app", label = "Zed", group = "Apps" },
+  { id = "app:/Applications/zoom.us.app", label = "zoom.us", group = "Apps" } }, workspaces = {} }
+local function withRunning(names) local c = {} for k, v in pairs(zs) do c[k] = v end c.running = names return c end
+check.that("should run Zed when open z ties Zed and zoom.us and only Zed is running", (function()
+  local t = voicecommands.target("open z", withRunning({ "Zed" }))
+  return t.kind == "run" and t.item.label == "Zed"
+end)())
+check.that("should ask which one when both are running", voicecommands.target("open z", withRunning({ "Zed", "zoom.us" })).kind == "choose")
+check.that("should ask which one when neither is running", voicecommands.target("open z", withRunning({})).kind == "choose")
+check.that("should run an open window when it ties with an app that isn't running", (function()
+  local c = withRunning({})
+  c.items = { { id = "window:5", label = "Zed — notes", group = "Windows" }, { id = "app:/Applications/zoom.us.app", label = "zoom.us", group = "Apps" } }
+  local t = voicecommands.target("open z", c)
+  return t.kind == "run" and t.item.id == "window:5"
+end)())
+
 check.finish()

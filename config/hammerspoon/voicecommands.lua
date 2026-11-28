@@ -92,11 +92,32 @@ local function tiedBest(ranked)
   return list
 end
 
+-- Of a tie, the one item that's an open window or a running app, if only one is; nil otherwise.
+local function theRunning(tied, running)
+  local isRunning = {}
+  for _, name in ipairs(running or {}) do isRunning[name] = true end
+  local found = nil
+  for _, item in ipairs(tied) do
+    if tostring(item.id):match("^window:") or (tostring(item.id):match("^app:") and isRunning[item.label]) then
+      if found then return nil end
+      found = item
+    end
+  end
+  return found
+end
+
 local function open(words, context)
   local said = table.concat(words, " ")
   local ranked, verdict = soundmatch.rank(said, openable(context.items))
   if verdict == "strong" then return { kind = "run", item = ranked[1] } end
-  if verdict == "tied" then return { kind = "choose", candidates = tiedBest(ranked) } end
+  if verdict == "tied" then
+    local tied = tiedBest(ranked)
+    -- A tie that only one running app or open window is in goes to it: "open z" is the Zed
+    -- you have open, not zoom.us.
+    local running = theRunning(tied, context.running)
+    if running then return { kind = "run", item = running } end
+    return { kind = "choose", candidates = tied }
+  end
   return { kind = "none", hint = "Nothing sounds like " .. said }
 end
 

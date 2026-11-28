@@ -28,4 +28,9 @@ check.that("should give weak when nothing scores", select(2, soundmatch.rank("ba
 
 check.that("should score a whole label above one of its words", soundmatch.score("zed", "Zed") > soundmatch.score("zed", "Open Zed"))
 
+-- Command verbs are words, not names: they don't sound-match.
+check.that("should not sound-match said to Set a reminder", soundmatch.score("said", "Set a reminder") == 0)
+check.that("should still sound-match said to Open Zed through Zed", soundmatch.score("said", "Open Zed") == soundmatch.SOUND)
+check.that("should still match set exactly to Set a reminder", soundmatch.score("set", "Set a reminder") == soundmatch.EXACT)
+
 check.finish()
