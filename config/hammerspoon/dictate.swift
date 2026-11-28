@@ -74,6 +74,7 @@ final class Heard: @unchecked Sendable {
   private let lock = NSLock()
   private var settled: [String] = []
   private var current = ""
+  private var given = false
 
   func add(_ text: String, final: Bool) -> String {
     lock.lock(); defer { lock.unlock() }
@@ -83,6 +84,15 @@ final class Heard: @unchecked Sendable {
 
   func finished() -> String {
     lock.lock(); defer { lock.unlock() }
+    return all(including: current)
+  }
+
+  // Everything heard, the first time it's asked for; nil after: the final line goes out once,
+  // whether finishing completes or the watchdog gives up on it first.
+  func takeFinal() -> String? {
+    lock.lock(); defer { lock.unlock() }
+    if given { return nil }
+    given = true
     return all(including: current)
   }
 
@@ -425,6 +435,9 @@ func selftest() -> Int32 {
   check("should ignore a line it doesn't know", parseWave("stop") == nil && parseWave("wave 1 2") == nil
         && parseWave("wave 0 0 100 dancing -1 ffffff 8d8d8d f0a35e 0") == nil)
   print("\(failed == 0 ? "all" : "\(failed) failed of") checks")
+  let once = Heard()
+  _ = once.add("hello", final: true)
+  check("should give the final line once", once.takeFinal() == "hello" && once.takeFinal() == nil)
   return failed == 0 ? 0 : 1
 }
 
@@ -476,6 +489,9 @@ final class Bands {
     return total > 0 ? energies.map { $0 / total } : [0, 0, 0]
   }
 }
+
+// How long finishing may take after stop before the helper gives what it heard and ends.
+let FINISH_SECONDS = 2.0
 
 func listen(_ module: any SpeechModule, words: [String], levels: Levels, commands: Commands) async throws {
   guard await AVCaptureDevice.requestAccess(for: .audio) else { emit("problem", "no-microphone"); leave(1) }
@@ -544,9 +560,15 @@ func listen(_ module: any SpeechModule, words: [String], levels: Levels, command
   node.removeTap(onBus: 0)
   input.finish()
   if command == "cancel" { leave(0) }
+  // Stopped almost as soon as it started, the analyzer can wait forever on audio it never got:
+  // after FINISH_SECONDS, what was heard is the final line and the helper ends.
+  DispatchQueue.global().asyncAfter(deadline: .now() + FINISH_SECONDS) {
+    if let text = heard.takeFinal() { emit("final", text) }
+    leave(0)
+  }
   try await analyzer.finalizeAndFinishThroughEndOfInput()
   _ = try? await reader.value
-  emit("final", heard.finished())
+  if let text = heard.takeFinal() { emit("final", text) }
 }
 
 let arguments = CommandLine.arguments
