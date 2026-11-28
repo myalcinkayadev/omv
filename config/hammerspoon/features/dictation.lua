@@ -12,6 +12,7 @@ local dictationPill = require("dictationpill")
 local ownmic = require("ownmic")
 local talkback = require("talkback")
 local voiceagents = require("voiceagents")
+local voicecommands = require("voicecommands")
 
 local feature = {}
 
@@ -32,6 +33,8 @@ local COMMAND_OPTIONS = { late = true, lock = false }
 -- What voice to agents needs from the agents' features, given by init.lua when it's on:
 -- { rows, deliver(tty, text), spoke() }. Without it Right Command does nothing.
 local agents = nil
+-- What voice commands need from the palette, given by init.lua: { items(done), run(id) }.
+local commands = nil
 -- Called on a press of either key, so talk-back stops before you speak.
 local onPress = nil
 -- Talk-back, when it's on, for the card's voice and output rows: features/talkback.lua.
@@ -169,33 +172,82 @@ end
 local choosing = nil
 local CHOOSE_SECONDS = 5
 
+-- Ends the pill's question; for agents, copy puts the words waiting on the clipboard. A
+-- command's choice has no words to keep: its pill only goes.
 local function endChoosing(copy)
   local was = choosing
   choosing = nil
   if not was then return end
   if was.timer then was.timer:stop() end
   if not copy then return end
+  if was.run then return dictationPill.hide() end
   hs.pasteboard.setContents(was.prompt)
   dictationPill.confirm({ kind = "copy", message = "Copied: " .. was.prompt })
 end
 
-local function choose(heard, prompt, rows)
+-- The pill asks which one: rows numbered 1 to 9; for a command, run(row) does it and verb
+-- names it in the hint; for agents, the words go to the session picked.
+local function choose(heard, prompt, rows, run, verb)
   endChoosing(false)
-  choosing = { heard = heard, prompt = prompt, rows = rows }
+  choosing = { heard = heard, prompt = prompt, rows = rows, run = run, verb = verb }
   choosing.timer = hs.timer.doAfter(CHOOSE_SECONDS, function() endChoosing(true) end)
   dictationPill.choosing(choosing)
 end
 
--- A digit while the pill asks which one: sends the words to that session, or says there's none.
+-- A digit while the pill asks which one: does it with that row, or says there's none.
 local function picked(number)
   local row = choosing.rows[number]
   if not row then
-    choosing.note = "No session " .. number .. ": which one?"
+    choosing.note = "No " .. number .. ": which one?"
     return dictationPill.choosing(choosing)
   end
-  local prompt = choosing.prompt
+  local prompt, run = choosing.prompt, choosing.run
   endChoosing(false)
+  if run then return run(row) end
   sendToAgent(row, prompt)
+end
+
+-- After a release that says close or quit: { target, timer }, while the pill waits for Enter;
+-- Esc, another key or the time running out keeps it.
+local confirming = nil
+local CONFIRM_SECONDS = 5
+
+local function endConfirming(run)
+  local was = confirming
+  confirming = nil
+  if not was then return end
+  if was.timer then was.timer:stop() end
+  dictationPill.hide()
+  if not run then return end
+  local target = was.target
+  if target.action == "quit" then
+    local app = hs.application.get(target.name)
+    if app then app:kill() end
+    return shell.alert("Quit " .. target.name, 1)
+  end
+  shell.run(shell.AEROSPACE, { "close", "--window-id", target.id })()
+end
+
+local function confirm(target)
+  endConfirming(false)
+  confirming = { target = target }
+  confirming.timer = hs.timer.doAfter(CONFIRM_SECONDS, function() endConfirming(false) end)
+  dictationPill.confirming(target)
+end
+
+-- Does a command's target: runs a palette row, switches or moves to a workspace, asks before
+-- a close or quit, or which one when it's tied.
+local function runCommand(target, heard)
+  keep({ text = heard, app = "→ " .. (target.chip or "command"), at = os.time() })
+  if target.kind == "run" then return commands.run(target.item.id) end
+  if target.kind == "workspace" then return shell.run(shell.AEROSPACE, { "workspace", target.workspace.number })() end
+  if target.kind == "move" then return shell.run(shell.AEROSPACE, { "move-node-to-workspace", target.workspace.number })() end
+  if target.kind == "confirm" then return confirm(target) end
+  local rows = {}
+  for index, item in ipairs(target.candidates) do
+    rows[index] = { number = index, label = item.label, hint = item.group or "", id = item.id, state = "done" }
+  end
+  choose(heard, nil, rows, function(row) commands.run(row.id) end, "open it")
 end
 
 -- Where an agent's words go on release: into a done session's prompt, unsent; copied for a
@@ -203,8 +255,16 @@ end
 local function finishedForAgent(recording, final)
   local text = dictation.join(recording.before, final)
   local spoke = agents.spoke and agents.spoke()
-  local target = voiceagents.target(text, agents.rows(), spoke)
+  local target = voicecommands.decide(text, agents.rows(), spoke, recording.commandContext)
   if dictation.outcome(text).kind == "notice" then return dictationPill.hide() end
+  if target.source == "command" and target.kind ~= "none" then
+    dictationPill.hide()
+    return runCommand(target, text)
+  end
+  if target.source == "command" then
+    dictationPill.hide()
+    return shell.alert(target.hint, 2)
+  end
   if target.kind ~= "none" then return sendToAgent(target.row, target.prompt, target.why) end
   local rows = voiceagents.numbered(agents.rows(), spoke)
   local prompt = voiceagents.leftover(text, rows)
@@ -272,7 +332,9 @@ local function onOutput(recording, chunk)
     local message = dictation.parse(line)
     if message and message.kind == "partial" then
       recording.partial = dictation.replace(dictation.join(recording.before, message.text), recording.rules)
-      if recording.agent then recording.agentTarget = voiceagents.target(recording.partial, recording.agentRows, recording.spoke) end
+      if recording.agent then
+        recording.agentTarget = voicecommands.decide(recording.partial, recording.agentRows, recording.spoke, recording.commandContext)
+      end
     elseif message and message.kind == "level" then
       local level = dictation.levelOf(message.level)
       if dictation.isVoice(level) then dictation.press(keys, "voice", hs.timer.secondsSinceEpoch()) end
@@ -395,7 +457,10 @@ local function record(forAgent)
   if forAgent then
     recording.agentRows, recording.spoke = agents.rows(), agents.spoke and agents.spoke()
     recording.numbered = voiceagents.numbered(recording.agentRows, recording.spoke)
-    recording.agentTarget = voiceagents.target("", recording.agentRows, recording.spoke)
+    recording.agentTarget = voicecommands.decide("", recording.agentRows, recording.spoke, nil)
+    if commands then
+      commands.context(function(context) if current == recording then recording.commandContext = context end end)
+    end
   end
   recording.words = wordsFor(recording.agentRows)
   recording.nextLocale = dictation.nextLanguage(languageList, recording.locale)
@@ -482,6 +547,22 @@ local DIGITS = { [18] = 1, [19] = 2, [20] = 3, [21] = 4, [23] = 5, [22] = 6, [26
 
 -- While the pill asks which one: a digit picks, Esc copies, both swallowed; any other key or a
 -- click copies and goes through, so typing carries on.
+local RETURN = 36
+
+-- While the pill asks to confirm a close or quit: Enter does it and Esc keeps it, both
+-- swallowed; any other key or a click keeps it and goes through.
+local function onConfirmKey(event, kind)
+  if kind == hs.eventtap.event.types.keyDown then
+    local code = event:getKeyCode()
+    if code == RETURN or code == ESCAPE then
+      hs.timer.doAfter(0, function() endConfirming(code == RETURN) end)
+      return true
+    end
+  end
+  hs.timer.doAfter(0, function() endConfirming(false) end)
+  return false
+end
+
 local function onChoosingKey(event, kind)
   if kind == hs.eventtap.event.types.keyDown then
     local code, flags = event:getKeyCode(), event:getFlags()
@@ -501,6 +582,7 @@ end
 
 local function onKey(event)
   local kind = event:getType()
+  if confirming and kind ~= hs.eventtap.event.types.flagsChanged then return onConfirmKey(event, kind) end
   if choosing and kind ~= hs.eventtap.event.types.flagsChanged then return onChoosingKey(event, kind) end
   local name
   if kind == hs.eventtap.event.types.flagsChanged then
@@ -508,6 +590,7 @@ local function onKey(event)
     name = dictation.eventFor(event:getKeyCode(), flags.alt == true, flags.shift == true, flags.cmd == true)
     -- Talking again while the pill asks which one: the words waiting are copied first.
     if choosing and (name == "option-down" or name == "command-down") then endChoosing(true) end
+    if confirming and (name == "option-down" or name == "command-down") then endConfirming(false) end
   end
   -- Talk-back stops at Right Command even without voice to agents.
   if name == "command-down" and not agents and onPress then onPress() end
@@ -549,6 +632,12 @@ end
 -- fn runs on every press of Right Option or Right Command, before anything is heard.
 function feature.onPress(fn)
   onPress = fn
+end
+
+-- Turns on Right Command's commands, with what they need from the palette: { context(done),
+-- run(id) }; context gives { items, workspaces, running, focused } to done.
+function feature.commands(api)
+  commands = api
 end
 
 -- Shows talk-back's voice and output on the card; api is features/talkback.lua.

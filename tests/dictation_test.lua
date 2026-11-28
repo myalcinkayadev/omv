@@ -427,7 +427,7 @@ check.that("should say Command when an agent recording is ready",
 check.that("should show the agent icon when recording for an agent",
   dictation.header({ started = 0, ready = true, app = "Zed", agent = true }, 1).icon == "agent")
 check.that("should name the target folder in the chip when recording for an agent",
-  dictation.header({ started = 0, ready = true, app = "Zed", agent = true, agentTarget = { kind = "paste", row = { label = "omv" } } }, 1).target.name == "omv")
+  dictation.header({ started = 0, ready = true, app = "Zed", agent = true, agentTarget = { kind = "paste", chip = "omv" } }, 1).target.name == "omv")
 check.that("should show a dash in the chip when an agent recording has no target yet",
   dictation.header({ started = 0, ready = true, app = "Zed", agent = true, agentTarget = { kind = "none", hint = "x" } }, 1).target.name == "—")
 check.that("should say Starting when an agent recording isn't ready",

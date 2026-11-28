@@ -86,7 +86,7 @@ local function body(recording)
   if recording.finishing then return recording.partial or "", "", nil end
   -- For an agent, the hint is where the words go, or what to say instead.
   if recording.agent and (recording.partial or "") == "" then return "", AGENT_HINT, nil end
-  if recording.agent and recording.agentTarget then return recording.partial or "", voiceagents.resultLine(recording.agentTarget), nil end
+  if recording.agent and recording.agentTarget then return recording.partial or "", recording.agentTarget.line, nil end
   local hint = recording.locked and "tap Right Option to type it · Shift to copy · Esc cancels"
     or "release types it · Shift+release copies · Esc cancels"
   if recording.nextName then hint = hint .. " · Tab: " .. recording.nextName end
@@ -157,8 +157,10 @@ function dictationPill.draw(recording)
   local words, hint, download = body(recording)
   local all = dictation.wrap(words, LINE_CHARACTERS)
   local lines = dictation.lastLines(all, dictation.MAX_LINES)
-  local sessions = recording.agent and voiceagents.listLines(recording.numbered or {},
-    recording.agentTarget and recording.agentTarget.row and recording.agentTarget.row.id) or {}
+  -- The sessions, numbered, until the words turn out to be a command.
+  local target = recording.agentTarget
+  local sessions = (recording.agent and not (target and target.source == "command"))
+    and voiceagents.listLines(recording.numbered or {}, target and target.row and target.row.id) or {}
   local height = dictation.agentPillHeight(#lines, #sessions)
   local border = header.target.kind == "password" and WARNING or (recording.locked and tokens.fg or tokens.accent)
   local dim = recording.finishing and tokens.accent or tokens.fg
@@ -188,8 +190,8 @@ function dictationPill.draw(recording)
       text = hs.styledtext.new(line, { font = { name = FONT, size = 14 }, color = color(tokens.fg, faded and 0.45 or 1) }) }
   end
   local hintColor = recording.secure and WARNING or tokens.fg
-  local kind = recording.agent and recording.agentTarget and recording.agentTarget.kind
-  if kind == "paste" then hintColor = tokens.accent elseif kind == "copy" then hintColor = WARNING end
+  local tone = recording.agent and recording.agentTarget and recording.agentTarget.tone
+  if tone == "go" then hintColor = tokens.accent elseif tone == "warn" then hintColor = WARNING end
   elements[#elements + 1] = text(hint, 11, hintColor, { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
   local frame = dictationPill.show(elements, height)
   local onScreen = strip and { x = frame.x + strip.x, y = frame.y, w = strip.w } or nil
@@ -232,9 +234,25 @@ function dictationPill.choosing(c)
     elements[#elements + 1] = { type = "text", frame = { x = 16, y = wordsY + (index - 1) * dictation.LINE_HEIGHT, w = WIDTH - 32, h = dictation.LINE_HEIGHT },
       text = hs.styledtext.new(line, { font = { name = FONT, size = 13 }, color = color(tokens.fg, 0.55) }) }
   end
-  elements[#elements + 1] = text("press 1–" .. #c.rows .. " to send “" .. c.prompt .. "” · Esc copies it", 11, tokens.fg,
+  local hint = c.run and ("press 1–" .. #c.rows .. " to " .. c.verb .. " · Esc cancels")
+    or ("press 1–" .. #c.rows .. " to send “" .. c.prompt .. "” · Esc copies it")
+  elements[#elements + 1] = text(hint, 11, tokens.fg,
     { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
   return dictationPill.show(elements, height)
+end
+
+-- After a release that says close or quit: target { action, name }, waiting for Enter.
+function dictationPill.confirming(target)
+  local tokens = shell.themeTokens()
+  local question = (target.action == "quit" and "Quit " or "Close ") .. target.name .. "?"
+  local elements = {
+    card(tokens, WARNING, 52),
+    text(ICONS.agent, 20, WARNING, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }),
+    text(question, 14, tokens.fg, { x = STATUS_X, y = CENTER_Y - 10, w = WIDTH - STATUS_X - 200, h = 22 }),
+    text("Enter " .. (target.action == "quit" and "quits" or "closes") .. " · Esc keeps", 12, WARNING,
+      { x = WIDTH - 198, y = CENTER_Y - 8, w = 180, h = 18 }, { alignment = "right" }),
+  }
+  return dictationPill.show(elements, 52)
 end
 
 -- While talk-back speaks: { project, line }, with a speaker, "<project> finished", the line

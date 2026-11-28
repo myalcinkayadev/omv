@@ -115,7 +115,8 @@ function palette.soundIds(rows, text)
   if #soundmatch.normal(text) < palette.SOUND_LETTERS then return ids end
   for _, row in ipairs(rows or {}) do
     local score = row.id and row.label and soundmatch.score(text, row.label) or 0
-    if score == soundmatch.SOUND or score == soundmatch.SPELLING then ids[#ids + 1] = row.id end
+    -- A sound or one letter off, on the whole label or one of its words.
+    if score >= soundmatch.SOUND and score < soundmatch.PREFIX then ids[#ids + 1] = row.id end
   end
   return ids
 end

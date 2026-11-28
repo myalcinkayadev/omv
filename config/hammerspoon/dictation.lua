@@ -215,8 +215,8 @@ function dictation.header(recording, now)
   local target = recording.secure and { kind = "password", name = "password field" } or { kind = "app", name = shortName(recording.app) }
   -- For an agent, the chip names the session the words go to, whatever app is in front.
   if recording.agent then
-    local row = recording.agentTarget and recording.agentTarget.row
-    target = { kind = "agent", name = row and shortName(row.label) or "—" }
+    local chip = recording.agentTarget and recording.agentTarget.chip
+    target = { kind = "agent", name = chip and shortName(chip) or "—" }
   end
   local language = recording.languages and tostring(recording.locale or ""):match("^(%a+)")
   return { icon = icon, live = live, status = status, timer = timer, warning = warning, target = target,

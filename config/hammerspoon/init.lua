@@ -93,6 +93,7 @@ feature("stalls", "features.stalls")
 local dictationKey = feature("dictation", "features.dictation")
 if dictationKey and sendToAgent and enabled["voice-agents"] then
   dictationKey.agents({ rows = waitingClaude.rows, deliver = sendToAgent.deliver, spoke = talkBack and talkBack.spoke })
+  dictationKey.commands({ context = windowList.context, run = windowList.run })
 end
 if dictationKey and talkBack then
   dictationKey.onPress(talkBack.stop)

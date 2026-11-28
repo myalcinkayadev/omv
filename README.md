@@ -157,7 +157,7 @@ Option+Shift+Space shows or hides the bar.
 
 ## Palette
 
-Option+Space opens one list, like Omarchy's: every open window with its app and workspace, then your [snippets](#snippets), then every app in `/Applications`, `/System/Applications` and `~/Applications`, then every omv command the [key list](#key-list) can run, such as the Wi-Fi card or the capture menu. Type to filter by name, app, workspace number or key, and press Enter to go to the window, open the app or run the command.
+Option+Space opens one list, like Omarchy's: every open window with its app and workspace, then your [snippets](#snippets), then every app in `/Applications`, `/System/Applications` and `~/Applications`, then every omv command the [key list](#key-list) can run, such as the Wi-Fi card or the capture menu. Type to filter by name, app, workspace number or key, and press Enter to go to the window, open the app or run the command. A name typed the way it sounds, or one letter off, finds it too, marked "sounds like": "said" finds Zed, "ghasti" Ghostty.
 
 Type a sum, such as `2*35`, and its result shows first: `= 70`. Enter copies it. It reads `+ - * / ^`, `%` for the remainder, brackets and decimals. A lone number, or a name with digits such as `omv-14`, filters as usual.
 
@@ -649,10 +649,11 @@ Off until `omv flags dictation on`. Then hold **Right Option** alone and talk: a
 
 <img src="docs/dictation.png" alt="The Dictation card: Languages Turkish and English on Tab, Your words, Replacements and Drop ums and uhs under Hearing; Sounds and Dictations under Feedback; Voice Kokoro woman and Speaks in headphones under Talk-back; then Microphone under Needs" width="720">
 
-### Voice to agents
+### Voice commands and agents
 
 Off until `omv flags voice-agents on`, with `dictation`, `claude` and `send-to-agent` on too. Hold **Right Command** alone and say **tell omv run the tests and fix what fails**: on release, "run the tests and fix what fails" lands in the prompt of the Claude Code session in the `omv` folder, and its terminal comes forward. Enter is never pressed, so you read it and send it yourself, as with Option+P. **reply looks good, commit it** goes to the session that finished last.
 
+- **Commands:** **open Zed** runs what Enter on it in the palette would, an app, an open window or one of omv's commands, such as **open night light**; **go to three** or **go to code** switches workspace, by number or name; **move this to two** moves the focused window there. **quit Slack** and **close this** wait: the pill asks, and Enter after letting go does it, while Esc, any other key or 5 seconds keep it. Names are matched as in the palette, by spelling and by sound, so "open said" opens Zed; when two match equally, the pill asks which one, by number.
 - **The key:** the mic opens only once Right Command has been held alone for 0.3 seconds, so Cmd shortcuts never touch it; start talking at the start sound. Another key or a click while it's held cancels it and goes through, so Cmd+C, Cmd+Tab and Cmd+click work as always. Esc cancels.
 - **The project:** said as its folder is named, in any case; `omv-web` is "omv web", and a name spelled out, "o m v", counts too. A name of five letters or more may be heard one letter off. A name heard a letter off still counts: an acronym such as "MV" or "LMV" for omv, or a longer name one letter off. Letters said one by one count too: "oh em vee test" is omv-test. Two sessions in folders of the same name aren't guessed between: the pill names both and nothing is sent.
 - **By number:** while you hold the key, the pill lists the sessions, numbered: 1 is the one **reply** goes to, then the others that finished, newest first, then those asking or working. **one run the tests** goes to session 1, as does "number one …"; numbers are heard far more reliably than project names. When nothing you said names a session, the pill stays a moment after you let go, shows what was heard, and asks which one: a digit 1 to 9 sends the words there, and Esc, any other key or 5 seconds copy them instead, so nothing is lost.
@@ -783,7 +784,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `browser-tabs` | **off unless turned on:** the browser's open tabs in the palette; see [Palette](#palette) |
 | `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
 | `talk-back` | **off unless turned on:** an agent's finish, spoken in your headphones; needs `claude`; see [Talk back](#talk-back) |
-| `voice-agents` | **off unless turned on:** hold Right Command, say "tell omv …" or "reply …" to put words in an agent's prompt; needs `dictation`, `claude` and `send-to-agent`; see [Voice to agents](#voice-to-agents) |
+| `voice-agents` | **off unless turned on:** hold Right Command, say "open Zed", "go to three", "move this to two", "quit …", or "tell omv …" and "reply …" for an agent; needs `dictation`, `claude` and `send-to-agent`; see [Voice commands and agents](#voice-commands-and-agents) |
 | `system-load` | **off unless turned on:** CPU and memory in the bar, only while the Mac is busy; see [Smaller tools](#smaller-tools) |
 | `input-source` | **off unless turned on:** the keyboard input source in the bar, and switching it with a click; see [Input source](#input-source) |
 | `world-clocks` | **off unless turned on:** the times in `~/.config/omv/clocks` in the calendar card; see [Calendar and today's events](#calendar-and-todays-events) |
@@ -835,7 +836,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | Option+Shift+C | Join the meeting that is starting | |
 | Option+Shift+A | Go to the agent waiting for you, or open the agents' inbox when several wait or a break left something | |
 | Option+P | Send the selection, the clipboard or a screenshot to an agent waiting for a prompt | |
-| Right Command (hold) | Say "tell omv …" or "reply …" to put it in an agent's prompt; `voice-agents` flag | |
+| Right Command (hold) | Say "open Zed", "go to three", "move this to two", "quit …", or "tell omv …" for an agent; `voice-agents` flag | |
 | Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+P | Hungry processes and listening ports: quit the busiest ones | |
 | Option+Shift+X | Disk card: free space and Mole's cleanups | |

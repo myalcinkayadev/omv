@@ -13,6 +13,7 @@ local flags = require("flags")
 local files = require("files")
 local rates = require("rates")
 local snippets = require("snippets")
+local workspaces = require("workspaces")
 local tabs = require("tabs")
 local apps = require("apps")
 
@@ -246,6 +247,35 @@ function feature.toggle()
       -- Closed any way, by Escape, Option+Space or losing focus, a running mdfind stops too.
       { onClose = stopSearch })
   end, { "list-windows", "--all", "--format", windows.FORMAT }):start()
+end
+
+-- What Right Command's commands match against, given to done: { items, the palette's rows;
+-- workspaces, { number, name } from ~/.config/omv/workspaces; running, the apps open; focused,
+-- the focused window's { id, label } }. Read in the background, so the key never waits.
+function feature.context(done)
+  local list = workspaces.parse(shell.readText(shell.HOME .. "/.config/omv/workspaces")).workspaces
+  local spaces = {}
+  for number, workspace in pairs(list) do spaces[#spaces + 1] = { number = number, name = workspace.name } end
+  table.sort(spaces, function(a, b) return tonumber(a.number) < tonumber(b.number) end)
+  local running = {}
+  for _, app in ipairs(hs.application.runningApplications()) do
+    if app:kind() == 1 and app:name() then running[#running + 1] = app:name() end
+  end
+  hs.task.new(shell.AEROSPACE, function(code, output)
+    local items = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY, {}, false)
+    local focusedWindow = hs.window.focusedWindow()
+    local focused = nil
+    if focusedWindow then
+      focused = { id = tostring(focusedWindow:id()), label = (focusedWindow:application() and focusedWindow:application():name() or "")
+        .. " — " .. (focusedWindow:title() or "") }
+    end
+    done({ items = items, workspaces = spaces, running = running, focused = focused })
+  end, { "list-windows", "--all", "--format", windows.FORMAT }):start()
+end
+
+-- Runs a palette row by its id, as Enter on it does; for Right Command's "open".
+function feature.run(id)
+  onPaletteMessage({ type = "choose", id = id })
 end
 
 return feature

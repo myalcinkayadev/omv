@@ -5,7 +5,8 @@
 
 local soundmatch = {}
 
-soundmatch.EXACT, soundmatch.PREFIX, soundmatch.SPELLING, soundmatch.SOUND = 4, 3, 2, 1
+-- WHOLE is the whole label, such as Zed for "zed", above EXACT, one of its words, as in Open Zed.
+soundmatch.WHOLE, soundmatch.EXACT, soundmatch.PREFIX, soundmatch.SPELLING, soundmatch.SOUND = 5, 4, 3, 2, 1
 -- One letter off counts only from this long, so short words stay themselves.
 soundmatch.NEAR_LENGTH = 5
 -- A sound match needs this many letters said, so "sd" isn't Zed.
@@ -58,18 +59,21 @@ local function parts(label)
   return list
 end
 
--- How well query matches label: EXACT, PREFIX, SPELLING, SOUND, or 0, the best over the
--- label's words and the label as a whole.
+-- How well query matches label: WHOLE, EXACT, PREFIX, SPELLING, SOUND, or 0, the best over
+-- the label's words and the label as a whole. A match on the whole label counts half a point
+-- more than the same on one word, so "said" is Zed before Open Zed.
 function soundmatch.score(query, label)
   local said = soundmatch.normal(query)
   if said == "" then return 0 end
+  if soundmatch.normal(label) == said then return soundmatch.WHOLE end
   local saidKey = #said >= SOUND_LENGTH and soundmatch.key(query) or nil
   local best = 0
-  for _, part in ipairs(parts(label)) do
+  for index, part in ipairs(parts(label)) do
+    local whole = index == 1 and 0.5 or 0
     if part == said then return soundmatch.EXACT end
-    if part:sub(1, #said) == said then best = math.max(best, soundmatch.PREFIX)
-    elseif #part >= soundmatch.NEAR_LENGTH and soundmatch.oneEdit(said, part) then best = math.max(best, soundmatch.SPELLING)
-    elseif saidKey and #saidKey >= 2 and soundmatch.key(part) == saidKey then best = math.max(best, soundmatch.SOUND) end
+    if part:sub(1, #said) == said then best = math.max(best, soundmatch.PREFIX + whole)
+    elseif #part >= soundmatch.NEAR_LENGTH and soundmatch.oneEdit(said, part) then best = math.max(best, soundmatch.SPELLING + whole)
+    elseif saidKey and #saidKey >= 2 and soundmatch.key(part) == saidKey then best = math.max(best, soundmatch.SOUND + whole) end
   end
   return best
 end

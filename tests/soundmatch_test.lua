@@ -15,7 +15,7 @@ check.that("should score exact above prefix above spelling above sound", soundma
   and soundmatch.score("said", "Zed") > 0)
 check.that("should give 0 when the query is under 3 letters and only sounds alike", soundmatch.score("sd", "Zed") == 0)
 check.that("should match on any word of a label", soundmatch.score("said", "Zed — notes.md") > 0)
-check.that("should match a label of several words when said as one", soundmatch.score("night light", "Night light") == soundmatch.EXACT)
+check.that("should match a label of several words when said as one", soundmatch.score("night light", "Night light") == soundmatch.WHOLE)
 
 -- rank
 local items = { { label = "Zed" }, { label = "Zoom" }, { label = "Safari" }, { label = "Slack" } }
@@ -25,5 +25,7 @@ check.that("should give strong for one clear best", (function()
 end)())
 check.that("should give tied when two share the best score", select(2, soundmatch.rank("z", { { label = "Zed" }, { label = "Zoom" } })) == "tied")
 check.that("should give weak when nothing scores", select(2, soundmatch.rank("banana", items)) == "weak")
+
+check.that("should score a whole label above one of its words", soundmatch.score("zed", "Zed") > soundmatch.score("zed", "Open Zed"))
 
 check.finish()
