@@ -513,4 +513,17 @@ check.that("should keep the hold hint when held", dictation.hint({}) == "release
 check.that("should name the Tab language when held", dictation.hint({ nextName = "English" }) == "release types it · Shift+release copies · Esc cancels · Tab: English")
 check.that("should warn when typing into a password field", dictation.hint({ locked = true, secure = true }) == "won't be typed here: it goes to the clipboard")
 
+-- Released before the mic opened: no helper is asked to stop.
+check.that("should finish without the helper when it isn't ready yet", dictation.finishesWithoutHelper({ ready = false }) == true)
+check.that("should finish without the helper when paused", dictation.finishesWithoutHelper({ ready = false, paused = true }) == true)
+check.that("should finish through the helper when it's ready", dictation.finishesWithoutHelper({ ready = true }) == false)
+check.that("should finish through the helper while it hands over or pauses", dictation.finishesWithoutHelper({ ready = false, handover = true }) == false)
+
+-- Tab and Space hand the listening over only once the helper is ready: told to stop before
+-- then, it never answers.
+check.that("should hand over when the helper is ready", dictation.canHandOver({ ready = true }) == true)
+check.that("should not hand over while Starting", dictation.canHandOver({ ready = false }) == false)
+check.that("should not hand over while a handover runs", dictation.canHandOver({ ready = true, handover = true }) == false)
+check.that("should not hand over while finishing", dictation.canHandOver({ ready = true, finishing = true }) == false)
+
 check.finish()

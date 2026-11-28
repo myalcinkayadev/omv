@@ -309,6 +309,21 @@ function dictation.onHelperExit(recording)
   return recording.finishing and "finish" or "hide"
 end
 
+-- Whether a dictation ends without asking its helper to stop: paused, there's none listening;
+-- before it's ready, the mic never opened, so nothing was heard, and a helper told to stop
+-- before it's ready never answers. In a handover or a pause on its way, it's still asked.
+function dictation.finishesWithoutHelper(recording)
+  if recording.handover then return false end
+  return recording.paused == true or not recording.ready
+end
+
+-- Whether Tab or Space may hand the listening over: only to a helper that's ready, and not
+-- while one handover or the end is under way. A helper told to stop before it's ready never
+-- answers, so it would never end.
+function dictation.canHandOver(recording)
+  return recording.ready == true and not recording.handover and not recording.finishing
+end
+
 -- Whether finishing has taken too long: past FINISH_SECONDS, what was heard is used as it is.
 dictation.FINISH_SECONDS = 15
 

@@ -20,6 +20,10 @@ local HELPER = hs.configdir .. "/dictate.sh"
 -- 20 times a second, for the key's timers and the countdown; the pill is redrawn only when its
 -- text changes, and the wave moves in dictate.swift's window, drawn on the GPU.
 local TICK_SECONDS = 0.05
+-- A cancelled helper still running this long after is ended outright.
+local STRAY_SECONDS = 1.5
+-- Those timers, kept so they aren't garbage-collected before they fire.
+local strayTimers = {}
 -- Where the words would go is asked of macOS every this many ticks, 4 times a second.
 local FOCUS_TICKS = 5
 local ticks = 0
@@ -371,6 +375,17 @@ local function cancel()
   if recording and recording.handover and recording.task then recording.task:terminate() end
   send(recording, "cancel")
   if recording then closeInput(recording) end
+  -- A helper that hasn't ended a moment later is ended outright; nothing is written to it after
+  -- its input closed, so this never writes to a helper that has gone.
+  local task = recording and recording.task
+  if task then
+    local timer
+    timer = hs.timer.doAfter(STRAY_SECONDS, function()
+      strayTimers[timer] = nil
+      if task:isRunning() then task:terminate() end
+    end)
+    strayTimers[timer] = true
+  end
   dictationPill.hide()
 end
 
@@ -488,7 +503,7 @@ end
 -- of this one has said what it heard, so two never share the mic.
 local function switch()
   local recording = current
-  if not recording or recording.handover or recording.finishing or not recording.nextLocale then return end
+  if not recording or not dictation.canHandOver(recording) or not recording.nextLocale then return end
   recording.handover = true
   recording.ready = false
   send(recording, "stop")
@@ -511,12 +526,19 @@ local function finish(how)
   local recording = current
   if not recording then return end
   if not recording.shown then return cancel() end
-  recording.finishing, recording.stopped, recording.left = true, hs.timer.secondsSinceEpoch(), nil
   recording.review, recording.auto = how == "review", how == "auto"
+  -- Paused, or released before the mic opened: the words kept are all there is. A helper still
+  -- starting has its input closed, before anything is written to it, and ends by itself; told to
+  -- stop before it's ready, it would never answer.
+  if dictation.finishesWithoutHelper(recording) then
+    recording.finishing, recording.stopped = true, hs.timer.secondsSinceEpoch()
+    closeInput(recording)
+    play(END_SOUND)
+    return finished(recording, "")
+  end
+  recording.finishing, recording.stopped, recording.left = true, hs.timer.secondsSinceEpoch(), nil
   play(END_SOUND)
   drawPill(recording)
-  -- Paused, no helper listens: the words kept are all there is.
-  if recording.paused then return finished(recording, "") end
   -- In a handover the helper has been told to stop already; its words end the dictation.
   if not recording.handover then send(recording, "stop") end
 end
@@ -525,7 +547,7 @@ end
 -- words stay and the timer stops.
 local function pause()
   local recording = current
-  if not recording or recording.handover or recording.finishing then return end
+  if not recording or not dictation.canHandOver(recording) then return end
   recording.handover, recording.pausing, recording.ready = true, true, false
   recording.pausedAt = hs.timer.secondsSinceEpoch()
   -- Nothing more is written to the helper now: a wave line right after stop kept it from
@@ -640,6 +662,8 @@ local function onKey(event)
     -- Hands-free, Enter, Shift+Enter and Space are the pill's keys; Tab switches language while
     -- it listens; before the pill shows, Right Option+Tab cancels like any other key.
     name = dictation.keyName(event:getKeyCode(), event:getFlags().shift == true, keys.phase, current ~= nil and current.nextLocale ~= nil)
+    -- Space while still Starting: swallowed, and it waits for the mic, as Tab does.
+    if name == "space" and keys.phase == "locked" and current and not dictation.canHandOver(current) then return true end
   end
   if not name then return false end
   if keys.phase == "idle" and name ~= "option-down" then return false end
