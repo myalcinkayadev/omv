@@ -11,6 +11,7 @@
 #   omv flags [<name> on|off]             list feature flags, or turn one on or off
 #   omv theme [<name>]                    list themes, or switch to one
 #   omv displays                          the display names a display profile's when can use
+#   omv voice install|remove              get or remove talk-back's Kokoro voice (~1.5 GB)
 #   omv version                           the commit omv is at
 
 # -E lets the ERR trap that offers undo reach into functions.
@@ -48,8 +49,8 @@ readonly THEMES_DIR=$HOME/.local/share/omv/themes
 readonly HS_SECONDS=${OMV_HS_SECONDS:-5}
 
 usage() {
-  sed -n '2,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
-  echo "usage: omv <install|update|doctor|uninstall|setup|reload|flags|theme|displays|version>" >&2
+  sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+  echo "usage: omv <install|update|doctor|uninstall|setup|reload|flags|theme|displays|voice|version>" >&2
   exit 2
 }
 
@@ -363,6 +364,9 @@ case $command in
     [ "$#" -eq 0 ] || usage
     (cd "$REPO_DIR/config/hammerspoon" && luajit workspaces.lua names "$HOME/.local/state/omv/displays-seen")
     printf '\nIn ~/.config/omv/workspaces, on and [screen NAME] name screens: laptop, and part of each name.\n' ;;
+  voice)
+    [ "$#" -eq 1 ] && { [ "$1" = install ] || [ "$1" = remove ]; } || usage
+    "$REPO_DIR/config/hammerspoon/voice-install.sh" "$1" ;;
   version) echo "omv $(git_repo log -1 '--format=%h %cs')" ;;
   *) usage ;;
 esac

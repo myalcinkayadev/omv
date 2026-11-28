@@ -373,6 +373,26 @@ reports_an_old_displays_file() {
   expect_report "✗ ~/.config/omv/displays isn't read any more"
 }
 
+reports_missing_kokoro() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf 'talk-back voice = kokoro-woman\n' > "$HOME_DIR/.config/omv/dictation"
+  expect_report "✗ talk-back's Kokoro voice isn't installed — fix: omv voice install"
+}
+
+passes_installed_kokoro() {
+  complete_setup
+  mkdir -p "$HOME_DIR/.config/omv" "$HOME_DIR/.local/share/omv/voice"
+  printf 'talk-back voice = kokoro-man\n' > "$HOME_DIR/.config/omv/dictation"
+  : > "$HOME_DIR/.local/share/omv/voice/ready"
+  expect_no_report "Kokoro"
+}
+
+skips_kokoro_with_apple_voice() {
+  complete_setup
+  expect_no_report "Kokoro"
+}
+
 skips_missing_old_profile_files() {
   complete_setup
   expect_no_report "isn't read any more"
@@ -779,6 +799,9 @@ run_case "should report an aerospace.toml omv didn't build" reports_foreign_aero
 run_case "should report a user aerospace.toml it can't read" reports_unreadable_user_aerospace
 run_case "should report a displays file that isn't read any more" reports_an_old_displays_file
 run_case 'should say nothing about old profile files without them' skips_missing_old_profile_files
+run_case "should report Kokoro missing when talk-back's voice is Kokoro" reports_missing_kokoro
+run_case 'should say nothing about Kokoro when it is installed' passes_installed_kokoro
+run_case "should say nothing about Kokoro when talk-back's voice is Apple's" skips_kokoro_with_apple_voice
 run_case 'should report a broken line in the workspaces file' reports_broken_workspaces_file
 run_case 'should pass a workspaces file it can read' passes_good_workspaces_file
 run_case 'should say nothing about workspaces without the file' skips_missing_workspaces_file

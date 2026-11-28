@@ -26,7 +26,7 @@ overwrites. Create a file there only when the change needs it.
 | `~/.config/omv/snippets` | Text the palette pastes by name | `name = text` lines, `\n` for a line break |
 | `~/.config/omv/workspaces` | Workspaces 1 to 9: their screens, apps, layout; each screen's gaps | `[workspace 1]` `on = DELL` `apps = Zed`; `[screen laptop]` `gaps = 4` |
 | `~/.config/omv/away-digest` | How long a break opens the agents' inbox | `minutes = 10`; `0` for every break |
-| `~/.config/omv/dictation` | Dictation's language, sounds, your words and ums, replacements, a second language | `language = tr-TR`, `sounds = off`, `words = omv, Zed`, `cleanup = off`, `replace = slash voice > /voice`, `languages = tr-TR, en-US` |
+| `~/.config/omv/dictation` | Dictation's language, sounds, your words and ums, replacements, a second language; talk-back's voice and where it speaks | `language = tr-TR`, `sounds = off`, `words = omv, Zed`, `cleanup = off`, `replace = slash voice > /voice`, `languages = tr-TR, en-US`, `talk-back voice = kokoro-woman`, `talk-back output = anywhere` |
 | `~/.config/omv/clocks` | World clocks in the calendar card; needs `omv flags world-clocks on` | `NYC = America/New_York` lines, IANA zones |
 | `~/.config/omv/theme-clock` | A day and a night theme, switched at sunrise and sunset | `day = catppuccin-latte`, `night = vantablack` |
 

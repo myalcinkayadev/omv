@@ -406,4 +406,26 @@ check.that("should say Starting when an agent recording isn't ready",
 
 check.that("should grow the agent pill by 22 for each row", dictation.agentPillHeight(2, 3) == dictation.pillHeight(2) + 66)
 
+check.that("should replace a setting whose key has a hyphen", dictation.setting("talk-back voice = apple\n", "talk-back voice", "kokoro-man")
+  == "talk-back voice = kokoro-man\n")
+check.that("should list Talk-back voice under Sounds when the card is built", (function()
+  local rows = dictation.cardRows({ language = "English", talkBackVoice = "Apple", talkBackOutput = "headphones" })
+  for index, row in ipairs(rows) do
+    if row.id == "sounds" then return rows[index + 1].id == "talkBackVoice" end
+  end
+  return false
+end)())
+check.that("should hint get it when Kokoro is chosen but not installed", (function()
+  for _, row in ipairs(dictation.cardRows({ language = "English", talkBackVoice = "Kokoro, woman", talkBackMissing = true })) do
+    if row.id == "talkBackVoice" then return row.hint:find("get it", 1, true) ~= nil end
+  end
+  return false
+end)())
+check.that("should list Talk-back speaks with in headphones by default", (function()
+  for _, row in ipairs(dictation.cardRows({ language = "English", talkBackVoice = "Apple" })) do
+    if row.id == "talkBackOutput" then return row.hint == "‹  in headphones  ›" end
+  end
+  return false
+end)())
+
 check.finish()

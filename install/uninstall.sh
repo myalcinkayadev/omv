@@ -67,6 +67,8 @@ remove_claude_usage() {
   rm -rf "$HOME/.local/state/omv/claude-sessions" "$HOME/.local/state/omv/claude-waiting"
   # The chosen theme's colours and the themes fetched from Omarchy.
   rm -rf "$HOME/.local/state/omv/theme" "$HOME/.local/share/omv/themes"
+  # Talk-back's Kokoro voice: its Python environment and model.
+  rm -rf "$HOME/.local/share/omv/voice"
 }
 
 unlink_configs() {

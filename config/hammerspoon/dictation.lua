@@ -394,9 +394,14 @@ local function valueOf(text, key)
 end
 
 -- A key's whole value, spaces and commas included, without a comment; nil without the line.
+-- A key as a pattern that matches it literally, so talk-back voice's hyphen is a hyphen.
+local function keyPattern(key)
+  return (key:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
+end
+
 local function lineOf(text, key)
   for line in (tostring(text or "") .. "\n"):gmatch("([^\n]*)\n") do
-    local value = line:gsub("#.*$", ""):match("^%s*" .. key .. "%s*=%s*(.-)%s*$")
+    local value = line:gsub("#.*$", ""):match("^%s*" .. keyPattern(key) .. "%s*=%s*(.-)%s*$")
     if value then return value end
   end
   return nil
@@ -406,7 +411,7 @@ end
 local function linesOf(text, key)
   local values = {}
   for line in (tostring(text or "") .. "\n"):gmatch("([^\n]*)\n") do
-    local value = line:gsub("#.*$", ""):match("^%s*" .. key .. "%s*=%s*(.-)%s*$")
+    local value = line:gsub("#.*$", ""):match("^%s*" .. keyPattern(key) .. "%s*=%s*(.-)%s*$")
     if value then values[#values + 1] = value end
   end
   return values
@@ -530,7 +535,7 @@ end
 function dictation.setting(text, key, value)
   local lines, found = {}, false
   for line in (tostring(text or "") .. "\n"):gmatch("([^\n]*)\n") do
-    if line:gsub("#.*$", ""):match("^%s*" .. key .. "%s*=") then
+    if line:gsub("#.*$", ""):match("^%s*" .. keyPattern(key) .. "%s*=") then
       found = true
       if value then lines[#lines + 1] = key .. " = " .. value end
     else
@@ -687,7 +692,7 @@ end
 
 function dictation.cardRows(info)
   local kept = info.kept or 0
-  return {
+  local rows = {
     { id = "language", group = "Dictation", icon = "󰗊", label = "Language", hint = (info.ownLanguage and "" or "macOS's: ") .. info.language .. "  ›" },
     { id = "words", group = "Dictation", icon = "󰓹", label = "Your words", hint = wordsHint(info.words) },
     { id = "replacements", group = "Dictation", icon = "󰛔", label = "Replacements", hint = rulesHint(info.replacements) },
@@ -700,6 +705,14 @@ function dictation.cardRows(info)
     { id = "permissions", group = "Needs", icon = "󰍬", label = "Microphone", hint = MICROPHONE[info.microphone] or MICROPHONE.undetermined },
     { id = "install", group = "Needs", icon = "󰇚", label = info.language .. " model", hint = info.installed and "on this Mac" or "get it  ›" },
   }
+  -- With talk-back on, its voice and where it speaks, under Sounds.
+  if info.talkBackVoice then
+    table.insert(rows, 7, { id = "talkBackVoice", group = "Dictation", icon = "󰗋", label = "Talk-back voice",
+      hint = (info.talkBackMissing and "get it · " or "") .. "‹  " .. info.talkBackVoice .. "  ›" })
+    table.insert(rows, 8, { id = "talkBackOutput", group = "Dictation", icon = "󰋋", label = "Talk-back speaks",
+      hint = "‹  " .. (info.talkBackOutput == "anywhere" and "anywhere" or "in headphones") .. "  ›" })
+  end
+  return rows
 end
 
 -- Which of macOS's engines hears locale: the transcriber when it knows the language, since

@@ -49,4 +49,31 @@ check.that("should be due when all hold", talkback.due(all()) == true)
 check.that("should give tr when the text has ş", talkback.voice("Testler geçti, iş bitti.") == "tr")
 check.that("should give nil when the text is English", talkback.voice("Tests pass.") == nil)
 
+-- The voice and where it speaks, from ~/.config/omv/dictation.
+check.that("should read kokoro-woman when the line says it", talkback.voiceSetting("talk-back voice = kokoro-woman\n") == "kokoro-woman")
+check.that("should give apple when the voice line is missing", talkback.voiceSetting("sounds = on\n") == "apple")
+check.that("should give apple when the voice value is unknown", talkback.voiceSetting("talk-back voice = robot\n") == "apple")
+check.that("should go from apple to kokoro-woman", talkback.nextVoice("apple") == "kokoro-woman")
+check.that("should go from kokoro-man back to apple", talkback.nextVoice("kokoro-man") == "apple")
+check.that("should give apple when the setting is apple", talkback.engineFor("apple", "Tests pass.", true).engine == "apple")
+check.that("should give kokoro with af_heart when kokoro-woman is set and installed", (function()
+  local engine = talkback.engineFor("kokoro-woman", "Tests pass.", true)
+  return engine.engine == "kokoro" and engine.voice == "af_heart"
+end)())
+check.that("should give apple when Kokoro isn't installed", talkback.engineFor("kokoro-woman", "Tests pass.", false).engine == "apple")
+check.that("should give apple when the line is Turkish", talkback.engineFor("kokoro-man", "Testler geçti, iş bitti.", true).engine == "apple")
+check.that("should name each setting for the card", talkback.voiceName("apple") == "Apple"
+  and talkback.voiceName("kokoro-woman") == "Kokoro, woman" and talkback.voiceName("kokoro-man") == "Kokoro, man")
+check.that("should give apple with the preview line when apple is chosen", (function()
+  local preview = talkback.previewFor("apple", false)
+  return preview.engine == "apple" and preview.line == talkback.PREVIEW
+end)())
+check.that("should give kokoro with am_michael when kokoro-man is chosen and installed", talkback.previewFor("kokoro-man", true).voice == "am_michael")
+check.that("should give nothing when Kokoro is chosen but not installed", talkback.previewFor("kokoro-woman", false) == nil)
+check.that("should read anywhere when the output line says it", talkback.outputSetting("talk-back output = anywhere\n") == "anywhere")
+check.that("should give headphones when the output line is missing", talkback.outputSetting("") == "headphones")
+check.that("should give headphones when the output value is unknown", talkback.outputSetting("talk-back output = moon\n") == "headphones")
+check.that("should be due on speakers when output is anywhere", talkback.due(all({ headphones = false, output = "anywhere" })) == true)
+check.that("should not be due on speakers when output is headphones", talkback.due(all({ headphones = false, output = "headphones" })) == false)
+
 check.finish()

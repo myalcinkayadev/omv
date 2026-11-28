@@ -10,6 +10,7 @@ local card = require("card")
 local dictation = require("dictation")
 local dictationPill = require("dictationpill")
 local ownmic = require("ownmic")
+local talkback = require("talkback")
 local voiceagents = require("voiceagents")
 
 local feature = {}
@@ -33,6 +34,8 @@ local COMMAND_OPTIONS = { late = true, lock = false }
 local agents = nil
 -- Called on a press of either key, so talk-back stops before you speak.
 local onPress = nil
+-- Talk-back, when it's on, for the card's voice and output rows: features/talkback.lua.
+local talkBack = nil
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
 -- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
@@ -548,6 +551,11 @@ function feature.onPress(fn)
   onPress = fn
 end
 
+-- Shows talk-back's voice and output on the card; api is features/talkback.lua.
+function feature.withTalkBack(api)
+  talkBack = api
+end
+
 -- Builds the helper and reads which languages the Mac can hear, without waiting on it.
 shell.execute("'" .. HELPER .. "' locales", function(output)
   lists = dictation.parseLocales(output)
@@ -611,6 +619,9 @@ local function rows()
     words = dictation.words(settings()), cleanup = dictation.cleanupOn(settings()),
     replacements = dictation.replacements(settings()), tabLanguages = tabLanguageNames(),
     microphone = lists.microphone, installed = dictation.isInstalled(lists, language),
+    talkBackVoice = talkBack and talkback.voiceName(talkback.voiceSetting(settings())),
+    talkBackMissing = talkBack and talkback.voiceSetting(settings()) ~= "apple" and not talkBack.installed(),
+    talkBackOutput = talkBack and talkback.outputSetting(settings()),
   })
 end
 
@@ -622,6 +633,28 @@ tabLanguageNames = function()
 end
 
 local showCard, showHistory
+
+-- The card's talk-back rows, 7 and 8, under Sounds.
+local VOICE_ROW, OUTPUT_ROW = 7, 8
+
+-- The next talk-back voice: plays the sample in it at once, or gets Kokoro first when it isn't
+-- on the Mac yet, which plays the sample once it is.
+local function nextTalkBackVoice()
+  local voice = talkback.nextVoice(talkback.voiceSetting(settings()))
+  save(dictation.setting(settings(), "talk-back voice", voice))
+  if voice ~= "apple" and not talkBack.installed() then
+    talkBack.install(function() if shell.isOpen("dictation") then showCard(VOICE_ROW) end end)
+  else
+    talkBack.preview(voice)
+  end
+  return showCard(VOICE_ROW)
+end
+
+local function toggleTalkBackOutput()
+  local anywhere = talkback.outputSetting(settings()) == "anywhere"
+  save(dictation.setting(settings(), "talk-back output", anywhere and "headphones" or "anywhere"))
+  return showCard(OUTPUT_ROW)
+end
 
 -- Toggles key, sounds or cleanup, in ~/.config/omv/dictation, and shows the card again on its row.
 local function toggle(key, on, row)
@@ -668,6 +701,8 @@ function showCard(selected)
     if message.type == "step" then
       if id:match(":sounds$") then return toggle("sounds", dictation.sounds(settings()), 6) end
       if id:match(":cleanup$") then return toggle("cleanup", dictation.cleanupOn(settings()), 5) end
+      if id:match(":talkBackVoice$") then return nextTalkBackVoice() end
+      if id:match(":talkBackOutput$") then return toggleTalkBackOutput() end
       if id == "1:language" then return showLanguages() end
       return
     end
@@ -675,6 +710,8 @@ function showCard(selected)
     if id == "language" then return showLanguages() end
     if id == "sounds" then return toggle("sounds", dictation.sounds(settings()), 6) end
     if id == "cleanup" then return toggle("cleanup", dictation.cleanupOn(settings()), 5) end
+    if id == "talkBackVoice" then return nextTalkBackVoice() end
+    if id == "talkBackOutput" then return toggleTalkBackOutput() end
     if id == "dictations" then return feature.recent[1] and showHistory() or nil end
     if id == "key" then return end
     if id == "permissions" and lists.microphone == "granted" then return end

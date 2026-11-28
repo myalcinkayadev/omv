@@ -96,6 +96,7 @@ if dictationKey and sendToAgent and enabled["voice-agents"] then
 end
 if dictationKey and talkBack then
   dictationKey.onPress(talkBack.stop)
+  dictationKey.withTalkBack(talkBack)
   talkBack.whileRecording(dictationKey.recording)
 end
 local windowSizing = feature("window-sizing", "features.windowsize")

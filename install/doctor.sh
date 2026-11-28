@@ -147,6 +147,14 @@ check_aerospace_built() {
 }
 
 # The display profile files omv read before ~/.config/omv/workspaces; nothing reads them now.
+# Talk-back set to Kokoro, in ~/.config/omv/dictation, without Kokoro installed: Apple's
+# voice speaks instead, so it's said here.
+check_talk_back_voice() {
+  grep -qsE '^[[:space:]]*talk-back voice[[:space:]]*=[[:space:]]*kokoro-' "$HOME/.config/omv/dictation" || return 0
+  [ -e "$HOME/.local/share/omv/voice/ready" ] && return 0
+  problem "talk-back's Kokoro voice isn't installed" 'omv voice install'
+}
+
 check_old_profiles() {
   local name
   for name in displays profiles; do
@@ -180,6 +188,7 @@ check_links() {
   else problem "Hammerspoon doesn't load omv's config" 'omv install'; fi
   check_aerospace_built
   check_old_profiles
+  check_talk_back_voice
   check_workspaces_file
   if [ -e "$SETUP_BINARY" ]; then ok 'omv Setup is built'
   else problem "omv Setup isn't built" 'omv doctor --fix'; fi
