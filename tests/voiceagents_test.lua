@@ -125,4 +125,13 @@ check.that("should mark the chosen row", (function()
   return lines[2].chosen == true and lines[1].chosen == false
 end)())
 
+-- Spoken letters in a project's name.
+local named = { { id = "/dev/ttys001", label = "omv", state = "done" }, { id = "/dev/ttys002", label = "see", state = "done" } }
+local function heard(text) local row, prompt = voiceagents.match(voiceagents.parse(text).words, named) return row and row.label, prompt end
+check.that("should match omv when the letters are said as oh em vee", heard("tell oh em vee run it") == "omv")
+check.that("should match omv when the letters are said as O M V with capitals", heard("tell O M V run it") == "omv")
+check.that("should match a folder named see when see is said as a word", heard("tell see run it") == "see")
+check.that("should give the rest as the prompt when the name was spoken letters", select(2, heard("tell oh em vee run it")) == "run it")
+check.that("should not turn a prompt word into a letter when it follows the name", select(2, heard("tell omv see you")) == "see you")
+
 check.finish()

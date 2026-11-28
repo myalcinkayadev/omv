@@ -334,7 +334,8 @@ end
 -- Starts the helper for recording's language; a helper only acts while it's recording's own,
 -- so one left behind by a language switch never hides or ends the dictation.
 startHelper = function(recording)
-  local engine = dictation.engine(recording.locale, lists)
+  -- Right Command listens with the engine that takes hint words, the project names.
+  local engine = dictation.engine(recording.locale, lists, recording.agent)
   if not engine then
     recording.shown = true
     return showProblem(recording, "language")

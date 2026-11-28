@@ -77,6 +77,25 @@ local function oneEdit(a, b)
   return edits + (#a - i + 1) + (#b - j + 1) <= 1
 end
 
+-- The letters' names as said, so "oh em vee" is heard as omv; "double you" is W.
+local LETTERS = { ay = "a", bee = "b", see = "c", dee = "d", ee = "e", eff = "f", gee = "g", aitch = "h", jay = "j",
+  kay = "k", el = "l", em = "m", en = "n", oh = "o", pee = "p", cue = "q", are = "r", ess = "s", tee = "t", you = "u",
+  vee = "v", ex = "x", why = "y", zee = "z", zed = "z" }
+
+-- The first count words joined as a name, with each letter's name read as its letter.
+local function asLetters(words, count)
+  local out, index = {}, 1
+  while index <= count do
+    local word = normal(words[index])
+    if word == "double" and normal(words[index + 1]) == "you" and index + 1 <= count then
+      out[#out + 1], index = "w", index + 2
+    else
+      out[#out + 1], index = LETTERS[word] or word, index + 1
+    end
+  end
+  return table.concat(out)
+end
+
 -- How well heard matches a folder's name: 2 the same, 1 one letter off, 0 not at all.
 local function score(heard, name)
   if heard == "" then return 0 end
@@ -92,9 +111,10 @@ end
 function voiceagents.match(words, rows)
   local best, bestScore, bestCount, tied = nil, 0, 0, {}
   for count = 1, math.min(NAME_WORDS, #words) do
-    local heard = normal(table.concat(words, "", 1, count))
+    local heard, spelled = normal(table.concat(words, "", 1, count)), asLetters(words, count)
     for _, row in ipairs(rows or {}) do
-      local value = score(heard, normal(row.label))
+      local name = normal(row.label)
+      local value = math.max(score(heard, name), score(spelled, name))
       if value > 0 and (value > bestScore or (value == bestScore and count > bestCount)) then
         best, bestScore, bestCount, tied = row, value, count, { row }
       elseif value > 0 and value == bestScore and count == bestCount and row ~= best and row.id ~= best.id then
