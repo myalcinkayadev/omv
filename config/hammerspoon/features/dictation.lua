@@ -26,7 +26,7 @@ local keys = dictation.keys()
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
 -- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
--- review, auto, app, appIcon, secure, startApp, left, waveSent, inputClosed, chimed }.
+-- review, auto, app, appIcon, secure, startApp, left, waveSent, inputClosed, chimed, rules }.
 local current = nil
 -- The last dictations, newest first, each { text, app, at }, kept in dictation.HISTORY_PATH so
 -- they outlive a reload.
@@ -144,6 +144,7 @@ local function finished(recording, final)
   closeInput(recording)
   local text, dropped = final, 0
   if dictation.cleanupOn(settings()) then text, dropped = dictation.clean(final) end
+  text = dictation.replace(text, recording.rules)
   local outcome = dictation.outcome(text)
   if outcome.kind == "notice" then
     dictationPill.hide()
@@ -175,7 +176,7 @@ local function onOutput(recording, chunk)
   recording.buffer = (recording.buffer or "") .. (chunk or "")
   for line in recording.buffer:gmatch("([^\n]*)\n") do
     local message = dictation.parse(line)
-    if message and message.kind == "partial" then recording.partial = message.text
+    if message and message.kind == "partial" then recording.partial = dictation.replace(message.text, recording.rules)
     elseif message and message.kind == "level" then
       local level = dictation.levelOf(message.level)
       if dictation.isVoice(level) then dictation.press(keys, "voice", hs.timer.secondsSinceEpoch()) end
@@ -229,7 +230,7 @@ local function record()
   stopTicker()
   local language = locale()
   local engine = dictation.engine(language, lists)
-  local recording = { locale = language, started = hs.timer.secondsSinceEpoch() }
+  local recording = { locale = language, started = hs.timer.secondsSinceEpoch(), rules = dictation.replacements(settings()) }
   current = recording
   if not engine then
     recording.shown = true

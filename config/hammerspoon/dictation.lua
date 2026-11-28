@@ -373,6 +373,57 @@ local function lineOf(text, key)
   return nil
 end
 
+-- Every value of key, one per line, in the order written.
+local function linesOf(text, key)
+  local values = {}
+  for line in (tostring(text or "") .. "\n"):gmatch("([^\n]*)\n") do
+    local value = line:gsub("#.*$", ""):match("^%s*" .. key .. "%s*=%s*(.-)%s*$")
+    if value then values[#values + 1] = value end
+  end
+  return values
+end
+
+-- Spoken replacements, from replace = slash voice > /voice lines, one rule a line: { from, to },
+-- longest phrase first, so it wins over a shorter one inside it. \n in to is a line break.
+function dictation.replacements(text)
+  local rules = {}
+  for _, value in ipairs(linesOf(text, "replace")) do
+    local from, to = value:match("^(.-)%s+>%s+(.*)$")
+    from = trim(from)
+    if from and from ~= "" then rules[#rules + 1] = { from = from, to = (to:gsub("\\n", "\n")) } end
+  end
+  table.sort(rules, function(a, b) return #a.from > #b.from end)
+  return rules
+end
+
+-- Letters, digits and any byte of a multibyte character, so ç and ğ count as letters.
+local WORD = "%w\128-\255"
+
+local function lowerAscii(text)
+  return (text:gsub("%u", string.lower))
+end
+
+-- text with each rule's phrase, as whole words and in any case of its ASCII letters, replaced.
+function dictation.replace(text, rules)
+  text = tostring(text or "")
+  for _, rule in ipairs(rules or {}) do
+    local phrase = lowerAscii(rule.from):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
+    local open = rule.from:match("^[" .. WORD .. "]") and "%f[" .. WORD .. "]" or ""
+    local close = rule.from:match("[" .. WORD .. "]$") and "%f[^" .. WORD .. "]" or ""
+    local pattern, out, from = open .. phrase .. close, {}, 1
+    local lowered = lowerAscii(text)
+    while true do
+      local first, last = lowered:find(pattern, from)
+      if not first then break end
+      out[#out + 1] = text:sub(from, first - 1) .. rule.to
+      from = last + 1
+    end
+    out[#out + 1] = text:sub(from)
+    text = table.concat(out)
+  end
+  return text
+end
+
 -- Your words, from words = omv, AeroSpace, …: names and terms dictation should hear right.
 function dictation.words(text)
   local list = {}

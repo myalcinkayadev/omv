@@ -293,4 +293,31 @@ check.that("should chime when shown and ready", dictation.chimeDue({ shown = tru
 check.that("should not chime again when it chimed", dictation.chimeDue({ shown = true, ready = true, chimed = true }) == false)
 
 
+-- Spoken replacements.
+local rules = dictation.replacements("replace = slash voice > /voice\n# replace = gone > x\nreplace = at sign > @\nreplace = no arrow\nreplace =  > empty\nreplace = new line > a\\nb\n")
+check.that("should read each replace line as a rule when there are several", #rules == 3)
+check.that("should skip a line with no arrow or an empty phrase", (function()
+  for _, rule in ipairs(rules) do if rule.from == "no arrow" or rule.to == "empty" then return false end end
+  return true end)())
+check.that("should ignore a commented replace line", (function()
+  for _, rule in ipairs(rules) do if rule.from == "gone" then return false end end
+  return true end)())
+check.that("should turn \\n in a replacement into a line break", (function()
+  for _, rule in ipairs(rules) do if rule.from == "new line" then return rule.to == "a\nb" end end
+  return false end)())
+check.that("should give no rules without replace lines", #dictation.replacements("language = tr-TR\n") == 0)
+local slash = dictation.replacements("replace = slash voice > /voice\n")
+check.that("should replace a phrase when the case differs", dictation.replace("Slash Voice now", slash) == "/voice now")
+check.that("should keep punctuation next to the phrase", dictation.replace("Run slash voice.", slash) == "Run /voice.")
+check.that("should not replace inside a longer word", dictation.replace("two slash voices", slash) == "two slash voices")
+local overlap = dictation.replacements("replace = line > L\nreplace = new line > NL\n")
+check.that("should prefer the longer phrase when rules overlap", dictation.replace("a new line here", overlap) == "a NL here")
+check.that("should match a phrase with pattern characters literally", dictation.replace("use c++ here, not cxx", dictation.replacements("replace = c++ > C plus\n")) == "use C plus here, not cxx")
+check.that("should replace a Turkish phrase", dictation.replace("bunu eğik çizgi ile yaz", dictation.replacements("replace = eğik çizgi > /\n")) == "bunu / ile yaz")
+check.that("should not replace a Turkish phrase inside a longer word", dictation.replace("çizgiler", dictation.replacements("replace = çizgi > /\n")) == "çizgiler")
+check.that("should leave the text as it is when there are no rules", dictation.replace("slash voice", {}) == "slash voice")
+check.that("should give empty text for empty text", dictation.replace("", slash) == "")
+check.that("should keep a % in a replacement as it is", dictation.replace("per cent", dictation.replacements("replace = per cent > %\n")) == "%")
+
+
 check.finish()
