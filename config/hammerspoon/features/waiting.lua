@@ -260,6 +260,18 @@ if front and front:bundleID() == GHOSTTY then watchGhostty(front) end
 -- to hs.notify.new for good; two sessions in one folder read the same, so a click goes to
 -- the one that asked last.
 local known = savedSessions()
+-- Features told of every change in the sessions, with the sessions before and after it.
+local listeners = {}
+
+-- fn(before, after) runs whenever a session's state file changes; talk-back uses it.
+function feature.onChange(fn)
+  listeners[#listeners + 1] = fn
+end
+
+-- The tty of the Claude session in the Ghostty terminal you're looking at, or nil.
+function feature.viewedTty()
+  return viewedTty
+end
 local ASKING_TITLE = "omv · needs your approval"
 local ASKING_TAG = "omv-waiting"
 local askingRows = notices.new()
@@ -276,7 +288,13 @@ feature.stateWatcher = hs.pathwatcher.new(claudewait.STATE_DIR, function()
       { id = session.tty, pid = session.pid, label = session.folder })
     hs.notify.new(ASKING_TAG, { title = ASKING_TITLE, informativeText = session.folder, withdrawAfter = 0 }):send()
   end
+  local before = known
   known = now
+  -- A listener's error is logged and never stops the watcher or the asking notices.
+  for _, listener in ipairs(listeners) do
+    local ok, problem = pcall(listener, before, now)
+    if not ok then print("omv: a sessions listener failed: " .. tostring(problem)) end
+  end
 end):start()
 
 return feature

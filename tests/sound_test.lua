@@ -85,4 +85,9 @@ check.that("should give nothing when there's no output", sound.nextOutput({}) ==
 check.that("should start from the first output when none is current", uidOf(sound.nextOutput({ { uid = "a", name = "A" }, { uid = "b", name = "B" } })) == "a")
 check.that("should name the output it switched to", check.contains(sound.outputNotice({ name = "DELL U2723QE", transport = "DisplayPort" }), "DELL U2723QE"))
 
+check.that("should be headphones when AirPods are named", sound.isHeadphones({ name = "Alex's AirPods Pro", transport = "Bluetooth" }) == true)
+check.that("should be headphones when Bluetooth has no name match", sound.isHeadphones({ name = "WH-1000XM5", transport = "Bluetooth" }) == true)
+check.that("should not be headphones when it's built-in", sound.isHeadphones({ name = "MacBook Pro Speakers", transport = "Built-in" }) == false)
+check.that("should not be headphones when it's HDMI", sound.isHeadphones({ name = "DELL G2724D", transport = "HDMI" }) == false)
+
 check.finish()

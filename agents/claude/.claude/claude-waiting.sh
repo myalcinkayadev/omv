@@ -6,7 +6,9 @@
 # SessionEnd removes the session. It acts on the event's name, so the argument it was
 # installed with, "wait" or "clear", no longer matters.
 # Saves only Claude's PID, its terminal, the folder name, when the session entered its
-# state, and the state. Prints nothing, since Claude reads hook output, and always exits 0.
+# state, and the state; with omv's talk-back flag on, also the start of Claude's last message
+# when it stops, for talk-back to speak, until the next prompt. Prints nothing, since Claude
+# reads hook output, and always exits 0.
 
 PATH="$PATH:/opt/homebrew/bin"
 state_dir="$HOME/.local/state/omv/claude-sessions"
@@ -94,8 +96,23 @@ save() {
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "${folder:-Claude}" "$(date +%s)" "$state" "$agent" > "$file" 2>/dev/null
 }
 
+# Talk-back speaks the start of Claude's last message: up to 600 bytes of it, readable by you
+# only, and only while the flag is on, so Claude's words are never on disk otherwise.
+last_file="$state_dir/.last-$session"
+keep_last_message() {
+  grep -qsE '^[[:space:]]*talk-back[[:space:]]*=[[:space:]]*on[[:space:]]*$' "$HOME/.config/omv/flags" || return 0
+  mkdir -p "$state_dir" 2>/dev/null
+  (umask 077 && field last_assistant_message | head -c 600 > "$last_file") 2>/dev/null
+  [ -s "$last_file" ] || rm -f "$last_file"
+}
+
 state=$(next_state)
 [ -n "$state" ] || exit 0
+# A new prompt or the end makes the last message stale; a stop brings the new one.
+case $state in
+  working | end) rm -f "$last_file" ;;
+esac
+[ "$(field hook_event_name)" = Stop ] && keep_last_message
 before=$(saved_state)
 # A session that stays in its state keeps its file, and with it when it entered the state.
 [ "$state" = "$before" ] && exit 0

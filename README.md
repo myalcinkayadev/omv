@@ -657,6 +657,14 @@ Off until `omv flags voice-agents on`, with `dictation`, `claude` and `send-to-a
 - **The project:** said as its folder is named, in any case; `omv-web` is "omv web", and a name spelled out, "o m v", counts too. A name of five letters or more may be heard one letter off. The folder names are given to the speech model, so they're heard as written. Two sessions in folders of the same name aren't guessed between: the pill names both and nothing is sent.
 - **The pill:** says Command, and names the session the words go to, with its state, as you speak. Only a session that finished and waits takes the words: one that's working would be interrupted, and one asking for approval would take them as its answer, so for those they're copied instead.
 
+### Talk back
+
+Off until `omv flags talk-back on`, with `claude` on too. When a Claude Code session finishes, the start of its last message, up to 20 words, is spoken in your headphones, and a pill shows it as it's spoken: "omv finished: Tests pass. I changed dictation.lua." Code, links and paths are left out or shortened; Turkish text gets a Turkish voice when the Mac has one. Several finishes are spoken one after another.
+
+- **When:** only into headphones, never to the room; not while meeting mode holds notices, not while you dictate, and not for the terminal you're looking at. Otherwise the bar's robot shows the finish, as always.
+- **Answering:** pressing Right Option or Right Command stops it at once. With `voice-agents` on, holding Right Command and saying **reply …** answers the session that just spoke, for two minutes after.
+- **What's kept:** with the flag on, the Claude Code hook keeps the first 600 bytes of Claude's last message beside the session's state in `~/.local/state/omv/claude-sessions`, readable only by you, until the next prompt or the session's end. With it off, nothing is kept. Speech is macOS's own; nothing is sent anywhere.
+
 It needs the microphone, asked for the first time, and Accessibility to paste. A small Swift helper, `dictate.swift`, hears the speech with macOS 26's SpeechAnalyzer; it's built with `swiftc` the first time and kept in `~/.cache/omv/dictate`.
 
 ## Do Not Disturb
@@ -771,6 +779,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `brew-outdated` | **off unless turned on:** the count of outdated Homebrew packages in the bar, and `brew upgrade` on a click; see [Smaller tools](#smaller-tools) |
 | `browser-tabs` | **off unless turned on:** the browser's open tabs in the palette; see [Palette](#palette) |
 | `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
+| `talk-back` | **off unless turned on:** an agent's finish, spoken in your headphones; needs `claude`; see [Talk back](#talk-back) |
 | `voice-agents` | **off unless turned on:** hold Right Command, say "tell omv …" or "reply …" to put words in an agent's prompt; needs `dictation`, `claude` and `send-to-agent`; see [Voice to agents](#voice-to-agents) |
 | `system-load` | **off unless turned on:** CPU and memory in the bar, only while the Mac is busy; see [Smaller tools](#smaller-tools) |
 | `input-source` | **off unless turned on:** the keyboard input source in the bar, and switching it with a click; see [Input source](#input-source) |

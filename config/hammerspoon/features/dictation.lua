@@ -29,8 +29,10 @@ local keys = dictation.keys()
 local commandKeys = dictation.keys()
 local COMMAND_OPTIONS = { late = true, lock = false }
 -- What voice to agents needs from the agents' features, given by init.lua when it's on:
--- { rows, deliver(tty, text), spoke() }; spoke, optional, gives the session to reply to first. Without it Right Command does nothing.
+-- { rows, deliver(tty, text), spoke() }. Without it Right Command does nothing.
 local agents = nil
+-- Called on a press of either key, so talk-back stops before you speak.
+local onPress = nil
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
 -- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
@@ -419,6 +421,7 @@ local function onCommandKey(kind, name, code)
   if commandKeys.phase == "idle" and name ~= "command-down" then return false end
   if name == "command-down" then
     if keys.phase ~= "idle" or current then return false end
+    if onPress then onPress() end
     if not ticker then ticker = hs.timer.doEvery(TICK_SECONDS, tick) end
   end
   local action, swallow = dictation.press(commandKeys, name, hs.timer.secondsSinceEpoch(), COMMAND_OPTIONS)
@@ -433,6 +436,8 @@ local function onKey(event)
     local flags = event:getFlags()
     name = dictation.eventFor(event:getKeyCode(), flags.alt == true, flags.shift == true, flags.cmd == true)
   end
+  -- Talk-back stops at Right Command even without voice to agents.
+  if name == "command-down" and not agents and onPress then onPress() end
   if agents and (commandKeys.phase ~= "idle" or name == "command-down") then
     return onCommandKey(kind, name, kind == hs.eventtap.event.types.keyDown and event:getKeyCode() or nil)
   end
@@ -448,6 +453,7 @@ local function onKey(event)
   end
   if not name then return false end
   if keys.phase == "idle" and name ~= "option-down" then return false end
+  if name == "option-down" and keys.phase == "idle" and onPress then onPress() end
   local action, swallow = dictation.press(keys, name, hs.timer.secondsSinceEpoch())
   if action then hs.timer.doAfter(0, function() feature.act(action) end) end
   return swallow
@@ -460,6 +466,16 @@ feature.keys = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged, hs.eventt
 -- { rows(), deliver(tty, text), spoke() }.
 function feature.agents(api)
   agents = api
+end
+
+-- Whether a dictation or an agent recording runs now, for talk-back.
+function feature.recording()
+  return current ~= nil or keys.phase ~= "idle" or commandKeys.phase ~= "idle"
+end
+
+-- fn runs on every press of Right Option or Right Command, before anything is heard.
+function feature.onPress(fn)
+  onPress = fn
 end
 
 -- Builds the helper and reads which languages the Mac can hear, without waiting on it.

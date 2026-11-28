@@ -52,7 +52,7 @@ FEATURE_FLAGS = {
     "focus": "focus", "meeting": "meeting-mode", "clipboard": "clipboard", "translate": "translate", "capture": "capture",
     "reminders": "reminders", "note": "daily-note", "share": "airdrop", "nightshift": "night-light",
     "micmute": "mic-mute", "osd": "volume-popups", "procs": "processes", "lyrics": "lyrics",
-    "agents": "claude", "waiting": "claude", "sendto": "send-to-agent", "digest": "away-digest", "prs": "github-prs", "ci": "github-ci", "devlayout": "dev-layout", "stalls": "stalls", "dictation": "dictation", "windowsize": "window-sizing",
+    "agents": "claude", "waiting": "claude", "sendto": "send-to-agent", "digest": "away-digest", "prs": "github-prs", "ci": "github-ci", "devlayout": "dev-layout", "stalls": "stalls", "dictation": "dictation", "talkback": "talk-back", "windowsize": "window-sizing",
     "inputsource": "input-source",
     "inuse": "in-use",
 }
@@ -146,7 +146,7 @@ def finder_title_filters() -> list[str]:
 # Features that run their commands with hs.task: hs.execute and hs.osascript.applescript wait
 # on Hammerspoon's only thread, which freezes every card and key until the command finishes.
 NON_BLOCKING_FEATURES = ("agents", "claudeprojects", "devlayout", "meeting", "procs", "network", "bluetooth", "waiting", "workspaces",
-                         "battery", "disk", "theme", "dictation", "windowsize")
+                         "battery", "disk", "theme", "dictation", "talkback", "windowsize")
 BLOCKING_CALL = re.compile(r"hs\.execute\(|hs\.osascript\.applescript\(|:waitUntilExit\(")
 
 

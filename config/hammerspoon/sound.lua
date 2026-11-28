@@ -23,16 +23,31 @@ local ROW_HEIGHT = 40
 
 local HEADPHONE_NAMES = { "airpods", "headphone", "headset", "beats", "buds" }
 
+local function named(device)
+  local name = tostring(device.name or ""):lower()
+  for _, word in ipairs(HEADPHONE_NAMES) do
+    if name:find(word, 1, true) then return true end
+  end
+  return false
+end
+
+local function bluetooth(device)
+  return tostring(device.transport or ""):find("Bluetooth", 1, true) ~= nil
+end
+
+-- Whether device { name, transport } is worn: headphones by name, else anything over
+-- Bluetooth. Talk-back speaks only into these.
+function sound.isHeadphones(device)
+  return named(device) or bluetooth(device)
+end
+
 -- Headphones by name first, since AirPods and a Bluetooth speaker share a transport.
 function sound.icon(device)
-  local name = device.name:lower()
-  for _, word in ipairs(HEADPHONE_NAMES) do
-    if name:find(word, 1, true) then return "󰋋" end
-  end
+  if named(device) then return "󰋋" end
   local transport = device.transport or ""
   if transport == "HDMI" or transport == "DisplayPort" or transport == "Thunderbolt" then return "󰍹" end
   if transport == "AirPlay" then return "󰄘" end
-  if transport:find("Bluetooth", 1, true) then return "󰋋" end
+  if bluetooth(device) then return "󰋋" end
   return "󰓃"
 end
 

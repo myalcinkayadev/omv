@@ -187,6 +187,25 @@ function dictationPill.confirm(delivery)
   return frame
 end
 
+-- While talk-back speaks: { project, line }, with a speaker, "<project> finished", the line
+-- as it's spoken, and how to answer.
+function dictationPill.speaking(item)
+  local tokens = shell.themeTokens()
+  local lines = dictation.lastLines(dictation.wrap(item.line, LINE_CHARACTERS), dictation.MAX_LINES)
+  local height = dictation.pillHeight(#lines)
+  local elements = {
+    card(tokens, tokens.accent, height),
+    text("󰕾", 20, tokens.accent, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }),
+    text(item.project .. " finished", 14, tokens.fg, { x = STATUS_X, y = CENTER_Y - 10, w = WIDTH - STATUS_X - 18, h = 22 }),
+    { type = "rectangle", action = "fill", fillColor = color(tokens.fg, 0.12), frame = { x = 16, y = RULE_Y, w = WIDTH - 32, h = 1 } },
+  }
+  for index, line in ipairs(lines) do
+    elements[#elements + 1] = text(line, 14, tokens.fg, { x = 16, y = WORDS_Y + (index - 1) * dictation.LINE_HEIGHT, w = WIDTH - 32, h = dictation.LINE_HEIGHT })
+  end
+  elements[#elements + 1] = text(item.hint or "hold Right Command to reply", 11, tokens.fg, { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
+  return dictationPill.show(elements, height)
+end
+
 function dictationPill.show(elements, height)
   drawn = nil
   if hideLater then hideLater:stop() end

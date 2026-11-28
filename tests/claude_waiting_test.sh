@@ -234,6 +234,63 @@ refuses_an_agent_name_that_isnt_plain() {
   [ "$(cut -f6 "$(state_file)")" = claude ] || fail "saved: $(cat "$(state_file)")"
 }
 
+# Talk-back: Claude's last message, kept beside the state only while the flag is on.
+last_file() {
+  echo "$(state_dir)/.last-abc-123"
+}
+
+talk_back_on() {
+  mkdir -p "$HOME_DIR/.config/omv"
+  printf 'talk-back=on\n' > "$HOME_DIR/.config/omv/flags"
+}
+
+stop_with_message() {
+  printf '{"session_id":"abc-123","cwd":"/Users/me/workspace/omv","hook_event_name":"Stop","last_assistant_message":"%s"}' "$1"
+}
+
+keeps_the_last_message_with_talk_back() {
+  stub_ps
+  talk_back_on
+  stop_with_message 'Tests pass.' | run_hook wait
+  [ "$(cat "$(last_file)" 2>/dev/null)" = 'Tests pass.' ] || fail "kept: $(cat "$(last_file)" 2>&1)"
+}
+
+keeps_no_message_without_talk_back() {
+  stub_ps
+  stop_with_message 'Tests pass.' | run_hook wait
+  [ ! -e "$(last_file)" ] || fail 'kept the message with talk-back off'
+}
+
+cuts_a_long_message() {
+  stub_ps
+  talk_back_on
+  stop_with_message "$(printf 'word %.0s' $(seq 1 300))" | run_hook wait
+  [ "$(wc -c < "$(last_file)")" -le 600 ] || fail "kept $(wc -c < "$(last_file)") bytes"
+}
+
+keeps_the_message_private() {
+  stub_ps
+  talk_back_on
+  stop_with_message 'Tests pass.' | run_hook wait
+  [ "$(stat -f %Lp "$(last_file)")" = 600 ] || fail "mode $(stat -f %Lp "$(last_file)")"
+}
+
+removes_the_message_on_prompt() {
+  stub_ps
+  save_session done 100
+  printf 'old\n' > "$(last_file)"
+  event_json UserPromptSubmit | run_hook clear
+  [ ! -e "$(last_file)" ] || fail 'message left behind'
+}
+
+removes_the_message_on_end() {
+  stub_ps
+  save_session done 100
+  printf 'old\n' > "$(last_file)"
+  event_json SessionEnd | run_hook clear
+  [ ! -e "$(last_file)" ] || fail 'message left behind'
+}
+
 run_case 'should record a session as working when you send a prompt' records_working_on_prompt
 run_case 'should record the agent name it was given' records_the_agent_given
 run_case 'should record claude when no name is given' records_claude_without_a_name
@@ -262,4 +319,10 @@ run_case 'should store nothing from the prompt or transcript' stores_nothing_els
 run_case 'should print nothing, since Claude reads hook output' prints_nothing
 run_case 'should ignore a session id that is a path' refuses_a_path_in_the_session_id
 run_case 'should exit zero when the input is invalid JSON' survives_invalid_json
+run_case "should keep Claude's last message when Claude stops and talk-back is on" keeps_the_last_message_with_talk_back
+run_case 'should keep no message when talk-back is off' keeps_no_message_without_talk_back
+run_case 'should cut the message at 600 bytes when it is longer' cuts_a_long_message
+run_case 'should make the message readable by its owner only when it is kept' keeps_the_message_private
+run_case 'should remove the message when a prompt is sent' removes_the_message_on_prompt
+run_case 'should remove the message when the session ends' removes_the_message_on_end
 finish

@@ -73,6 +73,7 @@ local waitingClaude = feature("claude", "features.waiting")
 -- Paste into, and read, the sessions the waiting feature finds, so they load only with it.
 local sendToAgent = waitingClaude and feature("send-to-agent", "features.sendto")
 if waitingClaude then feature("away-digest", "features.digest") end
+local talkBack = waitingClaude and feature("talk-back", "features.talkback")
 local quickNote = feature("daily-note", "features.note")
 local clipboardHistory = feature("clipboard", "features.clipboard")
 local bluetoothCard = feature("bluetooth", "features.bluetooth")
@@ -91,7 +92,11 @@ local translateSelection = feature("translate", "features.translate")
 feature("stalls", "features.stalls")
 local dictationKey = feature("dictation", "features.dictation")
 if dictationKey and sendToAgent and enabled["voice-agents"] then
-  dictationKey.agents({ rows = waitingClaude.rows, deliver = sendToAgent.deliver })
+  dictationKey.agents({ rows = waitingClaude.rows, deliver = sendToAgent.deliver, spoke = talkBack and talkBack.spoke })
+end
+if dictationKey and talkBack then
+  dictationKey.onPress(talkBack.stop)
+  talkBack.whileRecording(dictationKey.recording)
 end
 local windowSizing = feature("window-sizing", "features.windowsize")
 local inputSource = feature("input-source", "features.inputsource")
