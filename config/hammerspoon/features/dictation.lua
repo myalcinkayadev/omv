@@ -313,6 +313,9 @@ local startHelper
 -- next language's helper starts, unless the dictation ended meanwhile.
 local function handedOver(recording, final)
   closeInput(recording)
+  -- Cancelled meanwhile, as by Esc right after Tab: its last line can still arrive, and no
+  -- helper may start for a dictation that's gone, since nothing would ever end it.
+  if current ~= recording then return end
   recording.handover = false
   recording.before = dictation.join(recording.before, final)
   recording.partial = dictation.replace(recording.before, recording.rules)
