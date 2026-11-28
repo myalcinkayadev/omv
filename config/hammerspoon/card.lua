@@ -41,6 +41,7 @@ card.STYLE = [[
   .thumb { width: 20px; height: 20px; object-fit: cover; vertical-align: middle; border: 1px solid #2a2a2a; }
   .row .label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .hint { color: #9a9a9a; padding-left: 16px; white-space: nowrap; }
+  .row.sounds .label::after { content: "  sounds like"; color: #8d8d8d; font-size: 11px; }
   .row.selected { background: #fff; color: #000; }
   .row.selected .hint { color: #3a3a3a; }
   .row.hidden { display: none; }
@@ -123,6 +124,13 @@ local SCRIPT = [[
   // Files are on their way for the typed text: "No matches" waits for them, so it never
   // shows while a search may still find something.
   let filesPending = false;
+  // Sound matches, in a card with data-sounds: after a pause in typing, Hammerspoon is asked
+  // for the rows the text finds only by how it sounds, such as Zed for "said"; omvSounds shows
+  // them, marked "sounds like". Substring matches keep their place.
+  const sounds = document.body.dataset.sounds !== undefined;
+  const SOUNDS_PAUSE_MS = 150, SOUNDS_MIN_LENGTH = 3;
+  let soundIds = new Set(), soundsTimer = null;
+
   // Browser tabs, in a card with a .tabs place among its rows: asked for once the page has
   // loaded, so the answer always finds omvTabs, and put there when they arrive.
   const tabs = document.querySelector(".tabs");
@@ -148,7 +156,10 @@ local SCRIPT = [[
       // cleared whenever the text changes, so filtering them again would only hide matches.
       if (row === calc || row.classList.contains("clip") || (files && files.contains(row))) return;
       const haystack = ((row.dataset.group || "") + " " + (row.dataset.keywords || "") + " " + row.textContent).toLowerCase();
-      row.classList.toggle("hidden", !words.every((word) => haystack.includes(word)));
+      const found = words.every((word) => haystack.includes(word));
+      const soundsLike = !found && soundIds.has(row.dataset.id);
+      row.classList.toggle("hidden", !found && !soundsLike);
+      row.classList.toggle("sounds", soundsLike);
     });
     if (calc) {
       // A sum first, then a conversion; a currency one asks Hammerspoon for rates, once.
@@ -242,6 +253,24 @@ local SCRIPT = [[
     groups = Array.from(document.querySelectorAll(".group"));
   }
 
+  // The sound matches for older text go at once; new ones are asked for after a pause.
+  function askSounds() {
+    if (!sounds) return;
+    clearTimeout(soundsTimer);
+    soundIds = new Set();
+    if (query.replace(/[^\p{L}\p{N}]/gu, "").length < SOUNDS_MIN_LENGTH) return;
+    const asked = query;
+    soundsTimer = setTimeout(() => send("sounds", asked), SOUNDS_PAUSE_MS);
+  }
+
+  // Called from Hammerspoon with the ids of the rows text finds by sound; dropped when other
+  // text is typed by then.
+  window.omvSounds = (asked, ids) => {
+    if (asked !== query) return;
+    soundIds = new Set(ids);
+    draw();
+  };
+
   // The files found for older text go at once; new ones are asked for after a pause.
   function askFiles() {
     if (!files) return;
@@ -330,7 +359,7 @@ local SCRIPT = [[
     else if (event.key.length === 1 && !event.metaKey && !event.ctrlKey) { query += event.key; selected = 0; }
     else return;
     event.preventDefault();
-    if (query !== typed) askFiles();
+    if (query !== typed) { askFiles(); askSounds(); }
     draw();
   });
 
@@ -474,7 +503,7 @@ function card.html(screen)
   end
   return "<!doctype html><meta charset=utf-8><style>" .. card.STYLE .. "</style>"
     .. '<body class="' .. (screen.compact and "compact" or "") .. (screen.footer and " footed" or "") .. '" data-selected="' .. (screen.selected or 1) .. '"'
-    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (screen.step and " data-step" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "")
+    .. (screen.input and " data-input" or "") .. (screen.tab and " data-tab" or "") .. (screen.step and " data-step" or "") .. (calc and " data-calc" or "") .. (screen.files and " data-files" or "") .. (screen.sounds and " data-sounds" or "")
     .. (screen.clearable and " data-clear" or "") .. (screen.query and (' data-query="' .. card.escape(screen.query) .. '"') or "") .. ">"
     .. '<div class="prompt empty" data-prompt="' .. card.escape(screen.prompt) .. '"><span class=text></span>'
     .. "<span class=caret></span>"
@@ -489,6 +518,13 @@ function card.html(screen)
     .. (calc and ("<script>" .. CALC .. "</script>") or "")
     .. (clip and ("<script>window.omvClip = " .. (screen.clip and card.jsString(screen.clip) or "null") .. ";" .. TRANSFORM .. "</script>") or "")
     .. "<script>" .. SCRIPT .. "</script></body>"
+end
+
+-- The JavaScript that hands an open palette the ids of the rows text finds by sound.
+function card.soundsCall(text, ids)
+  local quoted = {}
+  for index, id in ipairs(ids) do quoted[index] = card.jsString(id) end
+  return "omvSounds(" .. card.jsString(text) .. ",[" .. table.concat(quoted, ",") .. "]);"
 end
 
 -- The JavaScript that hands an open palette the file rows found for text. The page drops

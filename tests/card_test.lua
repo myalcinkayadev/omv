@@ -45,4 +45,9 @@ check.that("should leave a card without step mode unmarked, so Right still picks
 
 check.that("should start the input with the given text when query is set",
   check.contains(card.html({ prompt = "A name…", rows = {}, input = true, query = 'Code "x"' }), 'data-query="Code &quot;x&quot;"'))
+check.that("should mark a card that asks for sound matches", card.html({ prompt = "x", rows = {}, sounds = true }):match("<body[^>]*data%-sounds") ~= nil)
+check.that("should not ask for sound matches unless asked to", card.html({ prompt = "x", rows = {} }):match("<body[^>]*data%-sounds") == nil)
+check.that("should ask for sound matches only from 3 letters", card.html({ prompt = "x", rows = {}, sounds = true }):find("SOUNDS_MIN_LENGTH = 3", 1, true) ~= nil)
+check.that("should hand the page the ids found by sound", card.soundsCall("said", { "app:/A.app", "window:7" }) == 'omvSounds("said",["app:/A.app","window:7"]);')
+
 check.finish()

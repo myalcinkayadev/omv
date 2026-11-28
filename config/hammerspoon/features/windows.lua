@@ -101,6 +101,8 @@ end
 -- without a reload. typingIn is the window that had focus before the palette.
 local SNIPPETS_PATH = shell.HOME .. "/.config/omv/snippets"
 local shownSnippets, typingIn = {}, nil
+-- The rows the palette opened with, for the ones its text finds by sound.
+local shownRows = {}
 
 -- The snippet goes on the clipboard, then is pasted where you were typing; see shell.pasteBack.
 local function useSnippet(snippet)
@@ -154,6 +156,10 @@ end
 local function onPaletteMessage(message)
   if message.type == "files" then return findFiles(message.id) end
   if message.type == "rates" then return giveRates() end
+  if message.type == "sounds" then
+    if shell.isOpen("windows") then shell.view():evaluateJavaScript(card.soundsCall(message.id, palette.soundIds(shownRows, message.id))) end
+    return
+  end
   if message.type == "tabs" then return readTabs() end
   if message.type == "reveal" or message.type == "copy" then
     local action = palette.action(message.type, message.id)
@@ -231,10 +237,11 @@ function feature.toggle()
   shownSnippets = withSnippets and snippets.parse(shell.readText(SNIPPETS_PATH)) or {}
   hs.task.new(shell.AEROSPACE, function(code, output)
     local rows = palette.rows(code == 0 and output or "", installedApps(), keys.launchers, OWN_KEY, snippets.rows(shownSnippets), withTabs)
+    shownRows = rows
     -- Room for the clipboard section's heading and row.
     local height = shell.listHeight(#rows + (withClipActions and 2 or 0))
     shell.show("windows", shell.centered(shell.LIST_WIDTH, height),
-      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = withCalculator, files = fileSearch,
+      card.html({ prompt = palette.prompt(fileSearch), rows = rows, compact = true, calc = withCalculator, files = fileSearch, sounds = true,
         clipActions = withClipActions, clip = clip }), onPaletteMessage,
       -- Closed any way, by Escape, Option+Space or losing focus, a running mdfind stops too.
       { onClose = stopSearch })

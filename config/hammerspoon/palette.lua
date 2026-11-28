@@ -7,6 +7,7 @@
 
 local clipboard = require("clipboard")
 local windows = require("windows")
+local soundmatch = require("soundmatch")
 
 local palette = {}
 
@@ -102,6 +103,21 @@ palette.CLIP_LIMIT = 100 * 1024
 function palette.clipText(text, types, paused)
   if paused or type(text) ~= "string" or #text > palette.CLIP_LIMIT or clipboard.isConcealed(types) then return nil end
   return text
+end
+
+-- The rows a typed text finds only by how it sounds or one letter off, such as Zed for "said",
+-- which the page shows marked "sounds like"; none under 3 letters. A row that holds the text
+-- is found by the page itself.
+palette.SOUND_LETTERS = 3
+
+function palette.soundIds(rows, text)
+  local ids = {}
+  if #soundmatch.normal(text) < palette.SOUND_LETTERS then return ids end
+  for _, row in ipairs(rows or {}) do
+    local score = row.id and row.label and soundmatch.score(text, row.label) or 0
+    if score == soundmatch.SOUND or score == soundmatch.SPELLING then ids[#ids + 1] = row.id end
+  end
+  return ids
 end
 
 return palette

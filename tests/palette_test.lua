@@ -104,4 +104,14 @@ check.that("should write the clipboard footer's keys as words",
     and clipPage:find("<kbd>Esc</kbd>close", 1, true) ~= nil)
 check.that("should leave the clipboard actions out of a card without one", card.html({ prompt = "x", rows = {} }):find("function omvTransform", 1, true) == nil)
 
+-- Rows found by how they sound, for the palette's "sounds like".
+local soundRows = { { id = "app:/Applications/Zed.app", label = "Zed" }, { id = "app:/Applications/Ghostty.app", label = "Ghostty" },
+  { id = "app:/Applications/Safari.app", label = "Safari" } }
+check.that("should give the ids of rows that sound like the query", (function()
+  local ids = palette.soundIds(soundRows, "said")
+  return #ids == 1 and ids[1] == "app:/Applications/Zed.app"
+end)())
+check.that("should give a row one letter off", palette.soundIds(soundRows, "ghosty")[1] == "app:/Applications/Ghostty.app")
+check.that("should give nothing under 3 letters", #palette.soundIds(soundRows, "sd") == 0)
+
 check.finish()

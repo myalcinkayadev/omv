@@ -8,14 +8,13 @@
 -- Has no Hammerspoon dependency, so the Lua tests can run it with luajit.
 
 local sendto = require("sendto")
+local soundmatch = require("soundmatch")
 
 local voiceagents = {}
 
 -- Up to this many spoken words name the project, such as "omv web" for omv-web; spelled out,
 -- a letter a word, up to SPELLED_WORDS, so "oh em vee test" reaches omv-test.
 local NAME_WORDS, SPELLED_WORDS = 3, 6
--- A name this long or longer may be heard one letter off, such as "dashbord".
-local NEAR_LENGTH = 5
 
 voiceagents.HINT = 'Say "tell <project> …" or "reply …"'
 
@@ -60,24 +59,6 @@ function voiceagents.parse(text)
   return { verb = verb, words = words }
 end
 
--- Whether a and b are at most one letter added, dropped or changed apart.
-local function oneEdit(a, b)
-  if math.abs(#a - #b) > 1 then return false end
-  local i, j, edits = 1, 1, 0
-  while i <= #a and j <= #b do
-    if a:sub(i, i) == b:sub(j, j) then
-      i, j = i + 1, j + 1
-    else
-      edits = edits + 1
-      if edits > 1 then return false end
-      if #a > #b then i = i + 1
-      elseif #b > #a then j = j + 1
-      else i, j = i + 1, j + 1 end
-    end
-  end
-  return edits + (#a - i + 1) + (#b - j + 1) <= 1
-end
-
 -- The letters' names as said, so "oh em vee" is heard as omv; "double you" is W.
 local LETTERS = { ay = "a", bee = "b", see = "c", dee = "d", ee = "e", eff = "f", gee = "g", aitch = "h", jay = "j",
   kay = "k", el = "l", em = "m", en = "n", oh = "o", pee = "p", cue = "q", are = "r", ess = "s", tee = "t", you = "u",
@@ -104,7 +85,7 @@ end
 local function score(heard, name, acronym)
   if heard == "" then return 0 end
   if heard == name then return 2 end
-  if (#name >= NEAR_LENGTH or acronym) and oneEdit(heard, name) then return 1 end
+  if (#name >= soundmatch.NEAR_LENGTH or acronym) and soundmatch.oneEdit(heard, name) then return 1 end
   return 0
 end
 
