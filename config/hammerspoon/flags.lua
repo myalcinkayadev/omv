@@ -57,6 +57,7 @@ flags.DEFAULTS = {
   ["browser-tabs"] = false, -- the palette also lists the browser's open tabs (AppleScript)
   ["stalls"] = false, -- logs each time Hammerspoon stalls to ~/.local/state/omv/stalls.log
   ["dictation"] = false, -- hold Right Option to talk, release to type it, heard on the Mac
+  ["voice-agents"] = false, -- hold Right Command, say "tell omv …" or "reply …" for an agent's prompt; needs dictation, claude and send-to-agent
   ["brew-outdated"] = false, -- outdated Homebrew packages in the bar, and brew upgrade on a click
   ["system-load"] = false, -- CPU and memory in the bar, only while the Mac is busy
   ["input-source"] = false, -- the keyboard input source in the bar, as TR or US; a click switches it

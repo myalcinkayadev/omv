@@ -360,4 +360,48 @@ check.that("should skip an empty side when joining", dictation.join("", "Merhaba
 check.that("should show the language code when languages are set", dictation.header({ started = 0, ready = true, app = "Zed", locale = "en-US", languages = 2 }, 1).language == "EN")
 check.that("should show no language code without languages", dictation.header({ started = 0, ready = true, app = "Zed", locale = "en-US" }, 1).language == nil)
 
+-- Right Command: agents only, and the mic opens only once it's held alone.
+local COMMAND = { late = true, lock = false }
+
+local function runWith(events, options)
+  local state, actions, swallowed = dictation.keys(), {}, {}
+  for _, event in ipairs(events) do
+    local action, swallow = dictation.press(state, event[1], event[2], options)
+    actions[#actions + 1] = action or "-"
+    swallowed[#swallowed + 1] = swallow and "y" or "n"
+  end
+  return table.concat(actions, " "), table.concat(swallowed, " ")
+end
+
+check.that("should give command-down when keyCode 54 goes down with cmd", dictation.eventFor(54, false, false, true) == "command-down")
+check.that("should give command-up when keyCode 54 goes up", dictation.eventFor(54, false, false, false) == "command-up")
+check.that("should give no action when Right Command is pressed with late", runWith({ { "command-down", 0 } }, COMMAND) == "-")
+check.that("should give start when Right Command is held past the hold with late",
+  runWith({ { "command-down", 0 }, { "tick", 0.2 }, { "tick", 0.31 } }, COMMAND) == "- - start")
+check.that("should give no action when Right Command is released before the hold",
+  runWith({ { "command-down", 0 }, { "command-up", 0.1 }, { "tick", 0.5 } }, COMMAND) == "- - -")
+check.that("should not lock when Right Command is tapped twice with lock off",
+  runWith({ { "command-down", 0 }, { "command-up", 0.1 }, { "command-down", 0.2 }, { "command-up", 0.25 } }, COMMAND) == "- - - -")
+check.that("should finish when Right Command is released after the hold",
+  runWith({ { "command-down", 0 }, { "tick", 0.31 }, { "command-up", 1 } }, COMMAND) == "- start finish")
+check.that("should give no action when another key comes during the hold with late",
+  runWith({ { "command-down", 0 }, { "other", 0.1 }, { "tick", 0.5 } }, COMMAND) == "- - -")
+check.that("should cancel when another key is pressed while Right Command listens",
+  runWith({ { "command-down", 0 }, { "tick", 0.31 }, { "other", 1 } }, COMMAND) == "- start cancel")
+check.that("should not swallow another key when Right Command listens",
+  select(2, runWith({ { "command-down", 0 }, { "tick", 0.31 }, { "other", 1 } }, COMMAND)) == "n n n")
+check.that("should cancel and swallow Esc while Right Command listens",
+  runWith({ { "command-down", 0 }, { "tick", 0.31 }, { "escape", 1 } }, COMMAND) == "- start cancel")
+
+check.that("should say Command when an agent recording is ready",
+  dictation.header({ started = 0, ready = true, app = "Zed", agent = true }, 1).status == "Command")
+check.that("should show the agent icon when recording for an agent",
+  dictation.header({ started = 0, ready = true, app = "Zed", agent = true }, 1).icon == "agent")
+check.that("should name the target folder in the chip when recording for an agent",
+  dictation.header({ started = 0, ready = true, app = "Zed", agent = true, agentTarget = { kind = "paste", row = { label = "omv" } } }, 1).target.name == "omv")
+check.that("should show a dash in the chip when an agent recording has no target yet",
+  dictation.header({ started = 0, ready = true, app = "Zed", agent = true, agentTarget = { kind = "none", hint = "x" } }, 1).target.name == "—")
+check.that("should say Starting when an agent recording isn't ready",
+  dictation.header({ started = 0, app = "Zed", agent = true }, 1).status == "Starting")
+
 check.finish()

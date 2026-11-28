@@ -18,7 +18,7 @@ dictation.HOLD_SECONDS, dictation.DOUBLE_SECONDS, dictation.LOCK_SECONDS = 0.3, 
 dictation.SILENCE_SECONDS, dictation.COUNTDOWN_SECONDS = 30, 10
 dictation.RESTORE_SECONDS = 0.6
 local KEEP = 10
-local RIGHT_OPTION = 61
+local RIGHT_OPTION, RIGHT_COMMAND = 61, 54
 local TRANSIENT, TEXT = "org.nspasteboard.TransientType", "public.utf8-plain-text"
 
 local function trim(text)
@@ -26,11 +26,12 @@ local function trim(text)
 end
 
 -- A flagsChanged event's key as an event name: Right Option going down or up, up with Shift
--- held, or Shift going down on either side; else nil.
+-- held, Right Command going down or up, or Shift going down on either side; else nil.
 local SHIFTS = { [56] = true, [60] = true }
 
-function dictation.eventFor(keyCode, optionDown, shiftDown)
+function dictation.eventFor(keyCode, optionDown, shiftDown, commandDown)
   if SHIFTS[keyCode] then return shiftDown and "shift" or nil end
+  if keyCode == RIGHT_COMMAND then return commandDown and "command-down" or "command-up" end
   if keyCode ~= RIGHT_OPTION then return nil end
   if optionDown then return "option-down" end
   return shiftDown and "option-up-shift" or "option-up"
@@ -54,21 +55,33 @@ end
 -- while the pill listens.
 local PHASES = {}
 
-function PHASES.idle(state, event, time)
+-- options, for Right Command: late, the recording starts only once the key has been held
+-- alone, as the action start, so a shortcut never opens the mic; lock = false, no hands-free.
+function PHASES.idle(state, event, time, options)
   if event ~= "option-down" then return nil, false end
   moveTo(state, "pressed", { since = time })
+  if options.late then return nil, false end
   return "record", false
 end
 
-function PHASES.pressed(state, event, time)
+function PHASES.pressed(state, event, time, options)
   local held = time - state.since
   if event == "tick" and held >= dictation.HOLD_SECONDS then
     moveTo(state, "listening")
-    return "show", false
+    return options.late and "start" or "show", false
+  end
+  -- Nothing was recorded yet: a short press or another key ends it quietly.
+  if options.late and event ~= "tick" and event ~= "voice" and event ~= "shift" and held < dictation.HOLD_SECONDS then
+    moveTo(state, "idle")
+    return nil, false
   end
   if (event == "option-up" or event == "option-up-shift") and held >= dictation.HOLD_SECONDS then
     moveTo(state, "idle")
     return event == "option-up" and "finish" or "review", false
+  end
+  if (event == "option-up" or event == "option-up-shift") and options.lock == false then
+    moveTo(state, "idle")
+    return "cancel", false
   end
   if event == "option-up" or event == "option-up-shift" then
     moveTo(state, "tapped", { at = time })
@@ -151,8 +164,11 @@ function PHASES.finishing(state, event)
   return nil, false
 end
 
-function dictation.press(state, event, time)
-  return PHASES[state.phase](state, event, time)
+-- Right Command's events run through the same phases as Right Option's.
+local AS_OPTION = { ["command-down"] = "option-down", ["command-up"] = "option-up" }
+
+function dictation.press(state, event, time, options)
+  return PHASES[state.phase](state, AS_OPTION[event] or event, time, options or {})
 end
 
 -- The whole seconds a locked one has left, when it's in its last 10, before 5 minutes or 30
@@ -185,9 +201,11 @@ end
 -- the timer is an orange countdown; target = { kind = app or password, name } }.
 -- Until the helper says ready, the mic isn't open yet: the status says Starting and the live
 -- dot waits, so nothing said before it is expected to be heard. With languages set, language
--- is the code of the one heard now, such as EN.
+-- is the code of the one heard now, such as EN. For an agent (Right Command) the status says
+-- Command and the chip names the session the words go to.
 function dictation.header(recording, now)
   local icon, status = "mic", "Listening"
+  if recording.agent then icon, status = "agent", "Command" end
   if recording.finishing then icon, status = "spinner", "Finishing"
   elseif not recording.ready then status = "Starting"
   elseif recording.locked then icon, status = "lock", "Locked" end
@@ -195,6 +213,11 @@ function dictation.header(recording, now)
   local warning = recording.left ~= nil and not recording.finishing
   local timer = warning and clock(recording.left) or clock((recording.stopped or now) - recording.started)
   local target = recording.secure and { kind = "password", name = "password field" } or { kind = "app", name = shortName(recording.app) }
+  -- For an agent, the chip names the session the words go to, whatever app is in front.
+  if recording.agent then
+    local row = recording.agentTarget and recording.agentTarget.row
+    target = { kind = "agent", name = row and shortName(row.label) or "—" }
+  end
   local language = recording.languages and tostring(recording.locale or ""):match("^(%a+)")
   return { icon = icon, live = live, status = status, timer = timer, warning = warning, target = target,
     language = language and language:upper() or nil }

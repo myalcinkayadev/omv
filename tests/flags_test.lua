@@ -33,6 +33,7 @@ end
 check.that("should have meeting mode off by default", flags.read(nil)["meeting-mode"] == false)
 check.that("should have the stall detector off by default", flags.read(nil).stalls == false)
 check.that("should have dictation off by default", flags.read(nil).dictation == false)
+check.that("should have voice to agents off by default", flags.read(nil)["voice-agents"] == false)
 check.that("should have the outdated Homebrew packages off by default", flags.read(nil)["brew-outdated"] == false)
 check.that("should have system load off by default", flags.read(nil)["system-load"] == false)
 check.that("should have the input source off by default", flags.read(nil)["input-source"] == false)
@@ -42,7 +43,7 @@ check.that("should have the camera and mic in-use dots off by default", flags.re
 check.that("should have a flag for every feature and each feature that starts off, and nothing else", (function()
   local count = 0
   for _ in pairs(flags.DEFAULTS) do count = count + 1 end
-  return count == #FEATURES + 10
+  return count == #FEATURES + 11
 end)())
 check.that("should turn a feature off when its line says off", flags.read("weather=off").weather == false)
 check.that("should leave the other features on when one is turned off", flags.read("weather=off").battery == true)

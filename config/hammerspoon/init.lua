@@ -90,6 +90,9 @@ local airDrop = feature("airdrop", "features.share")
 local translateSelection = feature("translate", "features.translate")
 feature("stalls", "features.stalls")
 local dictationKey = feature("dictation", "features.dictation")
+if dictationKey and sendToAgent and enabled["voice-agents"] then
+  dictationKey.agents({ rows = waitingClaude.rows, deliver = sendToAgent.deliver })
+end
 local windowSizing = feature("window-sizing", "features.windowsize")
 local inputSource = feature("input-source", "features.inputsource")
 

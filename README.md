@@ -649,6 +649,14 @@ Off until `omv flags dictation on`. Then hold **Right Option** alone and talk: a
 
 <img src="docs/dictation.png" alt="The Dictation card: Language Turkish, Your words, Drop ums and uhs on, Sounds on, Key hold Right Option or tap it twice, Dictations; then Microphone allowed and the Turkish model on this Mac" width="720">
 
+### Voice to agents
+
+Off until `omv flags voice-agents on`, with `dictation`, `claude` and `send-to-agent` on too. Hold **Right Command** alone and say **tell omv run the tests and fix what fails**: on release, "run the tests and fix what fails" lands in the prompt of the Claude Code session in the `omv` folder, and its terminal comes forward. Enter is never pressed, so you read it and send it yourself, as with Option+P. **reply looks good, commit it** goes to the session that finished last.
+
+- **The key:** the mic opens only once Right Command has been held alone for 0.3 seconds, so Cmd shortcuts never touch it; start talking at the start sound. Another key or a click while it's held cancels it and goes through, so Cmd+C, Cmd+Tab and Cmd+click work as always. Esc cancels.
+- **The project:** said as its folder is named, in any case; `omv-web` is "omv web", and a name spelled out, "o m v", counts too. A name of five letters or more may be heard one letter off. The folder names are given to the speech model, so they're heard as written. Two sessions in folders of the same name aren't guessed between: the pill names both and nothing is sent.
+- **The pill:** says Command, and names the session the words go to, with its state, as you speak. Only a session that finished and waits takes the words: one that's working would be interrupted, and one asking for approval would take them as its answer, so for those they're copied instead.
+
 It needs the microphone, asked for the first time, and Accessibility to paste. A small Swift helper, `dictate.swift`, hears the speech with macOS 26's SpeechAnalyzer; it's built with `swiftc` the first time and kept in `~/.cache/omv/dictate`.
 
 ## Do Not Disturb
@@ -763,6 +771,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | `brew-outdated` | **off unless turned on:** the count of outdated Homebrew packages in the bar, and `brew upgrade` on a click; see [Smaller tools](#smaller-tools) |
 | `browser-tabs` | **off unless turned on:** the browser's open tabs in the palette; see [Palette](#palette) |
 | `dictation` | **off unless turned on:** hold Right Option to talk, release to type it; see [Dictation](#dictation) |
+| `voice-agents` | **off unless turned on:** hold Right Command, say "tell omv …" or "reply …" to put words in an agent's prompt; needs `dictation`, `claude` and `send-to-agent`; see [Voice to agents](#voice-to-agents) |
 | `system-load` | **off unless turned on:** CPU and memory in the bar, only while the Mac is busy; see [Smaller tools](#smaller-tools) |
 | `input-source` | **off unless turned on:** the keyboard input source in the bar, and switching it with a click; see [Input source](#input-source) |
 | `world-clocks` | **off unless turned on:** the times in `~/.config/omv/clocks` in the calendar card; see [Calendar and today's events](#calendar-and-todays-events) |
@@ -814,6 +823,7 @@ That writes `weather=off` to `~/.config/omv/flags`, then reloads Hammerspoon and
 | Option+Shift+C | Join the meeting that is starting | |
 | Option+Shift+A | Go to the agent waiting for you, or open the agents' inbox when several wait or a break left something | |
 | Option+P | Send the selection, the clipboard or a screenshot to an agent waiting for a prompt | |
+| Right Command (hold) | Say "tell omv …" or "reply …" to put it in an agent's prompt; `voice-agents` flag | |
 | Option+Shift+G | Pull requests waiting for your review, or GitHub's review requests page when none wait | |
 | Option+Shift+P | Hungry processes and listening ports: quit the busiest ones | |
 | Option+Shift+X | Disk card: free space and Mole's cleanups | |

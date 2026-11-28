@@ -48,6 +48,9 @@ local function deliver(tty, text)
   pasteInto(row, text)
 end
 
+-- Puts text into the prompt of the session on tty, if it's still done; for voice to agents.
+feature.deliver = deliver
+
 local function removeOldShots()
   local ok, files, folder = pcall(hs.fs.dir, sendto.SHOT_DIR)
   local now = os.time()

@@ -6,6 +6,7 @@
 
 local shell = require("shell")
 local dictation = require("dictation")
+local voiceagents = require("voiceagents")
 
 local dictationPill = {}
 
@@ -51,7 +52,7 @@ local LIVE = "#ff453a"
 -- filling the gap; the app the words land in as a chip at the right edge. A hairline under it.
 local ICON_X, STATUS_X, TIMER_X, CENTER_Y, RULE_Y, WORDS_Y = 18, 50, 140, 25, 44, 52
 local CHIP_H, CHIP_PAD, CHIP_ICON = 26, 10, 16
-local ICONS = { mic = "󰍬", lock = "󰌾", spinner = "󰑓" }
+local ICONS = { mic = "󰍬", lock = "󰌾", spinner = "󰑓", agent = "󰆍" }
 
 -- What the pill says under the header, and whether a download takes the status's place.
 local function body(recording)
@@ -60,6 +61,8 @@ local function body(recording)
     return "", "once, then it stays on this Mac", "Getting " .. (recording.localeName or recording.locale) .. " for dictation… " .. recording.percent .. "%"
   end
   if recording.finishing then return recording.partial or "", "", nil end
+  -- For an agent, the hint is where the words go, or what to say instead.
+  if recording.agent and recording.agentTarget then return recording.partial or "", voiceagents.resultLine(recording.agentTarget), nil end
   local hint = recording.locked and "tap Right Option to type it · Shift to copy · Esc cancels"
     or "release types it · Shift+release copies · Esc cancels"
   if recording.nextName then hint = hint .. " · Tab: " .. recording.nextName end
@@ -157,7 +160,10 @@ function dictationPill.draw(recording)
     elements[#elements + 1] = { type = "text", frame = { x = 16, y = WORDS_Y + (index - 1) * dictation.LINE_HEIGHT, w = WIDTH - 32, h = dictation.LINE_HEIGHT },
       text = hs.styledtext.new(line, { font = { name = FONT, size = 14 }, color = color(tokens.fg, faded and 0.45 or 1) }) }
   end
-  elements[#elements + 1] = text(hint, 11, recording.secure and WARNING or tokens.fg, { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
+  local hintColor = recording.secure and WARNING or tokens.fg
+  local kind = recording.agent and recording.agentTarget and recording.agentTarget.kind
+  if kind == "paste" then hintColor = tokens.accent elseif kind == "copy" then hintColor = WARNING end
+  elements[#elements + 1] = text(hint, 11, hintColor, { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
   local frame = dictationPill.show(elements, height)
   local onScreen = strip and { x = frame.x + strip.x, y = frame.y, w = strip.w } or nil
   drawn = { key = key, frame = frame, strip = onScreen }

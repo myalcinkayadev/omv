@@ -10,6 +10,7 @@ local card = require("card")
 local dictation = require("dictation")
 local dictationPill = require("dictationpill")
 local ownmic = require("ownmic")
+local voiceagents = require("voiceagents")
 
 local feature = {}
 
@@ -23,6 +24,13 @@ local ticks = 0
 local START_SOUND, END_SOUND = "Tink", "Pop"
 
 local keys = dictation.keys()
+-- Right Command, for agents: the same rules, but the recording starts only once it's held
+-- alone, so a Cmd shortcut never opens the mic, and it never locks hands-free.
+local commandKeys = dictation.keys()
+local COMMAND_OPTIONS = { late = true, lock = false }
+-- What voice to agents needs from the agents' features, given by init.lua when it's on:
+-- { rows, deliver(tty, text), spoke() }; spoke, optional, gives the session to reply to first. Without it Right Command does nothing.
+local agents = nil
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
 -- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
@@ -140,10 +148,29 @@ local function keep(entry)
   file:close()
 end
 
+-- Where an agent's words go on release: into a done session's prompt, unsent; copied for a
+-- busy one; nowhere, with the hint, when no session was named.
+local function finishedForAgent(recording, final)
+  local target = voiceagents.target(dictation.join(recording.before, final), agents.rows(), agents.spoke and agents.spoke())
+  if dictation.outcome(final).kind == "notice" and (recording.before or "") == "" then return dictationPill.hide() end
+  if target.kind == "none" then
+    dictationPill.hide()
+    return shell.alert(target.hint, 2)
+  end
+  keep({ text = target.prompt, app = "→ " .. target.row.label, at = os.time() })
+  if target.kind == "copy" then
+    hs.pasteboard.setContents(target.prompt)
+    return dictationPill.confirm({ kind = "copy", message = "Copied: " .. target.row.label .. " is " .. (target.why == "asks" and "asking" or "working") })
+  end
+  dictationPill.confirm({ kind = "type", message = "In " .. target.row.label .. "'s prompt", hint = "Enter sends" })
+  agents.deliver(target.row.id, target.prompt)
+end
+
 local function finished(recording, final)
   if current ~= recording then return end
   current = nil
   closeInput(recording)
+  if recording.agent then return finishedForAgent(recording, final) end
   local text, dropped = dictation.join(recording.before, final), 0
   if dictation.cleanupOn(settings()) then text, dropped = dictation.clean(text) end
   text = dictation.replace(text, recording.rules)
@@ -196,6 +223,7 @@ local function onOutput(recording, chunk)
     local message = dictation.parse(line)
     if message and message.kind == "partial" then
       recording.partial = dictation.replace(dictation.join(recording.before, message.text), recording.rules)
+      if recording.agent then recording.agentTarget = voiceagents.target(recording.partial, recording.agentRows, recording.spoke) end
     elseif message and message.kind == "level" then
       local level = dictation.levelOf(message.level)
       if dictation.isVoice(level) then dictation.press(keys, "voice", hs.timer.secondsSinceEpoch()) end
@@ -230,7 +258,13 @@ local function tick()
     local action = dictation.press(keys, "tick", now)
     if action then feature.act(action) end
   end
+  if commandKeys.phase ~= "idle" then
+    local action = dictation.press(commandKeys, "tick", now, COMMAND_OPTIONS)
+    if action then feature.act(action) end
+  end
   local recording = current
+  -- Right Command held, before its recording starts, still needs the ticks.
+  if not recording and commandKeys.phase == "pressed" then return end
   if not recording then return stopTicker() end
   if not recording.shown or recording.problem then return end
   if dictation.finishOverdue(recording, now) then
@@ -279,19 +313,41 @@ startHelper = function(recording)
   end, function(_, out)
     if recording.own == own then onOutput(recording, out) end
     return true
-  end, { "listen", recording.locale, engine, table.concat(dictation.words(settings()), "|") })
+  end, { "listen", recording.locale, engine, table.concat(recording.words, "|") })
   -- Before the helper opens the mic, so the in-use dot never takes it for another app's.
   ownmic.set("dictation", true)
   recording.task:start()
 end
 
-local function record()
+-- The words the helper listens for: yours, and for an agent the sessions' folder names, each
+-- part of omv-web too, so the project's name is heard as written.
+local function wordsFor(rows)
+  local list, seen = {}, {}
+  local function add(word)
+    if seen[word:lower()] then return end
+    seen[word:lower()], list[#list + 1] = true, word
+  end
+  for _, word in ipairs(dictation.words(settings())) do add(word) end
+  for _, row in ipairs(rows or {}) do
+    for part in tostring(row.label):gmatch("[^%-_.%s]+") do add(part) end
+  end
+  return list
+end
+
+-- forAgent: Right Command's recording, whose words go to an agent as they were heard: no
+-- replacements, no filler cleanup, one language.
+local function record(forAgent)
   if current then cancel() end
   stopTicker()
   local text = settings()
-  local languageList = dictation.languages(text)
-  local recording = { locale = locale(), started = hs.timer.secondsSinceEpoch(), rules = dictation.replacements(text),
-    languageList = languageList, languages = #languageList >= 2 or nil }
+  local languageList = forAgent and {} or dictation.languages(text)
+  local recording = { locale = locale(), started = hs.timer.secondsSinceEpoch(), rules = forAgent and {} or dictation.replacements(text),
+    languageList = languageList, languages = #languageList >= 2 or nil, agent = forAgent or nil }
+  if forAgent then
+    recording.agentRows, recording.spoke = agents.rows(), agents.spoke and agents.spoke()
+    recording.agentTarget = voiceagents.target("", recording.agentRows, recording.spoke)
+  end
+  recording.words = wordsFor(recording.agentRows)
   recording.nextLocale = dictation.nextLanguage(languageList, recording.locale)
   recording.nextName = recording.nextLocale and dictation.plainLanguage(dictation.languageName(lists, recording.nextLocale))
   current = recording
@@ -335,7 +391,12 @@ local function finish(how)
 end
 
 local ACTIONS = {
-  record = record, show = function() show(false) end, lock = function() show(true) end, cancel = cancel,
+  record = function() record(false) end, show = function() show(false) end,
+  start = function()
+    if not agents then return end
+    record(true)
+    show(false)
+  end, lock = function() show(true) end, cancel = cancel,
   finish = function() finish() end, review = function() finish("review") end, timeout = function() finish("auto") end,
   switch = switch,
 }
@@ -346,13 +407,37 @@ end
 
 local ESCAPE, TAB = 53, 48
 
+local MOUSE_DOWNS = { [hs.eventtap.event.types.leftMouseDown] = true, [hs.eventtap.event.types.rightMouseDown] = true }
+
+-- Right Command's events: while it's held, any other key or a click cancels it and goes
+-- through, so Cmd+C, Cmd+Tab and Cmd+click work as always; Esc cancels and is swallowed
+-- once it listens.
+local function onCommandKey(kind, name, code)
+  if MOUSE_DOWNS[kind] then name = "other" end
+  if kind == hs.eventtap.event.types.keyDown then name = code == ESCAPE and "escape" or "other" end
+  if not name or name == "shift" then return false end
+  if commandKeys.phase == "idle" and name ~= "command-down" then return false end
+  if name == "command-down" then
+    if keys.phase ~= "idle" or current then return false end
+    if not ticker then ticker = hs.timer.doEvery(TICK_SECONDS, tick) end
+  end
+  local action, swallow = dictation.press(commandKeys, name, hs.timer.secondsSinceEpoch(), COMMAND_OPTIONS)
+  if action then hs.timer.doAfter(0, function() feature.act(action) end) end
+  return swallow
+end
+
 local function onKey(event)
   local kind = event:getType()
   local name
   if kind == hs.eventtap.event.types.flagsChanged then
     local flags = event:getFlags()
-    name = dictation.eventFor(event:getKeyCode(), flags.alt == true, flags.shift == true)
-  elseif kind == hs.eventtap.event.types.keyDown then
+    name = dictation.eventFor(event:getKeyCode(), flags.alt == true, flags.shift == true, flags.cmd == true)
+  end
+  if agents and (commandKeys.phase ~= "idle" or name == "command-down") then
+    return onCommandKey(kind, name, kind == hs.eventtap.event.types.keyDown and event:getKeyCode() or nil)
+  end
+  if name == "command-down" or name == "command-up" or MOUSE_DOWNS[kind] then return false end
+  if kind == hs.eventtap.event.types.keyDown then
     local code = event:getKeyCode()
     name = code == ESCAPE and "escape" or "other"
     -- Tab is the language switch only while the pill listens and there's a language to go to;
@@ -368,7 +453,14 @@ local function onKey(event)
   return swallow
 end
 
-feature.keys = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged, hs.eventtap.event.types.keyDown }, onKey):start()
+feature.keys = hs.eventtap.new({ hs.eventtap.event.types.flagsChanged, hs.eventtap.event.types.keyDown,
+  hs.eventtap.event.types.leftMouseDown, hs.eventtap.event.types.rightMouseDown }, onKey):start()
+
+-- Turns on voice to agents (Right Command), with what it needs from the agents' features:
+-- { rows(), deliver(tty, text), spoke() }.
+function feature.agents(api)
+  agents = api
+end
 
 -- Builds the helper and reads which languages the Mac can hear, without waiting on it.
 shell.execute("'" .. HELPER .. "' locales", function(output)
