@@ -129,6 +129,9 @@ check.that("should remove the language line for macOS's language", dictation.set
 -- What the helper says about the Mac.
 local mac = dictation.parseLocales("transcriber\ten-US\ndictation\ten-US tr-TR\ninstalled\ten-US\nmicrophone\tgranted\nname\ttr-TR\tTurkish (Türkiye)\n")
 check.that("should name a language by what the helper says", dictation.languageName(mac, "tr-TR") == "Turkish (Türkiye)")
+check.that("should drop the region from a language's name", dictation.plainLanguage("English (United States)") == "English"
+  and dictation.plainLanguage("Turkish (Türkiye)") == "Turkish")
+check.that("should keep a language's name without a region as it is", dictation.plainLanguage("Turkish") == "Turkish")
 check.that("should name a language it knows nothing of by its id", dictation.languageName(mac, "xx-YY") == "xx-YY")
 check.that("should know a language's model is on the Mac", dictation.isInstalled(mac, "en-TR") == true)
 check.that("should know a language's model isn't on the Mac", dictation.isInstalled(mac, "tr-TR") == false)
@@ -147,6 +150,16 @@ check.that("should say the model is on the Mac", find(cardRows, "install").label
 check.that("should offer to get a model that isn't", find(dictation.cardRows({ language = "x" }), "install").hint == "get it  ›")
 check.that("should say no dictation is kept yet", find(cardRows, "dictations").hint == "none yet")
 check.that("should count the dictations kept", find(dictation.cardRows({ language = "x", kept = 4 }), "dictations").hint == "the last 4  ›")
+local function at(rows, id) for index, row in ipairs(rows) do if row.id == id then return index end end end
+local rulesRow = function(rules) return find(dictation.cardRows({ language = "x", replacements = rules }), "replacements").hint end
+check.that("should show the first replacement and how many more when there are several", rulesRow({ { from = "slash voice", to = "/voice" },
+  { from = "at sign", to = "@" }, { from = "new line", to = "\n" } }) == "slash voice → /voice +2  ›")
+check.that("should show the only replacement when there is one", rulesRow({ { from = "at sign", to = "@" } }) == "at sign → @  ›")
+check.that("should say none when there are no replacements", rulesRow({}) == "none  ›" and rulesRow(nil) == "none  ›")
+local tabRow = function(names) return find(dictation.cardRows({ language = "x", tabLanguages = names }), "languages").hint end
+check.that("should list the Tab languages when there are two or more", tabRow({ "English", "Turkish" }) == "English, Turkish  ›")
+check.that("should say off when there are fewer than two Tab languages", tabRow({ "English" }) == "off  ›" and tabRow(nil) == "off  ›")
+check.that("should keep the toggles where Left/Right finds them", at(cardRows, "language") == 1 and at(cardRows, "cleanup") == 5 and at(cardRows, "sounds") == 6)
 check.that("should show the first three of your words and how many more", find(cardRows, "words").hint == "omv, AeroSpace, SketchyBar +2  ›")
 check.that("should say none without your words", find(dictation.cardRows({ language = "x" }), "words").hint == "none  ›")
 check.that("should show clean-up on or off", find(cardRows, "cleanup").hint == "‹  on  ›"

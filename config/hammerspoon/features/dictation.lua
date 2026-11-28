@@ -179,7 +179,7 @@ local function handedOver(recording, final)
   if recording.finishing then return finished(recording, "") end
   recording.locale = recording.nextLocale
   recording.nextLocale = dictation.nextLanguage(recording.languageList, recording.locale)
-  recording.nextName = recording.nextLocale and dictation.languageName(lists, recording.nextLocale)
+  recording.nextName = recording.nextLocale and dictation.plainLanguage(dictation.languageName(lists, recording.nextLocale))
   startHelper(recording)
 end
 
@@ -293,7 +293,7 @@ local function record()
   local recording = { locale = locale(), started = hs.timer.secondsSinceEpoch(), rules = dictation.replacements(text),
     languageList = languageList, languages = #languageList >= 2 or nil }
   recording.nextLocale = dictation.nextLanguage(languageList, recording.locale)
-  recording.nextName = recording.nextLocale and dictation.languageName(lists, recording.nextLocale)
+  recording.nextName = recording.nextLocale and dictation.plainLanguage(dictation.languageName(lists, recording.nextLocale))
   current = recording
   startHelper(recording)
   if current == recording and not recording.problem then ticker = hs.timer.doEvery(TICK_SECONDS, tick) end
@@ -422,6 +422,8 @@ end
 
 local showLanguages
 
+local tabLanguageNames
+
 local function rows()
   local language = locale()
   return dictation.cardRows({
@@ -429,8 +431,16 @@ local function rows()
     ownLanguage = dictation.language(settings(), { "" }) ~= "",
     language = languageName(language), sounds = dictation.sounds(settings()), kept = #feature.recent,
     words = dictation.words(settings()), cleanup = dictation.cleanupOn(settings()),
+    replacements = dictation.replacements(settings()), tabLanguages = tabLanguageNames(),
     microphone = lists.microphone, installed = dictation.isInstalled(lists, language),
   })
+end
+
+-- The names of the languages Tab moves between.
+tabLanguageNames = function()
+  local names = {}
+  for _, id in ipairs(dictation.languages(settings())) do names[#names + 1] = dictation.plainLanguage(languageName(id)) end
+  return names
 end
 
 local showCard, showHistory
@@ -449,6 +459,27 @@ local function editWords()
   shell.open({ "-t", dictation.PATH })()
 end
 
+-- Opens ~/.config/omv/dictation for its replacements, with one to copy when it has none.
+local function editReplacements()
+  if #dictation.replacements(settings()) == 0 then
+    save((settings() or "") .. ((settings() or ""):match("[^\n]$") and "\n" or "") .. "replace = slash voice > /voice\n")
+  end
+  shell.open({ "-t", dictation.PATH })()
+end
+
+-- Opens ~/.config/omv/dictation for the languages Tab moves between, with a line naming yours
+-- and another whose model is on the Mac when it has none.
+local function editLanguages()
+  if not (settings() or ""):match("languages%s*=") then
+    local mine, other = locale(), nil
+    for _, id in ipairs(lists.installed or {}) do
+      if id:match("^(%a+)") ~= mine:match("^(%a+)") then other = id; break end
+    end
+    save(dictation.setting(settings(), "languages", mine .. ", " .. (other or (mine:match("^en") and "tr-TR" or "en-US"))))
+  end
+  shell.open({ "-t", dictation.PATH })()
+end
+
 function showCard(selected)
   local shown = rows()
   shell.show("dictation", shell.centered(shell.LIST_WIDTH, 28 + 46 + #shown * 30 + 2 * 26 + 44), card.html({
@@ -457,21 +488,23 @@ function showCard(selected)
   }), function(message)
     local id = message.id or ""
     if message.type == "step" then
-      if id:match(":sounds$") then return toggle("sounds", dictation.sounds(settings()), 4) end
-      if id:match(":cleanup$") then return toggle("cleanup", dictation.cleanupOn(settings()), 3) end
+      if id:match(":sounds$") then return toggle("sounds", dictation.sounds(settings()), 6) end
+      if id:match(":cleanup$") then return toggle("cleanup", dictation.cleanupOn(settings()), 5) end
       if id == "1:language" then return showLanguages() end
       return
     end
     if message.type ~= "choose" then return shell.close() end
     if id == "language" then return showLanguages() end
-    if id == "sounds" then return toggle("sounds", dictation.sounds(settings()), 4) end
-    if id == "cleanup" then return toggle("cleanup", dictation.cleanupOn(settings()), 3) end
+    if id == "sounds" then return toggle("sounds", dictation.sounds(settings()), 6) end
+    if id == "cleanup" then return toggle("cleanup", dictation.cleanupOn(settings()), 5) end
     if id == "dictations" then return feature.recent[1] and showHistory() or nil end
     if id == "key" then return end
     if id == "permissions" and lists.microphone == "granted" then return end
     if id == "install" and dictation.isInstalled(lists, locale()) then return end
     shell.close()
     if id == "words" then return editWords() end
+    if id == "replacements" then return editReplacements() end
+    if id == "languages" then return editLanguages() end
     if id == "permissions" then return require("features.permissions").open() end
     if id == "install" then return install(locale()) end
   end)

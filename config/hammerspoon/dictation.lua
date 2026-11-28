@@ -544,6 +544,11 @@ function dictation.languageName(lists, id)
   return lists.names[id] or id
 end
 
+-- A language's name without its region: English (United States) is English.
+function dictation.plainLanguage(name)
+  return (tostring(name or ""):gsub("%s*%b()", ""))
+end
+
 local function hasLanguage(list, language)
   for _, locale in ipairs(list) do
     if locale:match("^(%a+)") == language then return true end
@@ -626,8 +631,9 @@ function dictation.pillHeight(count)
   return 83 + dictation.LINE_HEIGHT * math.max(1, math.min(dictation.MAX_LINES, count))
 end
 
--- The Dictation card's rows, from info { ownLanguage, language (its name), words, cleanup,
--- sounds, kept (dictations kept), microphone (granted, denied or undetermined), installed }.
+-- The Dictation card's rows, from info { ownLanguage, language (its name), words, replacements,
+-- tabLanguages (their names), cleanup, sounds, kept (dictations kept), microphone (granted,
+-- denied or undetermined), installed }.
 local MICROPHONE = { granted = "allowed", denied = "not allowed  ›", undetermined = "asked on the first hold" }
 
 local function wordsHint(words)
@@ -636,6 +642,13 @@ local function wordsHint(words)
   for index = 1, math.min(3, #words) do shown[index] = words[index] end
   local more = #words > 3 and (" +" .. (#words - 3)) or ""
   return table.concat(shown, ", ") .. more .. "  ›"
+end
+
+-- The first replacement, and how many more.
+local function rulesHint(rules)
+  if not rules or #rules == 0 then return "none  ›" end
+  local more = #rules > 1 and (" +" .. (#rules - 1)) or ""
+  return rules[1].from .. " → " .. rules[1].to:gsub("\n", "⏎") .. more .. "  ›"
 end
 
 local function onOff(value)
@@ -647,6 +660,9 @@ function dictation.cardRows(info)
   return {
     { id = "language", group = "Dictation", icon = "󰗊", label = "Language", hint = (info.ownLanguage and "" or "macOS's: ") .. info.language .. "  ›" },
     { id = "words", group = "Dictation", icon = "󰓹", label = "Your words", hint = wordsHint(info.words) },
+    { id = "replacements", group = "Dictation", icon = "󰛔", label = "Replacements", hint = rulesHint(info.replacements) },
+    { id = "languages", group = "Dictation", icon = "󰌌", label = "Tab languages",
+      hint = (info.tabLanguages and #info.tabLanguages >= 2) and (table.concat(info.tabLanguages, ", ") .. "  ›") or "off  ›" },
     { id = "cleanup", group = "Dictation", icon = "󰃢", label = "Drop ums and uhs", hint = onOff(info.cleanup) },
     { id = "sounds", group = "Dictation", icon = "󰕾", label = "Sounds", hint = onOff(info.sounds) },
     { id = "key", group = "Dictation", icon = "󰌌", label = "Key", hint = "hold Right Option, or tap it twice" },
