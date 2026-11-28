@@ -292,7 +292,6 @@ check.that("should not chime when ready and not shown", dictation.chimeDue({ rea
 check.that("should chime when shown and ready", dictation.chimeDue({ shown = true, ready = true }) == true)
 check.that("should not chime again when it chimed", dictation.chimeDue({ shown = true, ready = true, chimed = true }) == false)
 
-
 -- Spoken replacements.
 local rules = dictation.replacements("replace = slash voice > /voice\n# replace = gone > x\nreplace = at sign > @\nreplace = no arrow\nreplace =  > empty\nreplace = new line > a\\nb\n")
 check.that("should read each replace line as a rule when there are several", #rules == 3)
@@ -319,5 +318,33 @@ check.that("should leave the text as it is when there are no rules", dictation.r
 check.that("should give empty text for empty text", dictation.replace("", slash) == "")
 check.that("should keep a % in a replacement as it is", dictation.replace("per cent", dictation.replacements("replace = per cent > %\n")) == "%")
 
+-- Flipping the language with Tab.
+local both = dictation.languages("languages = tr-TR, en-US\n")
+check.that("should read the languages line as a list", #both == 2 and both[1] == "tr-TR" and both[2] == "en-US")
+check.that("should give no languages without the line", #dictation.languages("language = tr-TR\n") == 0)
+check.that("should give the next language", dictation.nextLanguage({ "tr-TR", "en-US", "de-DE" }, "tr-TR") == "en-US")
+check.that("should wrap to the first after the last", dictation.nextLanguage({ "tr-TR", "en-US" }, "en-US") == "tr-TR")
+check.that("should give no next language with fewer than 2", dictation.nextLanguage({ "tr-TR" }, "tr-TR") == nil
+  and dictation.nextLanguage({}, "tr-TR") == nil)
+check.that("should give the first other language when the current one isn't listed", dictation.nextLanguage({ "tr-TR", "en-US" }, "de-DE") == "tr-TR"
+  and dictation.nextLanguage({ "tr-TR", "en-US" }, "tr") == "tr-TR")
+local function pressed(events, last)
+  local state = dictation.keys()
+  for _, event in ipairs(events) do dictation.press(state, event[1], event[2]) end
+  local action, swallow = dictation.press(state, last[1], last[2])
+  return action, swallow, state
+end
+local heldAction, heldSwallow, heldState = pressed({ { "option-down", 0 }, { "tick", 0.31 } }, { "tab", 1 })
+check.that("should switch the language on Tab while held", heldAction == "switch" and heldSwallow == true and heldState.phase == "listening")
+local lockAction, lockSwallow, lockState = pressed({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 } }, { "tab", 1 })
+check.that("should switch the language on Tab when hands-free and stay hands-free", lockAction == "switch" and lockSwallow == true and lockState.phase == "locked")
+local earlyAction, earlySwallow = pressed({ { "option-down", 0 } }, { "tab", 0.1 })
+check.that("should cancel on Tab before the pill shows", earlyAction == "cancel" and earlySwallow == false)
+local tapAction = pressed({ { "option-down", 0 }, { "option-up", 0.1 } }, { "tab", 0.2 })
+check.that("should cancel on Tab after a single tap", tapAction == "cancel")
+check.that("should join the words before and after a switch with one space", dictation.join("Hello there.", " Merhaba ") == "Hello there. Merhaba")
+check.that("should skip an empty side when joining", dictation.join("", "Merhaba") == "Merhaba" and dictation.join("Hi", nil) == "Hi")
+check.that("should show the language code when languages are set", dictation.header({ started = 0, ready = true, app = "Zed", locale = "en-US", languages = 2 }, 1).language == "EN")
+check.that("should show no language code without languages", dictation.header({ started = 0, ready = true, app = "Zed", locale = "en-US" }, 1).language == nil)
 
 check.finish()

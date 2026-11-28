@@ -26,7 +26,9 @@ local keys = dictation.keys()
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
 -- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
--- review, auto, app, appIcon, secure, startApp, left, waveSent, inputClosed, chimed, rules }.
+-- review, auto, app, appIcon, secure, startApp, left, waveSent, inputClosed, chimed, rules,
+-- languages, nextLocale, before, handover }. before is what was heard before a language switch;
+-- handover is set while the helper of the language left behind finishes its words.
 local current = nil
 -- The last dictations, newest first, each { text, app, at }, kept in dictation.HISTORY_PATH so
 -- they outlive a reload.
@@ -142,8 +144,8 @@ local function finished(recording, final)
   if current ~= recording then return end
   current = nil
   closeInput(recording)
-  local text, dropped = final, 0
-  if dictation.cleanupOn(settings()) then text, dropped = dictation.clean(final) end
+  local text, dropped = dictation.join(recording.before, final), 0
+  if dictation.cleanupOn(settings()) then text, dropped = dictation.clean(text) end
   text = dictation.replace(text, recording.rules)
   local outcome = dictation.outcome(text)
   if outcome.kind == "notice" then
@@ -165,6 +167,22 @@ local function showProblem(recording, problem)
   end)
 end
 
+local startHelper
+
+-- The helper of the language left behind has said everything it heard: it's kept, and the
+-- next language's helper starts, unless the dictation ended meanwhile.
+local function handedOver(recording, final)
+  closeInput(recording)
+  recording.handover = false
+  recording.before = dictation.join(recording.before, final)
+  recording.partial = dictation.replace(recording.before, recording.rules)
+  if recording.finishing then return finished(recording, "") end
+  recording.locale = recording.nextLocale
+  recording.nextLocale = dictation.nextLanguage(recording.languageList, recording.locale)
+  recording.nextName = recording.nextLocale and dictation.languageName(lists, recording.nextLocale)
+  startHelper(recording)
+end
+
 local function chime(recording)
   if not dictation.chimeDue(recording) then return end
   recording.chimed = true
@@ -176,12 +194,16 @@ local function onOutput(recording, chunk)
   recording.buffer = (recording.buffer or "") .. (chunk or "")
   for line in recording.buffer:gmatch("([^\n]*)\n") do
     local message = dictation.parse(line)
-    if message and message.kind == "partial" then recording.partial = dictation.replace(message.text, recording.rules)
+    if message and message.kind == "partial" then
+      recording.partial = dictation.replace(dictation.join(recording.before, message.text), recording.rules)
     elseif message and message.kind == "level" then
       local level = dictation.levelOf(message.level)
       if dictation.isVoice(level) then dictation.press(keys, "voice", hs.timer.secondsSinceEpoch()) end
     elseif message and message.kind == "progress" then recording.percent = message.percent
     elseif message and message.kind == "problem" then return showProblem(recording, message.problem)
+    elseif message and message.kind == "final" and recording.handover then
+      recording.buffer = ""
+      return handedOver(recording, message.text)
     elseif message and message.kind == "final" then return finished(recording, message.text)
     elseif line == "ready\t" or line == "ready" then
       recording.ready = true
@@ -195,6 +217,7 @@ local function cancel()
   stopTicker()
   local recording = current
   current = nil
+  if recording and recording.handover and recording.task then recording.task:terminate() end
   send(recording, "cancel")
   if recording then closeInput(recording) end
   dictationPill.hide()
@@ -225,22 +248,26 @@ local function tick()
   drawPill(recording)
 end
 
-local function record()
-  if current then cancel() end
-  stopTicker()
-  local language = locale()
-  local engine = dictation.engine(language, lists)
-  local recording = { locale = language, started = hs.timer.secondsSinceEpoch(), rules = dictation.replacements(settings()) }
-  current = recording
+-- Starts the helper for recording's language; a helper only acts while it's recording's own,
+-- so one left behind by a language switch never hides or ends the dictation.
+startHelper = function(recording)
+  local engine = dictation.engine(recording.locale, lists)
   if not engine then
     recording.shown = true
     return showProblem(recording, "language")
   end
+  recording.ready, recording.waveSent, recording.buffer, recording.inputClosed = false, nil, "", false
+  -- Which helper is recording's own, by a token: naming the task in its own callbacks would
+  -- hold it forever.
+  local own = {}
+  recording.own = own
   recording.task = hs.task.new(HELPER, function()
-    recording.task = nil
     -- A cancelled helper can end after the next one started, which still listens.
-    if not (current and current.task) then ownmic.set("dictation", false) end
+    if not (current and current.task and current.own ~= own) then ownmic.set("dictation", false) end
+    if recording.own ~= own then return end
+    recording.task = nil
     if current ~= recording then return end
+    if recording.handover then return handedOver(recording, "") end
     local next = dictation.onHelperExit(recording)
     if next == "finish" then return finished(recording, recording.partial or "") end
     if next == "hide" then
@@ -248,13 +275,36 @@ local function record()
       dictationPill.hide()
     end
   end, function(_, out)
-    onOutput(recording, out)
+    if recording.own == own then onOutput(recording, out) end
     return true
-  end, { "listen", language, engine, table.concat(dictation.words(settings()), "|") })
+  end, { "listen", recording.locale, engine, table.concat(dictation.words(settings()), "|") })
   -- Before the helper opens the mic, so the in-use dot never takes it for another app's.
   ownmic.set("dictation", true)
   recording.task:start()
-  ticker = hs.timer.doEvery(TICK_SECONDS, tick)
+end
+
+local function record()
+  if current then cancel() end
+  stopTicker()
+  local text = settings()
+  local languageList = dictation.languages(text)
+  local recording = { locale = locale(), started = hs.timer.secondsSinceEpoch(), rules = dictation.replacements(text),
+    languageList = languageList, languages = #languageList >= 2 or nil }
+  recording.nextLocale = dictation.nextLanguage(languageList, recording.locale)
+  recording.nextName = recording.nextLocale and dictation.languageName(lists, recording.nextLocale)
+  current = recording
+  startHelper(recording)
+  if current == recording and not recording.problem then ticker = hs.timer.doEvery(TICK_SECONDS, tick) end
+end
+
+-- Tab: the words so far are kept, and listening goes on in the next language once the helper
+-- of this one has said what it heard, so two never share the mic.
+local function switch()
+  local recording = current
+  if not recording or recording.handover or recording.finishing or not recording.nextLocale then return end
+  recording.handover = true
+  recording.ready = false
+  send(recording, "stop")
 end
 
 local function show(locked)
@@ -278,19 +328,21 @@ local function finish(how)
   recording.review, recording.auto = how == "review", how == "auto"
   play(END_SOUND)
   drawPill(recording)
-  send(recording, "stop")
+  -- In a handover the helper has been told to stop already; its words end the dictation.
+  if not recording.handover then send(recording, "stop") end
 end
 
 local ACTIONS = {
   record = record, show = function() show(false) end, lock = function() show(true) end, cancel = cancel,
   finish = function() finish() end, review = function() finish("review") end, timeout = function() finish("auto") end,
+  switch = switch,
 }
 
 function feature.act(action)
   if ACTIONS[action] then ACTIONS[action]() end
 end
 
-local ESCAPE = 53
+local ESCAPE, TAB = 53, 48
 
 local function onKey(event)
   local kind = event:getType()
@@ -299,7 +351,13 @@ local function onKey(event)
     local flags = event:getFlags()
     name = dictation.eventFor(event:getKeyCode(), flags.alt == true, flags.shift == true)
   elseif kind == hs.eventtap.event.types.keyDown then
-    name = event:getKeyCode() == ESCAPE and "escape" or "other"
+    local code = event:getKeyCode()
+    name = code == ESCAPE and "escape" or "other"
+    -- Tab is the language switch only while the pill listens and there's a language to go to;
+    -- before that, Right Option+Tab cancels like any other key.
+    if code == TAB and (keys.phase == "listening" or keys.phase == "locked") and current and current.nextLocale then
+      name = "tab"
+    end
   end
   if not name then return false end
   if keys.phase == "idle" and name ~= "option-down" then return false end

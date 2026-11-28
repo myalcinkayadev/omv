@@ -62,6 +62,7 @@ local function body(recording)
   if recording.finishing then return recording.partial or "", "", nil end
   local hint = recording.locked and "tap Right Option to type it · Shift to copy · Esc cancels"
     or "release types it · Shift+release copies · Esc cancels"
+  if recording.nextName then hint = hint .. " · Tab: " .. recording.nextName end
   if recording.secure then hint = "won't be typed here: it goes to the clipboard" end
   return recording.partial or "", hint, nil
 end
@@ -91,6 +92,17 @@ local function chip(elements, header, recording, tokens)
     textX = textX + CHIP_ICON + 6
   end
   elements[#elements + 1] = { type = "text", text = name, frame = { x = textX, y = CENTER_Y - 9, w = textW + 2, h = 18 } }
+  return w
+end
+
+-- The language heard now, such as EN, as a chip ending at right; gives its width.
+local function languageChip(elements, code, right, tokens)
+  local label = styled(code, 12, tokens.accent)
+  local w = CHIP_PAD * 2 + math.ceil(hs.drawing.getTextDrawingSize(label).w)
+  elements[#elements + 1] = { type = "rectangle", action = "strokeAndFill", fillColor = color(tokens.accent, 0.1),
+    strokeColor = color(tokens.accent, 0.6), strokeWidth = 1, roundedRectRadii = { xRadius = CHIP_H / 2, yRadius = CHIP_H / 2 },
+    frame = { x = right - w, y = CENTER_Y - CHIP_H / 2, w = w, h = CHIP_H } }
+  elements[#elements + 1] = { type = "text", text = label, frame = { x = right - w + CHIP_PAD, y = CENTER_Y - 8, w = w, h = 18 } }
   return w
 end
 
@@ -129,6 +141,7 @@ function dictationPill.draw(recording)
       strokeWidth = 2, center = { x = ICON_X + 19, y = CENTER_Y - 10 }, radius = 4.5 }
   end
   local chipWidth = chip(elements, header, recording, tokens)
+  if header.language then chipWidth = chipWidth + 6 + languageChip(elements, header.language, WIDTH - 18 - chipWidth - 6, tokens) end
   local strip = nil
   if download then
     elements[#elements + 1] = text(download, 13, tokens.fg, { x = STATUS_X, y = CENTER_Y - 9, w = WIDTH - 18 - chipWidth - 10 - STATUS_X, h = 18 })

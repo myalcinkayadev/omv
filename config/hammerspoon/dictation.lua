@@ -47,10 +47,11 @@ local function moveTo(state, phase, fields)
 end
 
 -- What one event does: option-down, option-up, option-up-shift (released with Shift held),
--- shift (a Shift tap), voice (speech heard), other (any other key), escape or tick, at time
--- in seconds. Gives the action, record, show, lock, finish, review, timeout (a locked one
--- ending by itself) or cancel, or nil; and
--- whether the event is swallowed, which only Esc is, and only while the pill listens.
+-- shift (a Shift tap), voice (speech heard), tab (Tab, when there's a language to move to),
+-- other (any other key), escape or tick, at time in seconds. Gives the action, record, show,
+-- lock, finish, review, timeout (a locked one ending by itself), switch (to the next language)
+-- or cancel, or nil; and whether the event is swallowed, which only Esc and Tab are, and only
+-- while the pill listens.
 local PHASES = {}
 
 function PHASES.idle(state, event, time)
@@ -73,7 +74,7 @@ function PHASES.pressed(state, event, time)
     moveTo(state, "tapped", { at = time })
     return nil, false
   end
-  if event == "other" or event == "escape" then
+  if event == "other" or event == "escape" or event == "tab" then
     moveTo(state, "idle")
     return "cancel", false
   end
@@ -90,7 +91,7 @@ function PHASES.tapped(state, event, time)
     moveTo(state, "pressed", { since = time })
     return "record", false
   end
-  if (event == "tick" and since > dictation.DOUBLE_SECONDS) or event == "other" or event == "escape" then
+  if (event == "tick" and since > dictation.DOUBLE_SECONDS) or event == "other" or event == "escape" or event == "tab" then
     moveTo(state, "idle")
     return "cancel", false
   end
@@ -98,6 +99,7 @@ function PHASES.tapped(state, event, time)
 end
 
 function PHASES.listening(state, event)
+  if event == "tab" then return "switch", true end
   if event == "option-up" or event == "option-up-shift" then
     moveTo(state, "idle")
     return event == "option-up" and "finish" or "review", false
@@ -126,6 +128,7 @@ function PHASES.locked(state, event, time)
     moveTo(state, "idle")
     return "review", false
   end
+  if event == "tab" then return "switch", true end
   if event == "escape" then
     moveTo(state, "idle")
     return "cancel", true
@@ -181,7 +184,8 @@ end
 -- { icon = mic, lock or spinner; live, whether the mic is on; status; timer; warning, whether
 -- the timer is an orange countdown; target = { kind = app or password, name } }.
 -- Until the helper says ready, the mic isn't open yet: the status says Starting and the live
--- dot waits, so nothing said before it is expected to be heard.
+-- dot waits, so nothing said before it is expected to be heard. With languages set, language
+-- is the code of the one heard now, such as EN.
 function dictation.header(recording, now)
   local icon, status = "mic", "Listening"
   if recording.finishing then icon, status = "spinner", "Finishing"
@@ -191,7 +195,9 @@ function dictation.header(recording, now)
   local warning = recording.left ~= nil and not recording.finishing
   local timer = warning and clock(recording.left) or clock((recording.stopped or now) - recording.started)
   local target = recording.secure and { kind = "password", name = "password field" } or { kind = "app", name = shortName(recording.app) }
-  return { icon = icon, live = live, status = status, timer = timer, warning = warning, target = target }
+  local language = recording.languages and tostring(recording.locale or ""):match("^(%a+)")
+  return { icon = icon, live = live, status = status, timer = timer, warning = warning, target = target,
+    language = language and language:upper() or nil }
 end
 
 -- Whether the start sound plays now: once, when the pill shows and the mic is open, whichever
@@ -207,7 +213,7 @@ function dictation.frameKey(recording, now)
   local header = dictation.header(recording, now)
   return table.concat({ header.icon, header.status, header.timer, tostring(header.warning), header.target.kind, header.target.name,
     tostring(recording.locked), tostring(recording.finishing), tostring(recording.ready), tostring(recording.percent),
-    tostring(recording.problem), recording.partial or "" }, "\0")
+    tostring(recording.problem), tostring(header.language), recording.partial or "" }, "\0")
 end
 
 -- What the helper ending does to recording, the one now: finish with the words heard so far
@@ -422,6 +428,37 @@ function dictation.replace(text, rules)
     text = table.concat(out)
   end
   return text
+end
+
+-- The languages Tab moves between, from languages = tr-TR, en-US.
+function dictation.languages(text)
+  local list = {}
+  for locale in (lineOf(text, "languages") or ""):gmatch("[^,]+") do
+    locale = trim(locale)
+    if locale ~= "" then list[#list + 1] = locale end
+  end
+  return list
+end
+
+-- The language after current in list, wrapping round; the first other one when current isn't
+-- in it; nil with fewer than two.
+function dictation.nextLanguage(list, current)
+  if #list < 2 then return nil end
+  for index, locale in ipairs(list) do
+    if locale == current then return list[index % #list + 1] end
+  end
+  for _, locale in ipairs(list) do
+    if locale ~= current then return locale end
+  end
+  return nil
+end
+
+-- The words before a switch and after it, as one text.
+function dictation.join(before, after)
+  before, after = trim(before), trim(after)
+  if before == "" then return after end
+  if after == "" then return before end
+  return before .. " " .. after
 end
 
 -- Your words, from words = omv, AeroSpace, …: names and terms dictation should hear right.
