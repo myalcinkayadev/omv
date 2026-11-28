@@ -203,7 +203,11 @@ local function picked(number)
   end
   local prompt, run = choosing.prompt, choosing.run
   endChoosing(false)
-  if run then return run(row) end
+  if run then
+    -- A command shows nothing after it, unlike an agent's confirmation, so the pill goes here.
+    dictationPill.hide()
+    return run(row)
+  end
   sendToAgent(row, prompt)
 end
 
