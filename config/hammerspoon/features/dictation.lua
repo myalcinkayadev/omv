@@ -150,22 +150,66 @@ local function keep(entry)
   file:close()
 end
 
+-- Sends prompt to row: into its prompt, unsent, when it's done; copied when it's busy.
+local function sendToAgent(row, prompt, why)
+  keep({ text = prompt, app = "→ " .. row.label, at = os.time() })
+  if row.state ~= "done" then
+    hs.pasteboard.setContents(prompt)
+    return dictationPill.confirm({ kind = "copy", message = "Copied: " .. row.label .. " is " .. ((why or row.state) == "asks" and "asking" or "working") })
+  end
+  dictationPill.confirm({ kind = "type", message = "In " .. row.label .. "'s prompt", hint = "Enter sends" })
+  agents.deliver(row.id, prompt)
+end
+
+-- After a release that named no session: { heard, prompt, rows, timer }, while the pill waits
+-- for a digit to pick one; Esc, another key or the time running out copies the words.
+local choosing = nil
+local CHOOSE_SECONDS = 5
+
+local function endChoosing(copy)
+  local was = choosing
+  choosing = nil
+  if not was then return end
+  if was.timer then was.timer:stop() end
+  if not copy then return end
+  hs.pasteboard.setContents(was.prompt)
+  dictationPill.confirm({ kind = "copy", message = "Copied: " .. was.prompt })
+end
+
+local function choose(heard, prompt, rows)
+  endChoosing(false)
+  choosing = { heard = heard, prompt = prompt, rows = rows }
+  choosing.timer = hs.timer.doAfter(CHOOSE_SECONDS, function() endChoosing(true) end)
+  dictationPill.choosing(choosing)
+end
+
+-- A digit while the pill asks which one: sends the words to that session, or says there's none.
+local function picked(number)
+  local row = choosing.rows[number]
+  if not row then
+    choosing.note = "No session " .. number .. ": which one?"
+    return dictationPill.choosing(choosing)
+  end
+  local prompt = choosing.prompt
+  endChoosing(false)
+  sendToAgent(row, prompt)
+end
+
 -- Where an agent's words go on release: into a done session's prompt, unsent; copied for a
--- busy one; nowhere, with the hint, when no session was named.
+-- busy one; when none was named, the pill asks which one, by number.
 local function finishedForAgent(recording, final)
-  local target = voiceagents.target(dictation.join(recording.before, final), agents.rows(), agents.spoke and agents.spoke())
-  if dictation.outcome(final).kind == "notice" and (recording.before or "") == "" then return dictationPill.hide() end
-  if target.kind == "none" then
+  local text = dictation.join(recording.before, final)
+  local spoke = agents.spoke and agents.spoke()
+  local target = voiceagents.target(text, agents.rows(), spoke)
+  if dictation.outcome(text).kind == "notice" then return dictationPill.hide() end
+  if target.kind ~= "none" then return sendToAgent(target.row, target.prompt, target.why) end
+  local rows = voiceagents.numbered(agents.rows(), spoke)
+  local prompt = voiceagents.leftover(text, rows)
+  if #rows == 0 or not prompt then
     dictationPill.hide()
     return shell.alert(target.hint, 2)
   end
-  keep({ text = target.prompt, app = "→ " .. target.row.label, at = os.time() })
-  if target.kind == "copy" then
-    hs.pasteboard.setContents(target.prompt)
-    return dictationPill.confirm({ kind = "copy", message = "Copied: " .. target.row.label .. " is " .. (target.why == "asks" and "asking" or "working") })
-  end
-  dictationPill.confirm({ kind = "type", message = "In " .. target.row.label .. "'s prompt", hint = "Enter sends" })
-  agents.deliver(target.row.id, target.prompt)
+  choose(text, prompt, rows)
 end
 
 local function finished(recording, final)
@@ -347,6 +391,7 @@ local function record(forAgent)
     languageList = languageList, languages = #languageList >= 2 or nil, agent = forAgent or nil }
   if forAgent then
     recording.agentRows, recording.spoke = agents.rows(), agents.spoke and agents.spoke()
+    recording.numbered = voiceagents.numbered(recording.agentRows, recording.spoke)
     recording.agentTarget = voiceagents.target("", recording.agentRows, recording.spoke)
   end
   recording.words = wordsFor(recording.agentRows)
@@ -429,12 +474,37 @@ local function onCommandKey(kind, name, code)
   return swallow
 end
 
+-- The digits 1 to 9 by key code, for picking a session after a release named none.
+local DIGITS = { [18] = 1, [19] = 2, [20] = 3, [21] = 4, [23] = 5, [22] = 6, [26] = 7, [28] = 8, [25] = 9 }
+
+-- While the pill asks which one: a digit picks, Esc copies, both swallowed; any other key or a
+-- click copies and goes through, so typing carries on.
+local function onChoosingKey(event, kind)
+  if kind == hs.eventtap.event.types.keyDown then
+    local code, flags = event:getKeyCode(), event:getFlags()
+    local plain = not (flags.cmd or flags.ctrl or flags.alt)
+    if plain and DIGITS[code] then
+      hs.timer.doAfter(0, function() if choosing then picked(DIGITS[code]) end end)
+      return true
+    end
+    if code == ESCAPE then
+      hs.timer.doAfter(0, function() endChoosing(true) end)
+      return true
+    end
+  end
+  hs.timer.doAfter(0, function() endChoosing(true) end)
+  return false
+end
+
 local function onKey(event)
   local kind = event:getType()
+  if choosing and kind ~= hs.eventtap.event.types.flagsChanged then return onChoosingKey(event, kind) end
   local name
   if kind == hs.eventtap.event.types.flagsChanged then
     local flags = event:getFlags()
     name = dictation.eventFor(event:getKeyCode(), flags.alt == true, flags.shift == true, flags.cmd == true)
+    -- Talking again while the pill asks which one: the words waiting are copied first.
+    if choosing and (name == "option-down" or name == "command-down") then endChoosing(true) end
   end
   -- Talk-back stops at Right Command even without voice to agents.
   if name == "command-down" and not agents and onPress then onPress() end

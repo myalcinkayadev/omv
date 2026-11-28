@@ -53,6 +53,29 @@ local LIVE = "#ff453a"
 local ICON_X, STATUS_X, TIMER_X, CENTER_Y, RULE_Y, WORDS_Y = 18, 50, 140, 25, 44, 52
 local CHIP_H, CHIP_PAD, CHIP_ICON = 26, 10, 16
 local ICONS = { mic = "󰍬", lock = "󰌾", spinner = "󰑓", agent = "󰆍" }
+local AGENT_HINT = "say “one …”, a name, or “reply …” · Esc cancels"
+
+-- The sessions, numbered, one row each from y: a number badge, the folder and its state; the
+-- one the words go to filled in the accent, busy ones dimmed.
+local function sessionRows(elements, lines, y, tokens)
+  local rowH = dictation.AGENT_ROW_HEIGHT
+  for index, line in ipairs(lines) do
+    local top = y + (index - 1) * rowH
+    if line.chosen then
+      elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(tokens.accent, 0.16),
+        roundedRectRadii = { xRadius = 6, yRadius = 6 }, frame = { x = 12, y = top, w = WIDTH - 24, h = rowH - 2 } }
+    end
+    local fg = line.chosen and tokens.accent or tokens.fg
+    elements[#elements + 1] = { type = "rectangle", action = "stroke", strokeColor = color(fg, line.chosen and 1 or 0.4), strokeWidth = 1,
+      roundedRectRadii = { xRadius = 4, yRadius = 4 }, frame = { x = 20, y = top + 2, w = 18, h = rowH - 6 } }
+    elements[#elements + 1] = text(tostring(line.number), 11, fg, { x = 20, y = top + 3, w = 18, h = 16 }, { alignment = "center" })
+    local dim = line.working and not line.chosen
+    elements[#elements + 1] = { type = "text", frame = { x = 48, y = top + 1, w = 260, h = 18 },
+      text = hs.styledtext.new(line.label, { font = { name = FONT, size = 13 }, color = color(tokens.fg, dim and 0.45 or 1) }) }
+    elements[#elements + 1] = text(line.state, 11, tokens.fg, { x = WIDTH - 230, y = top + 3, w = 210, h = 16 }, { alignment = "right" })
+  end
+  return #lines * rowH
+end
 
 -- What the pill says under the header, and whether a download takes the status's place.
 local function body(recording)
@@ -62,6 +85,7 @@ local function body(recording)
   end
   if recording.finishing then return recording.partial or "", "", nil end
   -- For an agent, the hint is where the words go, or what to say instead.
+  if recording.agent and (recording.partial or "") == "" then return "", AGENT_HINT, nil end
   if recording.agent and recording.agentTarget then return recording.partial or "", voiceagents.resultLine(recording.agentTarget), nil end
   local hint = recording.locked and "tap Right Option to type it · Shift to copy · Esc cancels"
     or "release types it · Shift+release copies · Esc cancels"
@@ -133,7 +157,9 @@ function dictationPill.draw(recording)
   local words, hint, download = body(recording)
   local all = dictation.wrap(words, LINE_CHARACTERS)
   local lines = dictation.lastLines(all, dictation.MAX_LINES)
-  local height = dictation.pillHeight(#lines)
+  local sessions = recording.agent and voiceagents.listLines(recording.numbered or {},
+    recording.agentTarget and recording.agentTarget.row and recording.agentTarget.row.id) or {}
+  local height = dictation.agentPillHeight(#lines, #sessions)
   local border = header.target.kind == "password" and WARNING or (recording.locked and tokens.fg or tokens.accent)
   local dim = recording.finishing and tokens.accent or tokens.fg
   local elements = { card(tokens, border, height), text(ICONS[header.icon], 20, dim, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }) }
@@ -154,10 +180,11 @@ function dictationPill.draw(recording)
     strip = dictation.meterLayout(chipWidth)
   end
   elements[#elements + 1] = { type = "rectangle", action = "fill", fillColor = color(tokens.fg, 0.12), frame = { x = 16, y = RULE_Y, w = WIDTH - 32, h = 1 } }
+  local wordsY = WORDS_Y + sessionRows(elements, sessions, WORDS_Y, tokens)
   -- Past four lines, the oldest shown fades, as the newest words push it up.
   for index, line in ipairs(lines) do
     local faded = index == 1 and #all > dictation.MAX_LINES
-    elements[#elements + 1] = { type = "text", frame = { x = 16, y = WORDS_Y + (index - 1) * dictation.LINE_HEIGHT, w = WIDTH - 32, h = dictation.LINE_HEIGHT },
+    elements[#elements + 1] = { type = "text", frame = { x = 16, y = wordsY + (index - 1) * dictation.LINE_HEIGHT, w = WIDTH - 32, h = dictation.LINE_HEIGHT },
       text = hs.styledtext.new(line, { font = { name = FONT, size = 14 }, color = color(tokens.fg, faded and 0.45 or 1) }) }
   end
   local hintColor = recording.secure and WARNING or tokens.fg
@@ -185,6 +212,29 @@ function dictationPill.confirm(delivery)
   local frame = dictationPill.show(elements, 52)
   hideLater = hs.timer.doAfter(delivery.kind == "type" and 1.2 or 2, dictationPill.hide)
   return frame
+end
+
+-- After a release that named no session: c { heard, prompt, rows }. What was heard, the
+-- sessions numbered, and the words a digit sends; orange, as nothing has gone anywhere yet.
+function dictationPill.choosing(c)
+  local tokens = shell.themeTokens()
+  local sessions = voiceagents.listLines(c.rows)
+  local heard = dictation.lastLines(dictation.wrap("heard: “" .. c.heard .. "”", LINE_CHARACTERS), 2)
+  local height = dictation.agentPillHeight(#heard, #sessions)
+  local elements = {
+    card(tokens, WARNING, height),
+    text(ICONS.agent, 20, WARNING, { x = ICON_X, y = CENTER_Y - 13, w = 24, h = 26 }),
+    text(c.note or "Which one?", 14, tokens.fg, { x = STATUS_X, y = CENTER_Y - 10, w = WIDTH - STATUS_X - 18, h = 22 }),
+    { type = "rectangle", action = "fill", fillColor = color(tokens.fg, 0.12), frame = { x = 16, y = RULE_Y, w = WIDTH - 32, h = 1 } },
+  }
+  local wordsY = WORDS_Y + sessionRows(elements, sessions, WORDS_Y, tokens)
+  for index, line in ipairs(heard) do
+    elements[#elements + 1] = { type = "text", frame = { x = 16, y = wordsY + (index - 1) * dictation.LINE_HEIGHT, w = WIDTH - 32, h = dictation.LINE_HEIGHT },
+      text = hs.styledtext.new(line, { font = { name = FONT, size = 13 }, color = color(tokens.fg, 0.55) }) }
+  end
+  elements[#elements + 1] = text("press 1–" .. #c.rows .. " to send “" .. c.prompt .. "” · Esc copies it", 11, tokens.fg,
+    { x = 16, y = height - 26, w = WIDTH - 32, h = 18 })
+  return dictationPill.show(elements, height)
 end
 
 -- While talk-back speaks: { project, line }, with a speaker, "<project> finished", the line

@@ -404,4 +404,6 @@ check.that("should show a dash in the chip when an agent recording has no target
 check.that("should say Starting when an agent recording isn't ready",
   dictation.header({ started = 0, app = "Zed", agent = true }, 1).status == "Starting")
 
+check.that("should grow the agent pill by 22 for each row", dictation.agentPillHeight(2, 3) == dictation.pillHeight(2) + 66)
+
 check.finish()

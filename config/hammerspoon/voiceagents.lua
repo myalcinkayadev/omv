@@ -1,5 +1,7 @@
 -- Voice to agents (Right Command): "tell <project> …" puts the rest into that Claude
--- session's prompt, "reply …" into the prompt of the one that finished last. Only a session
+-- session's prompt, "reply …" into the prompt of the one that finished last, and "one …"
+-- into the prompt of the session numbered 1 in the pill, since numbers are heard far more
+-- reliably than project names. Only a session
 -- that's done takes it, as with Option+P: one that works would be interrupted, and one that
 -- asks would take the words as its answer, so for those the words are only copied. Enter is
 -- never pressed. features/dictation.lua runs the key and the pill.
@@ -20,11 +22,37 @@ local function normal(text)
   return tostring(text or ""):lower():gsub("[^%w]", "")
 end
 
--- What was said: the verb, tell or reply, and the words after it; nil for anything else.
+-- A session's number as said: a digit, a word, or a word heard for one at the start.
+local NUMBERS = { one = 1, two = 2, three = 3, four = 4, five = 5, six = 6, seven = 7, eight = 8, nine = 9,
+  won = 1, to = 2, too = 2, ["for"] = 4 }
+
+local function numberOf(word)
+  local said = normal(word)
+  local digit = tonumber(said)
+  if digit and digit >= 1 and digit <= 9 and #said == 1 then return digit end
+  return NUMBERS[said]
+end
+
+-- A leading number, "one", "number one" or "1", and the words after it; nil without one.
+local function leadingNumber(words)
+  local at = normal(words[1]) == "number" and 2 or 1
+  local index = numberOf(words[at])
+  if not index then return nil end
+  local rest = {}
+  for position = at + 1, #words do rest[#rest + 1] = words[position] end
+  return index, rest
+end
+
+-- What was said: tell or reply and the words after it; number with its index, for a session
+-- picked by its number in the pill; nil for anything else.
 function voiceagents.parse(text)
   local words = {}
   for word in tostring(text or ""):gmatch("%S+") do words[#words + 1] = word end
   local verb = normal(words[1])
+  local after = {}
+  for position = verb == "tell" and 2 or 1, #words do after[#after + 1] = words[position] end
+  local index, rest = leadingNumber(after)
+  if index then return { verb = "number", index = index, words = rest } end
   if verb ~= "tell" and verb ~= "reply" then return nil end
   table.remove(words, 1)
   if verb == "reply" and normal(words[1]) == "to" then table.remove(words, 1) end
@@ -98,6 +126,34 @@ function voiceagents.lastDone(rows, preferTty)
   return last
 end
 
+-- The sessions in the order the pill numbers them, each with .number, 1 to 9: the one a
+-- reply goes to first, then the other done ones, newest first, then those asking, then those
+-- working, which only take a copy.
+function voiceagents.numbered(rows, preferTty)
+  local first = voiceagents.lastDone(rows, preferTty)
+  local list = { first }
+  local done, asks, working = {}, {}, {}
+  for _, row in ipairs(rows or {}) do
+    if row ~= first then
+      local group = row.state == "done" and done or row.state == "asks" and asks or working
+      group[#group + 1] = row
+    end
+  end
+  for position = #done, 1, -1 do list[#list + 1] = done[position] end
+  for _, group in ipairs({ asks, working }) do
+    for _, row in ipairs(group) do list[#list + 1] = row end
+  end
+  local numbered = {}
+  for _, row in ipairs(list) do
+    if #numbered >= 9 then break end
+    local copy = {}
+    for key, value in pairs(row) do copy[key] = value end
+    copy.number = #numbered + 1
+    numbered[#numbered + 1] = copy
+  end
+  return numbered
+end
+
 local REASONS = {
   unknown = "No agent by that name: " .. voiceagents.HINT,
   empty = "Say what to tell it after its name",
@@ -109,7 +165,10 @@ function voiceagents.target(text, rows, preferTty)
   local said = voiceagents.parse(text)
   if not said then return { kind = "none", hint = voiceagents.HINT } end
   local row, prompt, names
-  if said.verb == "reply" then
+  if said.verb == "number" then
+    row, prompt = voiceagents.numbered(rows, preferTty)[said.index], table.concat(said.words, " ")
+    if not row then return { kind = "none", hint = "No session " .. said.index } end
+  elseif said.verb == "reply" then
     row, prompt = voiceagents.lastDone(rows, preferTty), table.concat(said.words, " ")
     if not row then return { kind = "none", hint = "No agent is waiting for a reply" } end
   else
@@ -123,6 +182,56 @@ function voiceagents.target(text, rows, preferTty)
   if not prompt then return { kind = "none", hint = REASONS.empty } end
   if row.state == "done" then return { kind = "paste", row = row, prompt = prompt } end
   return { kind = "copy", row = row, prompt = prompt, why = row.state }
+end
+
+local function distance(a, b)
+  local previous = {}
+  for j = 0, #b do previous[j] = j end
+  for i = 1, #a do
+    local current = { [0] = i }
+    for j = 1, #b do
+      local cost = a:sub(i, i) == b:sub(j, j) and 0 or 1
+      current[j] = math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost)
+    end
+    previous = current
+  end
+  return previous[#b]
+end
+
+-- The words to send when nothing matched and a number is picked after release: all of text
+-- without a verb; after "reply"; after "tell" and the words nearest a folder's name.
+function voiceagents.leftover(text, rows)
+  local words = {}
+  for word in tostring(text or ""):gmatch("%S+") do words[#words + 1] = word end
+  local verb = normal(words[1])
+  local skip = 0
+  if verb == "reply" then skip = 1 end
+  if verb == "tell" then
+    local best, count = math.huge, 1
+    for take = 1, math.min(NAME_WORDS, #words - 1) do
+      local heard = normal(table.concat(words, "", 2, 1 + take))
+      for _, row in ipairs(rows or {}) do
+        local away = distance(heard, normal(row.label))
+        if away < best then best, count = away, take end
+      end
+    end
+    skip = 1 + count
+  end
+  return sendto.clean(table.concat(words, " ", skip + 1))
+end
+
+-- The pill's numbered rows, at most six: { number, label, state, chosen }, chosen for the
+-- session on chosenTty, where the words said so far go.
+local SHOWN = 6
+
+function voiceagents.listLines(numbered, chosenTty)
+  local lines = {}
+  for position = 1, math.min(SHOWN, #numbered) do
+    local row = numbered[position]
+    lines[#lines + 1] = { number = row.number, label = row.label, state = row.hint or row.state,
+      working = row.state ~= "done", chosen = chosenTty ~= nil and row.id == chosenTty }
+  end
+  return lines
 end
 
 -- The pill's line under the words: where they go and the session's state, or the hint.

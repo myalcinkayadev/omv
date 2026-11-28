@@ -654,6 +654,13 @@ function dictation.pillHeight(count)
   return 83 + dictation.LINE_HEIGHT * math.max(1, math.min(dictation.MAX_LINES, count))
 end
 
+-- An agent's pill: the same, with a row a session listed by number above the words.
+dictation.AGENT_ROW_HEIGHT = 22
+
+function dictation.agentPillHeight(count, rows)
+  return dictation.pillHeight(count) + dictation.AGENT_ROW_HEIGHT * rows
+end
+
 -- The Dictation card's rows, from info { ownLanguage, language (its name), words, replacements,
 -- tabLanguages (their names), cleanup, sounds, kept (dictations kept), microphone (granted,
 -- denied or undetermined), installed }.
