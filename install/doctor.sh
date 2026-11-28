@@ -214,9 +214,10 @@ check_links() {
 
 # The last line of what Hammerspoon answers to the Lua in $1, or nothing when it doesn't
 # answer in time. hs -c prints any extension Hammerspoon loads before the answer.
-# perl's alarm outlives exec, and macOS has no timeout command.
+# perl's alarm outlives exec, and macOS has no timeout command. hs reads stdin as more Lua
+# whenever it isn't a terminal, so it gets /dev/null.
 hs_answer() {
-  perl -e "alarm $HS_SECONDS; exec @ARGV" hs -c "$1" 2>/dev/null | tail -n 1
+  perl -e "alarm $HS_SECONDS; exec @ARGV" hs -c "$1" </dev/null 2>/dev/null | tail -n 1
 }
 
 # ps's etime, [[dd-]hh:]mm:ss, in seconds.

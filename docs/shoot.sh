@@ -30,7 +30,7 @@ fi
 
 # Deferred with a timer, so hs -c returns before the first card takes focus.
 # perl's alarm, since hs -c can wait forever when a reload drops the call.
-perl -e 'alarm 5; exec @ARGV' hs -t 3 -c "hs.timer.doAfter(0.1, function() dofile('$docs/shoot.lua')('$docs', $only, '$done_file') end)" >/dev/null || exit 1
+perl -e 'alarm 5; exec @ARGV' hs -t 3 -c "hs.timer.doAfter(0.1, function() dofile('$docs/shoot.lua')('$docs', $only, '$done_file') end)" </dev/null >/dev/null || exit 1
 
 waited=0
 while [ ! -f "$done_file" ]; do

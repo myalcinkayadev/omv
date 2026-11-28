@@ -793,6 +793,18 @@ class HsTimeouts(unittest.TestCase):
                      if HS_CALL.search(line) and not line.lstrip().startswith("#") and "alarm" not in line]
         self.assertEqual(unlimited, [])
 
+    def test_should_give_every_hs_call_no_input_when_reading_the_scripts(self) -> None:
+        # hs reads its stdin as more Lua whenever it isn't a terminal, and waits for it to end:
+        # with an open pipe or socket there, as an agent's or a script's shell has, it never
+        # returns. So every call reads /dev/null.
+        paths = [path for caller in HS_CALLERS for path in ([REPO / caller] if (REPO / caller).is_file()
+                 else sorted((REPO / caller).rglob("*"))) if path.is_file() and path.suffix not in {".lua", ".png", ".md", ".swift", ".json"}]
+        waiting = [f"{path.relative_to(REPO)}:{number}" for path in paths
+                   for number, line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), 1)
+                   if (HS_CALL.search(line) or "hs \"$@\"" in line) and not line.lstrip().startswith("#")
+                   and not re.search(r"<\s*/dev/null", line)]
+        self.assertEqual(waiting, [])
+
 
 if __name__ == "__main__":
     unittest.main()

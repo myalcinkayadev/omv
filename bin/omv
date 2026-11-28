@@ -43,7 +43,8 @@ source "$REPO_DIR/config/sketchybar/.config/sketchybar/flags.sh"
 readonly GHOSTTY_FLAGS=$STATE_DIR/ghostty-flags
 readonly THEMES_DIR=$HOME/.local/share/omv/themes
 # hs -c can wait forever even with -t: a reload drops the call before it answers. So each
-# call gets this long. 5 unless a test sets it.
+# call gets this long. 5 unless a test sets it. And each reads /dev/null: hs reads stdin as more
+# Lua whenever it isn't a terminal, and an agent's or a script's open stdin never ends.
 readonly HS_SECONDS=${OMV_HS_SECONDS:-5}
 
 usage() {
@@ -69,7 +70,7 @@ require_clean_main() {
 
 # hs, given up after HS_SECONDS.
 hs_call() {
-  perl -e "alarm $HS_SECONDS; exec @ARGV" hs "$@"
+  perl -e "alarm $HS_SECONDS; exec @ARGV" hs "$@" </dev/null
 }
 
 # hs -t ends the client cleanly when Hammerspoon is busy, rather than leaving it waiting.
