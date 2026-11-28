@@ -257,6 +257,8 @@ startHelper = function(recording)
     return showProblem(recording, "language")
   end
   recording.ready, recording.waveSent, recording.buffer, recording.inputClosed = false, nil, "", false
+  -- A download shows only when this helper, not the dictation, has waited a while.
+  recording.percent, recording.helperStarted = nil, hs.timer.secondsSinceEpoch()
   -- Which helper is recording's own, by a token: naming the task in its own callbacks would
   -- hold it forever.
   local own = {}

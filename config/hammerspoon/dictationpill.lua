@@ -56,7 +56,7 @@ local ICONS = { mic = "󰍬", lock = "󰌾", spinner = "󰑓" }
 -- What the pill says under the header, and whether a download takes the status's place.
 local function body(recording)
   if not recording.ready and not recording.finishing and recording.percent
-    and hs.timer.secondsSinceEpoch() - recording.started >= DOWNLOAD_SHOWN_AFTER then
+    and hs.timer.secondsSinceEpoch() - (recording.helperStarted or recording.started) >= DOWNLOAD_SHOWN_AFTER then
     return "", "once, then it stays on this Mac", "Getting " .. (recording.localeName or recording.locale) .. " for dictation… " .. recording.percent .. "%"
   end
   if recording.finishing then return recording.partial or "", "", nil end
