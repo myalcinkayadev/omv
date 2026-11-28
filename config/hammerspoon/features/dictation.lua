@@ -317,6 +317,11 @@ local function handedOver(recording, final)
   recording.before = dictation.join(recording.before, final)
   recording.partial = dictation.replace(recording.before, recording.rules)
   if recording.finishing then return finished(recording, "") end
+  -- A pause: the words are kept and the mic stays off until Space again.
+  if recording.pausing then
+    recording.pausing, recording.paused = false, true
+    return drawPill(recording)
+  end
   recording.locale = recording.nextLocale
   recording.nextLocale = dictation.nextLanguage(recording.languageList, recording.locale)
   recording.nextName = recording.nextLocale and dictation.plainLanguage(dictation.languageName(lists, recording.nextLocale))
@@ -419,6 +424,8 @@ startHelper = function(recording)
     recording.task = nil
     if current ~= recording then return end
     if recording.handover then return handedOver(recording, "") end
+    -- Paused, the helper was meant to end; the pill waits for Space.
+    if recording.paused then return end
     local next = dictation.onHelperExit(recording)
     if next == "finish" then return finished(recording, recording.partial or "") end
     if next == "hide" then
@@ -505,8 +512,32 @@ local function finish(how)
   recording.review, recording.auto = how == "review", how == "auto"
   play(END_SOUND)
   drawPill(recording)
+  -- Paused, no helper listens: the words kept are all there is.
+  if recording.paused then return finished(recording, "") end
   -- In a handover the helper has been told to stop already; its words end the dictation.
   if not recording.handover then send(recording, "stop") end
+end
+
+-- Space while hands-free: the helper says what it heard and stops, so the mic goes off; the
+-- words stay and the timer stops.
+local function pause()
+  local recording = current
+  if not recording or recording.handover or recording.finishing then return end
+  recording.handover, recording.pausing, recording.ready = true, true, false
+  recording.pausedAt = hs.timer.secondsSinceEpoch()
+  -- Nothing more is written to the helper now: a wave line right after stop kept it from
+  -- stopping. The ticker redraws the pill.
+  send(recording, "stop")
+end
+
+-- Space again: listening goes on in the same language, the time paused left out of the timer.
+local function resume()
+  local recording = current
+  if not recording or not recording.paused then return end
+  recording.started = recording.started + (hs.timer.secondsSinceEpoch() - recording.pausedAt)
+  recording.paused, recording.pausedAt = false, nil
+  startHelper(recording)
+  drawPill(recording)
 end
 
 local ACTIONS = {
@@ -517,14 +548,14 @@ local ACTIONS = {
     show(false)
   end, lock = function() show(true) end, cancel = cancel,
   finish = function() finish() end, review = function() finish("review") end, timeout = function() finish("auto") end,
-  switch = switch,
+  switch = switch, pause = pause, resume = resume,
 }
 
 function feature.act(action)
   if ACTIONS[action] then ACTIONS[action]() end
 end
 
-local ESCAPE, TAB = 53, 48
+local ESCAPE = 53
 
 local MOUSE_DOWNS = { [hs.eventtap.event.types.leftMouseDown] = true, [hs.eventtap.event.types.rightMouseDown] = true }
 
@@ -603,13 +634,9 @@ local function onKey(event)
   end
   if name == "command-down" or name == "command-up" or MOUSE_DOWNS[kind] then return false end
   if kind == hs.eventtap.event.types.keyDown then
-    local code = event:getKeyCode()
-    name = code == ESCAPE and "escape" or "other"
-    -- Tab is the language switch only while the pill listens and there's a language to go to;
-    -- before that, Right Option+Tab cancels like any other key.
-    if code == TAB and (keys.phase == "listening" or keys.phase == "locked") and current and current.nextLocale then
-      name = "tab"
-    end
+    -- Hands-free, Enter, Shift+Enter and Space are the pill's keys; Tab switches language while
+    -- it listens; before the pill shows, Right Option+Tab cancels like any other key.
+    name = dictation.keyName(event:getKeyCode(), event:getFlags().shift == true, keys.phase, current ~= nil and current.nextLocale ~= nil)
   end
   if not name then return false end
   if keys.phase == "idle" and name ~= "option-down" then return false end

@@ -128,6 +128,10 @@ function PHASES.listening(state, event)
   return nil, false
 end
 
+-- Hands-free: Enter types and Shift+Enter copies; Space pauses, and the time paused isn't
+-- counted toward the silence and length limits.
+dictation.PAUSE_SECONDS = 300
+
 function PHASES.locked(state, event, time)
   if event == "option-up" and state.ignoreUp then
     state.ignoreUp = false
@@ -137,9 +141,13 @@ function PHASES.locked(state, event, time)
     moveTo(state, "finishing")
     return "finish", false
   end
-  if event == "shift" then
+  if event == "enter" or event == "enter-shift" then
     moveTo(state, "idle")
-    return "review", false
+    return event == "enter" and "finish" or "review", true
+  end
+  if event == "space" then
+    state.phase, state.pausedAt = "paused", time
+    return "pause", true
   end
   if event == "tab" then return "switch", true end
   if event == "escape" then
@@ -154,6 +162,33 @@ function PHASES.locked(state, event, time)
   if event == "tick" and (time - state.since >= dictation.LOCK_SECONDS or quiet >= dictation.SILENCE_SECONDS) then
     moveTo(state, "idle")
     return "timeout", false
+  end
+  return nil, false
+end
+
+function PHASES.paused(state, event, time)
+  if event == "space" then
+    local paused = time - state.pausedAt
+    state.phase, state.pausedAt = "locked", nil
+    state.since = state.since + paused
+    if state.heard then state.heard = state.heard + paused end
+    return "resume", true
+  end
+  if event == "enter" or event == "enter-shift" then
+    moveTo(state, "idle")
+    return event == "enter" and "finish" or "review", true
+  end
+  if event == "escape" then
+    moveTo(state, "idle")
+    return "cancel", true
+  end
+  if event == "option-down" then
+    moveTo(state, "finishing")
+    return "finish", false
+  end
+  if event == "tick" and time - state.pausedAt >= dictation.PAUSE_SECONDS then
+    moveTo(state, "idle")
+    return "review", false
   end
   return nil, false
 end
@@ -196,6 +231,31 @@ local function shortName(name)
   return name:sub(1, starts[NAME_CHARACTERS] - 1) .. "…"
 end
 
+-- Which key a keyDown is, for press: hands-free (locked or paused), Enter, Shift+Enter and
+-- Space are its keys; Tab only when there's a language to move to, while the pill listens; Esc
+-- always; any other key, other, which cancels while held as it always did.
+local ESCAPE_KEY, TAB_KEY, RETURN_KEY, SPACE_KEY = 53, 48, 36, 49
+
+function dictation.keyName(code, shiftDown, phase, hasNextLanguage)
+  if code == ESCAPE_KEY then return "escape" end
+  local handsFree = phase == "locked" or phase == "paused"
+  if handsFree and code == RETURN_KEY then return shiftDown and "enter-shift" or "enter" end
+  if handsFree and code == SPACE_KEY then return "space" end
+  if code == TAB_KEY and hasNextLanguage and (phase == "listening" or phase == "locked") then return "tab" end
+  return "other"
+end
+
+-- The pill's hint line: hands-free keys, the paused ones, or holding's; a password field's
+-- warning instead of either.
+function dictation.hint(recording)
+  if recording.secure then return "won't be typed here: it goes to the clipboard" end
+  if recording.paused then return "␣ resume · ↩ type · ⇧↩ copy · esc cancels" end
+  if recording.locked then
+    return "↩ type · ␣ pause · ⇧↩ copy" .. (recording.nextName and (" · ⇥ " .. recording.nextName) or "") .. " · esc cancels"
+  end
+  return "release types it · Shift+release copies · Esc cancels" .. (recording.nextName and (" · Tab: " .. recording.nextName) or "")
+end
+
 -- The pill's header, from recording { started, stopped, locked, finishing, left, secure, app }:
 -- { icon = mic, lock or spinner; live, whether the mic is on; status; timer; warning, whether
 -- the timer is an orange countdown; target = { kind = app or password, name } }.
@@ -207,11 +267,12 @@ function dictation.header(recording, now)
   local icon, status = "mic", "Listening"
   if recording.agent then icon, status = "agent", "Command" end
   if recording.finishing then icon, status = "spinner", "Finishing"
+  elseif recording.paused then icon, status = "pause", "Paused"
   elseif not recording.ready then status = "Starting"
   elseif recording.locked then icon, status = "lock", "Locked" end
-  local live = not recording.finishing and recording.ready == true
+  local live = not recording.finishing and not recording.paused and recording.ready == true
   local warning = recording.left ~= nil and not recording.finishing
-  local timer = warning and clock(recording.left) or clock((recording.stopped or now) - recording.started)
+  local timer = warning and clock(recording.left) or clock((recording.stopped or recording.pausedAt or now) - recording.started)
   local target = recording.secure and { kind = "password", name = "password field" } or { kind = "app", name = shortName(recording.app) }
   -- For an agent, the chip names the session the words go to, whatever app is in front.
   if recording.agent then
@@ -235,7 +296,7 @@ end
 function dictation.frameKey(recording, now)
   local header = dictation.header(recording, now)
   return table.concat({ header.icon, header.status, header.timer, tostring(header.warning), header.target.kind, header.target.name,
-    tostring(recording.locked), tostring(recording.finishing), tostring(recording.ready), tostring(recording.percent),
+    tostring(recording.locked), tostring(recording.paused), tostring(recording.finishing), tostring(recording.ready), tostring(recording.percent),
     tostring(recording.problem), tostring(header.language), recording.partial or "" }, "\0")
 end
 

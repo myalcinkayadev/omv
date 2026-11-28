@@ -52,7 +52,7 @@ local LIVE = "#ff453a"
 -- filling the gap; the app the words land in as a chip at the right edge. A hairline under it.
 local ICON_X, STATUS_X, TIMER_X, CENTER_Y, RULE_Y, WORDS_Y = 18, 50, 140, 25, 44, 52
 local CHIP_H, CHIP_PAD, CHIP_ICON = 26, 10, 16
-local ICONS = { mic = "󰍬", lock = "󰌾", spinner = "󰑓", agent = "󰆍" }
+local ICONS = { mic = "󰍬", lock = "󰌾", spinner = "󰑓", agent = "󰆍", pause = "󰏤" }
 local AGENT_HINT = "say “one …”, a name, or “reply …” · Esc cancels"
 
 -- The sessions, numbered, one row each from y: a number badge, the folder and its state; the
@@ -79,7 +79,8 @@ end
 
 -- What the pill says under the header, and whether a download takes the status's place.
 local function body(recording)
-  if not recording.ready and not recording.finishing and recording.percent
+  -- Paused, the helper isn't ready on purpose: no download to show.
+  if not recording.ready and not recording.finishing and not recording.paused and not recording.pausing and recording.percent
     and hs.timer.secondsSinceEpoch() - (recording.helperStarted or recording.started) >= DOWNLOAD_SHOWN_AFTER then
     return "", "once, then it stays on this Mac", "Getting " .. (recording.localeName or recording.locale) .. " for dictation… " .. recording.percent .. "%"
   end
@@ -87,11 +88,7 @@ local function body(recording)
   -- For an agent, the hint is where the words go, or what to say instead.
   if recording.agent and (recording.partial or "") == "" then return "", AGENT_HINT, nil end
   if recording.agent and recording.agentTarget then return recording.partial or "", recording.agentTarget.line, nil end
-  local hint = recording.locked and "tap Right Option to type it · Shift to copy · Esc cancels"
-    or "release types it · Shift+release copies · Esc cancels"
-  if recording.nextName then hint = hint .. " · Tab: " .. recording.nextName end
-  if recording.secure then hint = "won't be typed here: it goes to the clipboard" end
-  return recording.partial or "", hint, nil
+  return recording.partial or "", dictation.hint(recording), nil
 end
 
 local function styled(value, size, hex)

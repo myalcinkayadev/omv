@@ -224,8 +224,8 @@ check.that("should drop Turkish ee", (dictation.clean("ee yarın gelirim")) == "
 -- Review, and a locked one ending by itself.
 check.that("should review on a release with Shift held",
   run({ { "option-down", 0 }, { "tick", 0.31 }, { "option-up-shift", 1 } }) == "record show review")
-check.that("should review on a Shift tap while locked",
-  run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "shift", 2 } }) == "record - lock - review")
+check.that("should not review on a Shift tap when hands-free",
+  run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "shift", 2 } }) == "record - lock - -")
 check.that("should time out a locked one after 30 s without voice",
   run({ { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 }, { "tick", 20 }, { "tick", 30.4 } })
     == "record - lock - - timeout")
@@ -449,5 +449,68 @@ check.that("should list Talk-back speaks with in headphones by default", (functi
   end
   return false
 end)())
+
+-- Hands-free keys: Enter types, Space pauses and resumes, Shift+Enter copies.
+local LOCK = { { "option-down", 0 }, { "option-up", 0.1 }, { "option-down", 0.3 }, { "option-up", 0.35 } }
+local function handsFree(more)
+  local events, state, actions, swallowed = {}, dictation.keys(), {}, {}
+  for _, event in ipairs(LOCK) do events[#events + 1] = event end
+  for _, event in ipairs(more) do events[#events + 1] = event end
+  for index, event in ipairs(events) do
+    local action, swallow = dictation.press(state, event[1], event[2])
+    if index > #LOCK then
+      actions[#actions + 1] = action or "-"
+      swallowed[#swallowed + 1] = swallow and "y" or "n"
+    end
+  end
+  return table.concat(actions, " "), table.concat(swallowed, " "), state
+end
+check.that("should pause and swallow Space when hands-free", (function()
+  local actions, swallowed = handsFree({ { "space", 1 } })
+  return actions == "pause" and swallowed == "y"
+end)())
+check.that("should resume and swallow Space when paused", (function()
+  local actions, swallowed = handsFree({ { "space", 1 }, { "space", 2 } })
+  return actions == "pause resume" and swallowed == "y y"
+end)())
+check.that("should finish on Enter when hands-free", handsFree({ { "enter", 1 } }) == "finish")
+check.that("should review on Shift+Enter when hands-free", handsFree({ { "enter-shift", 1 } }) == "review")
+check.that("should finish on Enter when paused", handsFree({ { "space", 1 }, { "enter", 2 } }) == "pause finish")
+check.that("should cancel on Esc when paused", handsFree({ { "space", 1 }, { "escape", 2 } }) == "pause cancel")
+check.that("should not time out for silence while paused", handsFree({ { "space", 1 }, { "tick", 40 } }) == "pause -")
+check.that("should not count paused time toward the silence limit after resuming",
+  handsFree({ { "space", 10 }, { "space", 50 }, { "tick", 60 } }) == "pause resume -")
+check.that("should still time out for silence after resuming", handsFree({ { "space", 10 }, { "space", 50 }, { "tick", 81 } }) == "pause resume timeout")
+check.that("should copy after 5 minutes paused", handsFree({ { "space", 1 }, { "tick", 302 } }) == "pause review")
+check.that("should let other keys through when paused", select(2, handsFree({ { "space", 1 }, { "other", 2 } })) == "y n")
+check.that("should give nil remaining while paused", (function()
+  local _, _, state = handsFree({ { "space", 1 } })
+  return dictation.remaining(state, 295) == nil
+end)())
+
+-- Which key a key code is, by phase.
+check.that("should read Enter as enter when hands-free", dictation.keyName(36, false, "locked") == "enter")
+check.that("should read Shift+Enter as enter-shift when paused", dictation.keyName(36, true, "paused") == "enter-shift")
+check.that("should read Space as space when hands-free", dictation.keyName(49, false, "locked") == "space")
+check.that("should read Enter as other while held, so it cancels as before", dictation.keyName(36, false, "listening") == "other")
+check.that("should read Esc as escape in any phase", dictation.keyName(53, false, "listening") == "escape")
+check.that("should read Tab as tab only when there's a language to go to", dictation.keyName(48, false, "locked", true) == "tab"
+  and dictation.keyName(48, false, "locked", false) == "other")
+
+-- The paused pill.
+check.that("should say Paused with the pause icon when paused", (function()
+  local header = dictation.header({ started = 0, ready = true, locked = true, paused = true, pausedAt = 12, app = "Zed" }, 30)
+  return header.status == "Paused" and header.icon == "pause"
+end)())
+check.that("should have no live dot when paused", dictation.header({ started = 0, ready = true, locked = true, paused = true, pausedAt = 12, app = "Zed" }, 30).live == false)
+check.that("should freeze the timer when paused", dictation.header({ started = 0, ready = true, locked = true, paused = true, pausedAt = 12, app = "Zed" }, 30).timer == "0:12")
+
+-- The pill's hint.
+check.that("should list type, pause, copy, Tab and cancel when hands-free",
+  dictation.hint({ locked = true, nextName = "Turkish" }) == "↩ type · ␣ pause · ⇧↩ copy · ⇥ Turkish · esc cancels")
+check.that("should list resume first when paused", dictation.hint({ locked = true, paused = true }) == "␣ resume · ↩ type · ⇧↩ copy · esc cancels")
+check.that("should keep the hold hint when held", dictation.hint({}) == "release types it · Shift+release copies · Esc cancels")
+check.that("should name the Tab language when held", dictation.hint({ nextName = "English" }) == "release types it · Shift+release copies · Esc cancels · Tab: English")
+check.that("should warn when typing into a password field", dictation.hint({ locked = true, secure = true }) == "won't be typed here: it goes to the clipboard")
 
 check.finish()
