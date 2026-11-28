@@ -666,9 +666,10 @@ function dictation.agentPillHeight(count, rows)
   return dictation.pillHeight(count) + dictation.AGENT_ROW_HEIGHT * rows
 end
 
--- The Dictation card's rows, from info { ownLanguage, language (its name), words, replacements,
--- tabLanguages (their names), cleanup, sounds, kept (dictations kept), microphone (granted,
--- denied or undetermined), installed }.
+-- The Dictation card's rows, from info { language (the start language's name), tabLanguage (the
+-- name of the one Tab moves to, or nil), languageMissing (either's model isn't on the Mac),
+-- words, replacements, cleanup, sounds, kept (dictations kept), microphone (granted, denied or
+-- undetermined), and, with talk-back on, talkBackVoice, talkBackMissing and talkBackOutput }.
 local MICROPHONE = { granted = "allowed", denied = "not allowed  ›", undetermined = "asked on the first hold" }
 
 local function wordsHint(words)
@@ -690,29 +691,64 @@ local function onOff(value)
   return "‹  " .. (value == false and "off" or "on") .. "  ›"
 end
 
+-- Where the card's rows that step or reopen on themselves are.
+dictation.CARD_ROWS = { languages = 1, cleanup = 4, sounds = 5, talkBackVoice = 7, talkBackOutput = 8 }
+
+local function languagesHint(info)
+  local names = info.language .. (info.tabLanguage and (", " .. info.tabLanguage .. " (Tab)") or "")
+  return (info.languageMissing and "get it · " or "") .. names .. "  ›"
+end
+
 function dictation.cardRows(info)
   local kept = info.kept or 0
   local rows = {
-    { id = "language", group = "Dictation", icon = "󰗊", label = "Language", hint = (info.ownLanguage and "" or "macOS's: ") .. info.language .. "  ›" },
-    { id = "words", group = "Dictation", icon = "󰓹", label = "Your words", hint = wordsHint(info.words) },
-    { id = "replacements", group = "Dictation", icon = "󰛔", label = "Replacements", hint = rulesHint(info.replacements) },
-    { id = "languages", group = "Dictation", icon = "󰌌", label = "Tab languages",
-      hint = (info.tabLanguages and #info.tabLanguages >= 2) and (table.concat(info.tabLanguages, ", ") .. "  ›") or "off  ›" },
-    { id = "cleanup", group = "Dictation", icon = "󰃢", label = "Drop ums and uhs", hint = onOff(info.cleanup) },
-    { id = "sounds", group = "Dictation", icon = "󰕾", label = "Sounds", hint = onOff(info.sounds) },
-    { id = "key", group = "Dictation", icon = "󰌌", label = "Key", hint = "hold Right Option, or tap it twice" },
-    { id = "dictations", group = "Dictation", icon = "󰆒", label = "Dictations", hint = kept > 0 and ("the last " .. kept .. "  ›") or "none yet" },
-    { id = "permissions", group = "Needs", icon = "󰍬", label = "Microphone", hint = MICROPHONE[info.microphone] or MICROPHONE.undetermined },
-    { id = "install", group = "Needs", icon = "󰇚", label = info.language .. " model", hint = info.installed and "on this Mac" or "get it  ›" },
+    { id = "languages", group = "Hearing", icon = "󰗊", label = "Languages", hint = languagesHint(info) },
+    { id = "words", group = "Hearing", icon = "󰓹", label = "Your words", hint = wordsHint(info.words) },
+    { id = "replacements", group = "Hearing", icon = "󰛔", label = "Replacements", hint = rulesHint(info.replacements) },
+    { id = "cleanup", group = "Hearing", icon = "󰃢", label = "Drop ums and uhs", hint = onOff(info.cleanup) },
+    { id = "sounds", group = "Feedback", icon = "󰕾", label = "Sounds", hint = onOff(info.sounds) },
+    { id = "dictations", group = "Feedback", icon = "󰆒", label = "Dictations", hint = kept > 0 and ("the last " .. kept .. "  ›") or "none yet" },
   }
-  -- With talk-back on, its voice and where it speaks, under Sounds.
   if info.talkBackVoice then
-    table.insert(rows, 7, { id = "talkBackVoice", group = "Dictation", icon = "󰗋", label = "Talk-back voice",
-      hint = (info.talkBackMissing and "get it · " or "") .. "‹  " .. info.talkBackVoice .. "  ›" })
-    table.insert(rows, 8, { id = "talkBackOutput", group = "Dictation", icon = "󰋋", label = "Talk-back speaks",
-      hint = "‹  " .. (info.talkBackOutput == "anywhere" and "anywhere" or "in headphones") .. "  ›" })
+    rows[#rows + 1] = { id = "talkBackVoice", group = "Talk-back", icon = "󰗋", label = "Voice",
+      hint = (info.talkBackMissing and "get it · " or "") .. "‹  " .. info.talkBackVoice .. "  ›" }
+    rows[#rows + 1] = { id = "talkBackOutput", group = "Talk-back", icon = "󰋋", label = "Speaks",
+      hint = "‹  " .. (info.talkBackOutput == "anywhere" and "anywhere" or "in headphones") .. "  ›" }
   end
+  rows[#rows + 1] = { id = "permissions", group = "Needs", icon = "󰍬", label = "Microphone", hint = MICROPHONE[info.microphone] or MICROPHONE.undetermined }
   return rows
+end
+
+-- The Languages screen's rows, from info { startName, ownStart (the file picks it, rather than
+-- macOS), startInstalled, tabName (or nil), tabInstalled }: the language dictation starts in,
+-- and the one Tab moves to, each with whether its model is on the Mac.
+local function modelHint(installed)
+  return installed and "on this Mac" or "get it"
+end
+
+function dictation.languageRows(info)
+  local start = (info.ownStart and "" or "macOS's: ") .. info.startName .. " · " .. modelHint(info.startInstalled) .. "  ›"
+  local tab = info.tabName and (info.tabName .. " · " .. modelHint(info.tabInstalled) .. "  ›") or "none  ›"
+  return {
+    { id = "start", icon = "󰗊", label = "Starts in", hint = start },
+    { id = "tab", icon = "󰌌", label = "Tab switches to", hint = tab },
+  }
+end
+
+-- The language Tab moves to from start: the first in the languages line that isn't start.
+function dictation.tabLanguage(text, start)
+  for _, locale in ipairs(dictation.languages(text)) do
+    if locale ~= start then return locale end
+  end
+  return nil
+end
+
+-- text with start as the language dictation starts in and tab as the one Tab moves to: the
+-- languages line is written for a different tab, and removed for none or the same one.
+function dictation.withLanguages(text, start, tab)
+  text = dictation.setting(text, "language", start)
+  if not tab or tab == start then return dictation.setting(text, "languages", nil) end
+  return dictation.setting(text, "languages", start .. ", " .. tab)
 end
 
 -- Which of macOS's engines hears locale: the transcriber when it knows the language, since

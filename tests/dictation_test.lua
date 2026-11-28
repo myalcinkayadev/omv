@@ -139,31 +139,60 @@ check.that("should read the microphone access", mac.microphone == "granted")
 
 -- The Dictation card.
 local function find(rows, id) for _, row in ipairs(rows) do if row.id == id then return row end end end
-local cardRows = dictation.cardRows({ ownLanguage = false, language = "Turkish (Türkiye)", sounds = true, microphone = "granted", installed = true,
-  words = { "omv", "AeroSpace", "SketchyBar", "Ghostty", "Hammerspoon" }, cleanup = true, kept = 0 })
-check.that("should mark macOS's language on the card", find(cardRows, "language").hint == "macOS's: Turkish (Türkiye)  ›")
-check.that("should show a language the file picked without the mark",
-  find(dictation.cardRows({ ownLanguage = true, language = "English (United States)" }), "language").hint == "English (United States)  ›")
+local function at(rows, id) for index, row in ipairs(rows) do if row.id == id then return index end end end
+local cardRows = dictation.cardRows({ language = "Turkish", tabLanguage = "English", sounds = true, microphone = "granted",
+  words = { "omv", "AeroSpace", "SketchyBar", "Ghostty", "Hammerspoon" }, cleanup = true, kept = 0,
+  talkBackVoice = "Apple", talkBackOutput = "headphones" })
+check.that("should list Languages first with both names when a Tab language is set",
+  at(cardRows, "languages") == 1 and find(cardRows, "languages").hint == "Turkish, English (Tab)  ›")
+check.that("should list only the start language when no Tab language is set",
+  find(dictation.cardRows({ language = "English" }), "languages").hint == "English  ›")
+check.that("should hint get it when a model is missing",
+  find(dictation.cardRows({ language = "English", languageMissing = true }), "languages").hint == "get it · English  ›")
+check.that("should have no Key, Tab languages or model row", find(cardRows, "key") == nil and find(cardRows, "language") == nil
+  and find(cardRows, "install") == nil)
+check.that("should group rows as Hearing, Feedback, Talk-back and Needs", find(cardRows, "languages").group == "Hearing"
+  and find(cardRows, "sounds").group == "Feedback" and find(cardRows, "talkBackVoice").group == "Talk-back"
+  and find(cardRows, "permissions").group == "Needs")
+check.that("should put the talk-back rows at 7 and 8 when talk-back is on", at(cardRows, "talkBackVoice") == 7 and at(cardRows, "talkBackOutput") == 8)
+check.that("should keep the toggles where Left/Right finds them", at(cardRows, "cleanup") == dictation.CARD_ROWS.cleanup
+  and at(cardRows, "sounds") == dictation.CARD_ROWS.sounds and dictation.CARD_ROWS.talkBackVoice == 7)
+check.that("should leave out the talk-back rows when talk-back is off", find(dictation.cardRows({ language = "x" }), "talkBackVoice") == nil)
 check.that("should say the microphone is allowed", find(cardRows, "permissions").hint == "allowed")
 check.that("should say the microphone will be asked before it was", find(dictation.cardRows({ language = "x" }), "permissions").hint == "asked on the first hold")
-check.that("should say the model is on the Mac", find(cardRows, "install").label == "Turkish (Türkiye) model" and find(cardRows, "install").hint == "on this Mac")
-check.that("should offer to get a model that isn't", find(dictation.cardRows({ language = "x" }), "install").hint == "get it  ›")
 check.that("should say no dictation is kept yet", find(cardRows, "dictations").hint == "none yet")
 check.that("should count the dictations kept", find(dictation.cardRows({ language = "x", kept = 4 }), "dictations").hint == "the last 4  ›")
-local function at(rows, id) for index, row in ipairs(rows) do if row.id == id then return index end end end
 local rulesRow = function(rules) return find(dictation.cardRows({ language = "x", replacements = rules }), "replacements").hint end
 check.that("should show the first replacement and how many more when there are several", rulesRow({ { from = "slash voice", to = "/voice" },
   { from = "at sign", to = "@" }, { from = "new line", to = "\n" } }) == "slash voice → /voice +2  ›")
 check.that("should show the only replacement when there is one", rulesRow({ { from = "at sign", to = "@" } }) == "at sign → @  ›")
 check.that("should say none when there are no replacements", rulesRow({}) == "none  ›" and rulesRow(nil) == "none  ›")
-local tabRow = function(names) return find(dictation.cardRows({ language = "x", tabLanguages = names }), "languages").hint end
-check.that("should list the Tab languages when there are two or more", tabRow({ "English", "Turkish" }) == "English, Turkish  ›")
-check.that("should say off when there are fewer than two Tab languages", tabRow({ "English" }) == "off  ›" and tabRow(nil) == "off  ›")
-check.that("should keep the toggles where Left/Right finds them", at(cardRows, "language") == 1 and at(cardRows, "cleanup") == 5 and at(cardRows, "sounds") == 6)
 check.that("should show the first three of your words and how many more", find(cardRows, "words").hint == "omv, AeroSpace, SketchyBar +2  ›")
 check.that("should say none without your words", find(dictation.cardRows({ language = "x" }), "words").hint == "none  ›")
 check.that("should show clean-up on or off", find(cardRows, "cleanup").hint == "‹  on  ›"
   and find(dictation.cardRows({ language = "x", cleanup = false }), "cleanup").hint == "‹  off  ›")
+
+-- The Languages screen.
+local languageRows = dictation.languageRows({ startName = "English (United States)", startInstalled = true, ownStart = true })
+check.that("should hint on this Mac when the start model is installed", find(languageRows, "start").hint == "English (United States) · on this Mac  ›")
+check.that("should mark macOS's language when the file picks none",
+  find(dictation.languageRows({ startName = "English", startInstalled = true }), "start").hint == "macOS's: English · on this Mac  ›")
+check.that("should hint none when no Tab language is set", find(languageRows, "tab").hint == "none  ›")
+check.that("should hint get it when the Tab model is missing",
+  find(dictation.languageRows({ startName = "English", startInstalled = true, ownStart = true, tabName = "Turkish", tabInstalled = false }), "tab").hint
+    == "Turkish · get it  ›")
+
+-- Writing the languages.
+check.that("should give the other language when languages lists two", dictation.tabLanguage("languages = en-US, tr-TR\n", "en-US") == "tr-TR")
+check.that("should give nil when there's no languages line", dictation.tabLanguage("language = en-US\n", "en-US") == nil)
+check.that("should give nil when languages lists only the start language", dictation.tabLanguage("languages = en-US\n", "en-US") == nil)
+check.that("should write language and languages when a different tab language is given",
+  dictation.withLanguages("sounds = on\n", "en-US", "tr-TR") == "sounds = on\nlanguage = en-US\nlanguages = en-US, tr-TR\n")
+check.that("should remove languages when tab is nil",
+  dictation.withLanguages("language = en-US\nlanguages = en-US, tr-TR\n", "en-US", nil) == "language = en-US\n")
+check.that("should remove languages when tab equals the start language",
+  dictation.withLanguages("language = en-US\nlanguages = en-US, tr-TR\n", "tr-TR", "tr-TR") == "language = tr-TR\n")
+check.that("should keep other lines when writing", dictation.withLanguages("words = omv\n# mine\n", "tr-TR", nil) == "words = omv\n# mine\nlanguage = tr-TR\n")
 
 -- The meter.
 check.that("should map -55 dB and below to 0", dictation.levelOf(-55) == 0 and dictation.levelOf(-90) == 0)
@@ -408,13 +437,6 @@ check.that("should grow the agent pill by 22 for each row", dictation.agentPillH
 
 check.that("should replace a setting whose key has a hyphen", dictation.setting("talk-back voice = apple\n", "talk-back voice", "kokoro-man")
   == "talk-back voice = kokoro-man\n")
-check.that("should list Talk-back voice under Sounds when the card is built", (function()
-  local rows = dictation.cardRows({ language = "English", talkBackVoice = "Apple", talkBackOutput = "headphones" })
-  for index, row in ipairs(rows) do
-    if row.id == "sounds" then return rows[index + 1].id == "talkBackVoice" end
-  end
-  return false
-end)())
 check.that("should hint get it when Kokoro is chosen but not installed", (function()
   for _, row in ipairs(dictation.cardRows({ language = "English", talkBackVoice = "Kokoro, woman", talkBackMissing = true })) do
     if row.id == "talkBackVoice" then return row.hint:find("get it", 1, true) ~= nil end

@@ -608,34 +608,29 @@ end
 
 local showLanguages
 
-local tabLanguageNames
+-- A language's name without its region, as the card lists it.
+local function plainName(id)
+  return dictation.plainLanguage(languageName(id))
+end
 
 local function rows()
-  local language = locale()
+  local start = locale()
+  local tab = dictation.tabLanguage(settings(), start)
   return dictation.cardRows({
-    -- With no macOS language given, an empty one means the file has no language line.
-    ownLanguage = dictation.language(settings(), { "" }) ~= "",
-    language = languageName(language), sounds = dictation.sounds(settings()), kept = #feature.recent,
+    language = plainName(start), tabLanguage = tab and plainName(tab),
+    languageMissing = not dictation.isInstalled(lists, start) or (tab ~= nil and not dictation.isInstalled(lists, tab)),
+    sounds = dictation.sounds(settings()), kept = #feature.recent,
     words = dictation.words(settings()), cleanup = dictation.cleanupOn(settings()),
-    replacements = dictation.replacements(settings()), tabLanguages = tabLanguageNames(),
-    microphone = lists.microphone, installed = dictation.isInstalled(lists, language),
+    replacements = dictation.replacements(settings()), microphone = lists.microphone,
     talkBackVoice = talkBack and talkback.voiceName(talkback.voiceSetting(settings())),
     talkBackMissing = talkBack and talkback.voiceSetting(settings()) ~= "apple" and not talkBack.installed(),
     talkBackOutput = talkBack and talkback.outputSetting(settings()),
   })
 end
 
--- The names of the languages Tab moves between.
-tabLanguageNames = function()
-  local names = {}
-  for _, id in ipairs(dictation.languages(settings())) do names[#names + 1] = dictation.plainLanguage(languageName(id)) end
-  return names
-end
-
 local showCard, showHistory
 
--- The card's talk-back rows, 7 and 8, under Sounds.
-local VOICE_ROW, OUTPUT_ROW = 7, 8
+local ROWS = dictation.CARD_ROWS
 
 -- The next talk-back voice: plays the sample in it at once, or gets Kokoro first when it isn't
 -- on the Mac yet, which plays the sample once it is.
@@ -643,17 +638,17 @@ local function nextTalkBackVoice()
   local voice = talkback.nextVoice(talkback.voiceSetting(settings()))
   save(dictation.setting(settings(), "talk-back voice", voice))
   if voice ~= "apple" and not talkBack.installed() then
-    talkBack.install(function() if shell.isOpen("dictation") then showCard(VOICE_ROW) end end)
+    talkBack.install(function() if shell.isOpen("dictation") then showCard(ROWS.talkBackVoice) end end)
   else
     talkBack.preview(voice)
   end
-  return showCard(VOICE_ROW)
+  return showCard(ROWS.talkBackVoice)
 end
 
 local function toggleTalkBackOutput()
   local anywhere = talkback.outputSetting(settings()) == "anywhere"
   save(dictation.setting(settings(), "talk-back output", anywhere and "headphones" or "anywhere"))
-  return showCard(OUTPUT_ROW)
+  return showCard(ROWS.talkBackOutput)
 end
 
 -- Toggles key, sounds or cleanup, in ~/.config/omv/dictation, and shows the card again on its row.
@@ -678,50 +673,45 @@ local function editReplacements()
   shell.open({ "-t", dictation.PATH })()
 end
 
--- Opens ~/.config/omv/dictation for the languages Tab moves between, with a line naming yours
--- and another whose model is on the Mac when it has none.
-local function editLanguages()
-  if not (settings() or ""):match("languages%s*=") then
-    local mine, other = locale(), nil
-    for _, id in ipairs(lists.installed or {}) do
-      if id:match("^(%a+)") ~= mine:match("^(%a+)") then other = id; break end
-    end
-    save(dictation.setting(settings(), "languages", mine .. ", " .. (other or (mine:match("^en") and "tr-TR" or "en-US"))))
+local showLanguageScreen
+
+-- The groups a card's rows are in, for its height: each has a title line.
+local function groupCount(shown)
+  local seen, count = {}, 0
+  for _, row in ipairs(shown) do
+    if row.group and not seen[row.group] then seen[row.group], count = true, count + 1 end
   end
-  shell.open({ "-t", dictation.PATH })()
+  return count
 end
 
 function showCard(selected)
   local shown = rows()
-  shell.show("dictation", shell.centered(shell.LIST_WIDTH, 28 + 46 + #shown * 30 + 2 * 26 + 44), card.html({
+  shell.show("dictation", shell.centered(shell.LIST_WIDTH, 28 + 46 + #shown * 30 + groupCount(shown) * 26 + 44), card.html({
     prompt = "Dictation…", rows = shown, compact = true, step = true, selected = selected,
-    footer = { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open ›" }, { key = "Esc", text = "close" } },
+    footer = { { key = "Right Option", text = "hold, or tap twice" }, { key = "Left/Right", text = "change" },
+      { key = "Enter", text = "open ›" }, { key = "Esc", text = "close" } },
   }), function(message)
     local id = message.id or ""
     if message.type == "step" then
-      if id:match(":sounds$") then return toggle("sounds", dictation.sounds(settings()), 6) end
-      if id:match(":cleanup$") then return toggle("cleanup", dictation.cleanupOn(settings()), 5) end
+      if id:match(":sounds$") then return toggle("sounds", dictation.sounds(settings()), ROWS.sounds) end
+      if id:match(":cleanup$") then return toggle("cleanup", dictation.cleanupOn(settings()), ROWS.cleanup) end
       if id:match(":talkBackVoice$") then return nextTalkBackVoice() end
       if id:match(":talkBackOutput$") then return toggleTalkBackOutput() end
-      if id == "1:language" then return showLanguages() end
+      if id == "1:languages" then return showLanguageScreen(1) end
       return
     end
     if message.type ~= "choose" then return shell.close() end
-    if id == "language" then return showLanguages() end
-    if id == "sounds" then return toggle("sounds", dictation.sounds(settings()), 6) end
-    if id == "cleanup" then return toggle("cleanup", dictation.cleanupOn(settings()), 5) end
+    if id == "languages" then return showLanguageScreen(1) end
+    if id == "sounds" then return toggle("sounds", dictation.sounds(settings()), ROWS.sounds) end
+    if id == "cleanup" then return toggle("cleanup", dictation.cleanupOn(settings()), ROWS.cleanup) end
     if id == "talkBackVoice" then return nextTalkBackVoice() end
     if id == "talkBackOutput" then return toggleTalkBackOutput() end
     if id == "dictations" then return feature.recent[1] and showHistory() or nil end
-    if id == "key" then return end
     if id == "permissions" and lists.microphone == "granted" then return end
-    if id == "install" and dictation.isInstalled(lists, locale()) then return end
     shell.close()
     if id == "words" then return editWords() end
     if id == "replacements" then return editReplacements() end
-    if id == "languages" then return editLanguages() end
     if id == "permissions" then return require("features.permissions").open() end
-    if id == "install" then return install(locale()) end
   end)
 end
 
@@ -748,18 +738,68 @@ function showHistory()
 end
 
 -- Every language the Mac can hear, macOS's first; picking one writes it and gets it.
-function showLanguages()
-  local shown = { { id = "macos", icon = "󰀵", label = "macOS's language", hint = languageName(hs.host.locale.preferredLanguages()[1] or "en-US") } }
+-- Saves start as the language dictation starts in and tab as the one Tab moves to; without a
+-- language line before, start stays macOS's, unwritten.
+local function saveLanguages(start, tab, ownStart)
+  local text = dictation.withLanguages(settings(), start, tab)
+  if not ownStart then text = dictation.setting(text, "language", nil) end
+  save(text)
+end
+
+-- Whether the file picks the language, rather than macOS.
+local function ownStart()
+  return dictation.language(settings(), { "" }) ~= ""
+end
+
+-- The locales to pick from for which, start or tab: macOS's language first for start, None
+-- first for tab. Picking one whose model isn't on the Mac gets it.
+function showLanguages(which)
+  local start = locale()
+  local tab = dictation.tabLanguage(settings(), start)
+  local shown = which == "tab" and { { id = "none", icon = "󰅖", label = "None", hint = "Tab doesn't switch" } }
+    or { { id = "macos", icon = "󰀵", label = "macOS's language", hint = languageName(hs.host.locale.preferredLanguages()[1] or "en-US") } }
   for _, id in ipairs(allLocales()) do shown[#shown + 1] = { id = "locale:" .. id, icon = "󰗊", label = languageName(id), hint = id } end
+  local row = which == "tab" and 2 or 1
   shell.show("dictation", shell.centered(shell.LIST_WIDTH, 28 + 46 + shell.LIST_VISIBLE_ROWS * 30 + 4), card.html({
-    prompt = "Dictation language…", rows = shown, compact = true,
+    prompt = which == "tab" and "Tab switches to…" or "Starts in…", rows = shown, compact = true,
   }), function(message)
-    if message.type ~= "choose" then return showCard(1) end
+    if message.type ~= "choose" then return showLanguageScreen(row) end
     local id = (message.id or ""):match("^locale:(.+)$")
-    save(dictation.setting(settings(), "language", id))
-    showCard(1)
-    if not dictation.isInstalled(lists, id or locale()) then install(id or locale()) end
-  end, { onEscape = function() showCard(1) end })
+    if which == "tab" then
+      saveLanguages(start, id, ownStart())
+    else
+      local newStart = id or hs.host.locale.preferredLanguages()[1] or "en-US"
+      saveLanguages(newStart, tab, id ~= nil)
+    end
+    showLanguageScreen(row)
+    if id and not dictation.isInstalled(lists, id) then install(id) end
+  end, { onEscape = function() showLanguageScreen(row) end })
+end
+
+-- The Languages screen: the language dictation starts in and the one Tab moves to. Enter on
+-- either picks another, or gets its model when it isn't on the Mac.
+showLanguageScreen = function(selected)
+  local start = locale()
+  local tab = dictation.tabLanguage(settings(), start)
+  local startInstalled = dictation.isInstalled(lists, start)
+  local tabInstalled = tab ~= nil and dictation.isInstalled(lists, tab)
+  local shown = dictation.languageRows({ startName = plainName(start), ownStart = ownStart(), startInstalled = startInstalled,
+    tabName = tab and plainName(tab), tabInstalled = tabInstalled })
+  shell.show("dictation", shell.centered(shell.LIST_WIDTH, 28 + 46 + #shown * 30 + 44), card.html({
+    prompt = "Languages…", rows = shown, compact = true, selected = selected,
+    footer = { { key = "Enter", text = "pick ›" }, { key = "Esc", text = "back" } },
+  }), function(message)
+    if message.type ~= "choose" then return showCard(ROWS.languages) end
+    if message.id == "start" and not startInstalled then
+      shell.close()
+      return install(start)
+    end
+    if message.id == "tab" and tab and not tabInstalled then
+      shell.close()
+      return install(tab)
+    end
+    showLanguages(message.id == "tab" and "tab" or "start")
+  end, { onEscape = function() showCard(ROWS.languages) end })
 end
 
 return feature
