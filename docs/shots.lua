@@ -349,14 +349,16 @@ local function bodyShot(file, prompt, rows, footer, options)
     script = "document.documentElement.style.height='auto';document.body.style.height='auto';document.querySelector('.rows').style.flex='none'" }
 end
 
--- Dictation: its card with Turkish picked, and the pill two lines into a sentence, with a
--- wave of speech.
+-- Dictation: its card starting in Turkish with English on Tab and talk-back on, and the pill
+-- two lines into a sentence, with a wave of speech.
 local function dictationShots(now)
-  local rows = dictation.cardRows({ ownLanguage = true, language = "Turkish (Türkiye)", sounds = true, kept = 3, words = { "omv", "AeroSpace", "Ghostty" }, cleanup = true,
-    microphone = "granted", installed = true })
+  local rows = dictation.cardRows({ language = "Turkish", tabLanguage = "English", sounds = true, kept = 3,
+    words = { "omv", "AeroSpace", "Ghostty" }, replacements = { { from = "slash voice", to = "/voice" } }, cleanup = true,
+    microphone = "granted", talkBackVoice = "Kokoro, woman", talkBackOutput = "headphones" })
   return {
     bodyShot("dictation.png", "Dictation…", rows,
-      { { key = "Left/Right", text = "change" }, { key = "Enter", text = "open ›" }, { key = "Esc", text = "close" } }, { selected = 1 }),
+      { { key = "Right Option", text = "hold, or tap twice" }, { key = "Left/Right", text = "change" }, { key = "Enter", text = "open ›" },
+        { key = "Esc", text = "close" } }, { selected = 1 }),
     { file = "dictation-pill.png", kind = "pill", waveBands = { low = 0.4, mid = 0.8, high = 0.3 }, recording = { started = now - 12, ready = true, app = "Zed",
       partial = "Refactor the login handler so it retries twice before giving up, and log each failed attempt with the user id" } },
   }

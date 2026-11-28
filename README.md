@@ -647,7 +647,7 @@ Off until `omv flags dictation on`. Then hold **Right Option** alone and talk: a
 - **Language:** macOS's own language, in System Settings → General → Language & Region, unless the Dictation card, in the System menu, picks another under **Languages → Starts in**; it's kept as `language = tr-TR` in `~/.config/omv/dictation`. Each language's model is downloaded once, the first time it's used or picked, with its progress in the pill. Dozens of languages work; English, German, French, Spanish, Italian, Portuguese, Japanese, Korean and Chinese use macOS's newer transcriber, which hears quiet speech from the start and punctuates a long dictation throughout, and the rest, Turkish among them, its dictation model.
 - **Sounds:** a short ping as it starts and a tick as it ends; the card, or `sounds = off`, turns them off.
 
-<img src="docs/dictation.png" alt="The Dictation card: Languages, Your words, Replacements and Drop ums and uhs under Hearing; Sounds and Dictations under Feedback; then Microphone under Needs" width="720">
+<img src="docs/dictation.png" alt="The Dictation card: Languages Turkish and English on Tab, Your words, Replacements and Drop ums and uhs under Hearing; Sounds and Dictations under Feedback; Voice Kokoro woman and Speaks in headphones under Talk-back; then Microphone under Needs" width="720">
 
 ### Voice to agents
 
