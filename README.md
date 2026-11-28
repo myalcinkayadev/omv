@@ -634,7 +634,7 @@ Copying the selection and pasting need Accessibility for Hammerspoon. A small Sw
 
 ## Dictation
 
-Off until `omv flags dictation on`. Then hold **Right Option** alone and talk: a pill at the bottom of the screen shows the words as they're heard, and releasing the key types them where you were typing, in any app; release it with **Shift** held to only copy them. For a long one, tap Right Option twice: it listens hands-free, and one more tap types it, Shift copies it, and after 30 seconds without speech it types by itself, counting down the last 10. Esc cancels. Everything is heard on the Mac, with macOS's own speech models: nothing is sent anywhere, and there's no account.
+Off until `omv flags dictation on`. Then hold **Right Option** alone and talk: a pill at the bottom of the screen says Starting until the mic is open, a fraction of a second, then Listening with the start sound, and shows the words as they're heard, and releasing the key types them where you were typing, in any app; release it with **Shift** held to only copy them. For a long one, tap Right Option twice: it listens hands-free, and one more tap types it, Shift copies it, and after 30 seconds without speech it types by itself, counting down the last 10. Esc cancels. Everything is heard on the Mac, with macOS's own speech models: nothing is sent anywhere, and there's no account.
 
 <img src="docs/dictation-pill.png" alt="The dictation pill: a microphone, Listening and its time, a waveform of speech, the app the words go to, the words heard so far on two lines, and release types it, Esc cancels" width="560">
 

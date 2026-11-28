@@ -203,11 +203,11 @@ check.that("should count down to 30 s of silence when it comes first", dictation
 check.that("should give no time left while held", dictation.remaining(select(2, run({ { "option-down", 0 }, { "tick", 0.31 } })), 290) == nil)
 
 -- The pill's header.
-local held = dictation.header({ started = 100, app = "Ghostty" }, 106)
+local held = dictation.header({ started = 100, ready = true, app = "Ghostty" }, 106)
 check.that("should show the mic, live, while held", held.icon == "mic" and held.live == true and held.status == "Listening")
 check.that("should always show a timer", held.timer == "0:06" and held.warning == false)
 check.that("should name the app the words land in", held.target.kind == "app" and held.target.name == "Ghostty")
-local lockedHeader = dictation.header({ started = 0, locked = true, left = 8, app = "Notes" }, 292)
+local lockedHeader = dictation.header({ started = 0, ready = true, locked = true, left = 8, app = "Notes" }, 292)
 check.that("should show the lock, live, while locked", lockedHeader.icon == "lock" and lockedHeader.live and lockedHeader.status == "Locked")
 check.that("should turn the timer into an orange countdown in the last 10 s", lockedHeader.timer == "0:08" and lockedHeader.warning == true)
 local finishingHeader = dictation.header({ started = 100, finishing = true, stopped = 111, app = "Ghostty" }, 112)
@@ -278,5 +278,19 @@ check.that("should skip a line it can't read", #dictation.parseHistory("garbage\
 local many = {}
 for index = 1, 15 do many[#many + 1] = string.format("%d\tZed\ttext %d", 1000 - index, index) end
 check.that("should keep the last 10 it reads", #dictation.parseHistory(table.concat(many, "\n")) == 10)
+
+-- Starting until the helper says ready.
+local starting = dictation.header({ started = 100, app = "Ghostty" }, 100.2)
+check.that("should say Starting when the helper isn't ready", starting.status == "Starting")
+check.that("should show no live dot when the helper isn't ready", starting.live == false)
+check.that("should say Listening when the helper is ready", dictation.header({ started = 100, ready = true, app = "Zed" }, 101).status == "Listening")
+check.that("should say Locked when locked and ready", dictation.header({ started = 0, ready = true, locked = true, app = "Zed" }, 1).status == "Locked")
+check.that("should say Starting when locked and not ready", dictation.header({ started = 0, locked = true, app = "Zed" }, 1).status == "Starting")
+check.that("should say Finishing when finishing before ready", dictation.header({ started = 0, finishing = true, stopped = 1, app = "Zed" }, 2).status == "Finishing")
+check.that("should not chime when shown and not ready", dictation.chimeDue({ shown = true }) == false)
+check.that("should not chime when ready and not shown", dictation.chimeDue({ ready = true }) == false)
+check.that("should chime when shown and ready", dictation.chimeDue({ shown = true, ready = true }) == true)
+check.that("should not chime again when it chimed", dictation.chimeDue({ shown = true, ready = true, chimed = true }) == false)
+
 
 check.finish()

@@ -26,7 +26,7 @@ local keys = dictation.keys()
 -- The helper's locale lists, read once at load, which also builds the helper.
 local lists = { transcriber = {}, dictation = {} }
 -- The recording now: { task, locale, started, ready, partial, percent, shown, locked, finishing,
--- review, auto, app, appIcon, secure, startApp, left, waveSent, inputClosed }.
+-- review, auto, app, appIcon, secure, startApp, left, waveSent, inputClosed, chimed }.
 local current = nil
 -- The last dictations, newest first, each { text, app, at }, kept in dictation.HISTORY_PATH so
 -- they outlive a reload.
@@ -164,6 +164,12 @@ local function showProblem(recording, problem)
   end)
 end
 
+local function chime(recording)
+  if not dictation.chimeDue(recording) then return end
+  recording.chimed = true
+  play(START_SOUND)
+end
+
 -- Reads the helper's lines as they come; a chunk may end mid-line, kept until the rest comes.
 local function onOutput(recording, chunk)
   recording.buffer = (recording.buffer or "") .. (chunk or "")
@@ -176,7 +182,10 @@ local function onOutput(recording, chunk)
     elseif message and message.kind == "progress" then recording.percent = message.percent
     elseif message and message.kind == "problem" then return showProblem(recording, message.problem)
     elseif message and message.kind == "final" then return finished(recording, message.text)
-    elseif line == "ready\t" or line == "ready" then recording.ready = true end
+    elseif line == "ready\t" or line == "ready" then
+      recording.ready = true
+      chime(recording)
+    end
   end
   recording.buffer = recording.buffer:match("([^\n]*)$")
 end
@@ -254,7 +263,7 @@ local function show(locked)
   current.app, current.appIcon, current.secure = here.app, here.appIcon, here.secure
   -- A locked one that types by itself only types into the app it started in.
   if locked then current.startApp = here.app end
-  play(START_SOUND)
+  chime(current)
   drawPill(current)
 end
 

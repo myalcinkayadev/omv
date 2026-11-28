@@ -180,14 +180,24 @@ end
 -- The pill's header, from recording { started, stopped, locked, finishing, left, secure, app }:
 -- { icon = mic, lock or spinner; live, whether the mic is on; status; timer; warning, whether
 -- the timer is an orange countdown; target = { kind = app or password, name } }.
+-- Until the helper says ready, the mic isn't open yet: the status says Starting and the live
+-- dot waits, so nothing said before it is expected to be heard.
 function dictation.header(recording, now)
   local icon, status = "mic", "Listening"
   if recording.finishing then icon, status = "spinner", "Finishing"
+  elseif not recording.ready then status = "Starting"
   elseif recording.locked then icon, status = "lock", "Locked" end
+  local live = not recording.finishing and recording.ready == true
   local warning = recording.left ~= nil and not recording.finishing
   local timer = warning and clock(recording.left) or clock((recording.stopped or now) - recording.started)
   local target = recording.secure and { kind = "password", name = "password field" } or { kind = "app", name = shortName(recording.app) }
-  return { icon = icon, live = not recording.finishing, status = status, timer = timer, warning = warning, target = target }
+  return { icon = icon, live = live, status = status, timer = timer, warning = warning, target = target }
+end
+
+-- Whether the start sound plays now: once, when the pill shows and the mic is open, whichever
+-- comes last.
+function dictation.chimeDue(recording)
+  return recording.shown == true and recording.ready == true and not recording.chimed
 end
 
 -- What the pill shows, as one string: it's redrawn only when this changes, about once a
