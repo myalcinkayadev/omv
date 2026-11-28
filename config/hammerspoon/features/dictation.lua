@@ -446,7 +446,7 @@ local function editWords()
   if #dictation.words(settings()) == 0 and not (settings() or ""):match("words%s*=") then
     save(dictation.setting(settings(), "words", "omv"))
   end
-  shell.open({ "-t", dictation.PATH })
+  shell.open({ "-t", dictation.PATH })()
 end
 
 function showCard(selected)
